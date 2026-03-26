@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정책대출 계산기 - 디딤돌·버팀목·신생아특례·보금자리론 | eloan.kr</title>
+<meta name="description" content="2026년 최신 정책대출 금리·한도·월상환액을 한번에 계산하세요. 디딤돌대출, 버팀목전세대출, 신생아특례대출, 보금자리론 계산기 제공.">
+<meta name="keywords" content="디딤돌대출 계산기, 버팀목대출 계산기, 신생아특례대출, 보금자리론, 정책대출, 대출이자계산기">
+<meta property="og:title" content="정책대출 계산기 - eloan.kr">
+<meta property="og:description" content="2026년 최신 정책대출 금리·한도·월상환액을 한번에 계산하세요.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://eloan.kr">
+<link rel="canonical" href="https://eloan.kr">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #1B65E3;
+  --primary-dark: #0F4ABF;
+  --primary-light: #E8F0FE;
+  --accent: #00C48C;
+  --accent-dark: #00A374;
+  --warning: #FF6B35;
+  --bg: #F5F6FA;
+  --card: #FFFFFF;
+  --text: #1A1D26;
+  --text-sub: #6B7280;
+  --text-light: #9CA3AF;
+  --border: #E5E7EB;
+  --shadow: 0 2px 12px rgba(27,101,227,0.08);
+  --shadow-hover: 0 8px 30px rgba(27,101,227,0.15);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Noto Sans KR', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, #3B82F6 50%, #6366F1 100%);
+  padding: 48px 0 60px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 0; right: 0;
+  height: 60px;
+  background: var(--bg);
+  border-radius: 30px 30px 0 0;
+}
+.hero .container { position: relative; z-index: 1; }
+.hero-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(4px);
+}
+.hero h1 {
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+.hero p {
+  color: rgba(255,255,255,0.85);
+  font-size: 14px;
+  font-weight: 400;
+}
+.hero-pattern {
+  position: absolute;
+  top: -20px; right: -40px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.hero-pattern-2 {
+  position: absolute;
+  bottom: 20px; left: -60px;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+
+/* Section */
+.section {
+  padding: 0 0 32px;
+}
+.section:first-of-type {
+  margin-top: -20px;
+  position: relative;
+  z-index: 2;
+}
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  padding-left: 2px;
+  letter-spacing: -0.3px;
+}
+.section-title span {
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 400;
+  margin-left: 6px;
+}
+
+/* Product Cards */
+.product-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.product-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.25s ease;
+  border: 1px solid transparent;
+}
+.product-card:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+  border-color: var(--primary-light);
+}
+.product-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 24px;
+}
+.product-icon.blue { background: #E8F0FE; }
+.product-icon.green { background: #E6F9F1; }
+.product-icon.orange { background: #FFF0E8; }
+.product-icon.purple { background: #F0EAFF; }
+.product-info { flex: 1; min-width: 0; }
+.product-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  letter-spacing: -0.3px;
+}
+.product-desc {
+  font-size: 12.5px;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+.product-rate {
+  text-align: right;
+  flex-shrink: 0;
+}
+.product-rate-label {
+  font-size: 11px;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+.product-rate-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.3px;
+}
+.product-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.product-badge.ready { background: #E6F9F1; color: #059669; }
+.product-badge.soon { background: #FEF3C7; color: #D97706; }
+
+/* Quick Compare */
+.compare-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.compare-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.compare-row:last-child { border-bottom: none; }
+.compare-label {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.compare-values {
+  display: flex;
+  gap: 16px;
+}
+.compare-val {
+  text-align: center;
+}
+.compare-val-title {
+  font-size: 10px;
+  color: var(--text-light);
+  margin-bottom: 2px;
+}
+.compare-val-num {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Info Banner */
+.info-banner {
+  background: linear-gradient(135deg, #1B65E3 0%, #6366F1 100%);
+  border-radius: var(--radius);
+  padding: 20px;
+  color: #fff;
+  margin-bottom: 32px;
+}
+.info-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.info-banner-text {
+  font-size: 12px;
+  opacity: 0.85;
+  line-height: 1.6;
+}
+.info-banner-date {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+/* Footer */
+.footer {
+  padding: 32px 0;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
+.footer p {
+  font-size: 11px;
+  color: var(--text-light);
+  line-height: 1.8;
+}
+.footer a {
+  color: var(--text-sub);
+  text-decoration: none;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.product-card {
+  animation: fadeUp 0.5s ease forwards;
+  opacity: 0;
+}
+.product-card:nth-child(1) { animation-delay: 0.1s; }
+.product-card:nth-child(2) { animation-delay: 0.2s; }
+.product-card:nth-child(3) { animation-delay: 0.3s; }
+.product-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* SVG Icons */
+.icon-svg {
+  width: 28px;
+  height: 28px;
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-pattern"></div>
+  <div class="hero-pattern-2"></div>
+  <div class="container">
+    <div class="hero-badge">2026년 3월 기준</div>
+    <h1>정책대출 계산기</h1>
+    <p>내게 맞는 정부지원 대출, 금리와 상환액을 바로 계산하세요</p>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="section" style="margin-top:-20px; position:relative; z-index:2;">
+    <h2 class="section-title">주택구입 대출 <span>매매용</span></h2>
+    <div class="product-grid">
+
+      <a href="/didimdol.html" class="product-card">
+        <div class="product-icon blue">
+          <svg class="icon-svg" viewBox="0 0 28 28" fill="none"><path d="M14 3L3 12v13a1 1 0 001 1h7v-7h6v7h7a1 1 0 001-1V12L14 3z" fill="#1B65E3"/></svg>
+        </div>
+        <div class="product-info">
+          <div class="product-name">디딤돌대출</div>
+          <div class="product-desc">무주택 서민 주택구입자금</div>
+        </div>
+        <div class="product-rate">
+          <div class="product-rate-label">금리</div>
+          <div class="product-rate-value">2.45%~</div>
+          <div class="product-badge ready">이용가능</div>
+        </div>
+      </a>
+
+      <a href="/baby.html" class="product-card">
+        <div class="product-icon green">
+          <svg class="icon-svg" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="10" r="5" fill="#00C48C"/><path d="M7 22c0-3.87 3.13-7 7-7s7 3.13 7 7" stroke="#00C48C" stroke-width="2" fill="none"/><circle cx="19" cy="6" r="2.5" fill="#00C48C" opacity="0.5"/></svg>
+        </div>
+        <div class="product-info">
+          <div class="product-name">신생아 특례대출</div>
+          <div class="product-desc">출산가구 주택구입 특례금리</div>
+        </div>
+        <div class="product-rate">
+          <div class="product-rate-label">금리</div>
+          <div class="product-rate-value">1.6%~</div>
+          <div class="product-badge soon">준비중</div>
+        </div>
+      </a>
+
+      <a href="/bogeumjari.html" class="product-card">
+        <div class="product-icon purple">
+          <svg class="icon-svg" viewBox="0 0 28 28" fill="none"><rect x="4" y="8" width="20" height="16" rx="2" fill="#7C3AED"/><path d="M4 12h20" stroke="#fff" stroke-width="1.5"/><rect x="8" y="16" width="5" height="3" rx="0.5" fill="#fff" opacity="0.7"/></svg>
+        </div>
+        <div class="product-info">
+          <div class="product-name">보금자리론</div>
+          <div class="product-desc">장기 고정금리 주택담보대출</div>
+        </div>
+        <div class="product-rate">
+          <div class="product-rate-label">금리</div>
+          <div class="product-rate-value">3.25%~</div>
+          <div class="product-badge soon">준비중</div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">전세자금 대출 <span>전세용</span></h2>
+    <div class="product-grid">
+
+      <a href="/buteommok.html" class="product-card">
+        <div class="product-icon orange">
+          <svg class="icon-svg" viewBox="0 0 28 28" fill="none"><path d="M5 26V8l9-5 9 5v18" stroke="#FF6B35" stroke-width="2" fill="none"/><rect x="10" y="14" width="8" height="12" rx="1" fill="#FF6B35" opacity="0.3"/><rect x="12" y="16" width="4" height="4" rx="0.5" fill="#FF6B35"/></svg>
+        </div>
+        <div class="product-info">
+          <div class="product-name">버팀목 전세대출</div>
+          <div class="product-desc">서민·청년·신혼부부 전세자금</div>
+        </div>
+        <div class="product-rate">
+          <div class="product-rate-label">금리</div>
+          <div class="product-rate-value">2.10%~</div>
+          <div class="product-badge soon">준비중</div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">한눈에 비교</h2>
+    <div class="compare-card">
+      <div class="compare-row" style="border-bottom:1px solid var(--border); padding-bottom:10px;">
+        <div class="compare-label"></div>
+        <div class="compare-values">
+          <div class="compare-val"><div class="compare-val-title" style="font-weight:600;color:var(--text);">디딤돌</div></div>
+          <div class="compare-val"><div class="compare-val-title" style="font-weight:600;color:var(--text);">신생아</div></div>
+          <div class="compare-val"><div class="compare-val-title" style="font-weight:600;color:var(--text);">보금자리</div></div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-label">금리</div>
+        <div class="compare-values">
+          <div class="compare-val"><div class="compare-val-num" style="color:var(--primary);">2.45%~</div></div>
+          <div class="compare-val"><div class="compare-val-num" style="color:var(--accent);">1.6%~</div></div>
+          <div class="compare-val"><div class="compare-val-num" style="color:#7C3AED;">3.25%~</div></div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-label">최대한도</div>
+        <div class="compare-values">
+          <div class="compare-val"><div class="compare-val-num">3.2억</div></div>
+          <div class="compare-val"><div class="compare-val-num">5억</div></div>
+          <div class="compare-val"><div class="compare-val-num">5억</div></div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-label">소득기준</div>
+        <div class="compare-values">
+          <div class="compare-val"><div class="compare-val-num">6천만</div></div>
+          <div class="compare-val"><div class="compare-val-num">1.3억</div></div>
+          <div class="compare-val"><div class="compare-val-num">1억</div></div>
+        </div>
+      </div>
+      <div class="compare-row">
+        <div class="compare-label">주택가격</div>
+        <div class="compare-values">
+          <div class="compare-val"><div class="compare-val-num">5억</div></div>
+          <div class="compare-val"><div class="compare-val-num">9억</div></div>
+          <div class="compare-val"><div class="compare-val-num">6억</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="info-banner">
+    <div class="info-banner-title">금리는 수시로 변경됩니다</div>
+    <div class="info-banner-text">본 계산기의 결과는 참고용이며, 실제 대출 조건은 개인 상황과 심사 결과에 따라 달라질 수 있습니다. 정확한 정보는 한국주택금융공사 또는 취급은행에 문의하세요.</div>
+    <div class="info-banner-date">최종 업데이트: 2026년 3월</div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p>
+      eloan.kr | 정책대출 계산기<br>
+      본 사이트는 참고용 계산 도구이며 금융 자문을 제공하지 않습니다.<br>
+      <a href="https://www.hf.go.kr" target="_blank" rel="noopener">한국주택금융공사</a> ·
+      <a href="https://nhuf.molit.go.kr" target="_blank" rel="noopener">주택도시기금</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

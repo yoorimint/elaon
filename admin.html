@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 - eloan.kr</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #1B65E3;
+  --primary-dark: #0F4ABF;
+  --primary-light: #E8F0FE;
+  --accent: #00C48C;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --bg: #F5F6FA;
+  --card: #FFFFFF;
+  --text: #1A1D26;
+  --text-sub: #6B7280;
+  --text-light: #9CA3AF;
+  --border: #E5E7EB;
+  --shadow: 0 2px 12px rgba(27,101,227,0.08);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+.container { max-width:640px; margin:0 auto; padding:0 20px; }
+
+/* Login */
+.login-wrap {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+}
+.login-card {
+  background:var(--card); border-radius:var(--radius); padding:40px 32px;
+  box-shadow:var(--shadow); width:100%; max-width:400px; text-align:center;
+}
+.login-card h1 { font-size:22px; font-weight:800; margin-bottom:8px; }
+.login-card p { font-size:13px; color:var(--text-sub); margin-bottom:24px; }
+.login-input {
+  width:100%; height:48px; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+  padding:0 16px; font-size:15px; font-family:inherit; margin-bottom:12px;
+  transition:border-color 0.2s;
+}
+.login-input:focus { outline:none; border-color:var(--primary); }
+.login-btn {
+  width:100%; height:48px; border:none; border-radius:var(--radius-sm);
+  background:var(--primary); color:#fff; font-size:15px; font-weight:700;
+  font-family:inherit; cursor:pointer; transition:background 0.2s;
+}
+.login-btn:hover { background:var(--primary-dark); }
+.login-error { color:var(--danger); font-size:13px; margin-top:8px; display:none; }
+
+/* Header */
+.header {
+  background:var(--primary); padding:16px 0; position:sticky; top:0; z-index:100;
+}
+.header-inner { display:flex; align-items:center; gap:12px; }
+.header-title { color:#fff; font-size:17px; font-weight:700; }
+.header-badge {
+  margin-left:auto; background:rgba(255,255,255,0.2); color:#fff;
+  font-size:11px; font-weight:600; padding:3px 8px; border-radius:12px;
+}
+.logout-btn {
+  background:rgba(255,255,255,0.2); border:none; color:#fff; font-size:12px;
+  padding:6px 12px; border-radius:8px; cursor:pointer; font-family:inherit;
+}
+
+/* Admin Panel */
+.admin-panel { display:none; }
+.admin-panel.show { display:block; }
+
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 0 12px;
+}
+.section-title { font-size:16px; font-weight:700; }
+.section-badge {
+  font-size:11px; font-weight:600; padding:3px 10px; border-radius:12px;
+}
+
+.card {
+  background:var(--card); border-radius:var(--radius); padding:20px;
+  box-shadow:var(--shadow); margin-bottom:14px;
+}
+.card-title {
+  font-size:14px; font-weight:700; margin-bottom:14px;
+  padding-bottom:10px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+}
+.card-title .dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0;
+}
+
+.form-row {
+  display:flex; gap:12px; margin-bottom:12px; align-items:flex-end;
+}
+.form-group { flex:1; }
+.form-label {
+  font-size:12px; font-weight:600; color:var(--text-sub);
+  margin-bottom:4px; display:block;
+}
+.form-input {
+  width:100%; height:40px; border:1.5px solid var(--border); border-radius:8px;
+  padding:0 12px; font-size:14px; font-family:inherit; color:var(--text);
+  background:#FAFBFC; transition:border-color 0.2s;
+}
+.form-input:focus { outline:none; border-color:var(--primary); background:#fff; }
+.form-input.changed { border-color:var(--warning); background:#FFFBEB; }
+
+/* Status */
+.status-bar {
+  position:fixed; bottom:0; left:0; right:0; z-index:200;
+  background:var(--card); border-top:1px solid var(--border);
+  padding:12px 20px; display:none; box-shadow:0 -4px 20px rgba(0,0,0,0.1);
+}
+.status-bar.show { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.status-text { font-size:13px; color:var(--text-sub); }
+.status-text strong { color:var(--warning); }
+.save-btn {
+  height:42px; border:none; border-radius:var(--radius-sm);
+  background:var(--accent); color:#fff; font-size:14px; font-weight:700;
+  padding:0 24px; cursor:pointer; font-family:inherit; white-space:nowrap;
+  transition:background 0.2s;
+}
+.save-btn:hover { background:#00A374; }
+.save-btn:disabled { background:var(--text-light); cursor:not-allowed; }
+
+/* Toast */
+.toast {
+  position:fixed; top:80px; left:50%; transform:translateX(-50%);
+  background:var(--text); color:#fff; padding:12px 24px; border-radius:var(--radius-sm);
+  font-size:14px; font-weight:600; z-index:300; display:none;
+  box-shadow:0 8px 30px rgba(0,0,0,0.2);
+}
+.toast.show { display:block; animation:fadeUp 0.3s ease; }
+.toast.success { background:var(--accent); }
+.toast.error { background:var(--danger); }
+
+/* Settings card */
+.settings-card {
+  background:var(--primary-light); border-radius:var(--radius);
+  padding:16px 20px; margin-bottom:14px;
+}
+.settings-title { font-size:13px; font-weight:700; color:var(--primary-dark); margin-bottom:8px; }
+.settings-row { display:flex; gap:8px; margin-bottom:8px; }
+.settings-input {
+  flex:1; height:36px; border:1px solid var(--border); border-radius:6px;
+  padding:0 10px; font-size:13px; font-family:inherit;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translate(-50%,10px); }
+  to { opacity:1; transform:translate(-50%,0); }
+}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <h1>eloan.kr 관리자</h1>
+    <p>정책대출 데이터를 업데이트합니다</p>
+    <input type="password" class="login-input" id="adminPw" placeholder="관리자 비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="text" class="login-input" id="githubToken" placeholder="GitHub Personal Access Token" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="text" class="login-input" id="githubRepo" placeholder="GitHub Repo (예: username/elaon)" value="yoorimint/elaon" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="loginError">비밀번호가 틀렸습니다</div>
+    <p style="font-size:11px;color:var(--text-light);margin-top:16px;">비밀번호는 처음 설정 시 localStorage에 해시로 저장됩니다.<br>GitHub Token은 repo 권한이 필요합니다.</p>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" class="admin-panel">
+
+  <header class="header">
+    <div class="container header-inner">
+      <span class="header-title">관리자 패널</span>
+      <span class="header-badge" id="lastUpdated">-</span>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </header>
+
+  <main class="container" style="padding:20px 20px 120px;">
+
+    <!-- GitHub 설정 -->
+    <div class="settings-card">
+      <div class="settings-title">GitHub 연동 상태</div>
+      <div id="githubStatus" style="font-size:12px;color:var(--text-sub);">확인 중...</div>
+    </div>
+
+    <!-- 디딤돌 -->
+    <div class="section-header">
+      <div class="section-title">디딤돌대출</div>
+      <span class="section-badge" style="background:#E8F0FE;color:#1B65E3;">주택구입</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#1B65E3;"></div>금리 및 한도</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">최저금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="didimdol.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">최고금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="didimdol.rateMax">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">일반한도 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.limits.general">
+        </div>
+        <div class="form-group">
+          <label class="form-label">생애최초 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.limits.firstTime">
+        </div>
+        <div class="form-group">
+          <label class="form-label">신혼/2자녀 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.limits.newlywed">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">소득기준-일반 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.incomeLimit.general">
+        </div>
+        <div class="form-group">
+          <label class="form-label">소득-생애최초</label>
+          <input type="number" class="form-input" data-path="didimdol.incomeLimit.firstTime">
+        </div>
+        <div class="form-group">
+          <label class="form-label">소득-신혼</label>
+          <input type="number" class="form-input" data-path="didimdol.incomeLimit.newlywed">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">주택가-일반 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.housePrice.general">
+        </div>
+        <div class="form-group">
+          <label class="form-label">주택가-신혼 (만원)</label>
+          <input type="number" class="form-input" data-path="didimdol.housePrice.newlywed">
+        </div>
+      </div>
+    </div>
+
+    <!-- 신생아특례 -->
+    <div class="section-header">
+      <div class="section-title">신생아특례대출</div>
+      <span class="section-badge" style="background:#E6F9F1;color:#059669;">구입+전세</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#00C48C;"></div>주택구입 금리/한도</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">구입 최저금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="baby.purchase.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">구입 최고금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="baby.purchase.rateMax">
+        </div>
+        <div class="form-group">
+          <label class="form-label">구입한도 (만원)</label>
+          <input type="number" class="form-input" data-path="baby.purchase.limit">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">전세 최저금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="baby.lease.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">전세 최고금리 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="baby.lease.rateMax">
+        </div>
+        <div class="form-group">
+          <label class="form-label">전세한도 (만원)</label>
+          <input type="number" class="form-input" data-path="baby.lease.limit">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">소득기준 (만원)</label>
+          <input type="number" class="form-input" data-path="baby.incomeLimit">
+        </div>
+        <div class="form-group">
+          <label class="form-label">자산기준 (만원)</label>
+          <input type="number" class="form-input" data-path="baby.assetLimit">
+        </div>
+      </div>
+    </div>
+
+    <!-- 보금자리론 -->
+    <div class="section-header">
+      <div class="section-title">보금자리론</div>
+      <span class="section-badge" style="background:#F0EAFF;color:#7C3AED;">고정금리</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#7C3AED;"></div>금리 및 한도</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">아낌e 최저 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="bogeumjari.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">아낌e 최고 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="bogeumjari.rateMax">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">일반한도 (만원)</label>
+          <input type="number" class="form-input" data-path="bogeumjari.limits.general">
+        </div>
+        <div class="form-group">
+          <label class="form-label">다자녀 (만원)</label>
+          <input type="number" class="form-input" data-path="bogeumjari.limits.multiChild">
+        </div>
+        <div class="form-group">
+          <label class="form-label">생애최초 (만원)</label>
+          <input type="number" class="form-input" data-path="bogeumjari.limits.firstTime">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">소득-일반 (만원)</label>
+          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.general">
+        </div>
+        <div class="form-group">
+          <label class="form-label">소득-신혼</label>
+          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.newlywed">
+        </div>
+        <div class="form-group">
+          <label class="form-label">소득-다자녀</label>
+          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.multiChild">
+        </div>
+      </div>
+    </div>
+
+    <!-- 버팀목 -->
+    <div class="section-header">
+      <div class="section-title">버팀목전세대출</div>
+      <span class="section-badge" style="background:#FFF0E8;color:#FF6B35;">전세자금</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="dot" style="background:#FF6B35;"></div>유형별 금리</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">일반 최저 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.general.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">일반 최고 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.general.rateMax">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">청년 최저 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.youth.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">청년 최고 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.youth.rateMax">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">신혼 최저 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.newlywed.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">신혼 최고 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.newlywed.rateMax">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">신생아 최저 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.babySpecial.rateMin">
+        </div>
+        <div class="form-group">
+          <label class="form-label">신생아 최고 (%)</label>
+          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.babySpecial.rateMax">
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Status Bar -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-text"><strong id="changeCount">0</strong>개 항목 변경됨</div>
+    <button class="save-btn" id="saveBtn" onclick="saveChanges()">GitHub에 저장</button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Config ── */
+const ADMIN_PW_KEY = 'eloan_admin_pw_hash';
+const GH_TOKEN_KEY = 'eloan_gh_token';
+const GH_REPO_KEY = 'eloan_gh_repo';
+const DATA_PATH = 'data/rates.json';
+
+let currentData = null;
+let originalData = null;
+let changeCount = 0;
+
+/* ── Utility ── */
+async function hashPassword(pw) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pw + 'eloan_salt_2026');
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getNestedValue(obj, path) {
+  return path.split('.').reduce((o, k) => o && o[k], obj);
+}
+
+function setNestedValue(obj, path, value) {
+  const keys = path.split('.');
+  const last = keys.pop();
+  const target = keys.reduce((o, k) => o[k], obj);
+  target[last] = value;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+/* ── Login ── */
+async function doLogin() {
+  const pw = document.getElementById('adminPw').value;
+  const token = document.getElementById('githubToken').value;
+  const repo = document.getElementById('githubRepo').value;
+
+  if (!pw || !token) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginError').textContent = '비밀번호와 GitHub Token을 입력해주세요';
+    return;
+  }
+
+  const hash = await hashPassword(pw);
+  const stored = localStorage.getItem(ADMIN_PW_KEY);
+
+  if (!stored) {
+    // 첫 로그인 - 비밀번호 설정
+    localStorage.setItem(ADMIN_PW_KEY, hash);
+    showToast('비밀번호가 설정되었습니다', 'success');
+  } else if (stored !== hash) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginError').textContent = '비밀번호가 틀렸습니다';
+    return;
+  }
+
+  localStorage.setItem(GH_TOKEN_KEY, token);
+  localStorage.setItem(GH_REPO_KEY, repo);
+
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminPanel').classList.add('show');
+
+  loadData();
+}
+
+function doLogout() {
+  localStorage.removeItem(GH_TOKEN_KEY);
+  document.getElementById('adminPanel').classList.remove('show');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminPw').value = '';
+  document.getElementById('githubToken').value = '';
+}
+
+/* ── GitHub API ── */
+async function ghGet(path) {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  const repo = localStorage.getItem(GH_REPO_KEY);
+  const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }
+  });
+  if (!resp.ok) throw new Error(`GitHub GET failed: ${resp.status}`);
+  return resp.json();
+}
+
+async function ghPut(path, content, message, sha) {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  const repo = localStorage.getItem(GH_REPO_KEY);
+  const body = {
+    message: message,
+    content: btoa(unescape(encodeURIComponent(content))),
+    branch: 'main'
+  };
+  if (sha) body.sha = sha;
+
+  const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) throw new Error(`GitHub PUT failed: ${resp.status}`);
+  return resp.json();
+}
+
+/* ── Load Data ── */
+async function loadData() {
+  try {
+    document.getElementById('githubStatus').textContent = 'GitHub에서 데이터 로딩 중...';
+
+    const file = await ghGet(DATA_PATH);
+    const content = decodeURIComponent(escape(atob(file.content)));
+    currentData = JSON.parse(content);
+    currentData._sha = file.sha;
+    originalData = JSON.parse(content);
+
+    document.getElementById('githubStatus').innerHTML =
+      '<span style="color:#059669;">연결됨</span> · ' + localStorage.getItem(GH_REPO_KEY);
+    document.getElementById('lastUpdated').textContent =
+      '최종: ' + (currentData.lastUpdated || '-');
+
+    populateForm();
+    showToast('데이터 로드 완료', 'success');
+  } catch (e) {
+    document.getElementById('githubStatus').innerHTML =
+      '<span style="color:#EF4444;">연결 실패</span> · ' + e.message;
+    showToast('데이터 로드 실패: ' + e.message, 'error');
+  }
+}
+
+/* ── Populate Form ── */
+function populateForm() {
+  document.querySelectorAll('.form-input[data-path]').forEach(input => {
+    const val = getNestedValue(currentData, input.dataset.path);
+    if (val !== undefined) input.value = val;
+
+    input.addEventListener('input', function() {
+      const origVal = getNestedValue(originalData, this.dataset.path);
+      const newVal = this.type === 'number' ? parseFloat(this.value) : this.value;
+
+      if (String(origVal) !== String(newVal)) {
+        this.classList.add('changed');
+      } else {
+        this.classList.remove('changed');
+      }
+
+      setNestedValue(currentData, this.dataset.path, newVal);
+      updateChangeCount();
+    });
+  });
+}
+
+function updateChangeCount() {
+  changeCount = document.querySelectorAll('.form-input.changed').length;
+  document.getElementById('changeCount').textContent = changeCount;
+
+  const bar = document.getElementById('statusBar');
+  if (changeCount > 0) {
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+/* ── Save ── */
+async function saveChanges() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  try {
+    // Update timestamp
+    currentData.lastUpdated = new Date().toISOString().split('T')[0];
+
+    // Remove internal fields
+    const saveData = JSON.parse(JSON.stringify(currentData));
+    delete saveData._sha;
+
+    const content = JSON.stringify(saveData, null, 2);
+
+    await ghPut(
+      DATA_PATH,
+      content,
+      `데이터 업데이트: ${currentData.lastUpdated}`,
+      currentData._sha
+    );
+
+    // Reload to get new SHA
+    const file = await ghGet(DATA_PATH);
+    currentData._sha = file.sha;
+    originalData = JSON.parse(JSON.stringify(saveData));
+
+    // Reset change indicators
+    document.querySelectorAll('.form-input.changed').forEach(i => i.classList.remove('changed'));
+    updateChangeCount();
+
+    document.getElementById('lastUpdated').textContent = '최종: ' + currentData.lastUpdated;
+
+    showToast('GitHub에 저장 완료! 사이트에 자동 반영됩니다.', 'success');
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'GitHub에 저장';
+  }
+}
+
+/* ── Auto-login if token exists ── */
+window.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  if (token) {
+    document.getElementById('githubToken').value = token;
+    document.getElementById('githubRepo').value = localStorage.getItem(GH_REPO_KEY) || '';
+  }
+});
+</script>
+
+</body>
+</html>

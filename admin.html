@@ -140,7 +140,63 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
 .toast.success { background:var(--accent); }
 .toast.error { background:var(--danger); }
 
-/* Settings card */
+/* Auto Update */
+.auto-card {
+  background:linear-gradient(135deg,#1B65E3 0%,#6366F1 100%);
+  border-radius:var(--radius); padding:24px 20px; margin-bottom:20px; color:#fff;
+}
+.auto-card h2 { font-size:18px; font-weight:800; margin-bottom:6px; }
+.auto-card p { font-size:13px; opacity:0.85; margin-bottom:16px; }
+.auto-btn {
+  width:100%; height:52px; border:none; border-radius:var(--radius-sm);
+  background:#fff; color:var(--primary); font-size:16px; font-weight:800;
+  font-family:inherit; cursor:pointer; transition:all 0.2s;
+  letter-spacing:-0.3px;
+}
+.auto-btn:hover { background:#E8F0FE; }
+.auto-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.auto-btn .spinner {
+  display:inline-block; width:16px; height:16px; border:2px solid var(--primary-light);
+  border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s linear infinite;
+  vertical-align:middle; margin-right:8px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.auto-log {
+  margin-top:14px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm);
+  padding:14px; font-size:12px; max-height:300px; overflow-y:auto;
+  display:none; line-height:1.8;
+}
+.auto-log.show { display:block; }
+.auto-log .ok { color:#86EFAC; }
+.auto-log .warn { color:#FCD34D; }
+.auto-log .err { color:#FCA5A5; }
+.auto-log .info { color:rgba(255,255,255,0.7); }
+
+.preview-card {
+  background:var(--card); border-radius:var(--radius); padding:20px;
+  box-shadow:var(--shadow); margin-bottom:14px; display:none;
+}
+.preview-card.show { display:block; }
+.preview-title {
+  font-size:15px; font-weight:700; margin-bottom:14px;
+  display:flex; align-items:center; gap:8px;
+}
+.preview-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;
+}
+.preview-row:last-child { border-bottom:none; }
+.preview-old { color:var(--text-light); text-decoration:line-through; }
+.preview-new { color:var(--accent); font-weight:700; }
+.preview-same { color:var(--text-sub); }
+.apply-btn {
+  width:100%; height:48px; border:none; border-radius:var(--radius-sm);
+  background:var(--accent); color:#fff; font-size:15px; font-weight:700;
+  font-family:inherit; cursor:pointer; margin-top:14px; transition:background 0.2s;
+}
+.apply-btn:hover { background:#00A374; }
+.apply-btn:disabled { background:var(--text-light); cursor:not-allowed; }
 .settings-card {
   background:var(--primary-light); border-radius:var(--radius);
   padding:16px 20px; margin-bottom:14px;
@@ -186,6 +242,21 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
   </header>
 
   <main class="container" style="padding:20px 20px 120px;">
+
+    <!-- 자동 업데이트 -->
+    <div class="auto-card">
+      <h2>자동 업데이트</h2>
+      <p>공식 사이트에서 최신 금리·한도 정보를 자동으로 가져옵니다</p>
+      <button class="auto-btn" id="autoBtn" onclick="autoUpdate()">최신 데이터 가져오기</button>
+      <div class="auto-log" id="autoLog"></div>
+    </div>
+
+    <!-- 미리보기 -->
+    <div class="preview-card" id="previewCard">
+      <div class="preview-title">변경사항 미리보기</div>
+      <div id="previewBody"></div>
+      <button class="apply-btn" id="applyBtn" onclick="applyAndSave()">변경사항 적용 + GitHub 저장</button>
+    </div>
 
     <!-- GitHub 설정 -->
     <div class="settings-card">
@@ -625,6 +696,226 @@ async function saveChanges() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'GitHub에 저장';
+  }
+}
+
+/* ── Auto Update ── */
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+let fetchedRates = {};
+
+function log(msg, type) {
+  const el = document.getElementById('autoLog');
+  el.classList.add('show');
+  const cls = type || 'info';
+  el.innerHTML += `<div class="${cls}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function fetchViaProxy(url) {
+  const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
+  if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+  return resp.text();
+}
+
+function extractNumbers(html, patterns) {
+  const results = {};
+  for (const [key, regex] of Object.entries(patterns)) {
+    const match = html.match(regex);
+    if (match) results[key] = parseFloat(match[1]);
+  }
+  return results;
+}
+
+async function fetchHFRates() {
+  log('한국주택금융공사 금리 조회 중...');
+  try {
+    const html = await fetchViaProxy('https://www.hf.go.kr/ko/sub01/sub01_01_04.do');
+    // 보금자리론 금리 파싱
+    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
+    const validRates = rateMatches.filter(r => r >= 2.0 && r <= 8.0);
+    if (validRates.length >= 2) {
+      fetchedRates['bogeumjari.rateMin'] = Math.min(...validRates);
+      fetchedRates['bogeumjari.rateMax'] = Math.max(...validRates);
+      log(`보금자리론: ${fetchedRates['bogeumjari.rateMin']}% ~ ${fetchedRates['bogeumjari.rateMax']}%`, 'ok');
+    } else {
+      log('보금자리론 금리 파싱 실패 - 수동 확인 필요', 'warn');
+    }
+  } catch (e) {
+    log('HF 사이트 접근 실패: ' + e.message, 'err');
+  }
+}
+
+async function fetchDidimdolRates() {
+  log('주택도시기금 디딤돌 금리 조회 중...');
+  try {
+    const html = await fetchViaProxy('https://www.hf.go.kr/ko/sub01/sub01_02_03.do');
+    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
+    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
+    if (validRates.length >= 2) {
+      fetchedRates['didimdol.rateMin'] = Math.min(...validRates);
+      fetchedRates['didimdol.rateMax'] = Math.max(...validRates);
+      log(`디딤돌: ${fetchedRates['didimdol.rateMin']}% ~ ${fetchedRates['didimdol.rateMax']}%`, 'ok');
+    } else {
+      log('디딤돌 금리 파싱 실패 - 수동 확인 필요', 'warn');
+    }
+  } catch (e) {
+    log('디딤돌 금리 접근 실패: ' + e.message, 'err');
+  }
+}
+
+async function fetchMyHomeData() {
+  log('마이홈포털 신생아특례 조회 중...');
+  try {
+    const html = await fetchViaProxy('https://www.myhome.go.kr/hws/portal/cont/selectBabySpecialCaseStepStoneLoneView.do');
+    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
+    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
+    if (validRates.length >= 2) {
+      fetchedRates['baby.purchase.rateMin'] = Math.min(...validRates);
+      fetchedRates['baby.purchase.rateMax'] = Math.max(...validRates);
+      log(`신생아특례 구입: ${fetchedRates['baby.purchase.rateMin']}% ~ ${fetchedRates['baby.purchase.rateMax']}%`, 'ok');
+    } else {
+      log('신생아특례 금리 파싱 실패 - 수동 확인 필요', 'warn');
+    }
+  } catch (e) {
+    log('마이홈 접근 실패: ' + e.message, 'err');
+  }
+}
+
+async function fetchBuddyRates() {
+  log('버팀목 전세대출 금리 조회 중...');
+  try {
+    const html = await fetchViaProxy('https://www.myhome.go.kr/hws/portal/cont/selectSupLeaseLoanView.do');
+    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
+    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
+    if (validRates.length >= 2) {
+      const sortedRates = validRates.sort((a,b) => a - b);
+      fetchedRates['buteommok.types.general.rateMin'] = sortedRates[0];
+      fetchedRates['buteommok.types.general.rateMax'] = sortedRates[sortedRates.length - 1];
+      log(`버팀목 일반: ${sortedRates[0]}% ~ ${sortedRates[sortedRates.length-1]}%`, 'ok');
+    } else {
+      log('버팀목 금리 파싱 실패 - 수동 확인 필요', 'warn');
+    }
+  } catch (e) {
+    log('버팀목 접근 실패: ' + e.message, 'err');
+  }
+}
+
+async function autoUpdate() {
+  const btn = document.getElementById('autoBtn');
+  const logEl = document.getElementById('autoLog');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>가져오는 중...';
+  logEl.innerHTML = '';
+  logEl.classList.add('show');
+  fetchedRates = {};
+
+  log('공식 사이트에서 최신 데이터를 가져옵니다...', 'info');
+  log('─────────────────────────────', 'info');
+
+  // 병렬로 모든 소스에서 가져오기
+  await Promise.allSettled([
+    fetchHFRates(),
+    fetchDidimdolRates(),
+    fetchMyHomeData(),
+    fetchBuddyRates()
+  ]);
+
+  log('─────────────────────────────', 'info');
+
+  const keys = Object.keys(fetchedRates);
+  if (keys.length > 0) {
+    log(`총 ${keys.length}개 항목 가져오기 성공!`, 'ok');
+    showPreview();
+  } else {
+    log('가져온 데이터가 없습니다. CORS 프록시 제한일 수 있습니다.', 'warn');
+    log('아래 수동 편집으로 직접 업데이트해주세요.', 'info');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '다시 가져오기';
+}
+
+function showPreview() {
+  const card = document.getElementById('previewCard');
+  const body = document.getElementById('previewBody');
+  card.classList.add('show');
+
+  const labels = {
+    'didimdol.rateMin': '디딤돌 최저금리',
+    'didimdol.rateMax': '디딤돌 최고금리',
+    'bogeumjari.rateMin': '보금자리론 최저금리',
+    'bogeumjari.rateMax': '보금자리론 최고금리',
+    'baby.purchase.rateMin': '신생아특례 구입 최저금리',
+    'baby.purchase.rateMax': '신생아특례 구입 최고금리',
+    'buteommok.types.general.rateMin': '버팀목 일반 최저금리',
+    'buteommok.types.general.rateMax': '버팀목 일반 최고금리'
+  };
+
+  let html = '';
+  for (const [path, newVal] of Object.entries(fetchedRates)) {
+    const oldVal = getNestedValue(currentData, path);
+    const label = labels[path] || path;
+    const changed = oldVal !== newVal;
+
+    html += `<div class="preview-row">
+      <span>${label}</span>
+      <span>${changed
+        ? `<span class="preview-old">${oldVal}%</span> → <span class="preview-new">${newVal}%</span>`
+        : `<span class="preview-same">${oldVal}% (변동없음)</span>`
+      }</span>
+    </div>`;
+  }
+
+  body.innerHTML = html;
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function applyAndSave() {
+  const btn = document.getElementById('applyBtn');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  try {
+    // 가져온 데이터 적용
+    for (const [path, val] of Object.entries(fetchedRates)) {
+      setNestedValue(currentData, path, val);
+    }
+
+    // 타임스탬프 업데이트
+    currentData.lastUpdated = new Date().toISOString().split('T')[0];
+
+    // GitHub에 저장
+    const saveData = JSON.parse(JSON.stringify(currentData));
+    delete saveData._sha;
+    const content = JSON.stringify(saveData, null, 2);
+
+    await ghPut(DATA_PATH, content,
+      `자동 업데이트: ${currentData.lastUpdated} (금리 갱신)`,
+      currentData._sha
+    );
+
+    // SHA 갱신
+    const file = await ghGet(DATA_PATH);
+    currentData._sha = file.sha;
+    originalData = JSON.parse(JSON.stringify(saveData));
+
+    // 폼 갱신
+    populateForm();
+    document.querySelectorAll('.form-input.changed').forEach(i => i.classList.remove('changed'));
+    updateChangeCount();
+
+    document.getElementById('lastUpdated').textContent = '최종: ' + currentData.lastUpdated;
+    document.getElementById('previewCard').classList.remove('show');
+
+    showToast('자동 업데이트 완료! GitHub에 저장되었습니다.', 'success');
+    log('GitHub 저장 완료!', 'ok');
+  } catch (e) {
+    showToast('저장 실패: ' + e.message, 'error');
+    log('저장 실패: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '변경사항 적용 + GitHub 저장';
   }
 }
 

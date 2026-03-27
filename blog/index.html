@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>블로그 - 이로운</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .blog-container {
+            padding: 20px;
+        }
+
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .category-tab {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .category-tab.active {
+            background: #003399;
+            color: #fff;
+            border-color: #003399;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .blog-card {
+            display: flex;
+            gap: 12px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: box-shadow 0.3s;
+        }
+
+        .blog-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .blog-thumb {
+            width: 80px;
+            height: 80px;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+
+        .blog-content {
+            flex: 1;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .blog-tag {
+            display: inline-block;
+            background: #e8f0ff;
+            color: #003399;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            width: fit-content;
+        }
+
+        .blog-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .blog-date {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .bottom-nav {
+            display: flex;
+            border-top: 1px solid #eee;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active {
+            color: #003399;
+            font-weight: 600;
+        }
+
+        body {
+            padding-bottom: 70px;
+        }
+
+        .page-header {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            border-bottom: 1px solid #eee;
+            z-index: 100;
+        }
+
+        .page-header-inner {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            position: relative;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            margin-right: 12px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #000;
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-header-inner">
+            <button class="back-btn" onclick="window.location.href='/'">←</button>
+            <h1 class="page-title">블로그</h1>
+        </div>
+    </div>
+
+    <div class="blog-container">
+        <div class="category-tabs">
+            <div class="category-tab active" onclick="filterBlogs('all')">전체</div>
+            <div class="category-tab" onclick="filterBlogs('guide')">대출 가이드</div>
+            <div class="category-tab" onclick="filterBlogs('policy')">정책 변경</div>
+            <div class="category-tab" onclick="filterBlogs('saving')">절약 팁</div>
+            <div class="category-tab" onclick="filterBlogs('faq')">FAQ</div>
+        </div>
+
+        <div class="blog-grid" id="blogGrid">
+            <!-- Blog cards will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <a href="/" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M3 8.5L11 3l8 5.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V8.5z" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="8" y="13" width="6" height="7" rx="0.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>홈</span>
+        </a>
+        <a href="/policies.html" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 8h8M7 11h8M7 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>정책정보</span>
+        </a>
+        <a href="/didimdol.html" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M11 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>계산기</span>
+        </a>
+        <a href="/blog/" class="nav-item active">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h14M4 13h14M4 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>블로그</span>
+        </a>
+      </div>
+    </nav>
+
+    <script>
+        const blogs = [
+            {
+                id: 1,
+                category: 'policy',
+                categoryLabel: '정책 변경',
+                title: '2026년 디딤돌대출 변경사항 총정리',
+                date: '2026.03.25',
+                emoji: '📋'
+            },
+            {
+                id: 2,
+                category: 'guide',
+                categoryLabel: '대출 가이드',
+                title: '신생아특례대출 vs 디딤돌대출, 어떤 것이 유리할까?',
+                date: '2026.03.22',
+                emoji: '👶'
+            },
+            {
+                id: 3,
+                category: 'guide',
+                categoryLabel: '대출 가이드',
+                title: '전세대출 금리 비교: 버팀목 vs 시중은행',
+                date: '2026.03.20',
+                emoji: '🏠'
+            },
+            {
+                id: 4,
+                category: 'policy',
+                categoryLabel: '정책 변경',
+                title: '2026년 근로장려금 신청 방법과 조건',
+                date: '2026.03.18',
+                emoji: '💰'
+            },
+            {
+                id: 5,
+                category: 'guide',
+                categoryLabel: '대출 가이드',
+                title: '청년 주거지원 정책 5가지 총정리',
+                date: '2026.03.15',
+                emoji: '🏢'
+            },
+            {
+                id: 6,
+                category: 'saving',
+                categoryLabel: '절약 팁',
+                title: '정책대출 우대금리 최대한 받는 방법',
+                date: '2026.03.12',
+                emoji: '⭐'
+            },
+            {
+                id: 7,
+                category: 'guide',
+                categoryLabel: '대출 가이드',
+                title: '보금자리론 40년 만기, 정말 유리할까?',
+                date: '2026.03.10',
+                emoji: '📊'
+            },
+            {
+                id: 8,
+                category: 'faq',
+                categoryLabel: 'FAQ',
+                title: '정책대출 FAQ: 자주 묻는 질문 10가지',
+                date: '2026.03.08',
+                emoji: '❓'
+            }
+        ];
+
+        let currentFilter = 'all';
+
+        function renderBlogs(filter = 'all') {
+            const grid = document.getElementById('blogGrid');
+            grid.innerHTML = '';
+
+            const filtered = filter === 'all' ? blogs : blogs.filter(blog => blog.category === filter);
+
+            filtered.forEach(blog => {
+                const card = document.createElement('div');
+                card.className = 'blog-card';
+                card.innerHTML = `
+                    <div class="blog-thumb">${blog.emoji}</div>
+                    <div class="blog-content">
+                        <div>
+                            <div class="blog-tag">${blog.categoryLabel}</div>
+                            <div class="blog-title">${blog.title}</div>
+                        </div>
+                        <div class="blog-date">${blog.date}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function filterBlogs(category) {
+            currentFilter = category;
+
+            // Update active tab
+            document.querySelectorAll('.category-tab').forEach((tab, index) => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            renderBlogs(category);
+        }
+
+        // Initial render
+        renderBlogs();
+    </script>
+</body>
+</html>

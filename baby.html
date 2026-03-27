@@ -52,17 +52,993 @@
             font-size: 12px;
             font-weight: 600;
         }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #212529;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1971c2;
+            box-shadow: 0 0 0 3px rgba(25, 113, 194, 0.1);
+        }
+
+        .input-suffix {
+            font-size: 13px;
+            color: #868e96;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .toggle-btn.active {
+            border-color: #1971c2;
+            background: #e7f5ff;
+            color: #1971c2;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .checkbox-item:hover {
+            background: #f8f9fa;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-label {
+            font-size: 14px;
+            color: #495057;
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .discount-info {
+            font-size: 12px;
+            color: #868e96;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #1971c2 0%, #1864ab 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .result-label {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            font-size: 13px;
+            opacity: 0.95;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            opacity: 0.8;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px 16px;
+            background: #1971c2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Noto Sans KR', sans-serif;
+            transition: background 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #1864ab;
+        }
+
+        .btn-primary:disabled {
+            background: #adb5bd;
+            cursor: not-allowed;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .schedule-table thead {
+            background: #f8f9fa;
+        }
+
+        .schedule-table th {
+            padding: 10px 8px;
+            text-align: right;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .schedule-table td {
+            padding: 10px 8px;
+            text-align: right;
+            border-bottom: 1px solid #e9ecef;
+            color: #495057;
+        }
+
+        .schedule-table td:first-child {
+            text-align: left;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-left: 4px solid #1971c2;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .info-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 8px;
+        }
+
+        .info-content {
+            font-size: 13px;
+            color: #495057;
+            line-height: 1.6;
+        }
+
+        .info-list {
+            margin-top: 8px;
+            padding-left: 20px;
+        }
+
+        .info-list li {
+            margin-bottom: 6px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+
+        .comparison-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .rate-discount {
+            background: #fff3bf;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .rate-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+
+        .rate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rate-value {
+            font-weight: 600;
+            color: #1971c2;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .nav-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            cursor: pointer;
+            border-top: 3px solid transparent;
+            color: #868e96;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .nav-tab.active {
+            color: #1971c2;
+            border-top-color: #1971c2;
+        }
+
+        .warning-msg {
+            background: #ffe0e0;
+            color: #c1121f;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .success-msg {
+            background: #d3f9d8;
+            color: #2b8a3e;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
+    <!-- Page Header -->
     <div class="page-header">
         <button class="back-btn" onclick="window.location.href='/'">←</button>
-        <h1 class="header-title">신생아특례대출 계산기</h1>
+        <h1 class="header-title">신생아특례대출</h1>
         <span class="badge">계산기</span>
     </div>
-    <div style="text-align: center; padding: 40px 20px;">
-        <h2>신생아특례대출 계산기</h2>
-        <p>출산가구 주택대출을 쉽게 계산하세요.</p>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Loan Type Selection -->
+        <div class="card">
+            <div class="card-title">대출 유형</div>
+            <div class="toggle-group">
+                <button class="toggle-btn active" data-type="purchase" onclick="changeLoanType('purchase')">매매 (구매)</button>
+                <button class="toggle-btn" data-type="lease" onclick="changeLoanType('lease')">전세 (임차)</button>
+            </div>
+        </div>
+
+        <!-- Eligibility Check -->
+        <div class="card">
+            <div class="card-title">자격 확인</div>
+            <div class="form-group">
+                <label class="form-label">2024년 1월 1일 이후 출산한 자녀 수</label>
+                <input type="number" id="childrenBorn" class="form-control" min="1" value="1" onchange="calculateLoan()">
+                <div class="input-suffix">명</div>
+            </div>
+            <div id="eligibilityMsg" class="success-msg hidden"></div>
+        </div>
+
+        <!-- Basic Information -->
+        <div class="card">
+            <div class="card-title">기본 정보</div>
+
+            <div class="form-group">
+                <label class="form-label">연 소득</label>
+                <input type="number" id="income" class="form-control" placeholder="0" onchange="calculateLoan()">
+                <div class="input-suffix">만원</div>
+            </div>
+
+            <div class="form-group" id="priceGroup">
+                <label class="form-label">주택 구매가</label>
+                <input type="number" id="houseprice" class="form-control" placeholder="0" onchange="calculateLoan()">
+                <div class="input-suffix">만원</div>
+            </div>
+
+            <div class="form-group" id="depositGroup" class="hidden">
+                <label class="form-label">전세금</label>
+                <input type="number" id="deposit" class="form-control" placeholder="0" onchange="calculateLoan()">
+                <div class="input-suffix">만원</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">대출 신청액</label>
+                <input type="number" id="loanAmount" class="form-control" placeholder="0" onchange="calculateLoan()">
+                <div class="input-suffix">만원</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">대출 기간</label>
+                <select id="loanPeriod" class="form-control" onchange="calculateLoan()">
+                    <option value="10">10년</option>
+                    <option value="15">15년</option>
+                    <option value="20">20년</option>
+                    <option value="30">30년</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">상환 방식</label>
+                <select id="repayType" class="form-control" onchange="calculateLoan()">
+                    <option value="equal">원금균등분할상환</option>
+                    <option value="fixed">원리금균등분할상환</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Discount Rates -->
+        <div class="card">
+            <div class="card-title">우대금리</div>
+
+            <div class="info-card">
+                <div class="info-content">
+                    <strong>기본 우대:</strong> 신생아 자녀 1명당 -0.2%, 기존 자녀 1명당 -0.1%
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountExisting" onchange="calculateLoan()">
+                    <span class="checkbox-label">기존 자녀 있음</span>
+                    <span class="discount-info">-0.1%</span>
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountSavings" onchange="calculateLoan()">
+                    <span class="checkbox-label">적립식 펀드·신탁 보유</span>
+                    <span class="discount-info">-0.1%</span>
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountEContract" onchange="calculateLoan()">
+                    <span class="checkbox-label">전자계약</span>
+                    <span class="discount-info">-0.1%</span>
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountSmallLoan" onchange="calculateLoan()">
+                    <span class="checkbox-label">소액대출 (3,000만원 이하)</span>
+                    <span class="discount-info">-0.1%</span>
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountEarlyRepay" onchange="calculateLoan()">
+                    <span class="checkbox-label">40% 이상 조기상환 가능</span>
+                    <span class="discount-info">-0.2%</span>
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="checkbox" id="discountLocal" onchange="calculateLoan()">
+                    <span class="checkbox-label">지역 미분양 주택</span>
+                    <span class="discount-info">-0.2%</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="card">
+            <div id="resultCard" class="result-card hidden">
+                <div class="result-label">예상 월 상환액</div>
+                <div class="result-value" id="monthlyPayment">0만원</div>
+                <div class="result-details">
+                    <div class="detail-item">
+                        <div class="detail-label">금리</div>
+                        <div class="detail-value" id="finalRate">1.80%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">총 이자</div>
+                        <div class="detail-value" id="totalInterest">0만원</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">대출 한도</div>
+                        <div class="detail-value" id="loanLimit">0만원</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">LTV</div>
+                        <div class="detail-value" id="ltvValue">70%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="warningMsg" class="warning-msg hidden"></div>
+
+            <div id="rateBreakdown" class="rate-breakdown hidden">
+                <div style="font-weight: 600; margin-bottom: 8px;">금리 계산 상세</div>
+                <div class="rate-item">
+                    <span>기본 금리</span>
+                    <span class="rate-value" id="baseRate">1.80%</span>
+                </div>
+                <div class="rate-item">
+                    <span>신생아 자녀 우대 (-0.2%×명)</span>
+                    <span class="rate-value" id="childDiscount">-0.00%</span>
+                </div>
+                <div id="existingChildDiscount" class="rate-item hidden">
+                    <span>기존 자녀 우대 (-0.1%)</span>
+                    <span class="rate-value" id="existingValue">-0.10%</span>
+                </div>
+                <div id="savingsDiscount" class="rate-item hidden">
+                    <span>적립식 펀드·신탁 (-0.1%)</span>
+                    <span class="rate-value">-0.10%</span>
+                </div>
+                <div id="eContractDiscount" class="rate-item hidden">
+                    <span>전자계약 (-0.1%)</span>
+                    <span class="rate-value">-0.10%</span>
+                </div>
+                <div id="smallLoanDiscount" class="rate-item hidden">
+                    <span>소액대출 (-0.1%)</span>
+                    <span class="rate-value">-0.10%</span>
+                </div>
+                <div id="earlyRepayDiscount" class="rate-item hidden">
+                    <span>조기상환 가능 (-0.2%)</span>
+                    <span class="rate-value">-0.20%</span>
+                </div>
+                <div id="localDiscount" class="rate-item hidden">
+                    <span>지역 미분양 (-0.2%)</span>
+                    <span class="rate-value">-0.20%</span>
+                </div>
+                <div style="border-top: 1px solid #dee2e6; padding-top: 8px; margin-top: 8px;">
+                    <div class="rate-item">
+                        <span style="font-weight: 600;">최종 금리</span>
+                        <span class="rate-value" id="calculatedRate" style="font-size: 16px;">1.80%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Repayment Schedule -->
+        <div class="card" id="scheduleCard" class="hidden">
+            <div class="card-title">상환 계획 (처음 12개월)</div>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>개월</th>
+                        <th>원금</th>
+                        <th>이자</th>
+                        <th>상환액</th>
+                        <th>잔액</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Information Sections -->
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">신생아특례대출이란?</div>
+                <div class="info-content">
+                    신생아특례대출은 2024년 1월 1일 이후 자녀를 출산한 가구가 주택 구매 또는 전세자금을 저렴한 금리로 빌릴 수 있도록 정부가 지원하는 정책 상품입니다. 낮은 금리와 높은 한도가 특징입니다.
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">자격요건</div>
+                <div class="info-content">
+                    <ul class="info-list">
+                        <li>2024년 1월 1일 이후 자녀를 출산한 가구</li>
+                        <li>무주택자 또는 1주택 소유자</li>
+                        <li>매매: 연소득 13,000만원 이하, 순자산 46,900만원 이하</li>
+                        <li>전세: 특별한 소득·자산 제한 없음</li>
+                        <li>주택담보대출의 경우 신청일 기준 2년 이내</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">매매 vs 전세 비교</div>
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>항목</th>
+                            <th>매매</th>
+                            <th>전세</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>기본 금리</td>
+                            <td>1.80%~</td>
+                            <td>1.30%~</td>
+                        </tr>
+                        <tr>
+                            <td>대출 한도</td>
+                            <td>50,000만원</td>
+                            <td>24,000만원</td>
+                        </tr>
+                        <tr>
+                            <td>LTV</td>
+                            <td>70% (첫구매 80%)</td>
+                            <td>80%</td>
+                        </tr>
+                        <tr>
+                            <td>소득 제한</td>
+                            <td>13,000만원</td>
+                            <td>없음</td>
+                        </tr>
+                        <tr>
+                            <td>자산 제한</td>
+                            <td>46,900만원</td>
+                            <td>없음</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">우대금리 상세</div>
+                <div class="info-content">
+                    <ul class="info-list">
+                        <li><strong>신생아 자녀:</strong> 1명당 -0.2% (최대 -0.6%)</li>
+                        <li><strong>기존 자녀:</strong> 1명당 -0.1%</li>
+                        <li><strong>적립식 펀드·신탁:</strong> -0.1%</li>
+                        <li><strong>전자계약:</strong> -0.1%</li>
+                        <li><strong>소액대출:</strong> -0.1% (3,000만원 이하)</li>
+                        <li><strong>조기상환:</strong> -0.2% (40% 이상)</li>
+                        <li><strong>지역 미분양:</strong> -0.2%</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">특례기간 후 금리</div>
+                <div class="info-content">
+                    신생아특례대출은 최대 10년 동안 우대금리를 적용합니다. 이후 일반 주택담보대출로 전환되어 일반 금리가 적용됩니다. 전환 시 별도의 신청 절차는 필요하지 않습니다.
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="info-card">
+                <div class="info-title">신청방법</div>
+                <div class="info-content">
+                    <ul class="info-list">
+                        <li><strong>1단계:</strong> 은행 방문 또는 온라인 신청</li>
+                        <li><strong>2단계:</strong> 자격 심사 (출생증명서, 소득증명서 등)</li>
+                        <li><strong>3단계:</strong> 주택담보 설정</li>
+                        <li><strong>4단계:</strong> 대출 실행</li>
+                        <li>필요서류: 출생증명서, 소득증명서, 신분증, 주민등록등본</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <a href="/" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M3 8.5L11 3l8 5.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V8.5z" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="8" y="13" width="6" height="7" rx="0.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>홈</span>
+        </a>
+        <a href="/policies.html" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 8h8M7 11h8M7 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>정책정보</span>
+        </a>
+        <a href="/didimdol.html" class="nav-item active">
+          <svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M11 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>계산기</span>
+        </a>
+        <a href="/blog/" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h14M4 13h14M4 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>블로그</span>
+        </a>
+      </div>
+    </nav>
+
+    <script>
+        // Constants
+        const RATE_TABLE_PURCHASE = {
+            2000: { 10: 1.80, 15: 1.90, 20: 1.95, 30: 2.00 },
+            4000: { 10: 2.10, 15: 2.20, 20: 2.25, 30: 2.30 },
+            6000: { 10: 2.40, 15: 2.50, 20: 2.55, 30: 2.60 },
+            8500: { 10: 2.80, 15: 2.90, 20: 2.95, 30: 3.00 },
+            13000: { 10: 3.30, 15: 3.40, 20: 3.45, 30: 3.50 }
+        };
+
+        const RATE_TABLE_LEASE = {
+            rates: { 10: 1.30, 15: 1.50, 20: 1.60, 30: 1.70 }
+        };
+
+        const LIMITS = {
+            purchase: {
+                loanLimit: 50000,
+                incomeLimit: 13000,
+                assetLimit: 46900,
+                ltv: 70,
+                ltv_first_time: 80
+            },
+            lease: {
+                loanLimit: 24000,
+                ltv: 80,
+                depositLimit: {
+                    metro: 50000,
+                    local: 40000
+                }
+            }
+        };
+
+        let currentLoanType = 'purchase';
+
+        // Change loan type
+        function changeLoanType(type) {
+            currentLoanType = type;
+            document.querySelectorAll('[data-type]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('active');
+
+            if (type === 'purchase') {
+                document.getElementById('priceGroup').classList.remove('hidden');
+                document.getElementById('depositGroup').classList.add('hidden');
+                document.getElementById('houseprice').removeAttribute('disabled');
+                document.getElementById('deposit').setAttribute('disabled', 'true');
+            } else {
+                document.getElementById('priceGroup').classList.add('hidden');
+                document.getElementById('depositGroup').classList.remove('hidden');
+                document.getElementById('houseprice').setAttribute('disabled', 'true');
+                document.getElementById('deposit').removeAttribute('disabled');
+            }
+            calculateLoan();
+        }
+
+        // Get base rate for purchase loan
+        function getBasePurchaseRate(loanAmount, period) {
+            let rate = RATE_TABLE_PURCHASE[13000][period] || 3.30;
+
+            if (loanAmount <= 2000) {
+                rate = RATE_TABLE_PURCHASE[2000][period];
+            } else if (loanAmount <= 4000) {
+                rate = RATE_TABLE_PURCHASE[4000][period];
+            } else if (loanAmount <= 6000) {
+                rate = RATE_TABLE_PURCHASE[6000][period];
+            } else if (loanAmount <= 8500) {
+                rate = RATE_TABLE_PURCHASE[8500][period];
+            }
+
+            return rate;
+        }
+
+        // Get base rate for lease loan
+        function getBaseLeaseRate(period) {
+            return RATE_TABLE_LEASE.rates[period] || 1.30;
+        }
+
+        // Calculate total discount
+        function calculateDiscount() {
+            let discount = 0;
+            const children = parseInt(document.getElementById('childrenBorn').value) || 0;
+
+            // New born children discount: -0.2% per child
+            discount += children * 0.2;
+
+            // Existing children discount
+            if (document.getElementById('discountExisting').checked) {
+                discount += 0.1;
+            }
+
+            // Savings discount
+            if (document.getElementById('discountSavings').checked) {
+                discount += 0.1;
+            }
+
+            // E-contract discount
+            if (document.getElementById('discountEContract').checked) {
+                discount += 0.1;
+            }
+
+            // Small loan discount
+            if (document.getElementById('discountSmallLoan').checked) {
+                discount += 0.1;
+            }
+
+            // Early repayment discount
+            if (document.getElementById('discountEarlyRepay').checked) {
+                discount += 0.2;
+            }
+
+            // Local unsold discount
+            if (document.getElementById('discountLocal').checked) {
+                discount += 0.2;
+            }
+
+            return discount;
+        }
+
+        // Update rate breakdown display
+        function updateRateBreakdown(baseRate, discount, finalRate) {
+            const children = parseInt(document.getElementById('childrenBorn').value) || 0;
+            const childDiscount = children * 0.2;
+
+            document.getElementById('baseRate').textContent = baseRate.toFixed(2) + '%';
+            document.getElementById('childDiscount').textContent = '-' + childDiscount.toFixed(2) + '%';
+            document.getElementById('calculatedRate').textContent = Math.max(finalRate, 1.2).toFixed(2) + '%';
+
+            document.getElementById('existingChildDiscount').classList.toggle('hidden', !document.getElementById('discountExisting').checked);
+            document.getElementById('savingsDiscount').classList.toggle('hidden', !document.getElementById('discountSavings').checked);
+            document.getElementById('eContractDiscount').classList.toggle('hidden', !document.getElementById('discountEContract').checked);
+            document.getElementById('smallLoanDiscount').classList.toggle('hidden', !document.getElementById('discountSmallLoan').checked);
+            document.getElementById('earlyRepayDiscount').classList.toggle('hidden', !document.getElementById('discountEarlyRepay').checked);
+            document.getElementById('localDiscount').classList.toggle('hidden', !document.getElementById('discountLocal').checked);
+        }
+
+        // Calculate loan
+        function calculateLoan() {
+            const children = parseInt(document.getElementById('childrenBorn').value) || 0;
+            const income = parseInt(document.getElementById('income').value) || 0;
+            const loanAmount = parseInt(document.getElementById('loanAmount').value) || 0;
+            const period = parseInt(document.getElementById('loanPeriod').value) || 10;
+            const repayType = document.getElementById('repayType').value;
+
+            // Check eligibility
+            if (children < 1) {
+                showWarning('2024년 1월 1일 이후 출산한 자녀가 최소 1명 이상 필요합니다.');
+                document.getElementById('resultCard').classList.add('hidden');
+                document.getElementById('scheduleCard').classList.add('hidden');
+                return;
+            }
+
+            let warning = '';
+            let baseRate, finalRate, monthlyPayment, totalInterest, loanLimit;
+
+            if (currentLoanType === 'purchase') {
+                const houseprice = parseInt(document.getElementById('houseprice').value) || 0;
+
+                // Check limits
+                loanLimit = LIMITS.purchase.loanLimit;
+                const ltv = LIMITS.purchase.ltv;
+                const maxLoanByPrice = houseprice * ltv / 100;
+
+                if (income > LIMITS.purchase.incomeLimit) {
+                    warning = '연소득이 13,000만원을 초과하여 신청 불가능합니다.';
+                    showWarning(warning);
+                    document.getElementById('resultCard').classList.add('hidden');
+                    document.getElementById('scheduleCard').classList.add('hidden');
+                    return;
+                }
+
+                if (loanAmount > maxLoanByPrice) {
+                    warning = `LTV 기준 최대 대출액은 ${Math.floor(maxLoanByPrice)}만원입니다.`;
+                }
+
+                baseRate = getBasePurchaseRate(loanAmount, period);
+            } else {
+                const deposit = parseInt(document.getElementById('deposit').value) || 0;
+
+                loanLimit = LIMITS.lease.loanLimit;
+                const maxLoanByDeposit = deposit * LIMITS.lease.ltv / 100;
+
+                if (loanAmount > maxLoanByDeposit) {
+                    warning = `LTV 기준 최대 대출액은 ${Math.floor(maxLoanByDeposit)}만원입니다.`;
+                }
+
+                baseRate = getBaseLeaseRate(period);
+            }
+
+            const discount = calculateDiscount();
+            finalRate = Math.max(baseRate - discount, 1.2);
+
+            // Calculate monthly payment
+            const monthlyRate = finalRate / 100 / 12;
+            const months = period * 12;
+
+            if (repayType === 'equal') {
+                // Principal equal repayment
+                const monthlyPrincipal = loanAmount / months;
+                monthlyPayment = monthlyPrincipal + (loanAmount * monthlyRate);
+            } else {
+                // Principal and interest equal repayment
+                monthlyPayment = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+            }
+
+            // Calculate total interest
+            totalInterest = (monthlyPayment * months) - loanAmount;
+
+            // Update display
+            document.getElementById('resultCard').classList.remove('hidden');
+            document.getElementById('monthlyPayment').textContent = Math.round(monthlyPayment) + '만원';
+            document.getElementById('finalRate').textContent = finalRate.toFixed(2) + '%';
+            document.getElementById('totalInterest').textContent = Math.round(totalInterest) + '만원';
+            document.getElementById('loanLimit').textContent = loanLimit + '만원';
+
+            if (currentLoanType === 'purchase') {
+                document.getElementById('ltvValue').textContent = '70%';
+            } else {
+                document.getElementById('ltvValue').textContent = '80%';
+            }
+
+            updateRateBreakdown(baseRate, discount, finalRate);
+            document.getElementById('rateBreakdown').classList.remove('hidden');
+
+            if (warning) {
+                showWarning(warning);
+            } else {
+                document.getElementById('warningMsg').classList.add('hidden');
+            }
+
+            // Generate schedule
+            generateSchedule(loanAmount, finalRate, period, repayType);
+        }
+
+        // Generate repayment schedule
+        function generateSchedule(loanAmount, rate, period, repayType) {
+            const monthlyRate = rate / 100 / 12;
+            const months = period * 12;
+            let balance = loanAmount;
+            const scheduleBody = document.getElementById('scheduleBody');
+            scheduleBody.innerHTML = '';
+
+            let totalInterest = 0;
+            let monthlyPayment = 0;
+
+            if (repayType === 'equal') {
+                const monthlyPrincipal = loanAmount / months;
+                for (let i = 1; i <= Math.min(12, months); i++) {
+                    const interest = balance * monthlyRate;
+                    const payment = monthlyPrincipal + interest;
+                    balance -= monthlyPrincipal;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${i}개월</td>
+                        <td>${Math.round(monthlyPrincipal)}</td>
+                        <td>${Math.round(interest)}</td>
+                        <td>${Math.round(payment)}</td>
+                        <td>${Math.round(balance)}</td>
+                    `;
+                    scheduleBody.appendChild(row);
+                }
+            } else {
+                monthlyPayment = (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+                for (let i = 1; i <= Math.min(12, months); i++) {
+                    const interest = balance * monthlyRate;
+                    const principal = monthlyPayment - interest;
+                    balance -= principal;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${i}개월</td>
+                        <td>${Math.round(principal)}</td>
+                        <td>${Math.round(interest)}</td>
+                        <td>${Math.round(monthlyPayment)}</td>
+                        <td>${Math.round(balance)}</td>
+                    `;
+                    scheduleBody.appendChild(row);
+                }
+            }
+
+            document.getElementById('scheduleCard').classList.remove('hidden');
+        }
+
+        // Show warning message
+        function showWarning(message) {
+            const warningMsg = document.getElementById('warningMsg');
+            warningMsg.textContent = message;
+            warningMsg.classList.remove('hidden');
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', function() {
+            calculateLoan();
+        });
+    </script>
 </body>
 </html>

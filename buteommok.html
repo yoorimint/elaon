@@ -52,6 +52,249 @@
             font-size: 12px;
             font-weight: 500;
         }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .form-section {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #212529;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 10px 16px;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background-color: #1971c2;
+            color: #fff;
+            border-color: #1971c2;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1971c2;
+            box-shadow: 0 0 0 3px rgba(25, 113, 194, 0.1);
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 14px;
+            background-color: #1971c2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .calculate-btn:hover {
+            background-color: #1564a0;
+        }
+
+        .results {
+            background-color: #e7f5ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .result-item {
+            margin-bottom: 12px;
+        }
+
+        .result-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1971c2;
+        }
+
+        .result-value.small {
+            font-size: 18px;
+        }
+
+        .info-section {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #212529;
+        }
+
+        .info-content {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .comparison-table th {
+            background-color: #f1f3f5;
+            font-weight: 600;
+        }
+
+        .comparison-table td:first-child,
+        .comparison-table th:first-child {
+            text-align: left;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 0;
+            padding: 0;
+            margin: 0;
+            z-index: 99;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            color: #868e96;
+            transition: all 0.3s;
+        }
+
+        .nav-item.active {
+            color: #1971c2;
+            font-weight: 600;
+        }
+
+        .nav-item:not(:last-child) {
+            border-right: 1px solid #e9ecef;
+        }
+
+        body {
+            padding-bottom: 60px;
+        }
+
+        .requirement-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .requirement-item:last-child {
+            border-bottom: none;
+        }
+
+        .required-mark {
+            color: #ff4757;
+        }
     </style>
 </head>
 <body>
@@ -60,9 +303,333 @@
         <h1 class="page-title">버팀목전세대출</h1>
         <span class="badge">계산기</span>
     </div>
-    <div style="text-align: center; padding: 40px 20px;">
-        <h2>버팀목전세대출 계산기</h2>
-        <p>전세자금 대출 월상환금을 계산해보세요.</p>
+
+    <div class="container">
+        <div class="form-section">
+            <div class="section-title">유형 선택</div>
+            <div class="tabs">
+                <button class="tab-btn active" data-type="general">일반</button>
+                <button class="tab-btn" data-type="youth">청년전용</button>
+                <button class="tab-btn" data-type="newlywed">신혼부부전용</button>
+                <button class="tab-btn" data-type="babyspecial">신생아특례</button>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">기본 정보</div>
+
+            <div class="form-group">
+                <label class="form-label">연 소득 <span class="required-mark">*</span> (만원)</label>
+                <input type="number" id="income" class="form-control" placeholder="5000" min="0" step="100">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">보증금 <span class="required-mark">*</span> (만원)</label>
+                <input type="number" id="deposit" class="form-control" placeholder="보증금을 입력하세요" min="0" step="100">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">대출 금액 <span class="required-mark">*</span> (만원)</label>
+                <input type="number" id="loanAmount" class="form-control" placeholder="대출 금액을 입력하세요" min="0" step="100">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">지역</label>
+                <select id="region" class="form-control">
+                    <option value="metro">수도권</option>
+                    <option value="local">지방</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="section-title">우대금리 할인</div>
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="multiChild3" value="0.7">
+                    <label for="multiChild3">3자녀 이상 -0.7%</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="child2" value="0.5">
+                    <label for="child2">2자녀 -0.5%</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="child1" value="0.3">
+                    <label for="child1">1자녀 -0.3%</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="eContract" value="0.1">
+                    <label for="eContract">전자계약 -0.1%</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="smallLoan" value="0.2">
+                    <label for="smallLoan">소액대출 -0.2%</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="localDiscount" value="0.2">
+                    <label for="localDiscount">지역 우대 -0.2%</label>
+                </div>
+            </div>
+
+            <button class="calculate-btn" onclick="calculateLoan()">계산하기</button>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-item">
+                <div class="result-label">월 이자액</div>
+                <div class="result-value"><span id="monthlyInterest">0</span>만원</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">적용 금리</div>
+                <div class="result-value small"><span id="appliedRate">0</span>%</div>
+            </div>
+            <div class="result-item">
+                <div class="result-label">최대 한도</div>
+                <div class="result-value small"><span id="maxLimit">0</span>만원</div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">버팀목전세대출이란?</div>
+            <div class="info-content">
+                주거안정을 위해 전세자금의 일부를 저리로 빌려주는 정책금융상품입니다. 주택을 전세로 임차할 때 필요한 자금을 지원하며, 보증금과 함께 대출을 통해 전세 계약을 체결할 수 있습니다.
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">유형별 비교표</div>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>항목</th>
+                        <th>일반</th>
+                        <th>청년</th>
+                        <th>신혼</th>
+                        <th>신생아</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>소득</td>
+                        <td>5000만</td>
+                        <td>5000만</td>
+                        <td>7500만</td>
+                        <td>13000만</td>
+                    </tr>
+                    <tr>
+                        <td>기본금리</td>
+                        <td>2.2~3.3%</td>
+                        <td>2.0~3.1%</td>
+                        <td>1.9~3.3%</td>
+                        <td>1.3~3.5%</td>
+                    </tr>
+                    <tr>
+                        <td>한도(수도권)</td>
+                        <td>12000만</td>
+                        <td>20000만</td>
+                        <td>30000만</td>
+                        <td>24000만</td>
+                    </tr>
+                    <tr>
+                        <td>LTV</td>
+                        <td>70%</td>
+                        <td>80%</td>
+                        <td>80%</td>
+                        <td>80%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">자격요건</div>
+            <div class="info-content">
+                <div class="requirement-item">
+                    <strong>일반:</strong> 만 25세 이상, 무주택 1년 이상, 소득 5000만원 이하
+                </div>
+                <div class="requirement-item">
+                    <strong>청년:</strong> 만 19~34세, 무주택, 소득 5000만원 이하
+                </div>
+                <div class="requirement-item">
+                    <strong>신혼:</strong> 혼인 7년 이내, 소득 7500만원 이하
+                </div>
+                <div class="requirement-item">
+                    <strong>신생아:</strong> 신생아 있는 가구, 소득 13000만원 이하
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">우대금리</div>
+            <div class="info-content">
+                자녀수, 전자계약, 소액대출, 지역 여건 등에 따라 기본금리에서 최대 0.7%까지 할인받을 수 있습니다. 여러 조건을 충족하면 중복 할인이 가능합니다.
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-title">신청방법</div>
+            <div class="info-content">
+                1. 주택금융공사 영업점 방문 또는 온라인 신청<br><br>
+                2. 필요 서류: 신분증, 소득증명서, 무주택 증명, 보증금 계약서<br><br>
+                3. 심사 후 승인시 지정 은행에서 대출금 지급<br><br>
+                4. 전세계약 진행 및 이자액 납부
+            </div>
+        </div>
     </div>
+
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <a href="/" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M3 8.5L11 3l8 5.5V19a1 1 0 01-1 1H4a1 1 0 01-1-1V8.5z" stroke="currentColor" stroke-width="1.8" fill="none"/><rect x="8" y="13" width="6" height="7" rx="0.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>홈</span>
+        </a>
+        <a href="/policies.html" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><rect x="3" y="3" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M7 8h8M7 11h8M7 14h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>정책정보</span>
+        </a>
+        <a href="/didimdol.html" class="nav-item active">
+          <svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M11 7v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>계산기</span>
+        </a>
+        <a href="/blog/" class="nav-item">
+          <svg viewBox="0 0 22 22" fill="none"><path d="M4 5h14M4 9h14M4 13h14M4 17h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>블로그</span>
+        </a>
+      </div>
+    </nav>
+
+    <script>
+        const loanTypes = {
+            general: {
+                name: '일반',
+                maxIncome: 5000,
+                rates: [
+                    { limit: 2000, rate: 2.2 },
+                    { limit: 4000, rate: 2.7 },
+                    { limit: 5000, rate: 3.3 }
+                ],
+                maxLimitMetro: 12000,
+                maxLimitLocal: 8000,
+                ltv: 0.7,
+                minRate: 2.2
+            },
+            youth: {
+                name: '청년전용',
+                maxIncome: 5000,
+                rates: [
+                    { limit: 2000, rate: 2.0 },
+                    { limit: 4000, rate: 2.5 },
+                    { limit: 5000, rate: 3.1 }
+                ],
+                maxLimitMetro: 20000,
+                maxLimitLocal: 20000,
+                ltv: 0.8,
+                minRate: 1.0
+            },
+            newlywed: {
+                name: '신혼부부전용',
+                maxIncome: 7500,
+                rates: [
+                    { limit: 2000, rate: 1.9 },
+                    { limit: 4000, rate: 2.5 },
+                    { limit: 6000, rate: 2.9 },
+                    { limit: 7500, rate: 3.3 }
+                ],
+                maxLimitMetro: 30000,
+                maxLimitLocal: 20000,
+                ltv: 0.8,
+                minRate: 1.9
+            },
+            babyspecial: {
+                name: '신생아특례',
+                maxIncome: 13000,
+                rates: [
+                    { limit: 2000, rate: 1.3 },
+                    { limit: 4000, rate: 1.8 },
+                    { limit: 6000, rate: 2.3 },
+                    { limit: 8500, rate: 2.8 },
+                    { limit: 13000, rate: 3.5 }
+                ],
+                maxLimitMetro: 24000,
+                maxLimitLocal: 24000,
+                ltv: 0.8,
+                minRate: 1.3
+            }
+        };
+
+        let currentType = 'general';
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentType = this.dataset.type;
+                updateDefaultValues();
+            });
+        });
+
+        function updateDefaultValues() {
+            const typeData = loanTypes[currentType];
+            document.getElementById('income').placeholder = typeData.maxIncome.toString();
+        }
+
+        function getBaseRate(loanAmount, typeData) {
+            for (let i = typeData.rates.length - 1; i >= 0; i--) {
+                if (loanAmount <= typeData.rates[i].limit) {
+                    return typeData.rates[i].rate;
+                }
+            }
+            return typeData.rates[typeData.rates.length - 1].rate;
+        }
+
+        function calculateLoan() {
+            const income = parseFloat(document.getElementById('income').value) || 0;
+            const deposit = parseFloat(document.getElementById('deposit').value) || 0;
+            const loanAmount = parseFloat(document.getElementById('loanAmount').value) || 0;
+            const region = document.getElementById('region').value;
+
+            const typeData = loanTypes[currentType];
+
+            if (income <= 0 || deposit <= 0 || loanAmount <= 0) {
+                alert('모든 필수 정보를 입력해주세요.');
+                return;
+            }
+
+            if (income > typeData.maxIncome) {
+                alert(`${typeData.name} 유형의 최대 소득(${typeData.maxIncome}만원)을 초과했습니다.`);
+                return;
+            }
+
+            const maxLimit = region === 'metro' ? typeData.maxLimitMetro : typeData.maxLimitLocal;
+            if (loanAmount > maxLimit) {
+                alert(`지역의 최대 한도(${maxLimit}만원)을 초과했습니다.`);
+                return;
+            }
+
+            let discount = 0;
+            if (document.getElementById('multiChild3').checked) discount += 0.7;
+            if (document.getElementById('child2').checked) discount += 0.5;
+            if (document.getElementById('child1').checked) discount += 0.3;
+            if (document.getElementById('eContract').checked) discount += 0.1;
+            if (document.getElementById('smallLoan').checked) discount += 0.2;
+            if (document.getElementById('localDiscount').checked) discount += 0.2;
+
+            const baseRate = getBaseRate(loanAmount, typeData);
+            const appliedRate = Math.max(baseRate - discount, typeData.minRate);
+            const monthlyInterest = (loanAmount * (appliedRate / 100)) / 12;
+
+            document.getElementById('monthlyInterest').textContent = monthlyInterest.toFixed(0);
+            document.getElementById('appliedRate').textContent = appliedRate.toFixed(2);
+            document.getElementById('maxLimit').textContent = maxLimit.toLocaleString();
+
+            document.getElementById('results').classList.add('show');
+        }
+
+        document.getElementById('income').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') calculateLoan();
+        });
+
+        updateDefaultValues();
+    </script>
 </body>
 </html>

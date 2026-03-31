@@ -195,31 +195,31 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 <script>
 /* ── 지원금 DB (정부24 API 기반 주요 서비스) ── */
 const BENEFITS = [
-  {name:'근로장려금',desc:'저소득 근로자 가구에 최대 330만원 지급',age:[19,69],income:3800,family:['single','couple','child','single_parent'],cat:'금융',tags:['근로소득','국세청']},
-  {name:'자녀장려금',desc:'저소득 가구 자녀 1인당 최대 100만원',age:[19,69],income:4000,family:['child','multi','single_parent'],cat:'금융',tags:['자녀양육','국세청']},
-  {name:'청년 월세 지원',desc:'청년 월세 최대 월 20만원 지원',age:[19,39],income:5000,family:['single','couple'],cat:'주거',tags:['청년','월세']},
-  {name:'주거안정 월세대출',desc:'저금리 월세자금 대출 최대 1200만원',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['대출','월세']},
-  {name:'디딤돌대출',desc:'무주택 서민 주택구입 저금리 대출',age:[19,69],income:6000,family:['single','couple','child','multi','single_parent'],cat:'주거',tags:['주택구입','대출']},
-  {name:'신생아 특례대출',desc:'출산가구 주택구입 특례 저금리 (1.6%~)',age:[19,49],income:13000,family:['child','multi'],cat:'주거',tags:['출산','대출']},
-  {name:'버팀목 전세대출',desc:'서민·청년·신혼 전세자금 저금리 대출',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['전세','대출']},
-  {name:'청년 전세임대',desc:'청년에게 전세주택 저렴 임대',age:[19,39],income:5000,family:['single'],cat:'주거',tags:['청년','임대']},
-  {name:'기초연금',desc:'만 65세 이상 소득 하위 70% 최대 월 33만원',age:[59,99],income:99999,family:['single','couple','senior'],cat:'복지',tags:['노인','연금']},
-  {name:'아동수당',desc:'만 8세 미만 아동 월 10만원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['아동','수당']},
-  {name:'부모급여',desc:'만 0~1세 아동 월 100만원 (0세) / 50만원 (1세)',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['영아','출산']},
-  {name:'양육수당',desc:'어린이집·유치원 미이용 아동 월 10~20만원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['양육','보육']},
-  {name:'유아학비 지원 (누리과정)',desc:'만 3~5세 유치원비 월 28만원 지원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'교육',tags:['유아','학비']},
-  {name:'한부모가족 양육비',desc:'한부모가정 자녀 양육비 월 20만원+',age:[19,59],income:6000,family:['single_parent'],cat:'복지',tags:['한부모','양육']},
-  {name:'국민취업지원제도',desc:'구직자 월 50만원 수당 + 취업지원 서비스',age:[19,69],income:3000,family:['single','couple','child','single_parent'],cat:'취업',tags:['구직','수당']},
-  {name:'청년도약계좌',desc:'월 70만원 납입 시 정부기여금 + 비과세',age:[19,39],income:7500,family:['single','couple'],cat:'금융',tags:['청년','저축']},
-  {name:'청년내일저축계좌',desc:'월 10만원 저축 시 정부 월 30만원 매칭',age:[19,39],income:2400,family:['single','couple'],cat:'금융',tags:['청년','저축']},
-  {name:'주거급여',desc:'소득 하위 가구 임차료/수선비 지원',age:[19,99],income:2000,family:['single','couple','child','multi','senior','single_parent'],cat:'주거',tags:['저소득','임차']},
-  {name:'교육급여',desc:'소득 하위 가구 교육활동지원비 지원',age:[19,69],income:2000,family:['child','multi','single_parent'],cat:'교육',tags:['저소득','학비']},
-  {name:'국가장학금',desc:'대학생 소득분위별 등록금 지원',age:[19,39],income:10000,family:['single','couple','child','single_parent'],cat:'교육',tags:['대학','장학금']},
-  {name:'다자녀 자동차 취득세 감면',desc:'3자녀 이상 차량 취득세 면제/감면',age:[19,69],income:99999,family:['multi'],cat:'금융',tags:['다자녀','세금']},
-  {name:'출산축하금',desc:'지자체별 출산 시 축하금 50~300만원',age:[19,49],income:99999,family:['child','multi'],cat:'육아',tags:['출산','축하금']},
-  {name:'스포츠강좌 이용권',desc:'저소득 가구 자녀 스포츠 활동비 월 9만원',age:[19,59],income:3000,family:['child','multi','single_parent'],cat:'교육',tags:['체육','바우처']},
-  {name:'에너지 바우처',desc:'저소득 가구 냉난방비 지원',age:[19,99],income:2000,family:['single','couple','senior','single_parent'],cat:'복지',tags:['저소득','에너지']},
-  {name:'긴급복지지원',desc:'위기상황 가구 긴급 생계·의료·주거 지원',age:[19,99],income:99999,family:['single','couple','child','multi','senior','single_parent'],cat:'복지',tags:['긴급','위기']},
+  {name:'근로장려금',desc:'저소득 근로자 가구에 최대 330만원 지급',detail:'단독가구 최대 165만원, 홑벌이 285만원, 맞벌이 330만원. 매년 5월 국세청 홈택스에서 신청. 9월 지급.',age:[19,69],income:3800,family:['single','couple','child','single_parent'],cat:'금융',tags:['근로소득','국세청']},
+  {name:'자녀장려금',desc:'저소득 가구 자녀 1인당 최대 100만원',detail:'부양자녀 1인당 최대 100만원. 홑벌이·맞벌이 가구 대상. 근로장려금과 동시 신청 가능.',age:[19,69],income:4000,family:['child','multi','single_parent'],cat:'금융',tags:['자녀양육','국세청']},
+  {name:'청년 월세 지원',desc:'청년 월세 최대 월 20만원 지원',detail:'만 19~34세, 독립거주 무주택 청년. 중위소득 60% 이하. 최대 12개월 지원.',age:[19,39],income:5000,family:['single','couple'],cat:'주거',tags:['청년','월세']},
+  {name:'주거안정 월세대출',desc:'저금리 월세자금 대출 최대 1200만원',detail:'우대형 연 1%, 일반형 연 2%. 매월 최대 40만원씩. 보증금 1억·월세 60만원 이하.',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['대출','월세']},
+  {name:'디딤돌대출',desc:'무주택 서민 주택구입 저금리 대출',detail:'금리 2.45%~. 일반 3.2억, 생애최초 4억, 신혼 4억 한도. 소득 6천만원 이하.',age:[19,69],income:6000,family:['single','couple','child','multi','single_parent'],cat:'주거',tags:['주택구입','대출']},
+  {name:'신생아 특례대출',desc:'출산가구 주택구입 특례 저금리 (1.6%~)',detail:'출생 2년 이내 자녀 보유 가구. 최대 5억, 금리 1.6%~. 소득 1.3억 이하.',age:[19,49],income:13000,family:['child','multi'],cat:'주거',tags:['출산','대출']},
+  {name:'버팀목 전세대출',desc:'서민·청년·신혼 전세자금 저금리 대출',detail:'일반 최대 1.2억, 청년 최대 7천만원. 금리 2.0%~. 수도권 3억 이하 전세.',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['전세','대출']},
+  {name:'청년 전세임대',desc:'청년에게 전세주택 저렴 임대',detail:'LH가 전세 계약 후 저렴하게 재임대. 보증금 100~200만원, 월 임대료 2~4%.',age:[19,39],income:5000,family:['single'],cat:'주거',tags:['청년','임대']},
+  {name:'기초연금',desc:'만 65세 이상 소득 하위 70% 최대 월 33만원',detail:'만 65세 이상, 소득인정액 기준 이하. 단독 월 33만원, 부부 52만원.',age:[59,99],income:99999,family:['single','couple','senior'],cat:'복지',tags:['노인','연금']},
+  {name:'아동수당',desc:'만 8세 미만 아동 월 10만원',detail:'대한민국 국적 만 8세 미만 모든 아동. 소득 무관. 매월 25일 지급.',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['아동','수당']},
+  {name:'부모급여',desc:'만 0~1세 아동 월 100만원 (0세) / 50만원 (1세)',detail:'0세 월 100만원, 1세 월 50만원. 어린이집 이용 시 보육료로 지급.',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['영아','출산']},
+  {name:'양육수당',desc:'어린이집·유치원 미이용 아동 월 10~20만원',detail:'만 0~5세 어린이집/유치원 미이용 아동. 0세 20만원, 1세 이상 10만원.',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['양육','보육']},
+  {name:'유아학비 지원 (누리과정)',desc:'만 3~5세 유치원비 월 28만원 지원',detail:'만 3~5세 유치원 재원 유아. 국공립·사립 모두 월 28만원 지원.',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'교육',tags:['유아','학비']},
+  {name:'한부모가족 양육비',desc:'한부모가정 자녀 양육비 월 20만원+',detail:'소득 기준 중위소득 63% 이하. 자녀 1인당 월 20만원. 추가 교육비도 지원.',age:[19,59],income:6000,family:['single_parent'],cat:'복지',tags:['한부모','양육']},
+  {name:'국민취업지원제도',desc:'구직자 월 50만원 수당 + 취업지원 서비스',detail:'1유형: 구직촉진수당 월 50만원×6개월. 2유형: 취업활동비 월 28만원×6개월.',age:[19,69],income:3000,family:['single','couple','child','single_parent'],cat:'취업',tags:['구직','수당']},
+  {name:'청년도약계좌',desc:'월 70만원 납입 시 정부기여금 + 비과세',detail:'만 19~34세, 5년 만기. 정부기여금 월 최대 3.3만원. 이자·배당 비과세.',age:[19,39],income:7500,family:['single','couple'],cat:'금융',tags:['청년','저축']},
+  {name:'청년내일저축계좌',desc:'월 10만원 저축 시 정부 월 30만원 매칭',detail:'만 19~34세, 3년 만기. 본인 월 10만원 → 정부 월 30만원 매칭. 만기 시 1440만원.',age:[19,39],income:2400,family:['single','couple'],cat:'금융',tags:['청년','저축']},
+  {name:'주거급여',desc:'소득 하위 가구 임차료/수선비 지원',detail:'중위소득 48% 이하. 임차가구 월 임차료 지원, 자가가구 수선비 지원.',age:[19,99],income:2000,family:['single','couple','child','multi','senior','single_parent'],cat:'주거',tags:['저소득','임차']},
+  {name:'교육급여',desc:'소득 하위 가구 교육활동지원비 지원',detail:'중위소득 50% 이하. 초 46만원, 중 59만원, 고 65만원 (연 1회).',age:[19,69],income:2000,family:['child','multi','single_parent'],cat:'교육',tags:['저소득','학비']},
+  {name:'국가장학금',desc:'대학생 소득분위별 등록금 지원',detail:'소득 1~3구간 전액, 4~6구간 일부. 한국장학재단 신청. 학기당 최대 350만원.',age:[19,39],income:10000,family:['single','couple','child','single_parent'],cat:'교육',tags:['대학','장학금']},
+  {name:'다자녀 자동차 취득세 감면',desc:'3자녀 이상 차량 취득세 면제/감면',detail:'18세 미만 자녀 3명 이상. 승용차 취득세 면제(200만원 한도). 지자체 신청.',age:[19,69],income:99999,family:['multi'],cat:'금융',tags:['다자녀','세금']},
+  {name:'출산축하금',desc:'지자체별 출산 시 축하금 50~300만원',detail:'지자체마다 금액 상이. 첫째 50~100만원, 둘째 100~200만원, 셋째 이상 200~300만원.',age:[19,49],income:99999,family:['child','multi'],cat:'육아',tags:['출산','축하금']},
+  {name:'스포츠강좌 이용권',desc:'저소득 가구 자녀 스포츠 활동비 월 9만원',detail:'기초생활수급자·차상위 가구 만 5~18세 자녀. 월 9만원 바우처.',age:[19,59],income:3000,family:['child','multi','single_parent'],cat:'교육',tags:['체육','바우처']},
+  {name:'에너지 바우처',desc:'저소득 가구 냉난방비 지원',detail:'기초생활수급자 중 노인·장애·영유아 등 취약계층. 연 최대 18만원.',age:[19,99],income:2000,family:['single','couple','senior','single_parent'],cat:'복지',tags:['저소득','에너지']},
+  {name:'긴급복지지원',desc:'위기상황 가구 긴급 생계·의료·주거 지원',detail:'실직, 질병, 화재 등 위기상황. 생계 최대 163만원, 의료 최대 300만원.',age:[19,99],income:99999,family:['single','couple','child','multi','senior','single_parent'],cat:'복지',tags:['긴급','위기']},
 ];
 
 function findBenefits() {
@@ -251,19 +251,25 @@ function findBenefits() {
     list.innerHTML = '<div class="result-empty">관심 분야를 "전체"로 바꿔서 다시 검색해보세요.</div>';
   } else {
     header.innerHTML = '받을 수 있는 지원금 <strong>' + results.length + '건</strong>';
-    list.innerHTML = results.map(function(b) {
+    list.innerHTML = results.map(function(b, idx) {
       var slug = findPostSlug(b.name);
-      var link = slug ? '/blog/' + slug + '.html' : '#';
       var tagHtml = b.tags.map(function(t){ return '<span class="result-tag">' + t + '</span>'; }).join('');
-      return '<a href="' + link + '" class="result-card" style="display:block;text-decoration:none;color:inherit;">' +
-        '<div class="result-name">' + b.name + '</div>' +
+      var detailHtml = '<div class="result-detail" id="detail' + idx + '" style="display:none;margin-top:8px;padding:10px 12px;background:#F9FAFB;border-radius:6px;font-size:12px;color:#4B5563;line-height:1.7;">' + b.detail + (slug ? '<br><a href="/blog/' + slug + '.html" style="color:#2563EB;font-weight:600;margin-top:6px;display:inline-block;">상세 글 보기 →</a>' : '') + '</div>';
+      return '<div class="result-card" onclick="toggleDetail(' + idx + ')" style="cursor:pointer;">' +
+        '<div class="result-name">' + b.name + ' <span style="font-size:11px;color:#9CA3AF;">&#9660;</span></div>' +
         '<div class="result-desc">' + b.desc + '</div>' +
         '<div class="result-tags"><span class="result-tag green">' + b.cat + '</span>' + tagHtml + '</div>' +
-        '</a>';
+        detailHtml +
+        '</div>';
     }).join('');
   }
 
   sec.scrollIntoView({behavior:'smooth'});
+}
+
+function toggleDetail(idx) {
+  var el = document.getElementById('detail' + idx);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
 function findPostSlug(name) {

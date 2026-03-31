@@ -18,7 +18,7 @@ GITHUB_TOKEN = os.environ.get('GH_TOKEN', '')
 GITHUB_REPO = os.environ.get('GH_REPO', 'yoorimint/elaon')
 BLOG_DIR = 'blog'
 SITE_URL = 'https://eloan.kr'
-SITE_NAME = 'AI 도구 가이드 | eloan.kr'
+SITE_NAME = '디딤돌대출 계산기 | eloan.kr'
 
 # 설정 파일에서 읽기
 def load_settings():
@@ -123,16 +123,15 @@ def get_topic(cat, existing_titles):
     year = datetime.now().year
 
     cat_context = {
-        'AI챗봇': f'ChatGPT, Gemini, Claude, Copilot 등 AI 챗봇/LLM 도구 리뷰 및 비교. "{year} OOO 비교 리뷰 가격 총정리" 형태.',
-        '이미지': f'Midjourney, DALL-E, Stable Diffusion 등 AI 이미지/영상 생성 도구. "{year} OOO 사용법 비교 추천 총정리" 형태.',
-        '생산성': f'Notion AI, Otter, 번역 도구 등 업무 생산성 AI 도구. "{year} OOO 활용법 추천 비교 총정리" 형태.',
-        '개발': f'Cursor, GitHub Copilot, v0 등 AI 개발 도구. "{year} OOO 리뷰 사용법 비교 총정리" 형태.',
-        '비교': f'AI 도구 카테고리별 TOP 비교/추천. "{year} OOO TOP 비교 추천 순위 총정리" 형태.',
+        '디딤돌대출': f'디딤돌대출 조건, 금리, 한도, 자격, 상환방식 등. "{year} 디딤돌대출 OOO 조건 금리 한도 총정리" 형태.',
+        '신생아특례': f'신생아특례대출 조건, 금리, 주택가격, 소득기준 등. "{year} 신생아특례대출 OOO 조건 자격 금리 총정리" 형태.',
+        '부동산대출': f'주택담보대출, LTV, DTI, DSR, 대환대출, 전세대출 등 부동산 금융 전반. "{year} OOO 대출 조건 금리 비교 총정리" 형태.',
     }
 
-    prompt = f"""한국에서 "{cat}" 분야로 사람들이 많이 검색하는 주제를 5개 추천해줘.
+    prompt = f"""한국에서 "{cat}" 분야로 사람들이 많이 검색하는 롱테일 키워드 주제를 5개 추천해줘.
 {cat_context.get(cat, '')}
 각 주제는 블로그 글 제목으로 쓸 수 있는 롱테일 키워드 형태로.
+대출을 알아보는 실수요자가 검색할만한 구체적인 키워드로 (예: "신생아특례대출 소득기준 맞벌이", "디딤돌대출 중도상환수수료", "주택담보대출 LTV DTI 계산").
 이미 작성된 주제는 제외: {', '.join(existing_titles[-20:])}
 연도는 {year}년 기준.
 반드시 JSON 배열로만 응답: ["주제1","주제2","주제3","주제4","주제5"]"""
@@ -151,38 +150,26 @@ def generate_post(keyword, cat):
 
     # 카테고리별 프롬프트
     cat_config = {
-        'AI챗봇': {
-            'role': 'AI 도구 전문 리뷰어/테크 블로거',
-            'title_pattern': f'{year} {keyword} 비교 리뷰 기능 가격 총정리',
-            'structure': '1) 이 도구는? (한줄 요약+핵심) 2) 주요 기능 상세 리뷰 3) 요금제/가격 비교 (<table>) 4) 장단점 정리 5) 추천 대상+대안 도구',
-            'extra': '글 마지막에 "결론: 이런 사람에게 추천" 섹션.\n실존 도구명만 사용. 가격은 공식 사이트 기준.\n도구 공식 URL 반드시 포함.'
+        '디딤돌대출': {
+            'role': '부동산 대출 전문 금융 블로거',
+            'title_pattern': f'{year} 디딤돌대출 {keyword} 조건 금리 한도 총정리',
+            'structure': '1) 핵심 요약 (한줄) 2) 자격 조건 상세 (<table>) 3) 금리 및 우대금리 정리 (<table>) 4) 대출 한도·상환방식 비교 5) 신청 방법·필요서류 6) 자주 묻는 질문(FAQ)',
+            'extra': '글 마지막에 "이런 분께 추천" 섹션.\n실존 제도/기관명만 사용. 금리는 국토교통부 고시 기준.\n한국주택금융공사, 마이홈 등 공식 URL 포함.\n디딤돌대출 계산기(eloan.kr) 자연스럽게 언급.'
         },
-        '이미지': {
-            'role': 'AI 이미지/영상 도구 전문 리뷰어',
-            'title_pattern': f'{year} {keyword} 사용법 비교 추천 총정리',
-            'structure': '1) 이 도구는? (차별점) 2) 사용법 단계별 가이드 3) 무료 vs 유료 비교 (<table>) 4) 퀄리티/속도/편의성 평가 5) 대안 도구+FAQ',
-            'extra': '실존 도구명만 사용. 공식 URL 포함.'
+        '신생아특례': {
+            'role': '부동산 대출 전문 금융 블로거',
+            'title_pattern': f'{year} 신생아특례대출 {keyword} 조건 자격 금리 총정리',
+            'structure': '1) 핵심 요약 2) 출산 요건·자격 조건 상세 (<table>) 3) 주택가격·소득·자산 기준 (<table>) 4) 금리 구간별 정리 5) 대환대출 조건 6) 신청 방법·FAQ',
+            'extra': '실존 제도/기관명만 사용. 금리는 국토교통부 고시 기준.\n마이홈, 한국주택금융공사 공식 URL 포함.\n신생아특례 계산기(eloan.kr) 자연스럽게 언급.'
         },
-        '생산성': {
-            'role': '업무 생산성/자동화 전문 블로거',
-            'title_pattern': f'{year} {keyword} 활용법 추천 비교 총정리',
-            'structure': '1) 이 도구로 뭘 할 수 있나? 2) 핵심 활용법 5가지 3) 무료/유료 플랜 비교 (<table>) 4) 활용 시나리오 5) 비슷한 도구 비교+FAQ',
-            'extra': '실존 도구명만 사용. 공식 URL 포함.'
-        },
-        '개발': {
-            'role': 'AI 개발 도구/코딩 전문 리뷰어',
-            'title_pattern': f'{year} {keyword} 리뷰 사용법 비교 총정리',
-            'structure': '1) 이 도구는? (핵심 기능) 2) 설치/시작 가이드 3) 주요 기능 심층 리뷰 4) 가격 및 플랜 비교 (<table>) 5) 다른 도구와 비교+추천',
-            'extra': '실존 도구명만 사용. 공식 URL 포함.'
-        },
-        '비교': {
-            'role': 'AI 도구 비교/추천 전문가',
-            'title_pattern': f'{year} {keyword} TOP 비교 추천 순위 총정리',
-            'structure': '1) 비교 기준 2) 도구별 상세 비교 (<table>) 3) 용도별 추천 4) 선택 가이드 5) FAQ',
-            'extra': '실존 도구명만 사용. 객관적 비교. 공식 URL 포함.'
+        '부동산대출': {
+            'role': '부동산 금융 전문 블로거',
+            'title_pattern': f'{year} {keyword} 조건 금리 비교 총정리',
+            'structure': '1) 핵심 요약 2) 제도/상품 개요 3) 자격 조건·한도 비교 (<table>) 4) 금리 비교 (<table>) 5) 신청 절차 6) 주의사항·FAQ',
+            'extra': '실존 제도/기관/은행명만 사용.\nLTV, DTI, DSR 등 용어 쉽게 설명.\n디딤돌대출 계산기(eloan.kr) 자연스럽게 언급.'
         }
     }
-    cc = cat_config.get(cat, cat_config['지원금'])
+    cc = cat_config.get(cat, cat_config['부동산대출'])
 
     prompt = f"""당신은 한국 {cc['role']}이자 SEO 전문가입니다.
 
@@ -213,6 +200,8 @@ def generate_post(keyword, cat):
 8. 시각적 요소 5~8개 자유 배치 (그라데이션 카드, 프로그레스 바, 도넛 차트, 타임라인, 비교 카드 등). 매번 다른 조합/색상. 인라인 style 사용.
 9. {year}년 기준. 과거 기준이면 "({year}년 확인 필요)" 표기
 10. 실존하지 않는 제도/기관/URL 절대 금지
+11. 대출 금리/한도/조건은 국토교통부 고시, 한국주택금융공사 공식 기준으로 작성
+12. 대출 계산이 필요한 맥락에서 eloan.kr 디딤돌대출 계산기를 자연스럽게 언급
 {cc['extra']}"""
 
     resp = call_gemini(prompt)
@@ -280,15 +269,15 @@ def build_post_html(article):
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-inner"><a href="{SITE_URL}" class="topbar-logo">eloan.kr<span>AI 도구 가이드</span></a><nav class="topbar-nav"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}/{BLOG_DIR}/">가이드</a></nav></div></div>
-<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}/{BLOG_DIR}/">가이드</a><span>›</span>{kw}</div>
-<div class="article-header"><div class="article-category">{article.get('category', 'AI 도구')}</div><h1>{t}</h1><div class="article-meta-bar"><span>{date_str}</span><div class="dot"></div><span>eloan.kr</span><div class="dot"></div><span>읽는 시간 약 {read_min}분</span></div></div>
+<div class="topbar"><div class="topbar-inner"><a href="{SITE_URL}" class="topbar-logo">eloan.kr<span>대출 가이드</span></a><nav class="topbar-nav"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}/{BLOG_DIR}/">대출정보</a></nav></div></div>
+<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}/{BLOG_DIR}/">대출정보</a><span>›</span>{kw}</div>
+<div class="article-header"><div class="article-category">{article.get('category', '대출정보')}</div><h1>{t}</h1><div class="article-meta-bar"><span>{date_str}</span><div class="dot"></div><span>eloan.kr</span><div class="dot"></div><span>읽는 시간 약 {read_min}분</span></div></div>
 <div class="article-layout"><article class="article-content">
 {c}
 <div class="article-tags">{tags_html}</div>
-<div style="margin-top:32px;padding:16px 18px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;line-height:1.7;">이 글은 AI를 활용해 작성되었으며, 도구의 기능·가격은 변경될 수 있습니다. 최신 정보는 각 도구의 공식 사이트에서 확인하세요.</div>
+<div style="margin-top:32px;padding:16px 18px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;line-height:1.7;">이 글은 AI를 활용해 작성되었으며, 대출 조건·금리는 변경될 수 있습니다. 최신 정보는 한국주택금융공사, 마이홈 등 공식 사이트에서 확인하세요.</div>
 </article></div>
-<footer class="footer"><div class="footer-inner"><p><a href="{SITE_URL}"><strong>eloan.kr</strong></a> · AI 도구 가이드</p><p>AI 도구 정보는 변경될 수 있으니 공식 사이트에서 확인하세요<br><br>&copy; {now.year} eloan.kr</p></div></footer>
+<footer class="footer"><div class="footer-inner"><p><a href="{SITE_URL}"><strong>eloan.kr</strong></a> · 대출 가이드</p><p>대출 조건·금리는 변경될 수 있으니 공식 사이트에서 확인하세요<br><br>&copy; {now.year} eloan.kr</p></div></footer>
 </body>
 </html>"""
     return html

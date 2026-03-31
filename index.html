@@ -111,6 +111,15 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 .footer{text-align:center;padding:32px 0;font-size:11px;color:#8B95A1}
 
+.posts-section{margin-top:20px;padding:0}
+.posts-title{font-size:15px;font-weight:700;color:#333D4B;margin-bottom:12px;padding-left:4px}
+.post-list{list-style:none;padding:0;margin:0}
+.post-item{display:block;padding:12px 14px;margin-bottom:8px;background:#fff;border:1px solid #E5E8EB;border-radius:10px;text-decoration:none;transition:border-color .15s}
+.post-item:hover{border-color:#3182F6}
+.post-item-title{font-size:13px;font-weight:600;color:#333D4B;line-height:1.4}
+.post-item-meta{font-size:11px;color:#8B95A1;margin-top:4px}
+.post-item-tag{display:inline-block;font-size:10px;color:#3182F6;background:#EBF5FF;padding:1px 6px;border-radius:3px;margin-right:4px}
+
 .row-group{display:flex;gap:12px;align-items:flex-start}
 .row-item{flex:1;min-width:0}
 
@@ -490,6 +499,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 <div style="margin-top:16px;text-align:center">
 <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
 </div>
+
+<div class="posts-section" id="postsSection"></div>
 
 </div><!-- /pageCalc -->
 
@@ -1020,6 +1031,27 @@ function addCount(){
   localStorage.setItem('calcCounter',JSON.stringify({total:total,date:now.toDateString()}));
   document.getElementById('calcCount').textContent=total.toLocaleString();
 }
+
+// 관련글 로드
+(function(){
+  fetch('blog/posts.json').then(function(r){return r.json()}).then(function(posts){
+    if(!posts||!posts.length)return;
+    var sec=document.getElementById('postsSection');
+    var max=5;
+    var html='<div class="posts-title">관련 대출정보</div><div class="post-list">';
+    for(var i=0;i<Math.min(posts.length,max);i++){
+      var p=posts[i];
+      var tags='';
+      if(p.tags){for(var j=0;j<Math.min(p.tags.length,2);j++){tags+='<span class="post-item-tag">'+p.tags[j]+'</span>';}}
+      html+='<a class="post-item" href="blog/'+p.slug+'.html">'
+        +'<div class="post-item-title">'+p.title+'</div>'
+        +'<div class="post-item-meta">'+tags+p.date+'</div>'
+        +'</a>';
+    }
+    html+='</div>';
+    sec.innerHTML=html;
+  }).catch(function(){});
+})();
 </script>
 </body>
 </html>

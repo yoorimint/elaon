@@ -19,6 +19,93 @@ GITHUB_REPO = os.environ.get('GH_REPO', 'yoorimint/elaon')
 BLOG_DIR = 'blog'
 SITE_URL = 'https://eloan.kr'
 SITE_NAME = '디딤돌대출 계산기 | eloan.kr'
+DATA_GO_KR_KEY = os.environ.get('DATA_GO_KR_KEY', '')
+
+
+def fetch_official_data():
+    """공식 데이터 수집: 공공데이터포털 API + 웹 크롤링"""
+    data = {}
+
+    # 1. 공공데이터포털 - 디딤돌대출 금리정보 API
+    if DATA_GO_KR_KEY:
+        try:
+            resp = requests.get(
+                'http://apis.data.go.kr/B551408/didimdol-loan-rate/didimdol-info',
+                params={'serviceKey': DATA_GO_KR_KEY, 'type': 'json', 'numOfRows': '10'},
+                timeout=10
+            )
+            if resp.ok:
+                result = resp.json()
+                items = result.get('body', {}).get('items', [])
+                if not items:
+                    items = result.get('response', {}).get('body', {}).get('items', {}).get('item', [])
+                if items:
+                    data['didimdol_rates'] = items
+                    print(f'  공공데이터포털 디딤돌 금리 {len(items)}건 수집')
+        except Exception as e:
+            print(f'  공공데이터포털 API 실패: {e}')
+
+    # 2. 한국주택금융공사 페이지 크롤링 시도
+    for url, key, desc in [
+        ('https://www.hf.go.kr/ko/sub01/sub01_02_01.do', 'hf_didimdol', '디딤돌 상품소개'),
+        ('https://www.hf.go.kr/ko/sub01/sub01_02_03.do', 'hf_rates', '디딤돌 금리안내'),
+        ('https://www.myhome.go.kr/hws/portal/cont/selectBabySpecialCaseStepStoneLoneView.do', 'myhome_newbaby', '신생아특례'),
+    ]:
+        try:
+            resp = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+            if resp.ok:
+                # HTML에서 텍스트만 추출 (간단히)
+                text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', resp.text)
+                text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
+                text = re.sub(r'<[^>]+>', ' ', text)
+                text = re.sub(r'\s+', ' ', text).strip()
+                if len(text) > 200:
+                    data[key] = text[:3000]  # 너무 길면 자름
+                    print(f'  {desc} 크롤링 성공 ({len(text)}자)')
+            else:
+                print(f'  {desc} 크롤링 실패: {resp.status_code}')
+        except Exception as e:
+            print(f'  {desc} 크롤링 실패: {e}')
+
+    return data
+
+
+def build_data_context(official_data):
+    """수집된 공식 데이터를 프롬프트용 텍스트로 변환"""
+    if not official_data:
+        return '''
+[중요 - 데이터 정확성 규칙]
+공식 데이터를 가져오지 못했습니다.
+금리, 소득기준, 한도, 주택가격 등 구체적인 숫자를 절대 임의로 작성하지 마세요.
+구체적 숫자 대신 "한국주택금융공사(hf.go.kr) 또는 마이홈(myhome.go.kr)에서 최신 기준을 확인하세요"로 대체하세요.
+"2026년 예상" 같은 추측성 숫자도 절대 금지입니다.
+'''
+
+    context = '\n[공식 데이터 - 반드시 이 숫자만 사용하세요]\n'
+
+    if 'didimdol_rates' in official_data:
+        context += '\n## 디딤돌대출 금리 (공공데이터포털 기준)\n'
+        for item in official_data['didimdol_rates'][:5]:
+            context += f'{json.dumps(item, ensure_ascii=False)}\n'
+
+    if 'hf_didimdol' in official_data:
+        context += f'\n## 디딤돌대출 상품소개 (한국주택금융공사)\n{official_data["hf_didimdol"][:2000]}\n'
+
+    if 'hf_rates' in official_data:
+        context += f'\n## 디딤돌대출 금리안내 (한국주택금융공사)\n{official_data["hf_rates"][:2000]}\n'
+
+    if 'myhome_newbaby' in official_data:
+        context += f'\n## 신생아특례대출 (마이홈)\n{official_data["myhome_newbaby"][:2000]}\n'
+
+    context += '''
+[중요 - 데이터 정확성 규칙]
+위 공식 데이터에 있는 숫자만 사용하세요.
+위 데이터에 없는 금리, 소득기준, 한도, 주택가격 등은 절대 임의로 작성하지 마세요.
+공식 데이터에 없는 구체적 숫자는 "공식 사이트에서 최신 기준을 확인하세요"로 대체하세요.
+"2026년 예상", "~로 변경될 예정" 같은 추측성 표현 절대 금지입니다.
+'''
+    return context
+
 
 # 설정 파일에서 읽기
 def load_settings():
@@ -143,7 +230,7 @@ def get_topic(cat, existing_titles):
     return topics
 
 
-def generate_post(keyword, cat):
+def generate_post(keyword, cat, data_context=''):
     """글 생성"""
     year = datetime.now().year
     today = datetime.now().strftime('%Y-%m-%d')
@@ -202,7 +289,9 @@ def generate_post(keyword, cat):
 10. 실존하지 않는 제도/기관/URL 절대 금지
 11. 대출 금리/한도/조건은 국토교통부 고시, 한국주택금융공사 공식 기준으로 작성
 12. 대출 계산이 필요한 맥락에서 eloan.kr 디딤돌대출 계산기를 자연스럽게 언급
-{cc['extra']}"""
+{cc['extra']}
+
+{data_context}"""
 
     resp = call_gemini(prompt)
 
@@ -299,6 +388,12 @@ def run():
     print(f'=== Auto Writer Start ===')
     print(f'Categories: {cats}, Count: {count}')
 
+    # 공식 데이터 수집
+    print('\n--- 공식 데이터 수집 ---')
+    official_data = fetch_official_data()
+    data_context = build_data_context(official_data)
+    print(f'수집 결과: {len(official_data)}개 소스')
+
     posts, posts_sha = load_posts()
     existing_titles = [p.get('title', '') for p in posts]
     written = 0
@@ -331,7 +426,7 @@ def run():
         # 2. 글 생성
         print('Generating post...')
         try:
-            article = generate_post(keyword, cat)
+            article = generate_post(keyword, cat, data_context)
         except Exception as e:
             print(f'Post generation failed: {e}')
             continue

@@ -543,43 +543,54 @@ function scoreService(svc) {
   return score;
 }
 
+function renderServiceList(services) {
+  const listEl = document.getElementById('svcList');
+  listEl.style.display = 'block';
+  listEl.innerHTML = services.map((svc, i) => {
+    const name = svc['서비스명'] || '';
+    const summary = svc['서비스목적요약'] || '';
+    const dept = svc['소관기관명'] || '';
+    const duplicate = isAlreadyWritten(name);
+    const hot = svc._score >= 6 ? '<span style="color:#FCD34D;margin-right:4px;">HOT</span>' : '';
+    return `<div onclick="selectService(${i})" data-idx="${i}" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;opacity:${duplicate?'0.4':'1'};${duplicate?'text-decoration:line-through;':''}">
+      <div style="font-size:14px;font-weight:600;">${hot}${duplicate?'[작성됨] ':''}${name}</div>
+      <div style="font-size:11px;opacity:0.7;margin-top:2px;">${dept} · ${summary.slice(0,60)}</div>
+    </div>`;
+  }).join('');
+  window._svcData = services;
+  writerLog(`인기순 ${services.length}건 표시`, 'info');
+}
+
 async function fetchServices() {
   const govKey = localStorage.getItem(GOV_KEY_KEY);
   if (!govKey) { showToast('정부24 API Key를 먼저 입력하세요', 'error'); return; }
+
+  // 캐시 확인 (10분 유효)
+  const cache = JSON.parse(sessionStorage.getItem('eloan_svc_cache') || 'null');
+  if (cache && Date.now() - cache.ts < 600000) {
+    renderServiceList(cache.data);
+    return;
+  }
 
   const btn = document.getElementById('fetchSvcBtn');
   btn.disabled = true;
   btn.textContent = '불러오는 중...';
 
   try {
-    // 3페이지(300건) 가져와서 인기순 정렬
-    const pages = await Promise.all([1,2,3].map(p =>
-      fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=${p}&perPage=100&returnType=JSON`)
-        .then(r => r.json()).then(d => d.data || []).catch(() => [])
-    ));
-    const allServices = pages.flat();
+    const resp = await fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=1&perPage=100&returnType=JSON`);
+    if (!resp.ok) throw new Error('API 오류: ' + resp.status);
+    const data = await resp.json();
+    const allServices = data.data || [];
 
     // 인기순 정렬
     const scored = allServices.map(s => ({ ...s, _score: scoreService(s) }));
     scored.sort((a, b) => b._score - a._score);
-    const services = scored.slice(0, 80);
+    const services = scored.slice(0, 50);
 
-    const listEl = document.getElementById('svcList');
-    listEl.style.display = 'block';
-    listEl.innerHTML = services.map((svc, i) => {
-      const name = svc['서비스명'] || '';
-      const summary = svc['서비스목적요약'] || '';
-      const dept = svc['소관기관명'] || '';
-      const duplicate = isAlreadyWritten(name);
-      const hot = svc._score >= 6 ? '<span style="color:#FCD34D;margin-right:4px;">HOT</span>' : '';
-      return `<div onclick="selectService(${i})" data-idx="${i}" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;opacity:${duplicate?'0.4':'1'};${duplicate?'text-decoration:line-through;':''}">
-        <div style="font-size:14px;font-weight:600;">${hot}${duplicate?'[작성됨] ':''}${name}</div>
-        <div style="font-size:11px;opacity:0.7;margin-top:2px;">${dept} · ${summary.slice(0,60)}</div>
-      </div>`;
-    }).join('');
+    // 캐시 저장
+    sessionStorage.setItem('eloan_svc_cache', JSON.stringify({ ts: Date.now(), data: services }));
 
-    window._svcData = services;
-    writerLog(`${allServices.length}건 중 인기순 ${services.length}건 표시`, 'info');
+    renderServiceList(services);
   } catch(e) {
     showToast('서비스 목록 로드 실패: ' + e.message, 'error');
   } finally {

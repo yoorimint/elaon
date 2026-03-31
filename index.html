@@ -104,6 +104,9 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 .chip.toggle-on{background:#FF6B35;color:#fff;border-color:#FF6B35}
 .chip.toggle-on:hover{background:#E55A2B;border-color:#E55A2B}
 
+.warn{display:none;font-size:13px;font-weight:700;color:#F04452;margin-top:8px;padding:10px 14px;background:rgba(240,68,82,0.06);border-radius:10px}
+.warn.show{display:block;animation:fadeUp .3s ease}
+
 </style>
 </head>
 <body>
@@ -166,6 +169,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       </div>
     </div>
     <div class="hint" id="limitHint">대출한도 최대 2억 · 주택가격 5억 이하</div>
+    <div class="warn" id="warnAge">⚠ 만 30세 미만 미혼 무부양가족은 단독세대주로 인정되지 않아 대출이 불가합니다</div>
   </div>
 </div>
 
@@ -177,6 +181,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <input type="number" class="input" id="housePrice" value="35000" placeholder="35000">
       <span class="input-suffix">만원</span>
     </div>
+    <div class="warn" id="warnHouse"></div>
   </div>
   <div class="field">
     <div class="label">KB시세</div>
@@ -205,6 +210,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
         <span class="hint" id="areaHint" style="margin:0;font-size:13px;color:#8B95A1"></span>
       </div>
     </div>
+    <div class="warn" id="warnArea"></div>
   </div>
 </div>
 
@@ -216,6 +222,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <input type="number" class="input" id="income" value="3000" placeholder="3000">
       <span class="input-suffix">만원</span>
     </div>
+    <div class="warn" id="warnIncome"></div>
   </div>
   <div class="field">
     <div class="label">대출신청금액</div>
@@ -223,6 +230,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <input type="number" class="input" id="loanAmount" value="25000" placeholder="25000">
       <span class="input-suffix">만원</span>
     </div>
+    <div class="warn" id="warnLoan"></div>
   </div>
 </div>
 
@@ -293,6 +301,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   <label class="check-item"><input type="checkbox" id="lowLoan">대출금액이 산정액의 30% 이하<span class="val">-0.1%</span></label>
   <label class="check-item"><input type="checkbox" id="earlyRepay">중도상환 원금 40% 이상 (1년 경과 후)<span class="val">-0.2%</span></label>
   <label class="check-item"><input type="checkbox" id="localHouse">지방소재 주택 / 지방 미분양주택<span class="val">-0.2%</span></label>
+  <div id="newbabyDiscountWrap" style="display:none">
   <div class="field" style="margin-top:14px">
     <div class="label">추가출산 자녀 수 <span class="unit">(신생아특례, 1명당 -0.2%)</span></div>
     <div class="chips">
@@ -310,6 +319,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <button class="chip chip-flex" onclick="setVal(this,'existChild','2')">2명</button>
       <button class="chip chip-flex" onclick="setVal(this,'existChild','3')">3명</button>
     </div>
+  </div>
   </div>
 </div>
 
@@ -460,24 +470,73 @@ function updateAge(){
   var y=parseInt(document.getElementById('birthYear').value)||0;
   if(y>1900&&y<=2026){var age=2026-y;document.getElementById('ageHint').textContent='만 '+age+'세';}
   else{document.getElementById('ageHint').textContent='';}
+  checkEligibility();
 }
 function updateArea(){
   var m=parseFloat(document.getElementById('area').value)||0;
   var el=document.getElementById('areaHint');
   if(m>0){el.textContent='약 '+(m/3.3058).toFixed(1)+'평';}
   else{el.textContent='';}
+  checkEligibility();
+}
+function isSingleHousehold(){
+  return S.married==='no'&&S.dependents==='no';
+}
+function getAge(){
+  var y=parseInt(document.getElementById('birthYear').value)||0;
+  return (y>1900&&y<=2026)?(2026-y):0;
+}
+function showWarn(id,msg){var el=document.getElementById(id);if(msg){el.textContent='⚠ '+msg;el.classList.add('show');}else{el.textContent='';el.classList.remove('show');}}
+function checkEligibility(){
+  var age=getAge();var area=parseFloat(document.getElementById('area').value)||0;
+  var housePrice=parseInt(document.getElementById('housePrice').value)||0;
+  var income=parseInt(document.getElementById('income').value)||0;
+  var loanAmt=parseInt(document.getElementById('loanAmount').value)||0;
+  var single=isSingleHousehold();
+  var t=RATES[S.borrower];
+  var effectiveLimit=t.limit;var effectiveHouseLimit=t.houseLimit;
+  if(S.firstTime&&S.borrower==='general'){effectiveLimit=FIRST_TIME_BONUS.limit;effectiveHouseLimit=FIRST_TIME_BONUS.houseLimit;}
+  // 30세 미만 미혼 단독
+  if(age>0&&age<30&&single){showWarn('warnAge','만 30세 미만 미혼 무부양가족은 단독세대주로 인정되지 않아 대출이 불가합니다');}
+  else{showWarn('warnAge','');}
+  // 면적 제한
+  if(area>0){
+    if(single&&age>=30&&area>60){showWarn('warnArea','미혼 단독세대주는 전용면적 60㎡ 이하만 가능합니다 (현재 '+area+'㎡)');}
+    else if(area>85){showWarn('warnArea','전용면적 85㎡ 이하만 가능합니다 (읍·면지역 100㎡)');}
+    else{showWarn('warnArea','');}
+  }else{showWarn('warnArea','');}
+  // 주택가격 제한
+  if(housePrice>0&&housePrice>effectiveHouseLimit){showWarn('warnHouse','주택가격 한도 초과 (최대 '+(effectiveHouseLimit/10000)+'억원)');}
+  else{showWarn('warnHouse','');}
+  // 소득 제한
+  var maxIncome=t.ranges[t.ranges.length-1].max;
+  if(S.firstTime&&S.borrower==='general')maxIncome=Math.max(maxIncome,7000);
+  if(income>0&&income>maxIncome){showWarn('warnIncome','소득 기준 초과 (최대 '+maxIncome.toLocaleString()+'만원)');}
+  else{showWarn('warnIncome','');}
+  // 대출한도 제한
+  var loanLimit=effectiveLimit;
+  if(single&&age>=30){loanLimit=S.firstTime?20000:15000;}
+  if(loanAmt>0&&loanAmt>loanLimit){showWarn('warnLoan','대출한도 초과 (최대 '+loanLimit.toLocaleString()+'만원'+(single&&age>=30?' · 미혼 단독세대주':'')+')');}
+  else{showWarn('warnLoan','');}
+  // 신생아특례 전용 우대금리 표시
+  document.getElementById('newbabyDiscountWrap').style.display=(S.borrower==='newbaby')?'block':'none';
 }
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('birthYear').addEventListener('input',updateAge);
   document.getElementById('area').addEventListener('input',updateArea);
+  document.getElementById('housePrice').addEventListener('input',checkEligibility);
+  document.getElementById('income').addEventListener('input',checkEligibility);
+  document.getElementById('loanAmount').addEventListener('input',checkEligibility);
   updateAge();
   updateArea();
+  checkEligibility();
 });
 
 function toggleFirstTime(el){
   S.firstTime=!S.firstTime;
   el.classList.toggle('toggle-on',S.firstTime);
   updateLimitHint();
+  checkEligibility();
 }
 function updateLimitHint(){
   var key=S.borrower+(S.firstTime?'+first':'');
@@ -501,7 +560,7 @@ function calcDTI(){
   document.getElementById('dtiRateHint').textContent='(적용금리 '+rate.toFixed(2)+'%)';
 }
 
-function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();}
+function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();checkEligibility();}
 function getBaseRate(){
   var t=RATES[S.borrower];
   var income=parseInt(document.getElementById('income').value)||0;
@@ -513,7 +572,7 @@ function getBaseRate(){
   }
   return rate;
 }
-function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('earlyRepay').checked)d+=0.2;if(document.getElementById('localHouse').checked)d+=0.2;d+=parseInt(S.extraChild)*0.2;d+=parseInt(S.existChild)*0.1;return d;}
+function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('earlyRepay').checked)d+=0.2;if(document.getElementById('localHouse').checked)d+=0.2;if(S.borrower==='newbaby'){d+=parseInt(S.extraChild)*0.2;d+=parseInt(S.existChild)*0.1;}return d;}
 function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
@@ -523,8 +582,10 @@ function calc(){
   var effectiveLimit=t.limit;var effectiveHouseLimit=t.houseLimit;
   if(S.firstTime&&S.borrower==='general'){effectiveLimit=FIRST_TIME_BONUS.limit;effectiveHouseLimit=FIRST_TIME_BONUS.houseLimit;}
   if(income<=0||housePrice<=0||loanAmt<=0){alert('입력값을 확인해주세요.');return;}
-  var birthY=parseInt(document.getElementById('birthYear').value)||0;
-  var age=2026-birthY;
+  var age=getAge();var single=isSingleHousehold();var area=parseFloat(document.getElementById('area').value)||0;
+  if(age>0&&age<30&&single){alert('만 30세 미만 미혼 무부양가족은 대출이 불가합니다.');return;}
+  if(single&&age>=30&&area>60){alert('미혼 단독세대주는 전용면적 60㎡ 이하만 가능합니다.');return;}
+  if(area>85){alert('전용면적 85㎡ 초과 시 대출이 불가합니다.');return;}
   if(S.repay==='graduated'){
     if(age>=40){alert('체증식 상환은 만 40세 미만만 가능합니다.');return;}
     if(S.rateType!=='fixed'){alert('체증식 상환은 고정금리만 가능합니다.');return;}
@@ -532,7 +593,9 @@ function calc(){
   var maxIncome=t.ranges[t.ranges.length-1].max;
   if(S.firstTime&&S.borrower==='general')maxIncome=Math.max(maxIncome,7000);
   if(income>maxIncome){alert('소득 기준 초과 (최대 '+maxIncome+'만원)');return;}
-  if(loanAmt>effectiveLimit){alert('대출한도 초과 (최대 '+effectiveLimit.toLocaleString()+'만원)');return;}
+  var loanLimit=effectiveLimit;
+  if(single&&age>=30){loanLimit=S.firstTime?20000:15000;}
+  if(loanAmt>loanLimit){alert('대출한도 초과 (최대 '+loanLimit.toLocaleString()+'만원)');return;}
   if(housePrice>effectiveHouseLimit){alert('주택가격 한도 초과 (최대 '+effectiveHouseLimit.toLocaleString()+'만원)');return;}
   var rate=getRate();var mr=rate/100/12;var totalMonths=parseInt(S.period)*12;var graceMonths=parseInt(S.grace)*12;var repayMonths=totalMonths-graceMonths;var P=loanAmt*10000;var monthly=0,totalPay=0,totalInt=0;
   var graceInt=P*mr*graceMonths;

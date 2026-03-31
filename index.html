@@ -549,8 +549,8 @@ function calcDTI(){
   var mortgage=parseInt(document.getElementById('dtiMortgage').value)||0;
   var otherDebt=parseInt(document.getElementById('dtiOtherDebt').value)||0;
   if(income<=0||loanAmt<=0){document.getElementById('dtiDisplay').textContent='--%';document.getElementById('dtiRateHint').textContent='';return;}
-  var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var P=loanAmt*10000;
-  var annualPay=pmt(P,mr,months)*12;
+  var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var graceM=parseInt(S.grace)*12;var repayM=months-graceM;var P=loanAmt*10000;
+  var annualPay=(graceM>0&&repayM<months)?pmt(P,mr,repayM)*12:pmt(P,mr,months)*12;
   var mortgageAnnual=mortgage>0?(mortgage*10000*0.04):0;
   var otherInterest=otherDebt*10000*0.055;
   var totalAnnual=annualPay+mortgageAnnual+otherInterest;
@@ -604,7 +604,8 @@ function calc(){
   else if(S.repay==='principal'){var pp=P/repayMonths;var bal=P;totalPay=graceInt;for(var i=0;i<repayMonths;i++){totalPay+=pp+bal*mr;bal-=pp;}monthly=pp+P*mr;totalInt=totalPay-P;}
   else{var base=pmt(P,mr,repayMonths);monthly=base*0.7;var coeff=0.7,rem=repayMonths;totalPay=graceInt;while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}totalInt=totalPay-P;monthly=totalPay/totalMonths;}
   var ltvRate=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
-  var maxLimit=Math.floor(housePrice*ltvRate);
+  var ltvMax=Math.floor(housePrice*ltvRate);
+  var maxLimit=Math.min(ltvMax,loanLimit);
   document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
   buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
 }

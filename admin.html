@@ -995,10 +995,7 @@ async function uploadPost() {
     const token = localStorage.getItem(GH_TOKEN_KEY);
     const repo = localStorage.getItem(GH_REPO_KEY);
     const slug = makeSlug(generatedArticle.title);
-    let postHtml = buildPostHtml(generatedArticle);
-    // schema.org 구조화 데이터 삽입 (템플릿 리터럴 밖에서 처리)
-    const schemaJson = JSON.stringify({"@context":"https://schema.org","@type":"Article","headline":generatedArticle.title,"description":generatedArticle.meta_description,"datePublished":dateIso,"author":{"@type":"Organization","name":"eloan.kr"},"publisher":{"@type":"Organization","name":"eloan.kr","url":SITE_URL}});
-    postHtml = postHtml.replace('</head>', '<script type="application/ld+json">' + schemaJson + '</script>\n</head>');
+    const postHtml = buildPostHtml(generatedArticle);
     const now = new Date();
     const dateStr = `${now.getFullYear()}년 ${String(now.getMonth()+1).padStart(2,'0')}월 ${String(now.getDate()).padStart(2,'0')}일`;
     const dateIso = now.toISOString().slice(0,10);

@@ -216,23 +216,31 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   <div class="card-title">주택정보</div>
   <div class="field">
     <div class="label">매매가격</div>
-    <div class="input-wrap">
-      <input type="number" class="input" id="housePrice" value="35000" placeholder="35000">
-      <span class="input-suffix">만원</span>
+    <div class="row-group" style="align-items:center">
+      <div class="row-item">
+        <div class="input-wrap">
+          <input type="number" class="input" id="housePrice" value="35000" placeholder="35000" oninput="updateEok('housePrice','housePriceEok')">
+          <span class="input-suffix">만원</span>
+        </div>
+      </div>
+      <div style="flex:0 0 auto">
+        <span class="hint" id="housePriceEok" style="margin:0;font-size:14px;font-weight:700;color:#3182F6">3.5억</span>
+      </div>
     </div>
     <div class="warn" id="warnHouse"></div>
   </div>
   <div class="field">
     <div class="label">KB시세</div>
     <div class="row-group" style="align-items:center">
-      <div class="row-item">
+      <div class="row-item" style="flex:1">
         <div class="input-wrap">
-          <input type="number" class="input" id="kbPrice" value="" placeholder="시세입력">
+          <input type="number" class="input" id="kbPrice" value="" placeholder="시세입력" oninput="updateEok('kbPrice','kbPriceEok')">
           <span class="input-suffix">만원</span>
         </div>
       </div>
-      <div style="flex:0 0 auto">
-        <a href="https://kbland.kr" target="_blank" class="chip" style="height:48px;padding:0 14px;display:flex;align-items:center;text-decoration:none;font-size:13px;color:#3182F6;border-color:#3182F6">KB시세 조회 →</a>
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:6px">
+        <span class="hint" id="kbPriceEok" style="margin:0;font-size:14px;font-weight:700;color:#3182F6"></span>
+        <a href="https://kbland.kr" target="_blank" style="font-size:12px;color:#3182F6;white-space:nowrap;text-decoration:none">조회 →</a>
       </div>
     </div>
   </div>
@@ -259,7 +267,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <button class="chip chip-flex" onclick="setVal(this,'region','city')">광역시·세종·용인 등</button>
       <button class="chip chip-flex" onclick="setVal(this,'region','etc')">기타 지역</button>
     </div>
-    <div class="hint" id="deductHint">방공제(소액임차보증금): 5,500만원</div>
+    <div class="hint" id="deductHint">방공제(소액임차보증금 최우선변제금): 5,500만원 차감</div>
   </div>
 </div>
 
@@ -267,17 +275,31 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   <div class="card-title">소득 · 대출정보</div>
   <div class="field">
     <div class="label">연소득 <span class="unit">(부부합산)</span></div>
-    <div class="input-wrap">
-      <input type="number" class="input" id="income" value="3000" placeholder="3000">
-      <span class="input-suffix">만원</span>
+    <div class="row-group" style="align-items:center">
+      <div class="row-item">
+        <div class="input-wrap">
+          <input type="number" class="input" id="income" value="3000" placeholder="3000" oninput="updateEok('income','incomeEok')">
+          <span class="input-suffix">만원</span>
+        </div>
+      </div>
+      <div style="flex:0 0 auto">
+        <span class="hint" id="incomeEok" style="margin:0;font-size:14px;font-weight:700;color:#3182F6">3,000만</span>
+      </div>
     </div>
     <div class="warn" id="warnIncome"></div>
   </div>
   <div class="field">
     <div class="label">대출신청금액</div>
-    <div class="input-wrap">
-      <input type="number" class="input" id="loanAmount" value="25000" placeholder="25000">
-      <span class="input-suffix">만원</span>
+    <div class="row-group" style="align-items:center">
+      <div class="row-item">
+        <div class="input-wrap">
+          <input type="number" class="input" id="loanAmount" value="25000" placeholder="25000" oninput="updateEok('loanAmount','loanEok')">
+          <span class="input-suffix">만원</span>
+        </div>
+      </div>
+      <div style="flex:0 0 auto">
+        <span class="hint" id="loanEok" style="margin:0;font-size:14px;font-weight:700;color:#3182F6">2.5억</span>
+      </div>
     </div>
     <div class="warn" id="warnLoan"></div>
   </div>
@@ -736,7 +758,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 <script>
 var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0',region:'seoul'};
-var DEDUCT={seoul:5500,metro:4800,city:2800,etc:2000};
+var DEDUCT={seoul:5500,metro:4800,city:2800,etc:2500};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
@@ -752,6 +774,14 @@ var LIMIT_TEXT={
   'newbaby+first':'대출한도 최대 4억 · 주택가격 9억 이하 (생애최초)'
 };
 
+function updateEok(inputId,spanId){
+  var v=parseInt(document.getElementById(inputId).value)||0;
+  var el=document.getElementById(spanId);
+  if(v<=0){el.textContent='';return;}
+  if(v>=10000){var eok=Math.floor(v/10000);var man=v%10000;el.textContent=man>0?eok+'억 '+man.toLocaleString()+'만':eok+'억';}
+  else{el.textContent=v.toLocaleString()+'만';}
+  checkEligibility();
+}
 function updateAge(){
   var y=parseInt(document.getElementById('birthYear').value)||0;
   if(y>1900&&y<=2026){var age=2026-y;document.getElementById('ageHint').textContent='만 '+age+'세';}
@@ -826,6 +856,9 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('loanAmount').addEventListener('input',checkEligibility);
   updateAge();
   updateArea();
+  updateEok('housePrice','housePriceEok');
+  updateEok('income','incomeEok');
+  updateEok('loanAmount','loanEok');
   checkEligibility();
   initCounter();
 });
@@ -859,7 +892,7 @@ function calcDTI(){
 }
 
 function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();if(key==='region')updateDeductHint();checkEligibility();}
-function updateDeductHint(){document.getElementById('deductHint').textContent='방공제(소액임차보증금): '+(DEDUCT[S.region]).toLocaleString()+'만원';}
+function updateDeductHint(){document.getElementById('deductHint').textContent='방공제(소액임차보증금 최우선변제금): '+(DEDUCT[S.region]).toLocaleString()+'만원 차감';}
 function getBaseRate(){
   var t=RATES[S.borrower];
   var income=parseInt(document.getElementById('income').value)||0;

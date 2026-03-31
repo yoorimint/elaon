@@ -22,6 +22,15 @@ SITE_NAME = '디딤돌대출 계산기 | eloan.kr'
 DATA_GO_KR_KEY = os.environ.get('DATA_GO_KR_KEY', '')
 
 
+def load_loan_data():
+    """검증된 대출 데이터 파일 로드"""
+    path = os.path.join(os.path.dirname(__file__), 'loan_data.json')
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+
 def fetch_official_data():
     """공식 데이터 수집: 공공데이터포털 API + 웹 크롤링"""
     data = {}
@@ -108,7 +117,10 @@ def fetch_official_data():
 
 def build_data_context(official_data):
     """수집된 공식 데이터를 프롬프트용 텍스트로 변환"""
-    if not official_data:
+    # 검증된 대출 데이터 파일 우선 로드
+    loan_data = load_loan_data()
+
+    if not official_data and not loan_data:
         return '''
 [중요 - 데이터 정확성 규칙]
 공식 데이터를 가져오지 못했습니다.
@@ -117,7 +129,13 @@ def build_data_context(official_data):
 "2026년 예상" 같은 추측성 숫자도 절대 금지입니다.
 '''
 
-    context = '\n[공식 데이터 - 반드시 이 숫자만 사용하세요]\n'
+    context = '\n[공식 데이터 - 반드시 이 숫자만 사용하세요. 아래에 없는 숫자는 절대 만들지 마세요.]\n'
+
+    # 검증된 대출 데이터 (최우선)
+    if loan_data:
+        context += '\n## 검증된 디딤돌대출·신생아특례 데이터 (eloan.kr 계산기 기준)\n'
+        context += json.dumps(loan_data, ensure_ascii=False, indent=2)
+        context += '\n'
 
     if 'didimdol_rates' in official_data:
         context += '\n## 디딤돌대출 금리 (공공데이터포털 기준)\n'
@@ -144,11 +162,14 @@ def build_data_context(official_data):
         context += f'\n## 신생아특례대출 (마이홈)\n{official_data["myhome_newbaby"][:2000]}\n'
 
     context += '''
-[중요 - 데이터 정확성 규칙]
-위 공식 데이터에 있는 숫자만 사용하세요.
-위 데이터에 없는 금리, 소득기준, 한도, 주택가격 등은 절대 임의로 작성하지 마세요.
-공식 데이터에 없는 구체적 숫자는 "공식 사이트에서 최신 기준을 확인하세요"로 대체하세요.
-"2026년 예상", "~로 변경될 예정" 같은 추측성 표현 절대 금지입니다.
+[중요 - 데이터 정확성 규칙 (절대 위반 금지)]
+1. 위 데이터에 있는 숫자만 사용하세요. 한 글자도 바꾸지 마세요.
+2. 위 데이터에 없는 금리, 소득기준, 한도, 주택가격 등 구체적 숫자를 절대 만들어내지 마세요.
+3. 데이터에 없는 내용은 "한국주택금융공사(hf.go.kr) 또는 마이홈(myhome.go.kr)에서 최신 기준을 확인하세요"로 대체하세요.
+4. "2026년 예상", "~로 변경될 예정", "~로 조정될 수 있음" 같은 추측성 숫자/표현 절대 금지.
+5. 디딤돌대출 일반가구 한도는 2억원, 생애최초 2.4억원, 신혼/2자녀 3.2억원입니다. 이 외 숫자 사용 금지.
+6. 디딤돌대출 금리는 2.45%~3.55%입니다. 이 범위 밖 금리 사용 금지.
+7. 신생아특례 한도는 최대 4억원, 주택가격 9억원 이하입니다.
 '''
     return context
 

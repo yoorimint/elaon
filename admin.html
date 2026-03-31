@@ -632,9 +632,9 @@ async function callGemini(prompt, retries = 5) {
   const attempts = [];
   if (savedModel) attempts.push({ ver: 'v1beta', model: savedModel });
   attempts.push(
+    { ver: 'v1beta', model: 'gemini-2.5-flash' },
     { ver: 'v1beta', model: 'gemini-2.0-flash' },
     { ver: 'v1beta', model: 'gemini-1.5-flash-latest' },
-    { ver: 'v1beta', model: 'gemini-1.5-flash' },
     { ver: 'v1beta', model: 'gemini-pro' },
   );
   for (let i = 0; i < attempts.length; i++) {
@@ -727,8 +727,14 @@ async function generatePost() {
   document.getElementById('writerResult').classList.remove('show');
   generatedArticle = null;
 
+  // 키워드와 selectedService 동기화 확인
+  if (selectedService && (selectedService['서비스명'] || '') !== keyword) {
+    writerLog(`선택된 서비스(${selectedService['서비스명']})와 키워드(${keyword})가 다릅니다. 키워드 기준으로 생성합니다.`, 'warn');
+    selectedService = null;
+  }
   const svcContext = buildServiceContext();
   const year = new Date().getFullYear();
+  writerLog(`서비스: ${selectedService ? selectedService['서비스명'] : '없음 (키워드 직접 입력)'}`, 'info');
 
   try {
     // 단일 호출: 제목 + 메타 + 본문 한번에 생성

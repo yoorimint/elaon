@@ -508,9 +508,12 @@ async function deletePost(idx) {
 }
 
 function isAlreadyWritten(serviceName) {
-  return existingPosts.some(p =>
-    p.keyword && (p.keyword.includes(serviceName) || serviceName.includes(p.keyword))
-  );
+  var year = new Date().getFullYear();
+  return existingPosts.some(function(p) {
+    var sameService = p.keyword && (p.keyword.includes(serviceName) || serviceName.includes(p.keyword));
+    var sameYear = p.title && p.title.includes(String(year));
+    return sameService && sameYear;
+  });
 }
 
 /* ── Gov24 API ── */
@@ -582,8 +585,15 @@ async function fetchServices() {
     const data = await resp.json();
     const allServices = data.data || [];
 
+    // 지원금/보조금 관련만 필터
+    const SUPPORT_KEYWORDS = ['지원','보조','수당','급여','장려','감면','바우처','대출','임대','장학','연금','돌봄','보육'];
+    const supportOnly = allServices.filter(function(s) {
+      var text = (s['서비스명']||'') + ' ' + (s['서비스목적요약']||'');
+      return SUPPORT_KEYWORDS.some(function(kw) { return text.includes(kw); });
+    });
+
     // 인기순 정렬
-    const scored = allServices.map(s => ({ ...s, _score: scoreService(s) }));
+    const scored = supportOnly.map(s => ({ ...s, _score: scoreService(s) }));
     scored.sort((a, b) => b._score - a._score);
     const services = scored.slice(0, 50);
 

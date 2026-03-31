@@ -251,6 +251,16 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
     </div>
     <div class="warn" id="warnArea"></div>
   </div>
+  <div class="field">
+    <div class="label">주택 소재지</div>
+    <div class="chips" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="chip chip-flex on" onclick="setVal(this,'region','seoul')">서울</button>
+      <button class="chip chip-flex" onclick="setVal(this,'region','metro')">수도권 과밀억제권역</button>
+      <button class="chip chip-flex" onclick="setVal(this,'region','city')">광역시·세종·용인 등</button>
+      <button class="chip chip-flex" onclick="setVal(this,'region','etc')">기타 지역</button>
+    </div>
+    <div class="hint" id="deductHint">방공제(소액임차보증금): 5,500만원</div>
+  </div>
 </div>
 
 <div class="card">
@@ -725,7 +735,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <script>
-var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0'};
+var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0',region:'seoul'};
+var DEDUCT={seoul:5500,metro:4800,city:2800,etc:2000};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
@@ -794,7 +805,8 @@ function checkEligibility(){
   var kbP=parseInt(document.getElementById('kbPrice').value)||0;
   var ltvRate2=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
   var ltvBase2=(kbP>0)?Math.min(housePrice,kbP):housePrice;
-  var ltvMax2=(ltvBase2>0)?Math.floor(ltvBase2*ltvRate2):0;
+  var deduct2=DEDUCT[S.region]||5500;
+  var ltvMax2=(ltvBase2>0)?Math.max(0,Math.floor(ltvBase2*ltvRate2)-deduct2):0;
   var realLimit=(ltvMax2>0)?Math.min(loanLimit,ltvMax2):loanLimit;
   if(loanAmt>0&&loanAmt>realLimit){
     var msg='대출한도 초과 (최대 '+realLimit.toLocaleString()+'만원';
@@ -846,7 +858,8 @@ function calcDTI(){
   document.getElementById('dtiRateHint').textContent='(적용금리 '+rate.toFixed(2)+'%)';
 }
 
-function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();checkEligibility();}
+function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();if(key==='region')updateDeductHint();checkEligibility();}
+function updateDeductHint(){document.getElementById('deductHint').textContent='방공제(소액임차보증금): '+(DEDUCT[S.region]).toLocaleString()+'만원';}
 function getBaseRate(){
   var t=RATES[S.borrower];
   var income=parseInt(document.getElementById('income').value)||0;
@@ -891,7 +904,8 @@ function calc(){
   var ltvRate=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
   var kbPrice=parseInt(document.getElementById('kbPrice').value)||0;
   var ltvBase=(kbPrice>0)?Math.min(housePrice,kbPrice):housePrice;
-  var ltvMax=Math.floor(ltvBase*ltvRate);
+  var deduct=DEDUCT[S.region]||5500;
+  var ltvMax=Math.max(0,Math.floor(ltvBase*ltvRate)-deduct);
   var maxLimit=Math.min(ltvMax,loanLimit);
   document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
   buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});addCount();

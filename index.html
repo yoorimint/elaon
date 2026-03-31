@@ -104,10 +104,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 .chip.toggle-on{background:#FF6B35;color:#fff;border-color:#FF6B35}
 .chip.toggle-on:hover{background:#E55A2B;border-color:#E55A2B}
 
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;animation:fadeUp .3s ease}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
-.modal-body{padding:20px 24px 24px}
 </style>
 </head>
 <body>
@@ -228,18 +224,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <span class="input-suffix">만원</span>
     </div>
   </div>
-  <div class="field">
-    <div class="label">DTI (총부채상환비율)</div>
-    <div class="row-group" style="align-items:center">
-      <div class="row-item" style="flex:0 0 auto">
-        <button class="chip dti-btn" onclick="openDTI()" style="height:48px;padding:0 20px;font-weight:700">DTI 계산하기</button>
-      </div>
-      <div style="flex:0 0 auto">
-        <span class="dti-display" id="dtiDisplay">--%</span>
-      </div>
-    </div>
-    <div class="hint">DTI 60% 이내</div>
-  </div>
 </div>
 
 <div class="card">
@@ -305,37 +289,57 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <label class="radio-item"><input type="radio" name="savings" value="0.5">15년↑ 180회차↑ 납입 (또는 민영 예치금 15년↑)<span class="val">-0.5%</span></label>
     </div>
   </div>
-  <label class="check-item"><input type="checkbox" id="econtract">전자계약 체결 (2026.12.31 신규접수분까지)<span class="val">-0.1%</span></label>
+  <label class="check-item"><input type="checkbox" id="econtract">전자계약 체결 (2026.12.31 접수분까지)<span class="val">-0.1%</span></label>
   <label class="check-item"><input type="checkbox" id="lowLoan">대출금액이 산정액의 30% 이하<span class="val">-0.1%</span></label>
-  <label class="check-item"><input type="checkbox" id="localHouse">지방소재 주택 (신생아특례) / 지방미분양 (디딤돌)<span class="val">-0.2%</span></label>
+  <label class="check-item"><input type="checkbox" id="earlyRepay">중도상환 원금 40% 이상 (1년 경과 후)<span class="val">-0.2%</span></label>
+  <label class="check-item"><input type="checkbox" id="localHouse">지방소재 주택 / 지방 미분양주택<span class="val">-0.2%</span></label>
+  <div class="field" style="margin-top:14px">
+    <div class="label">추가출산 자녀 수 <span class="unit">(신생아특례, 1명당 -0.2%)</span></div>
+    <div class="chips">
+      <button class="chip chip-flex on" onclick="setVal(this,'extraChild','0')">없음</button>
+      <button class="chip chip-flex" onclick="setVal(this,'extraChild','1')">1명</button>
+      <button class="chip chip-flex" onclick="setVal(this,'extraChild','2')">2명</button>
+      <button class="chip chip-flex" onclick="setVal(this,'extraChild','3')">3명</button>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">기존 미성년 자녀 수 <span class="unit">(신생아특례, 1명당 -0.1%)</span></div>
+    <div class="chips">
+      <button class="chip chip-flex on" onclick="setVal(this,'existChild','0')">없음</button>
+      <button class="chip chip-flex" onclick="setVal(this,'existChild','1')">1명</button>
+      <button class="chip chip-flex" onclick="setVal(this,'existChild','2')">2명</button>
+      <button class="chip chip-flex" onclick="setVal(this,'existChild','3')">3명</button>
+    </div>
+  </div>
 </div>
 
-<!-- DTI 계산 팝업 -->
-<div class="modal-overlay" id="dtiModal" style="display:none">
-  <div class="modal">
-    <div class="modal-header">
-      <span style="font-size:16px;font-weight:700">DTI 계산기</span>
-      <button onclick="closeDTI()" style="border:none;background:none;font-size:20px;color:#8B95A1;cursor:pointer">&times;</button>
+<div class="card">
+  <div class="card-title">DTI (총부채상환비율)</div>
+  <div class="field">
+    <div class="label">기존 주택담보대출 잔액 <span class="unit">(본건 제외)</span></div>
+    <div class="input-wrap">
+      <input type="number" class="input" id="dtiMortgage" value="0" placeholder="0">
+      <span class="input-suffix">만원</span>
     </div>
-    <div class="modal-body">
-      <div class="field">
-        <div class="label">기존 주택담보대출 잔액</div>
-        <div class="input-wrap">
-          <input type="number" class="input" id="dtiMortgage" value="0" placeholder="0">
-          <span class="input-suffix">만원</span>
-        </div>
-        <div class="hint">선순위 주택담보대출 잔액 (본건 제외)</div>
-      </div>
-      <div class="field">
-        <div class="label">기타부채 (신용대출 등)</div>
-        <div class="input-wrap">
-          <input type="number" class="input" id="dtiOtherDebt" value="0" placeholder="0">
-          <span class="input-suffix">만원</span>
-        </div>
-        <div class="hint">신용대출, 카드론, 학자금 등 합산</div>
-      </div>
-      <button class="calc-btn" onclick="calcDTI()" style="margin-top:8px">DTI 계산</button>
+  </div>
+  <div class="field">
+    <div class="label">기타부채 <span class="unit">(신용대출, 카드론, 학자금 등)</span></div>
+    <div class="input-wrap">
+      <input type="number" class="input" id="dtiOtherDebt" value="0" placeholder="0">
+      <span class="input-suffix">만원</span>
     </div>
+  </div>
+  <div class="field">
+    <div class="row-group" style="align-items:center">
+      <div class="row-item" style="flex:0 0 auto">
+        <button class="chip dti-btn" onclick="calcDTI()" style="height:48px;padding:0 20px;font-weight:700">DTI 계산</button>
+      </div>
+      <div style="flex:0 0 auto;display:flex;align-items:baseline;gap:8px">
+        <span class="dti-display" id="dtiDisplay">--%</span>
+        <span class="hint" id="dtiRateHint" style="margin:0"></span>
+      </div>
+    </div>
+    <div class="hint">DTI 60% 이내 · 적용금리 포함 계산</div>
   </div>
 </div>
 
@@ -436,7 +440,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <script>
-var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0'};
+var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0'};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
@@ -479,14 +483,12 @@ function updateLimitHint(){
   var key=S.borrower+(S.firstTime?'+first':'');
   document.getElementById('limitHint').textContent=LIMIT_TEXT[key]||LIMIT_TEXT[S.borrower];
 }
-function openDTI(){document.getElementById('dtiModal').style.display='flex';}
-function closeDTI(){document.getElementById('dtiModal').style.display='none';}
 function calcDTI(){
   var income=parseInt(document.getElementById('income').value)||0;
   var loanAmt=parseInt(document.getElementById('loanAmount').value)||0;
   var mortgage=parseInt(document.getElementById('dtiMortgage').value)||0;
   var otherDebt=parseInt(document.getElementById('dtiOtherDebt').value)||0;
-  if(income<=0||loanAmt<=0){document.getElementById('dtiDisplay').textContent='--%';closeDTI();return;}
+  if(income<=0||loanAmt<=0){document.getElementById('dtiDisplay').textContent='--%';document.getElementById('dtiRateHint').textContent='';return;}
   var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var P=loanAmt*10000;
   var annualPay=pmt(P,mr,months)*12;
   var mortgageAnnual=mortgage>0?(mortgage*10000*0.04):0;
@@ -496,7 +498,7 @@ function calcDTI(){
   var el=document.getElementById('dtiDisplay');
   el.textContent=dti.toFixed(1)+'%';
   el.style.color=dti>60?'#F04452':'#3182F6';
-  closeDTI();
+  document.getElementById('dtiRateHint').textContent='(적용금리 '+rate.toFixed(2)+'%)';
 }
 
 function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();}
@@ -511,7 +513,7 @@ function getBaseRate(){
   }
   return rate;
 }
-function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('localHouse').checked)d+=0.2;return d;}
+function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('earlyRepay').checked)d+=0.2;if(document.getElementById('localHouse').checked)d+=0.2;d+=parseInt(S.extraChild)*0.2;d+=parseInt(S.existChild)*0.1;return d;}
 function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}

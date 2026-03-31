@@ -168,11 +168,19 @@ def generate_post(keyword, cat):
 6. 첫 문장에서 바로 핵심 정보
 7. "API", "데이터상" 같은 내부 소스 언급 금지
 8. 글 마지막에 "문의 및 신청" 섹션 + 공식 사이트 URL/전화번호 포함
-9. 핵심 수치는 인포그래픽 스타일 박스로:
-   <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">
-     <div style="flex:1;min-width:120px;background:#EFF6FF;border-radius:12px;padding:16px;text-align:center;">
-       <div style="font-size:24px;font-weight:800;color:#2563EB;">금액</div>
-       <div style="font-size:12px;color:#6B7280;">항목명</div>
+9. <table>은 반드시 <div style="overflow-x:auto;"> 로 감싸서 모바일 대응
+10. 핵심 수치는 그라데이션 카드로:
+   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:20px 0;">
+     <div style="background:linear-gradient(135deg,#2563EB,#3B82F6);border-radius:14px;padding:20px 14px;text-align:center;color:#fff;">
+       <div style="font-size:28px;font-weight:800;">금액</div>
+       <div style="font-size:11px;opacity:0.8;margin-top:4px;">항목명</div>
+     </div>
+   </div>
+11. 비교 데이터는 프로그레스 바도 활용:
+   <div style="margin:16px 0;">
+     <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>항목</span><span>금액</span></div>
+     <div style="background:#E5E7EB;border-radius:8px;height:24px;overflow:hidden;">
+       <div style="background:linear-gradient(90deg,#2563EB,#3B82F6);height:100%;width:50%;border-radius:8px;"></div>
      </div>
    </div>"""
 

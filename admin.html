@@ -887,7 +887,8 @@ ${svcContext}
    </div>
    이런 패턴으로 지원금액, 소득기준, 자산기준 등 핵심 수치 3~4개를 시각적으로 보여줄 것
 10. FAQ 섹션의 질문/답변은 사람들이 실제로 검색할 법한 자연어로 작성 (예: "근로장려금 신청 자격은?" "언제까지 신청해야 하나요?")
-11. 모든 금액, 조건, 날짜는 ${year}년 기준으로 작성. 과거 연도 기준이라면 "${year}년 기준 확인 필요"로 명시`;
+11. 모든 금액, 조건, 날짜는 ${year}년 기준으로 작성. 과거 연도 기준이라면 "${year}년 기준 확인 필요"로 명시
+12. 글 마지막에 반드시 "문의 및 신청" 섹션을 넣고, 해당 제도의 공식 사이트 URL과 전화번호를 포함할 것 (예: 홈택스 www.hometax.go.kr, 복지로 www.bokjiro.go.kr, 정부24 www.gov.kr 등)`;
 
     const fullResp = await callGemini(fullPrompt);
 
@@ -989,6 +990,7 @@ function buildPostHtml(article) {
   h.push('<div class="article-layout"><article class="article-content">');
   h.push(c);
   h.push('<div class="article-tags">' + tagsHtml + '<' + '/div>');
+  h.push('<div style="margin-top:32px;padding:16px 18px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;line-height:1.7;">이 글은 공공데이터와 AI를 활용해 작성되었습니다. 실제 조건·금액·신청방법은 변경될 수 있으니, 반드시 해당 기관의 공식 사이트에서 최신 정보를 확인하세요.<' + '/div>');
   h.push('<' + '/article><' + '/div>');
   h.push('<footer class="footer"><div class="footer-inner"><p><a href="' + SITE_URL + '"><strong>eloan.kr<' + '/strong><' + '/a> · 공공서비스 가이드<' + '/p><p>정부 공공데이터 기반 · 정확한 조건은 해당 기관에 확인하세요<br><br>&copy; ' + now.getFullYear() + ' eloan.kr<' + '/p><' + '/div><' + '/footer>');
   h.push('<' + '/body><' + '/html>');

@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>공공서비스 가이드 - 정부지원금·보조금·정책 총정리 | eloan.kr</title>
-<meta name="description" content="2026년 최신 정부 지원금, 보조금, 공공서비스 자격조건과 신청방법을 총정리합니다. 청년, 신혼, 육아, 주거, 취업 지원 정보.">
-<meta name="keywords" content="정부지원금, 보조금, 공공서비스, 청년지원, 주거지원, 육아지원, 정책대출, 신청방법">
+<meta name="description" content="2026년 최신 정부 지원금, 보조금, 공공서비스 자격조건과 신청방법을 총정리합니다.">
 <meta property="og:title" content="공공서비스 가이드 - eloan.kr">
 <meta property="og:description" content="정부 지원금·보조금·공공서비스 자격조건과 신청방법 총정리">
 <meta property="og:type" content="website">
@@ -16,127 +15,58 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --navy: #0D1B3E;
-  --navy-light: #1A2D5A;
-  --blue: #2563EB;
-  --blue-light: #EFF6FF;
-  --gold: #B8860B;
-  --gold-light: #D4A933;
-  --accent: #059669;
-  --accent-light: #ECFDF5;
-  --bg: #FAFBFC;
-  --white: #FFFFFF;
-  --text: #1F2937;
-  --text-sub: #4B5563;
-  --text-muted: #9CA3AF;
-  --border: #E5E7EB;
-  --border-light: #F3F4F6;
+  --navy:#0D1B3E; --blue:#2563EB; --blue-light:#EFF6FF;
+  --gold:#B8860B; --gold-light:#D4A933;
+  --bg:#F7F8FA; --white:#FFFFFF; --text:#1F2937;
+  --text-sub:#4B5563; --text-muted:#9CA3AF;
+  --border:#E5E7EB; --border-light:#F3F4F6;
 }
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Noto Sans KR', -apple-system, sans-serif;
-  background: var(--bg); color: var(--text);
-  line-height: 1.6; -webkit-font-smoothing: antialiased;
-}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;}
 
-/* Topbar */
-.topbar { background: var(--navy); padding: 12px 0; border-bottom: 2px solid var(--gold); }
-.topbar-inner {
-  max-width: 800px; margin: 0 auto; padding: 0 20px;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.topbar-logo { color: #fff; text-decoration: none; font-size: 18px; font-weight: 800; letter-spacing: 1px; }
-.topbar-logo span { color: var(--gold-light); font-weight: 300; font-size: 11px; margin-left: 8px; }
-.topbar-nav { display: flex; gap: 16px; }
-.topbar-nav a { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px; font-weight: 500; }
-.topbar-nav a:hover { color: #fff; }
+.topbar{background:var(--navy);padding:14px 0;border-bottom:2px solid var(--gold);}
+.topbar-inner{max-width:680px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;}
+.topbar-logo{color:#fff;text-decoration:none;font-size:17px;font-weight:800;letter-spacing:0.5px;}
+.topbar-logo span{color:var(--gold-light);font-weight:300;font-size:11px;margin-left:6px;}
+.topbar-nav a{color:rgba(255,255,255,0.65);text-decoration:none;font-size:13px;margin-left:16px;}
+.topbar-nav a:hover{color:#fff;}
 
-/* Hero */
-.hero {
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-  padding: 48px 20px 56px; text-align: center; position: relative; overflow: hidden;
-}
-.hero::after {
-  content: ''; position: absolute; bottom: -20px; left: 0; right: 0;
-  height: 40px; background: var(--bg); border-radius: 24px 24px 0 0;
-}
-.hero h1 { color: #fff; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
-.hero p { color: rgba(255,255,255,0.75); font-size: 14px; margin-bottom: 24px; }
-.hero-search {
-  max-width: 480px; margin: 0 auto; position: relative;
-}
-.hero-search input {
-  width: 100%; height: 52px; border: none; border-radius: 14px;
-  padding: 0 20px 0 48px; font-size: 15px; font-family: inherit;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2); outline: none;
-}
-.hero-search input::placeholder { color: var(--text-muted); }
-.hero-search svg { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-.hero-tags { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-.hero-tag {
-  background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.8);
-  font-size: 12px; padding: 4px 12px; border-radius: 20px; cursor: pointer;
-  text-decoration: none; transition: background 0.2s;
-}
-.hero-tag:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.container{max-width:680px;margin:0 auto;padding:0 20px;}
 
-/* Container */
-.container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+/* Hero - 심플 */
+.hero{background:var(--navy);padding:36px 20px 44px;text-align:center;position:relative;}
+.hero::after{content:'';position:absolute;bottom:-16px;left:0;right:0;height:32px;background:var(--bg);border-radius:20px 20px 0 0;}
+.hero h1{color:#fff;font-size:22px;font-weight:800;margin-bottom:14px;letter-spacing:-0.3px;}
+.hero-search{max-width:440px;margin:0 auto;position:relative;}
+.hero-search input{width:100%;height:48px;border:none;border-radius:12px;padding:0 16px 0 44px;font-size:14px;font-family:inherit;box-shadow:0 4px 16px rgba(0,0,0,0.15);outline:none;}
+.hero-search input::placeholder{color:var(--text-muted);}
+.hero-search svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
 
-/* Section */
-.section { padding: 32px 0 0; }
-.section-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
-}
-.section-title { font-size: 18px; font-weight: 700; color: var(--navy); letter-spacing: -0.3px; }
-.section-more { font-size: 13px; color: var(--blue); text-decoration: none; font-weight: 500; }
+/* 카테고리 탭 */
+.cat-tabs{display:flex;gap:8px;overflow-x:auto;padding:20px 0 8px;-webkit-overflow-scrolling:touch;}
+.cat-tab{flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:var(--white);font-size:13px;font-weight:500;color:var(--text-sub);cursor:pointer;font-family:inherit;transition:all 0.15s;}
+.cat-tab:hover,.cat-tab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 
-/* Post Card */
-.post-card {
-  display: block; background: var(--white); border: 1px solid var(--border);
-  border-radius: 12px; padding: 20px; margin-bottom: 12px;
-  text-decoration: none; color: inherit; transition: border-color 0.2s, box-shadow 0.2s;
-}
-.post-card:hover { border-color: var(--blue); box-shadow: 0 2px 12px rgba(37,99,235,0.08); }
-.post-date { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-.post-title { font-size: 16px; font-weight: 600; color: var(--navy); line-height: 1.4; margin-bottom: 6px; letter-spacing: -0.3px; }
-.post-desc { font-size: 13px; color: var(--text-sub); line-height: 1.6; margin-bottom: 10px; }
-.post-tags { display: flex; gap: 4px; flex-wrap: wrap; }
-.post-tag {
-  font-size: 11px; color: var(--text-muted); background: var(--border-light);
-  padding: 2px 8px; border-radius: 4px;
-}
+/* 글 카드 */
+.post-card{display:block;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;text-decoration:none;color:inherit;transition:border-color 0.15s;}
+.post-card:hover{border-color:var(--blue);}
+.post-date{font-size:11px;color:var(--text-muted);margin-bottom:3px;}
+.post-title{font-size:15px;font-weight:600;color:var(--navy);line-height:1.4;margin-bottom:4px;letter-spacing:-0.2px;}
+.post-desc{font-size:12px;color:var(--text-sub);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.post-cat{display:inline-block;font-size:10px;font-weight:600;color:var(--blue);background:var(--blue-light);padding:1px 6px;border-radius:3px;margin-top:6px;}
 
-/* Category Grid */
-.cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.cat-card {
-  display: flex; align-items: center; gap: 12px;
-  background: var(--white); border: 1px solid var(--border);
-  border-radius: 12px; padding: 16px; text-decoration: none; color: inherit;
-  transition: border-color 0.2s;
-}
-.cat-card:hover { border-color: var(--blue); }
-.cat-icon {
-  width: 40px; height: 40px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
-}
-.cat-name { font-size: 14px; font-weight: 600; color: var(--navy); }
-.cat-sub { font-size: 11px; color: var(--text-muted); }
+.empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:14px;}
 
-/* Empty */
-.empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
+/* 하단 */
+.bottom-info{text-align:center;padding:24px 20px;font-size:11px;color:var(--text-muted);line-height:1.8;}
+.stats{display:flex;gap:24px;justify-content:center;padding:8px 0 16px;}
+.stat{text-align:center;}
+.stat-num{font-size:16px;font-weight:800;color:var(--navy);}
+.stat-label{font-size:10px;color:var(--text-muted);}
 
-/* Footer */
-.footer {
-  background: var(--navy); padding: 32px 0; margin-top: 48px; text-align: center;
-}
-.footer p { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.9; }
-.footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
-
-@media (max-width: 480px) {
-  .hero h1 { font-size: 22px; }
-  .cat-grid { grid-template-columns: 1fr; }
-}
+.footer{background:var(--navy);padding:24px 0;text-align:center;}
+.footer p{font-size:11px;color:rgba(255,255,255,0.4);line-height:1.8;}
+.footer a{color:rgba(255,255,255,0.6);text-decoration:none;}
 </style>
 </head>
 <body>
@@ -146,128 +76,70 @@ body {
     <a href="/" class="topbar-logo">eloan.kr<span>공공서비스 가이드</span></a>
     <nav class="topbar-nav">
       <a href="/">홈</a>
-      <a href="/blog/">가이드</a>
+      <a href="/blog/">전체글</a>
     </nav>
   </div>
 </div>
 
 <div class="hero">
-  <h1>공공서비스 가이드</h1>
-  <p>정부 지원금·보조금·공공서비스 조건과 신청방법을 정리합니다</p>
+  <h1>정부 지원금·보조금 가이드</h1>
   <div class="hero-search">
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <input type="text" placeholder="지원금, 보조금, 서비스 검색" id="searchInput" onkeyup="handleSearch(event)">
-  </div>
-  <div class="hero-tags">
-    <a class="hero-tag" onclick="searchTag('청년')">청년</a>
-    <a class="hero-tag" onclick="searchTag('육아')">육아</a>
-    <a class="hero-tag" onclick="searchTag('주거')">주거</a>
-    <a class="hero-tag" onclick="searchTag('대출')">대출</a>
-    <a class="hero-tag" onclick="searchTag('보조금')">보조금</a>
+    <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <input type="text" placeholder="검색 (예: 청년 월세, 육아 수당)" id="searchInput" onkeyup="handleSearch(event)">
   </div>
 </div>
 
 <div class="container">
 
-  <!-- 카테고리 -->
-  <section class="section">
-    <div class="section-head">
-      <h2 class="section-title">분야별 보기</h2>
-    </div>
-    <div class="cat-grid">
-      <a class="cat-card" onclick="searchTag('청년')">
-        <div class="cat-icon" style="background:#EFF6FF;">&#128170;</div>
-        <div><div class="cat-name">청년 지원</div><div class="cat-sub">취업·주거·금융</div></div>
-      </a>
-      <a class="cat-card" onclick="searchTag('육아')">
-        <div class="cat-icon" style="background:#ECFDF5;">&#128118;</div>
-        <div><div class="cat-name">육아·출산</div><div class="cat-sub">양육·보육·출산</div></div>
-      </a>
-      <a class="cat-card" onclick="searchTag('주거')">
-        <div class="cat-icon" style="background:#FEF3C7;">&#127968;</div>
-        <div><div class="cat-name">주거 지원</div><div class="cat-sub">대출·임대·월세</div></div>
-      </a>
-      <a class="cat-card" onclick="searchTag('복지')">
-        <div class="cat-icon" style="background:#FDF2F8;">&#128150;</div>
-        <div><div class="cat-name">복지·돌봄</div><div class="cat-sub">기초·장애·노인</div></div>
-      </a>
-      <a class="cat-card" onclick="searchTag('취업')">
-        <div class="cat-icon" style="background:#F0EAFF;">&#128188;</div>
-        <div><div class="cat-name">취업·창업</div><div class="cat-sub">고용·소상공인</div></div>
-      </a>
-      <a class="cat-card" onclick="searchTag('교육')">
-        <div class="cat-icon" style="background:#FFF7ED;">&#127891;</div>
-        <div><div class="cat-name">교육·학자금</div><div class="cat-sub">장학·학비·교육</div></div>
-      </a>
-    </div>
-  </section>
-
-  <!-- 최신 글 -->
-  <section class="section">
-    <div class="section-head">
-      <h2 class="section-title">최신 가이드</h2>
-      <a href="/blog/" class="section-more">전체보기 →</a>
-    </div>
-    <div id="postList">
-      <div class="empty">글을 불러오는 중...</div>
-    </div>
-  </section>
-
-  <!-- 안내 -->
-  <section class="section" style="padding-bottom:20px;">
-    <div style="background:var(--blue-light);border-radius:12px;padding:20px;font-size:13px;color:var(--text-sub);line-height:1.8;">
-      <strong style="color:var(--navy);">안내</strong><br>
-      본 사이트의 정보는 정부 공공데이터를 기반으로 작성되었습니다.
-      정확한 조건과 신청은 해당 기관에 직접 확인하세요.
-    </div>
-  </section>
-
-</div>
-
-<!-- 방문자 통계 -->
-<div style="max-width:800px;margin:0 auto;padding:0 20px 24px;">
-  <div style="display:flex;gap:12px;justify-content:center;">
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 24px;text-align:center;flex:1;max-width:180px;">
-      <div style="font-size:20px;font-weight:800;color:var(--navy);" id="todayCount">-</div>
-      <div style="font-size:11px;color:var(--text-muted);">오늘 방문자</div>
-    </div>
-    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 24px;text-align:center;flex:1;max-width:180px;">
-      <div style="font-size:20px;font-weight:800;color:var(--blue);" id="totalCount">-</div>
-      <div style="font-size:11px;color:var(--text-muted);">누적 방문자</div>
-    </div>
+  <!-- 카테고리 탭 + 글 목록 통합 -->
+  <div class="cat-tabs" id="catTabs">
+    <button class="cat-tab active" onclick="filterCat('전체')">전체</button>
+    <button class="cat-tab" onclick="filterCat('주거')">주거·대출</button>
+    <button class="cat-tab" onclick="filterCat('청년')">청년</button>
+    <button class="cat-tab" onclick="filterCat('육아')">육아·출산</button>
+    <button class="cat-tab" onclick="filterCat('복지')">복지·돌봄</button>
+    <button class="cat-tab" onclick="filterCat('취업')">취업·창업</button>
+    <button class="cat-tab" onclick="filterCat('교육')">교육</button>
   </div>
+
+  <div id="postList" style="padding-top:4px;">
+    <div class="empty">불러오는 중...</div>
+  </div>
+
+  <div class="bottom-info">
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="todayCount">-</div><div class="stat-label">오늘</div></div>
+      <div class="stat"><div class="stat-num" id="totalCount">-</div><div class="stat-label">누적 방문</div></div>
+    </div>
+    정부 공공데이터 기반 · 정확한 조건은 해당 기관에 확인하세요
+  </div>
+
 </div>
 
 <footer class="footer">
-  <div class="container">
-    <p>
-      <a href="/"><strong>eloan.kr</strong></a> · 공공서비스 가이드<br><br>
-      &copy; 2026 eloan.kr
-    </p>
-  </div>
+  <p><a href="/"><strong>eloan.kr</strong></a><br>&copy; 2026</p>
 </footer>
 
 <script>
-// 카테고리 매핑: 키워드 → 분야
 const CAT_MAP = {
   '청년': ['청년','취업준비','사회초년','청년월세','청년전세','도약계좌','청년내일'],
   '육아': ['육아','출산','양육','보육','유아','어린이','아이돌봄','신생아','영유아','누리과정','아동'],
-  '주거': ['주거','월세','전세','대출','임대','주택','보증금','매입임대','공공임대','LH'],
+  '주거': ['주거','월세','전세','대출','임대','주택','보증금','공공임대','LH','금융공사'],
   '복지': ['복지','기초','장애','노인','돌봄','수급','의료','건강보험','어르신','저소득','한부모'],
   '취업': ['취업','창업','고용','소상공인','근로','일자리','자영업','국민취업','직업훈련'],
-  '교육': ['교육','학자금','장학','학비','학자','학교','대학','수업료']
+  '교육': ['교육','학자금','장학','학비','학자','학교','대학','수업료','강좌']
 };
 
-function getPostCategories(post) {
+function getPostCat(post) {
   const text = `${post.title||''} ${post.meta_description||''} ${(post.tags||[]).join(' ')} ${post.keyword||''}`.toLowerCase();
-  const cats = [];
-  for (const [cat, keywords] of Object.entries(CAT_MAP)) {
-    if (keywords.some(kw => text.includes(kw))) cats.push(cat);
+  for (const [cat, kws] of Object.entries(CAT_MAP)) {
+    if (kws.some(kw => text.includes(kw))) return cat;
   }
-  return cats;
+  return '기타';
 }
 
 let allPosts = [];
+let activeCat = '전체';
 
 async function loadPosts() {
   try {
@@ -281,86 +153,48 @@ async function loadPosts() {
 }
 
 function renderPosts(posts) {
-  const listEl = document.getElementById('postList');
-  if (!posts.length) {
-    listEl.innerHTML = '<div class="empty">해당 분야의 글이 없습니다.</div>';
-    return;
-  }
-  listEl.innerHTML = posts.slice(0, 20).map(p => {
-    const cats = getPostCategories(p);
-    return `<a href="/blog/${p.slug}.html" class="post-card" data-cats="${cats.join(',')}">
-      <div class="post-date">${p.date || p.date_iso || ''}</div>
+  const el = document.getElementById('postList');
+  if (!posts.length) { el.innerHTML = '<div class="empty">글이 없습니다.</div>'; return; }
+  el.innerHTML = posts.slice(0, 30).map(p => {
+    const cat = getPostCat(p);
+    return `<a href="/blog/${p.slug}.html" class="post-card">
+      <div class="post-date">${p.date_iso || ''}</div>
       <div class="post-title">${p.title}</div>
       <div class="post-desc">${p.meta_description || ''}</div>
-      <div class="post-tags">${(p.tags||[]).slice(0,4).map(t => `<span class="post-tag">${t}</span>`).join('')}</div>
+      <span class="post-cat">${cat}</span>
     </a>`;
   }).join('');
 }
 
+function filterCat(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (cat === '전체') { renderPosts(allPosts); return; }
+  renderPosts(allPosts.filter(p => getPostCat(p) === cat));
+}
+
 function handleSearch(e) {
-  if (e.key === 'Enter') {
-    const q = e.target.value.trim();
-    if (q) filterPosts(q);
-  }
-}
-
-function searchTag(tag) {
-  document.getElementById('searchInput').value = tag;
-  // 카테고리 매핑에 있으면 카테고리 필터, 없으면 텍스트 검색
-  if (CAT_MAP[tag]) {
-    filterByCategory(tag);
-  } else {
-    filterPosts(tag);
-  }
-}
-
-function filterByCategory(cat) {
-  const filtered = allPosts.filter(p => getPostCategories(p).includes(cat));
-  renderPosts(filtered);
-  // 스크롤
-  document.getElementById('postList').scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function filterPosts(query) {
-  const q = query.toLowerCase();
-  const filtered = allPosts.filter(p => {
-    const text = `${p.title||''} ${p.meta_description||''} ${(p.tags||[]).join(' ')} ${p.keyword||''}`.toLowerCase();
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { renderPosts(activeCat === '전체' ? allPosts : allPosts.filter(p => getPostCat(p) === activeCat)); return; }
+  renderPosts(allPosts.filter(p => {
+    const text = `${p.title||''} ${p.meta_description||''} ${(p.tags||[]).join(' ')}`.toLowerCase();
     return text.includes(q);
-  });
-  renderPosts(filtered);
+  }));
 }
 
-// 방문자 통계 (localStorage 기반)
 function trackVisitor() {
-  const today = new Date().toISOString().slice(0, 10);
-  const stored = JSON.parse(localStorage.getItem('eloan_visitor') || '{}');
-
-  // 누적
-  if (!stored.total) stored.total = 0;
-  if (!stored.lastDate) stored.lastDate = '';
-  if (!stored.todayCount) stored.todayCount = 0;
-
-  // 날짜 바뀌면 오늘 카운터 리셋
-  if (stored.lastDate !== today) {
-    stored.todayCount = 0;
-    stored.lastDate = today;
-  }
-
-  // 이번 세션에서 이미 카운트했는지 체크
-  if (!sessionStorage.getItem('eloan_counted')) {
-    stored.total += 1;
-    stored.todayCount += 1;
-    sessionStorage.setItem('eloan_counted', '1');
-    localStorage.setItem('eloan_visitor', JSON.stringify(stored));
-  }
-
-  document.getElementById('todayCount').textContent = stored.todayCount.toLocaleString();
-  document.getElementById('totalCount').textContent = stored.total.toLocaleString();
+  const today = new Date().toISOString().slice(0,10);
+  const s = JSON.parse(localStorage.getItem('eloan_v') || '{}');
+  if (!s.t) s.t = 0; if (!s.d) s.d = ''; if (!s.c) s.c = 0;
+  if (s.d !== today) { s.c = 0; s.d = today; }
+  if (!sessionStorage.getItem('ev')) { s.t++; s.c++; sessionStorage.setItem('ev','1'); localStorage.setItem('eloan_v',JSON.stringify(s)); }
+  document.getElementById('todayCount').textContent = s.c;
+  document.getElementById('totalCount').textContent = s.t.toLocaleString();
 }
 
 loadPosts();
 trackVisitor();
 </script>
-
 </body>
 </html>

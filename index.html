@@ -83,12 +83,9 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
   </div>
   <div class="tag-row">
     <button class="tag-btn active" onclick="filterTag(this,'')">전체</button>
-    <button class="tag-btn" onclick="filterTag(this,'청년')">청년</button>
-    <button class="tag-btn" onclick="filterTag(this,'육아')">육아·출산</button>
-    <button class="tag-btn" onclick="filterTag(this,'주거')">주거·대출</button>
-    <button class="tag-btn" onclick="filterTag(this,'복지')">복지</button>
-    <button class="tag-btn" onclick="filterTag(this,'취업')">취업</button>
-    <button class="tag-btn" onclick="filterTag(this,'교육')">교육</button>
+    <button class="tag-btn" onclick="filterTag(this,'지원금')">지원금</button>
+    <button class="tag-btn" onclick="filterTag(this,'절약')">절약</button>
+    <button class="tag-btn" onclick="filterTag(this,'재테크')">재테크</button>
   </div>
 </div>
 
@@ -118,16 +115,16 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 var allPosts = [], filtered = [], page = 1, PER = 10, activeTag = '';
 
 var TAG_KEYWORDS = {
-  '청년':['청년','사회초년','도약','내일저축','취업준비'],
-  '육아':['육아','출산','양육','보육','유아','어린이','신생아','영유아','아동','부모급여','아이돌봄'],
-  '주거':['주거','월세','전세','대출','임대','주택','보증금','디딤돌','버팀목','보금자리'],
-  '복지':['복지','기초','장애','노인','돌봄','수급','의료','어르신','저소득','한부모','에너지','긴급'],
-  '취업':['취업','창업','고용','소상공인','근로','일자리','국민취업','직업훈련'],
-  '교육':['교육','학자금','장학','학비','누리과정','스포츠강좌']
+  '지원금':['지원금','보조금','수당','급여','장려금','바우처','대출','장학금','연금','양육','보육','임대','돌봄','지원'],
+  '절약':['절약','절세','환급','감면','할인','무료','면제','아끼','줄이기','비교','저렴'],
+  '재테크':['재테크','적금','저축','투자','이자','배당','펀드','주식','부업','수익','가입']
 };
 
 function postMatchesTag(p, tag) {
   if (!tag) return true;
+  // posts.json에 category 필드가 있으면 그걸로 매칭
+  if (p.category) return p.category === tag;
+  // 없으면 키워드로 fallback
   var kws = TAG_KEYWORDS[tag] || [tag];
   var text = ((p.title||'') + ' ' + (p.meta_description||'') + ' ' + (p.tags||[]).join(' ') + ' ' + (p.keyword||'')).toLowerCase();
   return kws.some(function(k) { return text.indexOf(k) !== -1; });

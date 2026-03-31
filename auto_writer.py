@@ -43,9 +43,45 @@ def fetch_official_data():
                     data['didimdol_rates'] = items
                     print(f'  공공데이터포털 디딤돌 금리 {len(items)}건 수집')
         except Exception as e:
-            print(f'  공공데이터포털 API 실패: {e}')
+            print(f'  공공데이터포털 디딤돌 금리 API 실패: {e}')
 
-    # 2. 한국주택금융공사 페이지 크롤링 시도
+        # 2. 공공데이터포털 - u-보금자리론 대출정보 API
+        try:
+            resp = requests.get(
+                'http://apis.data.go.kr/B551408/u-loan-rate/uloan-info',
+                params={'serviceKey': DATA_GO_KR_KEY, 'type': 'json', 'numOfRows': '10'},
+                timeout=10
+            )
+            if resp.ok:
+                result = resp.json()
+                items = result.get('body', {}).get('items', [])
+                if not items:
+                    items = result.get('response', {}).get('body', {}).get('items', {}).get('item', [])
+                if items:
+                    data['bogeumjari_rates'] = items
+                    print(f'  공공데이터포털 보금자리론 금리 {len(items)}건 수집')
+        except Exception as e:
+            print(f'  공공데이터포털 보금자리론 금리 API 실패: {e}')
+
+        # 3. 공공데이터포털 - 전세자금보증상품 추천서비스 API
+        try:
+            resp = requests.get(
+                'http://apis.data.go.kr/B551408/jeonse-guarantee/avg-rate',
+                params={'serviceKey': DATA_GO_KR_KEY, 'type': 'json', 'numOfRows': '10'},
+                timeout=10
+            )
+            if resp.ok:
+                result = resp.json()
+                items = result.get('body', {}).get('items', [])
+                if not items:
+                    items = result.get('response', {}).get('body', {}).get('items', {}).get('item', [])
+                if items:
+                    data['jeonse_rates'] = items
+                    print(f'  공공데이터포털 전세보증 금리 {len(items)}건 수집')
+        except Exception as e:
+            print(f'  공공데이터포털 전세보증 금리 API 실패: {e}')
+
+    # 4. 한국주택금융공사 페이지 크롤링 시도
     for url, key, desc in [
         ('https://www.hf.go.kr/ko/sub01/sub01_02_01.do', 'hf_didimdol', '디딤돌 상품소개'),
         ('https://www.hf.go.kr/ko/sub01/sub01_02_03.do', 'hf_rates', '디딤돌 금리안내'),
@@ -86,6 +122,16 @@ def build_data_context(official_data):
     if 'didimdol_rates' in official_data:
         context += '\n## 디딤돌대출 금리 (공공데이터포털 기준)\n'
         for item in official_data['didimdol_rates'][:5]:
+            context += f'{json.dumps(item, ensure_ascii=False)}\n'
+
+    if 'bogeumjari_rates' in official_data:
+        context += '\n## 보금자리론 금리 (공공데이터포털 기준)\n'
+        for item in official_data['bogeumjari_rates'][:5]:
+            context += f'{json.dumps(item, ensure_ascii=False)}\n'
+
+    if 'jeonse_rates' in official_data:
+        context += '\n## 전세자금보증 평균금리 (공공데이터포털 기준)\n'
+        for item in official_data['jeonse_rates'][:5]:
             context += f'{json.dumps(item, ensure_ascii=False)}\n'
 
     if 'hf_didimdol' in official_data:

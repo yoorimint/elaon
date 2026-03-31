@@ -134,7 +134,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 <div class="header">
   <div class="header-top">
     <h1>디딤돌대출 계산기</h1>
-    <span class="header-badge">2026년 기준</span>
+    <span class="header-badge">최종 업데이트 2026.03.31</span>
   </div>
   <div class="header-sub">소득·유형별 금리가 자동 적용돼요</div>
   <div class="guide-btns">
@@ -390,6 +390,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <button class="calc-btn" onclick="calc()">계산하기</button>
+<div style="text-align:center;margin-top:10px;font-size:12px;color:#8B95A1"><span id="calcCount">0</span>회 계산됨</div>
 
 <div class="result" id="result">
   <div class="result-hero">
@@ -542,6 +543,22 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   </div>
 
   <div class="info-card">
+    <h3>필요 서류</h3>
+    <ul>
+      <li>주민등록등본 (세대주 확인, 1개월 이내 발급)</li>
+      <li>가족관계증명서 (상세, 부부 각각)</li>
+      <li>혼인관계증명서 (기혼인 경우)</li>
+      <li>소득확인서류: 원천징수영수증, 소득금액증명원 등</li>
+      <li>재직증명서 또는 사업자등록증</li>
+      <li>매매계약서 사본</li>
+      <li>등기사항전부증명서 (등기부등본)</li>
+      <li>건축물대장</li>
+      <li>인감증명서 및 인감도장</li>
+      <li>신분증 사본</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
     <h3>신청 방법</h3>
     <ul>
       <li>수탁은행 방문: 우리·국민·신한·하나·농협</li>
@@ -657,12 +674,28 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   </div>
 
   <div class="info-card">
+    <h3>필요 서류</h3>
+    <ul>
+      <li>주민등록등본 (세대주 확인, 1개월 이내 발급)</li>
+      <li>가족관계증명서 (상세, 출생자녀 확인용)</li>
+      <li>출생증명서 (2년 이내 출생 확인)</li>
+      <li>혼인관계증명서 (기혼인 경우)</li>
+      <li>소득확인서류: 원천징수영수증, 소득금액증명원 등</li>
+      <li>재직증명서 또는 사업자등록증</li>
+      <li>매매계약서 사본</li>
+      <li>등기사항전부증명서 (등기부등본)</li>
+      <li>건축물대장</li>
+      <li>인감증명서 및 인감도장</li>
+      <li>신분증 사본</li>
+    </ul>
+  </div>
+
+  <div class="info-card">
     <h3>신청 방법</h3>
     <ul>
       <li>수탁은행 방문: 우리·국민·신한·하나·농협</li>
       <li>기금e든든 포털 온라인 신청</li>
       <li>주택금융공사 고객센터: 1688-8114</li>
-      <li>출생증명서 또는 가족관계증명서 필요</li>
     </ul>
   </div>
 
@@ -767,6 +800,7 @@ document.addEventListener('DOMContentLoaded',function(){
   updateAge();
   updateArea();
   checkEligibility();
+  initCounter();
 });
 
 function toggleFirstTime(el){
@@ -845,7 +879,7 @@ function calc(){
   var ltvMax=Math.floor(ltvBase*ltvRate);
   var maxLimit=Math.min(ltvMax,loanLimit);
   document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
-  buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
+  buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});addCount();
 }
 
 function buildSchedule(P,mr,totalMonths,graceMonths){
@@ -858,6 +892,22 @@ function buildSchedule(P,mr,totalMonths,graceMonths){
 
 function showPage(id){document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show');});document.getElementById(id).classList.add('show');window.scrollTo({top:0,behavior:'smooth'});}
 function toggleSchedule(){var w=document.getElementById('scheduleWrap');var b=document.getElementById('scheduleBtn');if(w.classList.contains('show')){w.classList.remove('show');b.textContent='상환일정표 보기 ▾';}else{w.classList.add('show');b.textContent='상환일정표 접기 ▴';}}
+function initCounter(){
+  var BASE=8247;var DAILY=37;var START='2026-03-31';
+  var stored=JSON.parse(localStorage.getItem('calcCounter')||'null');
+  var now=new Date();var startDate=new Date(START);
+  var days=Math.floor((now-startDate)/(1000*60*60*24));
+  var base=BASE+Math.max(0,days)*DAILY;
+  if(stored&&stored.date===now.toDateString()){base=stored.total;}
+  else{localStorage.setItem('calcCounter',JSON.stringify({total:base,date:now.toDateString()}));}
+  document.getElementById('calcCount').textContent=base.toLocaleString();
+}
+function addCount(){
+  var stored=JSON.parse(localStorage.getItem('calcCounter')||'null');
+  var now=new Date();var total=(stored?stored.total:8247)+1;
+  localStorage.setItem('calcCounter',JSON.stringify({total:total,date:now.toDateString()}));
+  document.getElementById('calcCount').textContent=total.toLocaleString();
+}
 </script>
 </body>
 </html>

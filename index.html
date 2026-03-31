@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-SDY3EXP31H"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-SDY3EXP31H');</script> - 정부지원금·보조금·정책 총정리 | eloan.kr</title>
-<meta name="description" content="2026년 최신 정부 지원금, 보조금, 공공서비스 자격조건과 신청방법을 총정리합니다.">
-<meta property="og:title" content="공공서비스 가이드 - eloan.kr">
-<meta property="og:description" content="정부 지원금·보조금·공공서비스 자격조건과 신청방법 총정리">
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-SDY3EXP31H');</script>
+<title>내가 받을 수 있는 지원금 찾기 | eloan.kr</title>
+<meta name="description" content="나이, 소득, 가구 정보만 입력하면 받을 수 있는 정부 지원금·보조금을 바로 확인할 수 있습니다.">
+<meta property="og:title" content="내가 받을 수 있는 지원금 찾기 - eloan.kr">
+<meta property="og:description" content="30초만에 나에게 해당되는 정부 지원금을 확인하세요">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://eloan.kr">
 <link rel="canonical" href="https://eloan.kr">
@@ -15,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#0D1B3E;--blue:#2563EB;--blue-light:#EFF6FF;--gold:#B8860B;--gold-light:#D4A933;--bg:#F7F8FA;--white:#FFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;}
+:root{--navy:#0D1B3E;--blue:#2563EB;--blue-light:#EFF6FF;--gold:#B8860B;--gold-light:#D4A933;--accent:#059669;--accent-light:#ECFDF5;--bg:#F7F8FA;--white:#FFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
 
@@ -26,19 +27,40 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 
 .container{max-width:640px;margin:0 auto;padding:0 20px;}
 
-.hero{background:var(--navy);padding:32px 20px 40px;text-align:center;position:relative;}
-.hero::after{content:'';position:absolute;bottom:-14px;left:0;right:0;height:28px;background:var(--bg);border-radius:16px 16px 0 0;}
-.hero h1{color:#fff;font-size:20px;font-weight:800;margin-bottom:12px;}
-.search-box{max-width:440px;margin:0 auto;position:relative;}
-.search-box input{width:100%;height:46px;border:none;border-radius:10px;padding:0 16px 0 42px;font-size:14px;font-family:inherit;outline:none;box-shadow:0 2px 12px rgba(0,0,0,0.12);}
-.search-box input::placeholder{color:var(--text-muted);}
-.search-box svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
+/* 도구 영역 */
+.tool-section{background:linear-gradient(135deg,var(--navy) 0%,#1A2D5A 100%);padding:32px 20px 44px;position:relative;}
+.tool-section::after{content:'';position:absolute;bottom:-14px;left:0;right:0;height:28px;background:var(--bg);border-radius:16px 16px 0 0;}
+.tool-title{color:#fff;font-size:20px;font-weight:800;text-align:center;margin-bottom:4px;}
+.tool-sub{color:rgba(255,255,255,.6);font-size:13px;text-align:center;margin-bottom:20px;}
+.tool-card{max-width:480px;margin:0 auto;background:var(--white);border-radius:14px;padding:24px 20px;box-shadow:0 4px 20px rgba(0,0,0,.15);}
+.tool-row{display:flex;gap:10px;margin-bottom:12px;}
+.tool-group{flex:1;}
+.tool-label{font-size:12px;font-weight:600;color:var(--text-sub);margin-bottom:4px;}
+.tool-select,.tool-input{width:100%;height:42px;border:1.5px solid var(--border);border-radius:8px;padding:0 12px;font-size:14px;font-family:inherit;color:var(--text);background:var(--white);outline:none;}
+.tool-select:focus,.tool-input:focus{border-color:var(--blue);}
+.tool-btn{width:100%;height:48px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:4px;transition:background .15s;}
+.tool-btn:hover{background:#047857;}
 
-.board{padding-top:20px;}
+/* 결과 */
+.result-section{display:none;padding-top:20px;}
+.result-section.show{display:block;}
+.result-header{text-align:center;padding:16px 0;font-size:14px;color:var(--text-sub);}
+.result-header strong{color:var(--accent);font-size:20px;}
+.result-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+.result-card:hover{border-color:var(--blue);}
+.result-name{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:2px;}
+.result-desc{font-size:12px;color:var(--text-sub);}
+.result-tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+.result-tag{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--blue-light);color:var(--blue);font-weight:500;}
+.result-tag.green{background:var(--accent-light);color:var(--accent);}
+.result-empty{text-align:center;padding:30px;color:var(--text-muted);font-size:14px;}
+.result-reset{display:block;margin:12px auto 0;background:none;border:1px solid var(--border);border-radius:8px;padding:8px 20px;font-size:13px;font-family:inherit;color:var(--text-sub);cursor:pointer;}
+
+/* 게시판 */
+.board{padding-top:24px;}
 .board-header{display:flex;justify-content:space-between;align-items:center;padding:0 2px 10px;border-bottom:2px solid var(--navy);}
 .board-title{font-size:15px;font-weight:700;color:var(--navy);}
 .board-count{font-size:12px;color:var(--text-muted);}
-
 .board-row{display:flex;align-items:center;padding:14px 2px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;gap:10px;transition:background 0.1s;}
 .board-row:hover{background:var(--blue-light);}
 .board-num{width:28px;font-size:12px;font-weight:600;color:var(--text-muted);text-align:center;flex-shrink:0;}
@@ -46,19 +68,19 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 .board-row-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .board-row-desc{font-size:11px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
 .board-date{font-size:11px;color:var(--text-muted);flex-shrink:0;}
-
+.search-box{margin-bottom:12px;position:relative;}
+.search-box input{width:100%;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 12px 0 36px;font-size:13px;font-family:inherit;outline:none;}
+.search-box input:focus{border-color:var(--blue);}
+.search-box svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
 .paging{display:flex;justify-content:center;gap:4px;padding:20px 0;}
 .page-btn{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-family:inherit;color:var(--text-sub);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .page-btn:hover{border-color:var(--blue);color:var(--blue);}
 .page-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
 .page-btn:disabled{opacity:0.3;cursor:default;}
-
 .empty{text-align:center;padding:40px 0;color:var(--text-muted);font-size:14px;}
-
 .bottom-info{text-align:center;padding:20px 0;font-size:11px;color:var(--text-muted);line-height:1.8;}
 .stats{display:flex;gap:20px;justify-content:center;margin-bottom:6px;}
 .stat-num{font-weight:800;color:var(--navy);}
-
 .footer{background:var(--navy);padding:20px 0;text-align:center;}
 .footer p{font-size:11px;color:rgba(255,255,255,0.4);}
 .footer a{color:rgba(255,255,255,0.6);text-decoration:none;}
@@ -68,23 +90,90 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 
 <div class="topbar">
   <div class="topbar-inner">
-    <a href="/" class="topbar-logo">eloan.kr<span>공공서비스 가이드</span></a>
+    <a href="/" class="topbar-logo">eloan.kr<span>지원금 가이드</span></a>
   </div>
 </div>
 
-<div class="hero">
-  <h1>정부 지원금·보조금 가이드</h1>
-  <div class="search-box">
-    <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <input type="text" placeholder="검색 (예: 청년 월세, 육아 수당)" id="searchInput" oninput="doSearch()">
+<!-- 지원금 조회 도구 -->
+<div class="tool-section">
+  <div class="tool-title">내가 받을 수 있는 지원금 찾기</div>
+  <div class="tool-sub">30초면 됩니다</div>
+  <div class="tool-card">
+    <div class="tool-row">
+      <div class="tool-group">
+        <div class="tool-label">나이</div>
+        <select class="tool-select" id="toolAge">
+          <option value="">선택</option>
+          <option value="19">19세 이하</option>
+          <option value="29">20~29세</option>
+          <option value="39">30~39세</option>
+          <option value="49">40~49세</option>
+          <option value="59">50~59세</option>
+          <option value="69">60~69세</option>
+          <option value="70">70세 이상</option>
+        </select>
+      </div>
+      <div class="tool-group">
+        <div class="tool-label">가구 유형</div>
+        <select class="tool-select" id="toolFamily">
+          <option value="">선택</option>
+          <option value="single">1인 가구</option>
+          <option value="couple">신혼/부부</option>
+          <option value="child">자녀 있음</option>
+          <option value="multi">다자녀 (3+)</option>
+          <option value="senior">노인 가구</option>
+          <option value="single_parent">한부모</option>
+        </select>
+      </div>
+    </div>
+    <div class="tool-row">
+      <div class="tool-group">
+        <div class="tool-label">연소득 (만원)</div>
+        <select class="tool-select" id="toolIncome">
+          <option value="">선택</option>
+          <option value="2000">2,000 이하</option>
+          <option value="3000">3,000 이하</option>
+          <option value="4000">4,000 이하</option>
+          <option value="5000">5,000 이하</option>
+          <option value="7000">7,000 이하</option>
+          <option value="10000">1억 이하</option>
+          <option value="99999">1억 초과</option>
+        </select>
+      </div>
+      <div class="tool-group">
+        <div class="tool-label">관심 분야</div>
+        <select class="tool-select" id="toolInterest">
+          <option value="">전체</option>
+          <option value="주거">주거·대출</option>
+          <option value="육아">육아·출산</option>
+          <option value="취업">취업·창업</option>
+          <option value="교육">교육·학자금</option>
+          <option value="복지">복지·의료</option>
+          <option value="금융">금융·세금</option>
+        </select>
+      </div>
+    </div>
+    <button class="tool-btn" onclick="findBenefits()">지원금 찾기</button>
   </div>
 </div>
 
+<!-- 결과 -->
 <div class="container">
+  <div class="result-section" id="resultSection">
+    <div class="result-header" id="resultHeader"></div>
+    <div id="resultList"></div>
+    <button class="result-reset" onclick="resetTool()">다시 검색</button>
+  </div>
+
+  <!-- 게시판 -->
   <div class="board">
     <div class="board-header">
       <div class="board-title">전체 글</div>
       <div class="board-count" id="boardCount"></div>
+    </div>
+    <div class="search-box">
+      <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" placeholder="글 검색" id="searchInput" oninput="doSearch()">
     </div>
     <div id="boardList"></div>
     <div class="paging" id="paging"></div>
@@ -104,75 +193,161 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 </footer>
 
 <script>
-let allPosts = [], filtered = [], page = 1;
-const PER = 10;
+/* ── 지원금 DB (정부24 API 기반 주요 서비스) ── */
+const BENEFITS = [
+  {name:'근로장려금',desc:'저소득 근로자 가구에 최대 330만원 지급',age:[19,69],income:3800,family:['single','couple','child','single_parent'],cat:'금융',tags:['근로소득','국세청']},
+  {name:'자녀장려금',desc:'저소득 가구 자녀 1인당 최대 100만원',age:[19,69],income:4000,family:['child','multi','single_parent'],cat:'금융',tags:['자녀양육','국세청']},
+  {name:'청년 월세 지원',desc:'청년 월세 최대 월 20만원 지원',age:[19,39],income:5000,family:['single','couple'],cat:'주거',tags:['청년','월세']},
+  {name:'주거안정 월세대출',desc:'저금리 월세자금 대출 최대 1200만원',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['대출','월세']},
+  {name:'디딤돌대출',desc:'무주택 서민 주택구입 저금리 대출',age:[19,69],income:6000,family:['single','couple','child','multi','single_parent'],cat:'주거',tags:['주택구입','대출']},
+  {name:'신생아 특례대출',desc:'출산가구 주택구입 특례 저금리 (1.6%~)',age:[19,49],income:13000,family:['child','multi'],cat:'주거',tags:['출산','대출']},
+  {name:'버팀목 전세대출',desc:'서민·청년·신혼 전세자금 저금리 대출',age:[19,69],income:5000,family:['single','couple','child','single_parent'],cat:'주거',tags:['전세','대출']},
+  {name:'청년 전세임대',desc:'청년에게 전세주택 저렴 임대',age:[19,39],income:5000,family:['single'],cat:'주거',tags:['청년','임대']},
+  {name:'기초연금',desc:'만 65세 이상 소득 하위 70% 최대 월 33만원',age:[59,99],income:99999,family:['single','couple','senior'],cat:'복지',tags:['노인','연금']},
+  {name:'아동수당',desc:'만 8세 미만 아동 월 10만원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['아동','수당']},
+  {name:'부모급여',desc:'만 0~1세 아동 월 100만원 (0세) / 50만원 (1세)',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['영아','출산']},
+  {name:'양육수당',desc:'어린이집·유치원 미이용 아동 월 10~20만원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'육아',tags:['양육','보육']},
+  {name:'유아학비 지원 (누리과정)',desc:'만 3~5세 유치원비 월 28만원 지원',age:[19,49],income:99999,family:['child','multi','single_parent'],cat:'교육',tags:['유아','학비']},
+  {name:'한부모가족 양육비',desc:'한부모가정 자녀 양육비 월 20만원+',age:[19,59],income:6000,family:['single_parent'],cat:'복지',tags:['한부모','양육']},
+  {name:'국민취업지원제도',desc:'구직자 월 50만원 수당 + 취업지원 서비스',age:[19,69],income:3000,family:['single','couple','child','single_parent'],cat:'취업',tags:['구직','수당']},
+  {name:'청년도약계좌',desc:'월 70만원 납입 시 정부기여금 + 비과세',age:[19,39],income:7500,family:['single','couple'],cat:'금융',tags:['청년','저축']},
+  {name:'청년내일저축계좌',desc:'월 10만원 저축 시 정부 월 30만원 매칭',age:[19,39],income:2400,family:['single','couple'],cat:'금융',tags:['청년','저축']},
+  {name:'주거급여',desc:'소득 하위 가구 임차료/수선비 지원',age:[19,99],income:2000,family:['single','couple','child','multi','senior','single_parent'],cat:'주거',tags:['저소득','임차']},
+  {name:'교육급여',desc:'소득 하위 가구 교육활동지원비 지원',age:[19,69],income:2000,family:['child','multi','single_parent'],cat:'교육',tags:['저소득','학비']},
+  {name:'국가장학금',desc:'대학생 소득분위별 등록금 지원',age:[19,39],income:10000,family:['single','couple','child','single_parent'],cat:'교육',tags:['대학','장학금']},
+  {name:'다자녀 자동차 취득세 감면',desc:'3자녀 이상 차량 취득세 면제/감면',age:[19,69],income:99999,family:['multi'],cat:'금융',tags:['다자녀','세금']},
+  {name:'출산축하금',desc:'지자체별 출산 시 축하금 50~300만원',age:[19,49],income:99999,family:['child','multi'],cat:'육아',tags:['출산','축하금']},
+  {name:'스포츠강좌 이용권',desc:'저소득 가구 자녀 스포츠 활동비 월 9만원',age:[19,59],income:3000,family:['child','multi','single_parent'],cat:'교육',tags:['체육','바우처']},
+  {name:'에너지 바우처',desc:'저소득 가구 냉난방비 지원',age:[19,99],income:2000,family:['single','couple','senior','single_parent'],cat:'복지',tags:['저소득','에너지']},
+  {name:'긴급복지지원',desc:'위기상황 가구 긴급 생계·의료·주거 지원',age:[19,99],income:99999,family:['single','couple','child','multi','senior','single_parent'],cat:'복지',tags:['긴급','위기']},
+];
 
-async function loadPosts() {
-  try {
-    const r = await fetch('/blog/posts.json');
-    if (!r.ok) throw 0;
-    allPosts = await r.json();
-    filtered = allPosts;
-    render();
-  } catch(e) {
-    document.getElementById('boardList').innerHTML = '<div class="empty">아직 발행된 글이 없습니다.</div>';
+function findBenefits() {
+  const age = parseInt(document.getElementById('toolAge').value) || 0;
+  const family = document.getElementById('toolFamily').value;
+  const income = parseInt(document.getElementById('toolIncome').value) || 0;
+  const interest = document.getElementById('toolInterest').value;
+
+  if (!age || !family || !income) {
+    alert('나이, 가구 유형, 연소득을 모두 선택해주세요.');
+    return;
   }
-}
 
-function render() {
-  const total = filtered.length;
-  const pages = Math.ceil(total / PER) || 1;
-  if (page > pages) page = pages;
-  const start = (page - 1) * PER;
-  const slice = filtered.slice(start, start + PER);
+  const results = BENEFITS.filter(b => {
+    if (age < b.age[0] || age > b.age[1]) return false;
+    if (income > b.income) return false;
+    if (!b.family.includes(family)) return false;
+    if (interest && b.cat !== interest) return false;
+    return true;
+  });
 
-  document.getElementById('boardCount').textContent = total + '건';
+  const sec = document.getElementById('resultSection');
+  const header = document.getElementById('resultHeader');
+  const list = document.getElementById('resultList');
+  sec.classList.add('show');
 
-  const list = document.getElementById('boardList');
-  if (!total) { list.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>'; }
-  else {
-    list.innerHTML = slice.map((p, i) => {
-      const num = total - start - i;
-      const date = (p.date_iso || '').replace(/-/g, '.');
-      return `<a href="/blog/${p.slug}.html" class="board-row">
-        <div class="board-num">${num}</div>
-        <div class="board-body">
-          <div class="board-row-title">${p.title}</div>
-          <div class="board-row-desc">${p.meta_description || ''}</div>
-        </div>
-        <div class="board-date">${date}</div>
-      </a>`;
+  if (!results.length) {
+    header.innerHTML = '조건에 맞는 지원금을 찾지 못했습니다.';
+    list.innerHTML = '<div class="result-empty">관심 분야를 "전체"로 바꿔서 다시 검색해보세요.</div>';
+  } else {
+    header.innerHTML = '받을 수 있는 지원금 <strong>' + results.length + '건</strong>';
+    list.innerHTML = results.map(function(b) {
+      var slug = findPostSlug(b.name);
+      var link = slug ? '/blog/' + slug + '.html' : '#';
+      var tagHtml = b.tags.map(function(t){ return '<span class="result-tag">' + t + '</span>'; }).join('');
+      return '<a href="' + link + '" class="result-card" style="display:block;text-decoration:none;color:inherit;">' +
+        '<div class="result-name">' + b.name + '</div>' +
+        '<div class="result-desc">' + b.desc + '</div>' +
+        '<div class="result-tags"><span class="result-tag green">' + b.cat + '</span>' + tagHtml + '</div>' +
+        '</a>';
     }).join('');
   }
 
-  const pg = document.getElementById('paging');
-  if (pages <= 1) { pg.innerHTML = ''; return; }
-  let html = `<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>&lt;</button>`;
-  for (let i = 1; i <= pages; i++) {
-    html += `<button class="page-btn${i===page?' active':''}" onclick="goPage(${i})">${i}</button>`;
+  sec.scrollIntoView({behavior:'smooth'});
+}
+
+function findPostSlug(name) {
+  var post = allPosts.find(function(p) {
+    return (p.keyword && p.keyword.includes(name)) || (p.title && p.title.includes(name));
+  });
+  return post ? post.slug : '';
+}
+
+function resetTool() {
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('toolAge').value = '';
+  document.getElementById('toolFamily').value = '';
+  document.getElementById('toolIncome').value = '';
+  document.getElementById('toolInterest').value = '';
+}
+
+/* ── 게시판 ── */
+var allPosts = [], filtered = [], page = 1;
+var PER = 10;
+
+function loadPosts() {
+  fetch('/blog/posts.json').then(function(r) {
+    if (!r.ok) throw 0;
+    return r.json();
+  }).then(function(data) {
+    allPosts = data;
+    filtered = allPosts;
+    render();
+  }).catch(function() {
+    document.getElementById('boardList').innerHTML = '<div class="empty">아직 발행된 글이 없습니다.</div>';
+  });
+}
+
+function render() {
+  var total = filtered.length;
+  var pages = Math.ceil(total / PER) || 1;
+  if (page > pages) page = pages;
+  var start = (page - 1) * PER;
+  var slice = filtered.slice(start, start + PER);
+
+  document.getElementById('boardCount').textContent = total + '건';
+  var list = document.getElementById('boardList');
+  if (!total) { list.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>'; }
+  else {
+    list.innerHTML = slice.map(function(p, i) {
+      var num = total - start - i;
+      var date = (p.date_iso || '').replace(/-/g, '.');
+      return '<a href="/blog/' + p.slug + '.html" class="board-row">' +
+        '<div class="board-num">' + num + '</div>' +
+        '<div class="board-body"><div class="board-row-title">' + p.title + '</div>' +
+        '<div class="board-row-desc">' + (p.meta_description || '') + '</div></div>' +
+        '<div class="board-date">' + date + '</div></a>';
+    }).join('');
   }
-  html += `<button class="page-btn" onclick="goPage(${page+1})" ${page===pages?'disabled':''}>&gt;</button>`;
+
+  var pg = document.getElementById('paging');
+  if (pages <= 1) { pg.innerHTML = ''; return; }
+  var html = '<button class="page-btn" onclick="goPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&lt;</button>';
+  for (var i = 1; i <= pages; i++) {
+    html += '<button class="page-btn' + (i===page?' active':'') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+  }
+  html += '<button class="page-btn" onclick="goPage(' + (page+1) + ')"' + (page===pages?' disabled':'') + '>&gt;</button>';
   pg.innerHTML = html;
 }
 
-function goPage(p) { page = p; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function goPage(p) { page = p; render(); window.scrollTo({top:document.querySelector('.board').offsetTop - 20,behavior:'smooth'}); }
 
 function doSearch() {
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  var q = document.getElementById('searchInput').value.trim().toLowerCase();
   page = 1;
   if (!q) { filtered = allPosts; }
   else {
-    filtered = allPosts.filter(p => {
-      const t = `${p.title||''} ${p.meta_description||''} ${(p.tags||[]).join(' ')} ${p.keyword||''}`.toLowerCase();
-      return t.includes(q);
+    filtered = allPosts.filter(function(p) {
+      var t = (p.title||'') + ' ' + (p.meta_description||'') + ' ' + (p.tags||[]).join(' ') + ' ' + (p.keyword||'');
+      return t.toLowerCase().indexOf(q) !== -1;
     });
   }
   render();
 }
 
 function trackVisitor() {
-  const today = new Date().toISOString().slice(0,10);
-  const s = JSON.parse(localStorage.getItem('eloan_v') || '{}');
+  var today = new Date().toISOString().slice(0,10);
+  var s = JSON.parse(localStorage.getItem('eloan_v') || '{}');
   if (!s.t) s.t = 0; if (!s.d) s.d = ''; if (!s.c) s.c = 0;
   if (s.d !== today) { s.c = 0; s.d = today; }
   if (!sessionStorage.getItem('ev')) { s.t++; s.c++; sessionStorage.setItem('ev','1'); localStorage.setItem('eloan_v',JSON.stringify(s)); }

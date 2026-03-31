@@ -111,24 +111,6 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
 .form-input:focus { outline:none; border-color:var(--primary); background:#fff; }
 .form-input.changed { border-color:var(--warning); background:#FFFBEB; }
 
-/* Status */
-.status-bar {
-  position:fixed; bottom:0; left:0; right:0; z-index:200;
-  background:var(--card); border-top:1px solid var(--border);
-  padding:12px 20px; display:none; box-shadow:0 -4px 20px rgba(0,0,0,0.1);
-}
-.status-bar.show { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.status-text { font-size:13px; color:var(--text-sub); }
-.status-text strong { color:var(--warning); }
-.save-btn {
-  height:42px; border:none; border-radius:var(--radius-sm);
-  background:var(--accent); color:#fff; font-size:14px; font-weight:700;
-  padding:0 24px; cursor:pointer; font-family:inherit; white-space:nowrap;
-  transition:background 0.2s;
-}
-.save-btn:hover { background:#00A374; }
-.save-btn:disabled { background:var(--text-light); cursor:not-allowed; }
-
 /* Toast */
 .toast {
   position:fixed; top:80px; left:50%; transform:translateX(-50%);
@@ -306,23 +288,21 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
 
   <main class="container" style="padding:20px 20px 120px;">
 
-    <!-- 자동 업데이트 -->
-    <div class="auto-card">
-      <h2>자동 업데이트</h2>
-      <p>공식 사이트에서 최신 금리·한도 정보를 자동으로 가져옵니다</p>
-      <button class="auto-btn" id="autoBtn" onclick="autoUpdate()">최신 데이터 가져오기</button>
-      <div class="auto-log" id="autoLog"></div>
-    </div>
-
     <!-- 글쓰기 -->
     <div class="writer-card">
       <h2>블로그 글쓰기</h2>
-      <p>키워드를 입력하면 Gemini AI로 글을 생성하고 GitHub에 바로 발행합니다</p>
+      <p>공공서비스 API에서 데이터를 가져와 Gemini가 SEO 최적화 글을 작성합니다</p>
       <div class="gemini-key-row">
         <input type="password" class="gemini-key-input" id="geminiKey" placeholder="Gemini API Key">
         <button class="gemini-key-save" onclick="saveGeminiKey()">저장</button>
       </div>
-      <input type="text" class="writer-input" id="writerKeyword" placeholder="키워드 입력 (예: 2026 디딤돌대출 조건)" onkeydown="if(event.key==='Enter')generatePost()">
+      <div class="gemini-key-row">
+        <input type="password" class="gemini-key-input" id="govApiKey" placeholder="정부24 API Key">
+        <button class="gemini-key-save" onclick="saveGovKey()">저장</button>
+      </div>
+      <button class="writer-btn" id="fetchSvcBtn" onclick="fetchServices()" style="margin-bottom:10px;background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">공공서비스 불러오기</button>
+      <div id="svcList" style="display:none;max-height:300px;overflow-y:auto;margin-bottom:10px;border-radius:10px;"></div>
+      <input type="text" class="writer-input" id="writerKeyword" placeholder="또는 키워드 직접 입력" onkeydown="if(event.key==='Enter')generatePost()">
       <button class="writer-btn" id="writerBtn" onclick="generatePost()">글 생성하기</button>
       <div class="writer-log" id="writerLog"></div>
       <div class="writer-result" id="writerResult">
@@ -333,230 +313,13 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
       </div>
     </div>
 
-    <!-- 미리보기 -->
-    <div class="preview-card" id="previewCard">
-      <div class="preview-title">변경사항 미리보기</div>
-      <div id="previewBody"></div>
-      <button class="apply-btn" id="applyBtn" onclick="applyAndSave()">변경사항 적용 + GitHub 저장</button>
-    </div>
-
-    <!-- GitHub 설정 -->
-    <div class="settings-card">
-      <div class="settings-title">GitHub 연동 상태</div>
-      <div id="githubStatus" style="font-size:12px;color:var(--text-sub);">확인 중...</div>
-    </div>
-
-    <!-- 디딤돌 -->
-    <div class="section-header">
-      <div class="section-title">디딤돌대출</div>
-      <span class="section-badge" style="background:#E8F0FE;color:#1B65E3;">주택구입</span>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="dot" style="background:#1B65E3;"></div>금리 및 한도</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">최저금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="didimdol.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">최고금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="didimdol.rateMax">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">일반한도 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.limits.general">
-        </div>
-        <div class="form-group">
-          <label class="form-label">생애최초 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.limits.firstTime">
-        </div>
-        <div class="form-group">
-          <label class="form-label">신혼/2자녀 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.limits.newlywed">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">소득기준-일반 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.incomeLimit.general">
-        </div>
-        <div class="form-group">
-          <label class="form-label">소득-생애최초</label>
-          <input type="number" class="form-input" data-path="didimdol.incomeLimit.firstTime">
-        </div>
-        <div class="form-group">
-          <label class="form-label">소득-신혼</label>
-          <input type="number" class="form-input" data-path="didimdol.incomeLimit.newlywed">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">주택가-일반 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.housePrice.general">
-        </div>
-        <div class="form-group">
-          <label class="form-label">주택가-신혼 (만원)</label>
-          <input type="number" class="form-input" data-path="didimdol.housePrice.newlywed">
-        </div>
-      </div>
-    </div>
-
-    <!-- 신생아특례 -->
-    <div class="section-header">
-      <div class="section-title">신생아특례대출</div>
-      <span class="section-badge" style="background:#E6F9F1;color:#059669;">구입+전세</span>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="dot" style="background:#00C48C;"></div>주택구입 금리/한도</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">구입 최저금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="baby.purchase.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">구입 최고금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="baby.purchase.rateMax">
-        </div>
-        <div class="form-group">
-          <label class="form-label">구입한도 (만원)</label>
-          <input type="number" class="form-input" data-path="baby.purchase.limit">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">전세 최저금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="baby.lease.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">전세 최고금리 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="baby.lease.rateMax">
-        </div>
-        <div class="form-group">
-          <label class="form-label">전세한도 (만원)</label>
-          <input type="number" class="form-input" data-path="baby.lease.limit">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">소득기준 (만원)</label>
-          <input type="number" class="form-input" data-path="baby.incomeLimit">
-        </div>
-        <div class="form-group">
-          <label class="form-label">자산기준 (만원)</label>
-          <input type="number" class="form-input" data-path="baby.assetLimit">
-        </div>
-      </div>
-    </div>
-
-    <!-- 보금자리론 -->
-    <div class="section-header">
-      <div class="section-title">보금자리론</div>
-      <span class="section-badge" style="background:#F0EAFF;color:#7C3AED;">고정금리</span>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="dot" style="background:#7C3AED;"></div>금리 및 한도</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">아낌e 최저 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="bogeumjari.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">아낌e 최고 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="bogeumjari.rateMax">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">일반한도 (만원)</label>
-          <input type="number" class="form-input" data-path="bogeumjari.limits.general">
-        </div>
-        <div class="form-group">
-          <label class="form-label">다자녀 (만원)</label>
-          <input type="number" class="form-input" data-path="bogeumjari.limits.multiChild">
-        </div>
-        <div class="form-group">
-          <label class="form-label">생애최초 (만원)</label>
-          <input type="number" class="form-input" data-path="bogeumjari.limits.firstTime">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">소득-일반 (만원)</label>
-          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.general">
-        </div>
-        <div class="form-group">
-          <label class="form-label">소득-신혼</label>
-          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.newlywed">
-        </div>
-        <div class="form-group">
-          <label class="form-label">소득-다자녀</label>
-          <input type="number" class="form-input" data-path="bogeumjari.incomeLimit.multiChild">
-        </div>
-      </div>
-    </div>
-
-    <!-- 버팀목 -->
-    <div class="section-header">
-      <div class="section-title">버팀목전세대출</div>
-      <span class="section-badge" style="background:#FFF0E8;color:#FF6B35;">전세자금</span>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="dot" style="background:#FF6B35;"></div>유형별 금리</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">일반 최저 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.general.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">일반 최고 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.general.rateMax">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">청년 최저 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.youth.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">청년 최고 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.youth.rateMax">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">신혼 최저 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.newlywed.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">신혼 최고 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.newlywed.rateMax">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">신생아 최저 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.babySpecial.rateMin">
-        </div>
-        <div class="form-group">
-          <label class="form-label">신생아 최고 (%)</label>
-          <input type="number" step="0.01" class="form-input" data-path="buteommok.types.babySpecial.rateMax">
-        </div>
-      </div>
+    <!-- 발행된 글 목록 -->
+    <div class="settings-card" style="margin-bottom:20px;">
+      <div class="settings-title">발행된 글 (<span id="postCount">0</span>건)</div>
+      <div id="postList" style="font-size:12px;color:var(--text-sub);max-height:200px;overflow-y:auto;">로딩 중...</div>
     </div>
 
   </main>
-
-  <!-- Status Bar -->
-  <div class="status-bar" id="statusBar">
-    <div class="status-text"><strong id="changeCount">0</strong>개 항목 변경됨</div>
-    <button class="save-btn" id="saveBtn" onclick="saveChanges()">GitHub에 저장</button>
-  </div>
 
 </div>
 
@@ -569,26 +332,14 @@ const ADMIN_CRED_KEY = 'eloan_admin_cred_hash';
 const GH_TOKEN_KEY = 'eloan_gh_token';
 const GH_REPO_KEY = 'eloan_gh_repo';
 const GEMINI_KEY_KEY = 'eloan_gemini_key';
-const DATA_PATH = 'data/rates.json';
+const GOV_KEY_KEY = 'eloan_gov_api_key';
 const BLOG_DIR = 'blog';
 const SITE_URL = 'https://eloan.kr';
-const SITE_NAME = '정책대출 가이드 | eloan.kr';
+const SITE_NAME = '공공서비스 가이드 | eloan.kr';
 
-let currentData = null;
-let originalData = null;
-let changeCount = 0;
 let generatedArticle = null;
-
-function getNestedValue(obj, path) {
-  return path.split('.').reduce((o, k) => o && o[k], obj);
-}
-
-function setNestedValue(obj, path, value) {
-  const keys = path.split('.');
-  const last = keys.pop();
-  const target = keys.reduce((o, k) => o[k], obj);
-  target[last] = value;
-}
+let existingPosts = [];
+let selectedService = null;
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -639,7 +390,7 @@ async function doLogin() {
 
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminPanel').classList.add('show');
-  loadData();
+  loadExistingPosts();
 }
 
 function doLogout() {
@@ -656,358 +407,129 @@ async function ghGet(path) {
   const token = localStorage.getItem(GH_TOKEN_KEY);
   const repo = localStorage.getItem(GH_REPO_KEY);
   const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-    headers: {
-      'Authorization': `token ${token}`,
-      'Accept': 'application/vnd.github.v3+json'
-    }
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
   });
   if (!resp.ok) throw new Error(`GitHub GET failed: ${resp.status}`);
   return resp.json();
 }
 
-async function ghPut(path, content, message, sha) {
-  const token = localStorage.getItem(GH_TOKEN_KEY);
-  const repo = localStorage.getItem(GH_REPO_KEY);
-  const body = {
-    message: message,
-    content: btoa(unescape(encodeURIComponent(content))),
-    branch: 'main'
-  };
-  if (sha) body.sha = sha;
-
-  const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${path}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `token ${token}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-  if (!resp.ok) throw new Error(`GitHub PUT failed: ${resp.status}`);
-  return resp.json();
-}
-
-/* ── Load Data ── */
-async function loadData() {
+/* ── Load Existing Posts (중복 체크용) ── */
+async function loadExistingPosts() {
   try {
-    document.getElementById('githubStatus').textContent = 'GitHub에서 데이터 로딩 중...';
-
-    const file = await ghGet(DATA_PATH);
-    const content = decodeURIComponent(escape(atob(file.content)));
-    currentData = JSON.parse(content);
-    currentData._sha = file.sha;
-    originalData = JSON.parse(content);
-
-    document.getElementById('githubStatus').innerHTML =
-      '<span style="color:#059669;">연결됨</span> · ' + localStorage.getItem(GH_REPO_KEY);
-    document.getElementById('lastUpdated').textContent =
-      '최종: ' + (currentData.lastUpdated || '-');
-
-    populateForm();
-    showToast('데이터 로드 완료', 'success');
-  } catch (e) {
-    document.getElementById('githubStatus').innerHTML =
-      '<span style="color:#EF4444;">연결 실패</span> · ' + e.message;
-    showToast('데이터 로드 실패: ' + e.message, 'error');
-  }
-}
-
-/* ── Populate Form ── */
-function populateForm() {
-  document.querySelectorAll('.form-input[data-path]').forEach(input => {
-    const val = getNestedValue(currentData, input.dataset.path);
-    if (val !== undefined) input.value = val;
-
-    input.addEventListener('input', function() {
-      const origVal = getNestedValue(originalData, this.dataset.path);
-      const newVal = this.type === 'number' ? parseFloat(this.value) : this.value;
-
-      if (String(origVal) !== String(newVal)) {
-        this.classList.add('changed');
-      } else {
-        this.classList.remove('changed');
-      }
-
-      setNestedValue(currentData, this.dataset.path, newVal);
-      updateChangeCount();
+    const token = localStorage.getItem(GH_TOKEN_KEY);
+    const repo = localStorage.getItem(GH_REPO_KEY);
+    const resp = await fetch(`https://api.github.com/repos/${repo}/contents/${BLOG_DIR}/posts.json`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
     });
-  });
-}
+    if (resp.ok) {
+      const data = await resp.json();
+      existingPosts = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+    }
+  } catch(e) { existingPosts = []; }
 
-function updateChangeCount() {
-  changeCount = document.querySelectorAll('.form-input.changed').length;
-  document.getElementById('changeCount').textContent = changeCount;
+  document.getElementById('postCount').textContent = existingPosts.length;
+  document.getElementById('lastUpdated').textContent = existingPosts.length + '건 발행됨';
 
-  const bar = document.getElementById('statusBar');
-  if (changeCount > 0) {
-    bar.classList.add('show');
+  const listEl = document.getElementById('postList');
+  if (existingPosts.length === 0) {
+    listEl.textContent = '발행된 글이 없습니다.';
   } else {
-    bar.classList.remove('show');
+    listEl.innerHTML = existingPosts.map(p =>
+      `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${p.date_iso || ''} · ${p.title}</div>`
+    ).join('');
   }
 }
 
-/* ── Save ── */
-async function saveChanges() {
-  const btn = document.getElementById('saveBtn');
+function isAlreadyWritten(serviceName) {
+  return existingPosts.some(p =>
+    p.keyword && (p.keyword.includes(serviceName) || serviceName.includes(p.keyword))
+  );
+}
+
+/* ── Gov24 API ── */
+function saveGovKey() {
+  const key = document.getElementById('govApiKey').value.trim();
+  if (!key) return;
+  localStorage.setItem(GOV_KEY_KEY, key);
+  showToast('정부24 API Key 저장됨', 'success');
+}
+
+async function fetchServices() {
+  const govKey = localStorage.getItem(GOV_KEY_KEY);
+  if (!govKey) { showToast('정부24 API Key를 먼저 입력하세요', 'error'); return; }
+
+  const btn = document.getElementById('fetchSvcBtn');
   btn.disabled = true;
-  btn.textContent = '저장 중...';
+  btn.textContent = '불러오는 중...';
 
   try {
-    // Update timestamp
-    currentData.lastUpdated = new Date().toISOString().split('T')[0];
+    const resp = await fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=1&perPage=50&returnType=JSON`);
+    if (!resp.ok) throw new Error('API 오류: ' + resp.status);
+    const data = await resp.json();
+    const services = data.data || [];
 
-    // Remove internal fields
-    const saveData = JSON.parse(JSON.stringify(currentData));
-    delete saveData._sha;
+    const listEl = document.getElementById('svcList');
+    listEl.style.display = 'block';
+    listEl.innerHTML = services.map((svc, i) => {
+      const name = svc['서비스명'] || '';
+      const summary = svc['서비스목적요약'] || '';
+      const dept = svc['소관기관명'] || '';
+      const svcId = svc['서비스ID'] || '';
+      const duplicate = isAlreadyWritten(name);
+      return `<div onclick="selectService(${i})" data-idx="${i}" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;opacity:${duplicate?'0.4':'1'};${duplicate?'text-decoration:line-through;':''}">
+        <div style="font-size:14px;font-weight:600;">${duplicate?'[작성됨] ':''}${name}</div>
+        <div style="font-size:11px;opacity:0.7;margin-top:2px;">${dept} · ${summary.slice(0,60)}</div>
+      </div>`;
+    }).join('');
 
-    const content = JSON.stringify(saveData, null, 2);
-
-    await ghPut(
-      DATA_PATH,
-      content,
-      `데이터 업데이트: ${currentData.lastUpdated}`,
-      currentData._sha
-    );
-
-    // Reload to get new SHA
-    const file = await ghGet(DATA_PATH);
-    currentData._sha = file.sha;
-    originalData = JSON.parse(JSON.stringify(saveData));
-
-    // Reset change indicators
-    document.querySelectorAll('.form-input.changed').forEach(i => i.classList.remove('changed'));
-    updateChangeCount();
-
-    document.getElementById('lastUpdated').textContent = '최종: ' + currentData.lastUpdated;
-
-    showToast('GitHub에 저장 완료! 사이트에 자동 반영됩니다.', 'success');
-  } catch (e) {
-    showToast('저장 실패: ' + e.message, 'error');
+    window._svcData = services;
+    writerLog(`${services.length}건 로드 (작성됨 제외하고 선택하세요)`, 'info');
+  } catch(e) {
+    showToast('서비스 목록 로드 실패: ' + e.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'GitHub에 저장';
+    btn.textContent = '공공서비스 불러오기';
   }
 }
 
-/* ── Auto Update ── */
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-let fetchedRates = {};
+async function selectService(idx) {
+  const svc = window._svcData[idx];
+  const name = svc['서비스명'] || '';
 
-function log(msg, type) {
-  const el = document.getElementById('autoLog');
-  el.classList.add('show');
-  const cls = type || 'info';
-  el.innerHTML += `<div class="${cls}">${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
-}
-
-async function fetchViaProxy(url) {
-  const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
-  if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
-  return resp.text();
-}
-
-function extractNumbers(html, patterns) {
-  const results = {};
-  for (const [key, regex] of Object.entries(patterns)) {
-    const match = html.match(regex);
-    if (match) results[key] = parseFloat(match[1]);
+  if (isAlreadyWritten(name)) {
+    showToast('이미 작성된 서비스입니다', 'error');
+    return;
   }
-  return results;
-}
 
-async function fetchHFRates() {
-  log('한국주택금융공사 금리 조회 중...');
-  try {
-    const html = await fetchViaProxy('https://www.hf.go.kr/ko/sub01/sub01_01_04.do');
-    // 보금자리론 금리 파싱
-    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
-    const validRates = rateMatches.filter(r => r >= 2.0 && r <= 8.0);
-    if (validRates.length >= 2) {
-      fetchedRates['bogeumjari.rateMin'] = Math.min(...validRates);
-      fetchedRates['bogeumjari.rateMax'] = Math.max(...validRates);
-      log(`보금자리론: ${fetchedRates['bogeumjari.rateMin']}% ~ ${fetchedRates['bogeumjari.rateMax']}%`, 'ok');
-    } else {
-      log('보금자리론 금리 파싱 실패 - 수동 확인 필요', 'warn');
+  selectedService = svc;
+  document.getElementById('writerKeyword').value = name;
+  document.getElementById('svcList').style.display = 'none';
+
+  // 상세 정보도 가져오기
+  const govKey = localStorage.getItem(GOV_KEY_KEY);
+  const svcId = svc['서비스ID'];
+  if (govKey && svcId) {
+    try {
+      writerLog(`${name} 상세정보 조회 중...`, 'info');
+      const [detailResp, condResp] = await Promise.all([
+        fetch(`https://api.odcloud.kr/api/gov24/v3/serviceDetail?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`),
+        fetch(`https://api.odcloud.kr/api/gov24/v3/supportConditions?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`)
+      ]);
+      if (detailResp.ok) {
+        const d = await detailResp.json();
+        selectedService._detail = (d.data || [])[0] || {};
+      }
+      if (condResp.ok) {
+        const c = await condResp.json();
+        selectedService._conditions = c.data || [];
+      }
+      writerLog('상세정보 로드 완료', 'ok');
+    } catch(e) {
+      writerLog('상세정보 로드 실패 (기본 정보로 진행)', 'warn');
     }
-  } catch (e) {
-    log('HF 사이트 접근 실패: ' + e.message, 'err');
-  }
-}
-
-async function fetchDidimdolRates() {
-  log('주택도시기금 디딤돌 금리 조회 중...');
-  try {
-    const html = await fetchViaProxy('https://www.hf.go.kr/ko/sub01/sub01_02_03.do');
-    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
-    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
-    if (validRates.length >= 2) {
-      fetchedRates['didimdol.rateMin'] = Math.min(...validRates);
-      fetchedRates['didimdol.rateMax'] = Math.max(...validRates);
-      log(`디딤돌: ${fetchedRates['didimdol.rateMin']}% ~ ${fetchedRates['didimdol.rateMax']}%`, 'ok');
-    } else {
-      log('디딤돌 금리 파싱 실패 - 수동 확인 필요', 'warn');
-    }
-  } catch (e) {
-    log('디딤돌 금리 접근 실패: ' + e.message, 'err');
-  }
-}
-
-async function fetchMyHomeData() {
-  log('마이홈포털 신생아특례 조회 중...');
-  try {
-    const html = await fetchViaProxy('https://www.myhome.go.kr/hws/portal/cont/selectBabySpecialCaseStepStoneLoneView.do');
-    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
-    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
-    if (validRates.length >= 2) {
-      fetchedRates['baby.purchase.rateMin'] = Math.min(...validRates);
-      fetchedRates['baby.purchase.rateMax'] = Math.max(...validRates);
-      log(`신생아특례 구입: ${fetchedRates['baby.purchase.rateMin']}% ~ ${fetchedRates['baby.purchase.rateMax']}%`, 'ok');
-    } else {
-      log('신생아특례 금리 파싱 실패 - 수동 확인 필요', 'warn');
-    }
-  } catch (e) {
-    log('마이홈 접근 실패: ' + e.message, 'err');
-  }
-}
-
-async function fetchBuddyRates() {
-  log('버팀목 전세대출 금리 조회 중...');
-  try {
-    const html = await fetchViaProxy('https://www.myhome.go.kr/hws/portal/cont/selectSupLeaseLoanView.do');
-    const rateMatches = [...html.matchAll(/(\d+\.\d+)\s*%/g)].map(m => parseFloat(m[1]));
-    const validRates = rateMatches.filter(r => r >= 1.0 && r <= 5.0);
-    if (validRates.length >= 2) {
-      const sortedRates = validRates.sort((a,b) => a - b);
-      fetchedRates['buteommok.types.general.rateMin'] = sortedRates[0];
-      fetchedRates['buteommok.types.general.rateMax'] = sortedRates[sortedRates.length - 1];
-      log(`버팀목 일반: ${sortedRates[0]}% ~ ${sortedRates[sortedRates.length-1]}%`, 'ok');
-    } else {
-      log('버팀목 금리 파싱 실패 - 수동 확인 필요', 'warn');
-    }
-  } catch (e) {
-    log('버팀목 접근 실패: ' + e.message, 'err');
-  }
-}
-
-async function autoUpdate() {
-  const btn = document.getElementById('autoBtn');
-  const logEl = document.getElementById('autoLog');
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>가져오는 중...';
-  logEl.innerHTML = '';
-  logEl.classList.add('show');
-  fetchedRates = {};
-
-  log('공식 사이트에서 최신 데이터를 가져옵니다...', 'info');
-  log('─────────────────────────────', 'info');
-
-  // 병렬로 모든 소스에서 가져오기
-  await Promise.allSettled([
-    fetchHFRates(),
-    fetchDidimdolRates(),
-    fetchMyHomeData(),
-    fetchBuddyRates()
-  ]);
-
-  log('─────────────────────────────', 'info');
-
-  const keys = Object.keys(fetchedRates);
-  if (keys.length > 0) {
-    log(`총 ${keys.length}개 항목 가져오기 성공!`, 'ok');
-    showPreview();
-  } else {
-    log('가져온 데이터가 없습니다. CORS 프록시 제한일 수 있습니다.', 'warn');
-    log('아래 수동 편집으로 직접 업데이트해주세요.', 'info');
   }
 
-  btn.disabled = false;
-  btn.innerHTML = '다시 가져오기';
-}
-
-function showPreview() {
-  const card = document.getElementById('previewCard');
-  const body = document.getElementById('previewBody');
-  card.classList.add('show');
-
-  const labels = {
-    'didimdol.rateMin': '디딤돌 최저금리',
-    'didimdol.rateMax': '디딤돌 최고금리',
-    'bogeumjari.rateMin': '보금자리론 최저금리',
-    'bogeumjari.rateMax': '보금자리론 최고금리',
-    'baby.purchase.rateMin': '신생아특례 구입 최저금리',
-    'baby.purchase.rateMax': '신생아특례 구입 최고금리',
-    'buteommok.types.general.rateMin': '버팀목 일반 최저금리',
-    'buteommok.types.general.rateMax': '버팀목 일반 최고금리'
-  };
-
-  let html = '';
-  for (const [path, newVal] of Object.entries(fetchedRates)) {
-    const oldVal = getNestedValue(currentData, path);
-    const label = labels[path] || path;
-    const changed = oldVal !== newVal;
-
-    html += `<div class="preview-row">
-      <span>${label}</span>
-      <span>${changed
-        ? `<span class="preview-old">${oldVal}%</span> → <span class="preview-new">${newVal}%</span>`
-        : `<span class="preview-same">${oldVal}% (변동없음)</span>`
-      }</span>
-    </div>`;
-  }
-
-  body.innerHTML = html;
-  card.scrollIntoView({ behavior: 'smooth' });
-}
-
-async function applyAndSave() {
-  const btn = document.getElementById('applyBtn');
-  btn.disabled = true;
-  btn.textContent = '저장 중...';
-
-  try {
-    // 가져온 데이터 적용
-    for (const [path, val] of Object.entries(fetchedRates)) {
-      setNestedValue(currentData, path, val);
-    }
-
-    // 타임스탬프 업데이트
-    currentData.lastUpdated = new Date().toISOString().split('T')[0];
-
-    // GitHub에 저장
-    const saveData = JSON.parse(JSON.stringify(currentData));
-    delete saveData._sha;
-    const content = JSON.stringify(saveData, null, 2);
-
-    await ghPut(DATA_PATH, content,
-      `자동 업데이트: ${currentData.lastUpdated} (금리 갱신)`,
-      currentData._sha
-    );
-
-    // SHA 갱신
-    const file = await ghGet(DATA_PATH);
-    currentData._sha = file.sha;
-    originalData = JSON.parse(JSON.stringify(saveData));
-
-    // 폼 갱신
-    populateForm();
-    document.querySelectorAll('.form-input.changed').forEach(i => i.classList.remove('changed'));
-    updateChangeCount();
-
-    document.getElementById('lastUpdated').textContent = '최종: ' + currentData.lastUpdated;
-    document.getElementById('previewCard').classList.remove('show');
-
-    showToast('자동 업데이트 완료! GitHub에 저장되었습니다.', 'success');
-    log('GitHub 저장 완료!', 'ok');
-  } catch (e) {
-    showToast('저장 실패: ' + e.message, 'error');
-    log('저장 실패: ' + e.message, 'err');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '변경사항 적용 + GitHub 저장';
-  }
+  showToast(`"${name}" 선택됨 - 글 생성하기를 누르세요`, 'success');
 }
 
 /* ── Writer: Gemini Key ── */
@@ -1040,13 +562,6 @@ function cleanHtml(text) {
   return text.replace(/```html\s*/g, '').replace(/```\s*/g, '').trim();
 }
 
-const SECTIONS = [
-  { name: '도입 + 자격조건', instruction: `첫 번째 섹션을 작성해주세요.\n[내용]\n- 첫 문장에서 바로 핵심 정보 (누가, 얼마, 언제)\n- 이 제도가 뭔지 2~3문장으로 설명\n- 자격 조건 상세 (나이, 소득, 자산, 주택 조건 등)\n- 조건별로 해당/비해당 사례 예시\n[분량] 1500자 이상` },
-  { name: '지원 내용 + 금액 상세', instruction: `두 번째 섹션을 작성해주세요.\n[내용]\n- 지원 금액 (최소~최대)\n- 금리 또는 지원 비율\n- 지원 기간\n- 기존 제도와 달라진 점 (올해 변경사항)\n- 구체적 계산 예시\n[분량] 1500자 이상` },
-  { name: '신청 방법 단계별', instruction: `세 번째 섹션을 작성해주세요.\n[내용]\n- 신청 방법 단계별 설명\n- 온라인 신청 경로\n- 오프라인 신청 가능 여부\n- 필요 서류 목록\n- 서류 준비 팁\n[분량] 1500자 이상` },
-  { name: '주의사항 + FAQ', instruction: `마지막 섹션을 작성해주세요.\n[내용]\n- 신청 시 흔한 실수 3~5가지\n- 거절 사유 Top 3\n- 자주 묻는 질문 5개 (Q&A 형식)\n- 관련 제도 안내\n- 실용적 팁으로 마무리\n[분량] 1500자 이상` }
-];
-
 function writerLog(msg, cls) {
   const el = document.getElementById('writerLog');
   el.classList.add('show');
@@ -1054,10 +569,38 @@ function writerLog(msg, cls) {
   el.scrollTop = el.scrollHeight;
 }
 
+function buildServiceContext() {
+  if (!selectedService) return '';
+  const s = selectedService;
+  const d = s._detail || {};
+  const conds = (s._conditions || []).map(c => `${c['지원조건명']}: ${c['지원조건내용']}`).join('\n');
+  return `
+[공공서비스 API 원본 데이터 - 반드시 이 정보를 기반으로 작성]
+서비스명: ${s['서비스명'] || ''}
+서비스목적: ${d['서비스목적'] || s['서비스목적요약'] || ''}
+지원대상: ${d['지원대상'] || s['지원대상'] || ''}
+지원내용: ${d['지원내용'] || ''}
+선정기준: ${d['선정기준'] || ''}
+신청방법: ${d['신청방법'] || s['신청방법'] || ''}
+신청기한: ${d['신청기한'] || ''}
+구비서류: ${d['구비서류'] || ''}
+문의처: ${d['문의처전화번호'] || ''}
+온라인신청: ${d['온라인신청사이트URL'] || ''}
+소관기관: ${s['소관기관명'] || ''}
+${conds ? '지원조건:\n' + conds : ''}
+`;
+}
+
 async function generatePost() {
   const keyword = document.getElementById('writerKeyword').value.trim();
-  if (!keyword) { showToast('키워드를 입력해주세요', 'error'); return; }
+  if (!keyword) { showToast('서비스를 선택하거나 키워드를 입력하세요', 'error'); return; }
   if (!localStorage.getItem(GEMINI_KEY_KEY)) { showToast('Gemini API Key를 먼저 입력하세요', 'error'); return; }
+
+  // 중복 체크
+  if (isAlreadyWritten(keyword)) {
+    showToast('이미 작성된 주제입니다!', 'error');
+    return;
+  }
 
   const btn = document.getElementById('writerBtn');
   const logEl = document.getElementById('writerLog');
@@ -1068,38 +611,100 @@ async function generatePost() {
   document.getElementById('writerResult').classList.remove('show');
   generatedArticle = null;
 
+  const svcContext = buildServiceContext();
+  const year = new Date().getFullYear();
+
   try {
-    writerLog(`키워드: ${keyword}`, 'info');
-    let accumulated = '';
+    // 1단계: 롱테일 키워드 제목 생성
+    writerLog('[1/3] SEO 롱테일 키워드 제목 생성 중...', 'info');
+    const titlePrompt = `당신은 한국 SEO 전문가입니다.
 
-    for (let i = 0; i < SECTIONS.length; i++) {
-      const sec = SECTIONS[i];
-      writerLog(`[${i+1}/4] ${sec.name} 생성 중...`, 'info');
+아래 공공서비스에 대해 검색 유입이 높은 롱테일 키워드 제목을 만들어주세요.
 
-      const prevPart = accumulated ? `\n[이전 섹션 - 문맥 이어서 작성]\n${accumulated.slice(-2000)}` : '';
-      const prompt = `당신은 한국 정부 지원금/정책대출 전문 블로거입니다.\n키워드: ${keyword}\n현재 섹션: ${sec.name}\n\n[필수 규칙]\n1. HTML 태그로 작성 (<h2>, <h3>, <p>, <ul>, <li> 사용)\n2. "~에 대해 알아보겠습니다" 같은 AI 투 표현 금지\n3. 구어체로 작성 ("~해요", "~이에요", "~거든요")\n4. 구체적인 금액, 날짜, 조건 반드시 포함\n5. "결론적으로", "마무리하며" 같은 표현 금지\n6. "또한,", "아울러," 같은 AI 연결어 금지\n7. 이전 섹션과 자연스럽게 이어지도록 작성\n8. HTML 코드만 반환\n\n${sec.instruction}${prevPart}`;
+서비스명: ${keyword}
+${svcContext}
 
-      const resp = await callGemini(prompt);
-      const html = cleanHtml(resp);
-      accumulated += '\n' + html;
-      writerLog(`  ${sec.name} 완료 (${html.length}자)`, 'ok');
+[규칙]
+1. 반드시 JSON만 응답
+2. title: 롱테일 키워드 제목 (40~60자). "2026 OOO 조건 신청방법 총정리" 같은 패턴
+3. 사람들이 실제로 검색할 법한 구체적 키워드 조합
+4. 연도(${year}) 반드시 포함
+5. "조건", "신청방법", "자격", "대상", "금액" 등 검색 의도 키워드 포함
+6. meta_description: 155자 이내, 핵심 정보 포함
+7. tags: SEO 관련 태그 5~7개
+
+{"title":"","meta_description":"","tags":[]}`;
+
+    const titleResp = await callGemini(titlePrompt);
+    const titleClean = titleResp.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    let title, metaDesc, tags;
+    try {
+      const m = JSON.parse(titleClean);
+      title = m.title || `${year} ${keyword} 조건 신청방법 총정리`;
+      metaDesc = m.meta_description || keyword;
+      tags = m.tags || [];
+    } catch(e) {
+      title = `${year} ${keyword} 조건 신청방법 총정리`;
+      metaDesc = keyword;
+      tags = [keyword];
+    }
+    writerLog(`제목: ${title}`, 'ok');
+
+    // 2단계: Gemini가 추가 조사 + 본문 생성
+    writerLog('[2/3] 본문 생성 중 (추가 정보 보강)...', 'info');
+    const contentPrompt = `당신은 한국 정부 지원금/공공서비스 전문 블로거입니다.
+아래 공공서비스 데이터를 기반으로, 추가로 알려진 정보를 더해 종합적인 블로그 글을 작성하세요.
+
+제목: ${title}
+${svcContext}
+
+[필수 규칙]
+1. HTML 태그로 작성 (<h2>, <h3>, <p>, <ul>, <li>, <table> 활용)
+2. 반드시 아래 구조로 작성:
+   - <h2>로 시작하는 섹션 4~5개
+   - 1) ${keyword}란? (제도 개요 + 핵심 수치)
+   - 2) 지원대상 및 자격조건 (구체적 조건표)
+   - 3) 지원내용 및 금액 (구체적 금액, 비율, 기간)
+   - 4) 신청방법 및 필요서류 (단계별 설명)
+   - 5) 주의사항 및 자주 묻는 질문 (FAQ 5개)
+3. API 데이터에 있는 수치/조건은 정확히 반영
+4. API에 없는 부분은 일반적으로 알려진 정보로 보강 (추측은 "확인 필요"로 표기)
+5. 구어체 ("~해요", "~거든요", "~이에요")
+6. "~에 대해 알아보겠습니다" 같은 AI 투 표현 절대 금지
+7. "또한,", "아울러,", "결론적으로" 같은 AI 연결어 금지
+8. 전체 6000자 이상
+9. HTML 코드만 반환 (다른 설명 없이)
+10. <table>을 활용해서 조건/금액을 보기 좋게 정리`;
+
+    const contentResp = await callGemini(contentPrompt);
+    const content = cleanHtml(contentResp);
+    writerLog(`본문 완료 (${content.length}자)`, 'ok');
+
+    // 3단계: 품질 보강 (짧으면 추가 생성)
+    let finalContent = content;
+    if (content.length < 4000) {
+      writerLog('[3/3] 본문이 짧아서 보강 중...', 'info');
+      const boostPrompt = `아래 블로그 글에 내용을 추가해주세요. 기존 글 뒤에 이어서 작성합니다.
+
+[기존 글]
+${content.slice(-2000)}
+
+[추가할 내용]
+- 실제 사례 예시 2~3개 (구체적 인물/상황 설정)
+- 비슷한 다른 지원제도와 비교표
+- 신청 시 자주 하는 실수와 팁
+- FAQ 추가 3~5개
+
+[규칙] HTML 태그로 작성. 구어체. 2000자 이상. HTML만 반환.`;
+      const boostResp = await callGemini(boostPrompt);
+      finalContent += '\n' + cleanHtml(boostResp);
+      writerLog(`보강 완료 (총 ${finalContent.length}자)`, 'ok');
+    } else {
+      writerLog('[3/3] 분량 충분, 보강 생략', 'ok');
     }
 
-    writerLog('제목/메타 생성 중...', 'info');
-    const metaPrompt = `아래 블로그 글의 제목, 메타디스크립션, 태그를 만들어주세요.\n키워드: ${keyword}\n\n[글 내용 요약]\n${accumulated.slice(0, 1500)}\n\n[규칙]\n1. 반드시 JSON 형식으로만 응답\n2. 제목: 키워드 포함, 클릭 유도형, 30자 이내\n3. 메타디스크립션: 155자 이내\n4. 태그: 관련 태그 5개\n\n{"title":"","meta_description":"","tags":[]}`;
-    const metaResp = await callGemini(metaPrompt);
-    const metaClean = metaResp.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-
-    let title = keyword, metaDesc = keyword, tags = [];
-    try {
-      const meta = JSON.parse(metaClean);
-      title = meta.title || keyword;
-      metaDesc = meta.meta_description || keyword;
-      tags = meta.tags || [];
-    } catch(e) { writerLog('메타 파싱 실패, 키워드를 제목으로 사용', 'warn'); }
-
-    generatedArticle = { title, content: accumulated.trim(), meta_description: metaDesc, tags, keyword };
-    writerLog(`완료! 제목: ${title} (${accumulated.length}자)`, 'ok');
+    generatedArticle = { title, content: finalContent, meta_description: metaDesc, tags, keyword };
+    writerLog(`완료! "${title}" (${finalContent.length}자)`, 'ok');
 
     document.getElementById('writerTitle').textContent = title;
     document.getElementById('writerMeta').textContent = metaDesc;
@@ -1152,11 +757,11 @@ function buildPostHtml(article) {
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-inner"><a href="${SITE_URL}" class="topbar-logo">eloan.kr<span>정책대출 가이드</span></a><nav class="topbar-nav"><a href="${SITE_URL}">계산기</a><a href="${SITE_URL}/${BLOG_DIR}/">가이드</a></nav></div></div>
+<div class="topbar"><div class="topbar-inner"><a href="${SITE_URL}" class="topbar-logo">eloan.kr<span>공공서비스 가이드</span></a><nav class="topbar-nav"><a href="${SITE_URL}">홈</a><a href="${SITE_URL}/${BLOG_DIR}/">가이드</a></nav></div></div>
 <div class="breadcrumb"><a href="${SITE_URL}">홈</a><span>›</span><a href="${SITE_URL}/${BLOG_DIR}/">가이드</a><span>›</span>${kw}</div>
 <div class="article-header"><div class="article-category">정책대출</div><h1>${t}</h1><div class="article-meta-bar"><span>${dateStr}</span><div class="dot"></div><span>정책대출 가이드</span><div class="dot"></div><span>읽는 시간 약 ${readMin}분</span></div></div>
 <div class="article-layout"><article class="article-content">${c}<div class="article-tags">${tagsHtml}</div></article>
-<aside class="sidebar"><div class="sidebar-card"><div class="sidebar-title">관련 계산기</div><a href="${SITE_URL}/didimdol.html" class="sidebar-item">디딤돌대출 계산기</a><a href="${SITE_URL}/buteommok.html" class="sidebar-item">버팀목 전세대출 계산기</a><a href="${SITE_URL}/baby.html" class="sidebar-item">신생아 특례대출 계산기</a><a href="${SITE_URL}/bogeumjari.html" class="sidebar-item">보금자리론 계산기</a><a href="${SITE_URL}/${BLOG_DIR}/" class="sidebar-cta">전체 가이드 보기 →</a></div></aside></div>
+<aside class="sidebar"><div class="sidebar-card"><div class="sidebar-title">공공서비스 가이드</div><a href="${SITE_URL}/${BLOG_DIR}/" class="sidebar-cta">전체 글 보기 →</a></div></aside></div>
 <footer class="footer"><div class="footer-inner"><p><a href="${SITE_URL}"><strong>eloan.kr</strong></a></p><div class="footer-divider"></div><p>본 사이트는 참고용 정보를 제공하며 금융 자문을 제공하지 않습니다.<br>정확한 대출 조건은 <a href="https://www.hf.go.kr">한국주택금융공사</a> 또는 취급은행에 문의하세요.<br><br>&copy; 2026 eloan.kr</p></div></footer>
 </body></html>`;
 }
@@ -1243,6 +848,12 @@ async function uploadPost() {
     const postUrl = `${SITE_URL}/${BLOG_DIR}/${slug}.html`;
     writerLog(`발행 완료! ${postUrl}`, 'ok');
     showToast('글이 발행되었습니다!', 'success');
+
+    // 발행 후 목록 갱신
+    existingPosts = posts;
+    selectedService = null;
+    document.getElementById('writerKeyword').value = '';
+    loadExistingPosts();
 
   } catch(e) {
     writerLog('발행 실패: ' + e.message, 'err');

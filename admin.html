@@ -1151,8 +1151,8 @@ function buildPostHtml(article) {
   h.push('<' + '/style>');
   h.push('<' + '/head>');
   h.push('<body>');
-  h.push('<div class="topbar"><div class="topbar-inner"><a href="' + SITE_URL + '" class="topbar-logo">eloan.kr<span>대출 가이드<' + '/span><' + '/a><nav class="topbar-nav"><a href="' + SITE_URL + '">홈<' + '/a><a href="' + SITE_URL + '/' + BLOG_DIR + '/">대출정보<' + '/a><' + '/nav><' + '/div><' + '/div>');
-  h.push('<div class="breadcrumb"><a href="' + SITE_URL + '">홈<' + '/a><span>›<' + '/span><a href="' + SITE_URL + '/' + BLOG_DIR + '/">가이드<' + '/a><span>›<' + '/span>' + kw + '<' + '/div>');
+  h.push('<div class="topbar"><div class="topbar-inner"><a href="' + SITE_URL + '" class="topbar-logo">eloan.kr<span>대출 가이드<' + '/span><' + '/a><nav class="topbar-nav"><a href="' + SITE_URL + '">홈<' + '/a><a href="' + SITE_URL + '#boardSection">대출정보<' + '/a><' + '/nav><' + '/div><' + '/div>');
+  h.push('<div class="breadcrumb"><a href="' + SITE_URL + '">홈<' + '/a><span>›<' + '/span><a href="' + SITE_URL + '#boardSection">대출정보<' + '/a><span>›<' + '/span>' + kw + '<' + '/div>');
   h.push('<div class="article-header"><div class="article-category">' + (article.category || '대출정보') + '<' + '/div><h1>' + t + '<' + '/h1><div class="article-meta-bar"><span>' + dateStr + '<' + '/span><div class="dot"><' + '/div><span>eloan.kr<' + '/span><div class="dot"><' + '/div><span>읽는 시간 약 ' + readMin + '분<' + '/span><' + '/div><' + '/div>');
   h.push('<div class="article-layout"><article class="article-content">');
   h.push(c);

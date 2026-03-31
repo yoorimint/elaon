@@ -269,8 +269,8 @@ def build_post_html(article):
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-inner"><a href="{SITE_URL}" class="topbar-logo">eloan.kr<span>대출 가이드</span></a><nav class="topbar-nav"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}/{BLOG_DIR}/">대출정보</a></nav></div></div>
-<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}/{BLOG_DIR}/">대출정보</a><span>›</span>{kw}</div>
+<div class="topbar"><div class="topbar-inner"><a href="{SITE_URL}" class="topbar-logo">eloan.kr<span>대출 가이드</span></a><nav class="topbar-nav"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}#boardSection">대출정보</a></nav></div></div>
+<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}#boardSection">대출정보</a><span>›</span>{kw}</div>
 <div class="article-header"><div class="article-category">{article.get('category', '대출정보')}</div><h1>{t}</h1><div class="article-meta-bar"><span>{date_str}</span><div class="dot"></div><span>eloan.kr</span><div class="dot"></div><span>읽는 시간 약 {read_min}분</span></div></div>
 <div class="article-layout"><article class="article-content">
 {c}

@@ -111,14 +111,19 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 .footer{text-align:center;padding:32px 0;font-size:11px;color:#8B95A1}
 
-.posts-section{margin-top:20px;padding:0}
-.posts-title{font-size:15px;font-weight:700;color:#333D4B;margin-bottom:12px;padding-left:4px}
-.post-list{list-style:none;padding:0;margin:0}
-.post-item{display:block;padding:12px 14px;margin-bottom:8px;background:#fff;border:1px solid #E5E8EB;border-radius:10px;text-decoration:none;transition:border-color .15s}
-.post-item:hover{border-color:#3182F6}
-.post-item-title{font-size:13px;font-weight:600;color:#333D4B;line-height:1.4}
-.post-item-meta{font-size:11px;color:#8B95A1;margin-top:4px}
-.post-item-tag{display:inline-block;font-size:10px;color:#3182F6;background:#EBF5FF;padding:1px 6px;border-radius:3px;margin-right:4px}
+.board-section{margin-top:24px;padding:0 0 32px}
+.board-title{font-size:16px;font-weight:700;color:#333D4B;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #333D4B}
+.board-list{margin:0;padding:0}
+.board-row{display:flex;align-items:center;padding:12px 8px;border-bottom:1px solid #E5E8EB;text-decoration:none;transition:background .1s}
+.board-row:hover{background:#F8F9FA}
+.board-row-cat{flex-shrink:0;font-size:11px;font-weight:600;color:#3182F6;background:#EBF5FF;padding:2px 8px;border-radius:4px;margin-right:10px}
+.board-row-title{flex:1;font-size:14px;font-weight:600;color:#333D4B;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board-row-date{flex-shrink:0;font-size:12px;color:#8B95A1;margin-left:10px}
+.board-paging{display:flex;justify-content:center;gap:6px;margin-top:16px}
+.board-page{min-width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid #E5E8EB;border-radius:6px;font-size:13px;color:#333D4B;background:#fff;cursor:pointer;text-decoration:none}
+.board-page:hover{border-color:#3182F6;color:#3182F6}
+.board-page.active{background:#3182F6;color:#fff;border-color:#3182F6}
+.board-empty{text-align:center;padding:40px 0;color:#8B95A1;font-size:14px}
 
 .row-group{display:flex;gap:12px;align-items:flex-start}
 .row-item{flex:1;min-width:0}
@@ -500,8 +505,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
 </div>
 
-<div class="posts-section" id="postsSection"></div>
-
 </div><!-- /pageCalc -->
 
 <div id="guideDidimdol" class="page">
@@ -792,6 +795,12 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   &copy; 2026 eloan.kr
 </div>
 
+<div id="boardSection" class="board-section">
+  <div class="board-title">대출 정보 게시판</div>
+  <div id="boardList" class="board-list"></div>
+  <div id="boardPaging" class="board-paging"></div>
+</div>
+
 </div>
 
 <script>
@@ -1032,25 +1041,43 @@ function addCount(){
   document.getElementById('calcCount').textContent=total.toLocaleString();
 }
 
-// 관련글 로드
+// 게시판 로드
+var boardPosts=[];
+var boardPage=1;
+var boardPerPage=10;
+function renderBoard(page){
+  boardPage=page;
+  var list=document.getElementById('boardList');
+  var paging=document.getElementById('boardPaging');
+  if(!boardPosts.length){list.innerHTML='<div class="board-empty">아직 등록된 글이 없습니다.</div>';paging.innerHTML='';return;}
+  var total=Math.ceil(boardPosts.length/boardPerPage);
+  var start=(page-1)*boardPerPage;
+  var end=Math.min(start+boardPerPage,boardPosts.length);
+  var html='';
+  for(var i=start;i<end;i++){
+    var p=boardPosts[i];
+    html+='<a class="board-row" href="blog/'+p.slug+'.html">'
+      +'<span class="board-row-cat">'+(p.category||'대출')+'</span>'
+      +'<span class="board-row-title">'+p.title+'</span>'
+      +'<span class="board-row-date">'+(p.date||'')+'</span>'
+      +'</a>';
+  }
+  list.innerHTML=html;
+  var ph='';
+  if(total>1){
+    if(page>1)ph+='<a class="board-page" onclick="renderBoard('+(page-1)+');return false;" href="#">‹</a>';
+    for(var j=1;j<=total;j++){
+      ph+='<a class="board-page'+(j===page?' active':'')+'" onclick="renderBoard('+j+');return false;" href="#">'+j+'</a>';
+    }
+    if(page<total)ph+='<a class="board-page" onclick="renderBoard('+(page+1)+');return false;" href="#">›</a>';
+  }
+  paging.innerHTML=ph;
+}
 (function(){
   fetch('blog/posts.json').then(function(r){return r.json()}).then(function(posts){
-    if(!posts||!posts.length)return;
-    var sec=document.getElementById('postsSection');
-    var max=5;
-    var html='<div class="posts-title">관련 대출정보</div><div class="post-list">';
-    for(var i=0;i<Math.min(posts.length,max);i++){
-      var p=posts[i];
-      var tags='';
-      if(p.tags){for(var j=0;j<Math.min(p.tags.length,2);j++){tags+='<span class="post-item-tag">'+p.tags[j]+'</span>';}}
-      html+='<a class="post-item" href="blog/'+p.slug+'.html">'
-        +'<div class="post-item-title">'+p.title+'</div>'
-        +'<div class="post-item-meta">'+tags+p.date+'</div>'
-        +'</a>';
-    }
-    html+='</div>';
-    sec.innerHTML=html;
-  }).catch(function(){});
+    boardPosts=posts||[];
+    renderBoard(1);
+  }).catch(function(){renderBoard(1);});
 })();
 </script>
 </body>

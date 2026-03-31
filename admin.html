@@ -949,40 +949,43 @@ function buildPostHtml(article) {
   const c = article.content;
   const md = article.meta_description;
   const kw = article.keyword;
-  const tagsHtml = article.tags.map(tg => `      <span class="article-tag">${tg}</span>`).join('\n');
+  const tagsHtml = article.tags.map(function(tg) { return '<span class="article-tag">' + tg + '<\/span>'; }).join('\n');
   const now = new Date();
-  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const dateStr = now.getFullYear() + '.' + String(now.getMonth()+1).padStart(2,'0') + '.' + String(now.getDate()).padStart(2,'0');
   const dateIso = now.toISOString().slice(0,10);
   const slug = makeSlug(t);
   const textOnly = c.replace(/<[^>]+>/g, '');
   const readMin = Math.max(1, Math.floor(textOnly.length / 500));
-
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${t} | ${SITE_NAME}</title>
-<meta name="description" content="${md}">
-<meta property="og:title" content="${t}">
-<meta property="og:description" content="${md}">
-<meta property="og:type" content="article">
-<link rel="canonical" href="${SITE_URL}/${BLOG_DIR}/${slug}.html">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root{--navy:#0D1B3E;--navy-light:#1A2D5A;--blue:#2563EB;--gold:#B8860B;--gold-light:#D4A933;--bg:#FAFBFC;--white:#FFFFFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;--border-light:#F3F4F6}*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased}.topbar{background:var(--navy);padding:10px 0;border-bottom:2px solid var(--gold)}.topbar-inner{max-width:800px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center}.topbar-logo{color:#fff;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:1px}.topbar-logo span{color:var(--gold-light);font-weight:300;font-size:11px;margin-left:8px;letter-spacing:0}.topbar-nav{display:flex;gap:20px}.topbar-nav a{color:rgba(255,255,255,0.7);text-decoration:none;font-size:12px;transition:color 0.2s}.topbar-nav a:hover{color:#fff}.breadcrumb{max-width:800px;margin:0 auto;padding:14px 24px;font-size:12px;color:var(--text-muted)}.breadcrumb a{color:var(--text-muted);text-decoration:none}.breadcrumb a:hover{color:var(--blue)}.breadcrumb span{margin:0 6px}.article-header{max-width:800px;margin:0 auto;padding:8px 24px 32px}.article-category{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:#EFF6FF;padding:3px 10px;border-radius:3px;margin-bottom:14px;letter-spacing:0.5px}.article-header h1{font-size:28px;font-weight:700;color:var(--navy);line-height:1.4;letter-spacing:-0.5px;margin-bottom:16px}.article-meta-bar{display:flex;align-items:center;gap:16px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}.dot{width:3px;height:3px;border-radius:50%;background:var(--text-muted)}.article-layout{max-width:800px;margin:0 auto;padding:0 24px 60px;display:grid;grid-template-columns:1fr;gap:24px}@media(min-width:768px){.article-layout{grid-template-columns:1fr 220px;gap:40px}}.article-content{min-width:0}.article-content h2{font-size:20px;font-weight:700;color:var(--navy);margin:40px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border);letter-spacing:-0.3px}.article-content h2:first-child{margin-top:0}.article-content h3{font-size:16px;font-weight:600;color:var(--navy-light);margin:28px 0 10px}.article-content p{font-size:15px;color:var(--text-sub);margin-bottom:16px;line-height:1.9;word-break:keep-all}.article-content strong{color:var(--navy);font-weight:600}.article-content ul,.article-content ol{margin:14px 0 18px 0;padding:0;list-style:none}.article-content ul li{position:relative;padding-left:16px;margin-bottom:8px;font-size:15px;color:var(--text-sub);line-height:1.8}.article-content ul li::before{content:'—';position:absolute;left:0;color:var(--gold);font-weight:700}.article-content ol{counter-reset:item}.article-content ol li{counter-increment:item;position:relative;padding-left:28px;margin-bottom:12px;font-size:15px;color:var(--text-sub);line-height:1.8}.article-content ol li::before{content:counter(item);position:absolute;left:0;top:3px;width:20px;height:20px;border:1.5px solid var(--navy);border-radius:50%;font-size:11px;font-weight:600;color:var(--navy);display:flex;align-items:center;justify-content:center}.article-content table{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:14px}.article-content thead{background:var(--navy)}.article-content th{color:#fff;font-weight:500;padding:11px 16px;text-align:left;font-size:13px}.article-content td{padding:11px 16px;border-bottom:1px solid var(--border-light);color:var(--text-sub)}.article-content tr:nth-child(even) td{background:#F9FAFB}.article-content td strong{color:var(--blue)}.article-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}.article-tag{font-size:12px;color:var(--text-muted);background:var(--border-light);padding:3px 10px;border-radius:3px}.sidebar{display:none}@media(min-width:768px){.sidebar{display:block}}.sidebar-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}.sidebar-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}.sidebar-item{display:block;font-size:13px;color:var(--text-sub);text-decoration:none;padding:8px 0;border-bottom:1px solid var(--border-light);transition:color 0.2s}.sidebar-item:last-child{border-bottom:none}.sidebar-item:hover{color:var(--blue)}.sidebar-cta{display:block;background:var(--navy);color:#fff;text-align:center;padding:14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;transition:background 0.2s;margin-top:6px}.sidebar-cta:hover{background:var(--navy-light)}.footer{background:var(--navy);padding:32px 0;margin-top:40px}.footer-inner{max-width:800px;margin:0 auto;padding:0 24px;text-align:center}.footer p{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.9}.footer a{color:rgba(255,255,255,0.7);text-decoration:none}.footer a:hover{color:#fff}.footer-divider{width:40px;height:1px;background:rgba(255,255,255,0.15);margin:16px auto}
-</style>
-</head>
-<body>
-<div class="topbar"><div class="topbar-inner"><a href="${SITE_URL}" class="topbar-logo">eloan.kr<span>공공서비스 가이드</span></a><nav class="topbar-nav"><a href="${SITE_URL}">홈</a><a href="${SITE_URL}/${BLOG_DIR}/">가이드</a></nav></div></div>
-<div class="breadcrumb"><a href="${SITE_URL}">홈</a><span>›</span><a href="${SITE_URL}/${BLOG_DIR}/">가이드</a><span>›</span>${kw}</div>
-<div class="article-header"><div class="article-category">공공서비스</div><h1>${t}</h1><div class="article-meta-bar"><span>${dateStr}</span><div class="dot"></div><span>eloan.kr</span><div class="dot"></div><span>읽는 시간 약 ${readMin}분</span></div></div>
-<div class="article-layout"><article class="article-content">${c}<div class="article-tags">${tagsHtml}</div></article>
-<aside class="sidebar"><div class="sidebar-card"><div class="sidebar-title">공공서비스 가이드</div><a href="${SITE_URL}/${BLOG_DIR}/" class="sidebar-cta">전체 글 보기 →</a></div></aside></div>
-<footer class="footer"><div class="footer-inner"><p><a href="${SITE_URL}"><strong>eloan.kr</strong></a> · 공공서비스 가이드</p><div class="footer-divider"></div><p>본 사이트의 정보는 정부 공공데이터를 기반으로 작성되었습니다.<br>정확한 조건과 신청은 해당 기관에 직접 확인하세요.<br><br>&copy; ${now.getFullYear()} eloan.kr</p></div></footer>
-</body></html>`;
+  var h = [];
+  h.push('<!DOCTYPE html>');
+  h.push('<html lang="ko">');
+  h.push('<head>');
+  h.push('<meta charset="UTF-8">');
+  h.push('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  h.push('<title>' + t + ' | ' + SITE_NAME + '<\/title>');
+  h.push('<meta name="description" content="' + md + '">');
+  h.push('<meta property="og:title" content="' + t + '">');
+  h.push('<meta property="og:description" content="' + md + '">');
+  h.push('<meta property="og:type" content="article">');
+  h.push('<link rel="canonical" href="' + SITE_URL + '/' + BLOG_DIR + '/' + slug + '.html">');
+  h.push('<link rel="preconnect" href="https://fonts.googleapis.com">');
+  h.push('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>');
+  h.push('<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">');
+  h.push('<style>');
+  h.push(':root{--navy:#0D1B3E;--navy-light:#1A2D5A;--blue:#2563EB;--gold:#B8860B;--gold-light:#D4A933;--bg:#FAFBFC;--white:#FFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;--border-light:#F3F4F6}*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Noto Sans KR",-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8}.topbar{background:var(--navy);padding:10px 0;border-bottom:2px solid var(--gold)}.topbar-inner{max-width:800px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center}.topbar-logo{color:#fff;text-decoration:none;font-size:16px;font-weight:700}.topbar-logo span{color:var(--gold-light);font-weight:300;font-size:11px;margin-left:8px}.topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:12px;margin-left:16px}.topbar-nav a:hover{color:#fff}.breadcrumb{max-width:800px;margin:0 auto;padding:14px 24px;font-size:12px;color:var(--text-muted)}.breadcrumb a{color:var(--text-muted);text-decoration:none}.breadcrumb span{margin:0 6px}.article-header{max-width:800px;margin:0 auto;padding:8px 24px 32px}.article-category{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:#EFF6FF;padding:3px 10px;border-radius:3px;margin-bottom:14px}.article-header h1{font-size:28px;font-weight:700;color:var(--navy);line-height:1.4;margin-bottom:16px}.article-meta-bar{display:flex;align-items:center;gap:16px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}.dot{width:3px;height:3px;border-radius:50%;background:var(--text-muted)}.article-layout{max-width:800px;margin:0 auto;padding:0 24px 60px}.article-content h2{font-size:20px;font-weight:700;color:var(--navy);margin:40px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border)}.article-content h2:first-child{margin-top:0}.article-content h3{font-size:16px;font-weight:600;color:var(--navy-light);margin:28px 0 10px}.article-content p{font-size:15px;color:var(--text-sub);margin-bottom:16px;line-height:1.9;word-break:keep-all}.article-content strong{color:var(--navy);font-weight:600}.article-content ul,.article-content ol{margin:14px 0 18px;padding:0;list-style:none}.article-content ul li{position:relative;padding-left:16px;margin-bottom:8px;font-size:15px;color:var(--text-sub);line-height:1.8}.article-content ul li::before{content:"—";position:absolute;left:0;color:var(--gold);font-weight:700}.article-content ol{counter-reset:item}.article-content ol li{counter-increment:item;position:relative;padding-left:28px;margin-bottom:12px;font-size:15px;color:var(--text-sub)}.article-content ol li::before{content:counter(item);position:absolute;left:0;top:3px;width:20px;height:20px;border:1.5px solid var(--navy);border-radius:50%;font-size:11px;font-weight:600;color:var(--navy);display:flex;align-items:center;justify-content:center}.article-content table{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:14px}.article-content thead{background:var(--navy)}.article-content th{color:#fff;font-weight:500;padding:11px 16px;text-align:left;font-size:13px}.article-content td{padding:11px 16px;border-bottom:1px solid var(--border-light);color:var(--text-sub)}.article-content tr:nth-child(even) td{background:#F9FAFB}.article-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}.article-tag{font-size:12px;color:var(--text-muted);background:var(--border-light);padding:3px 10px;border-radius:3px}.footer{background:var(--navy);padding:32px 0;margin-top:40px}.footer-inner{max-width:800px;margin:0 auto;padding:0 24px;text-align:center}.footer p{font-size:12px;color:rgba(255,255,255,.5);line-height:1.9}.footer a{color:rgba(255,255,255,.7);text-decoration:none}');
+  h.push('<' + '/style>');
+  h.push('<' + '/head>');
+  h.push('<body>');
+  h.push('<div class="topbar"><div class="topbar-inner"><a href="' + SITE_URL + '" class="topbar-logo">eloan.kr<span>공공서비스 가이드<' + '/span><' + '/a><nav class="topbar-nav"><a href="' + SITE_URL + '">홈<' + '/a><a href="' + SITE_URL + '/' + BLOG_DIR + '/">가이드<' + '/a><' + '/nav><' + '/div><' + '/div>');
+  h.push('<div class="breadcrumb"><a href="' + SITE_URL + '">홈<' + '/a><span>›<' + '/span><a href="' + SITE_URL + '/' + BLOG_DIR + '/">가이드<' + '/a><span>›<' + '/span>' + kw + '<' + '/div>');
+  h.push('<div class="article-header"><div class="article-category">공공서비스<' + '/div><h1>' + t + '<' + '/h1><div class="article-meta-bar"><span>' + dateStr + '<' + '/span><div class="dot"><' + '/div><span>eloan.kr<' + '/span><div class="dot"><' + '/div><span>읽는 시간 약 ' + readMin + '분<' + '/span><' + '/div><' + '/div>');
+  h.push('<div class="article-layout"><article class="article-content">');
+  h.push(c);
+  h.push('<div class="article-tags">' + tagsHtml + '<' + '/div>');
+  h.push('<' + '/article><' + '/div>');
+  h.push('<footer class="footer"><div class="footer-inner"><p><a href="' + SITE_URL + '"><strong>eloan.kr<' + '/strong><' + '/a> · 공공서비스 가이드<' + '/p><p>정부 공공데이터 기반 · 정확한 조건은 해당 기관에 확인하세요<br><br>&copy; ' + now.getFullYear() + ' eloan.kr<' + '/p><' + '/div><' + '/footer>');
+  h.push('<' + '/body><' + '/html>');
+  return h.join('\n');
 }
 
 async function uploadPost() {

@@ -858,7 +858,8 @@ function checkEligibility(){
   var loanLimit=effectiveLimit;
   if(single&&age>=30){loanLimit=S.firstTime?20000:15000;}
   var kbP=parseInt(document.getElementById('kbPrice').value)||0;
-  var ltvRate2=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
+  var isSudo3=(S.region==='seoul'||S.region==='metro');
+  var ltvRate2=(S.firstTime&&!isSudo3)?0.8:0.7;
   var ltvBase2=(kbP>0)?Math.min(housePrice,kbP):housePrice;
   var deduct2=DEDUCT[S.region]||5500;
   var isSudo2=(S.region==='seoul'||S.region==='metro');
@@ -962,7 +963,8 @@ function calc(){
   if(S.repay==='equal'){monthly=pmt(P,mr,repayMonths);totalPay=graceInt+monthly*repayMonths;totalInt=totalPay-P;}
   else if(S.repay==='principal'){var pp=P/repayMonths;var bal=P;totalPay=graceInt;for(var i=0;i<repayMonths;i++){totalPay+=pp+bal*mr;bal-=pp;}monthly=pp+P*mr;totalInt=totalPay-P;}
   else{var base=pmt(P,mr,repayMonths);monthly=base*0.7;var coeff=0.7,rem=repayMonths;totalPay=graceInt;while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}totalInt=totalPay-P;monthly=totalPay/totalMonths;}
-  var ltvRate=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
+  var isSudoCalc=(S.region==='seoul'||S.region==='metro');
+  var ltvRate=(S.firstTime&&!isSudoCalc)?0.8:0.7;
   var kbPrice=parseInt(document.getElementById('kbPrice').value)||0;
   var ltvBase=(kbPrice>0)?Math.min(housePrice,kbPrice):housePrice;
   var deduct=DEDUCT[S.region]||5500;

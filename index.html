@@ -16,30 +16,30 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;color:#191F28;line-height:1.5;-webkit-font-smoothing:antialiased}
-.wrap{max-width:480px;margin:0 auto;padding:0 20px 100px}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px 100px}
 
-.header{padding:20px 0 4px}
+.header{padding:24px 0 6px}
 .header-top{display:flex;align-items:center;justify-content:space-between}
 .header h1{font-size:22px;font-weight:800;color:#191F28;letter-spacing:-0.5px}
 .header-badge{font-size:11px;font-weight:600;color:#3182F6;background:rgba(49,130,246,0.08);padding:4px 10px;border-radius:99px}
 .header-sub{font-size:13px;color:#8B95A1;margin-top:4px}
 
-.card{background:#fff;border-radius:16px;padding:24px 20px;margin-top:10px}
-.card-title{font-size:13px;font-weight:700;color:#8B95A1;margin-bottom:16px;letter-spacing:-0.2px}
+.card{background:#fff;border-radius:16px;padding:28px 24px;margin-top:12px}
+.card-title{font-size:13px;font-weight:700;color:#8B95A1;margin-bottom:20px;letter-spacing:-0.2px}
 
-.field{margin-bottom:18px}
+.field{margin-bottom:22px}
 .field:last-child{margin-bottom:0}
-.label{font-size:14px;font-weight:600;color:#333D4B;margin-bottom:8px}
+.label{font-size:14px;font-weight:600;color:#333D4B;margin-bottom:10px}
 .label .unit{font-weight:400;color:#8B95A1;font-size:12px}
 .input-wrap{position:relative}
-.input{width:100%;height:52px;border:1.5px solid #E5E8EB;border-radius:12px;padding:0 50px 0 16px;font-size:22px;font-weight:700;font-family:inherit;color:#191F28;background:#fff;transition:border-color .2s}
+.input{width:100%;height:48px;border:1.5px solid #E5E8EB;border-radius:12px;padding:0 46px 0 14px;font-size:18px;font-weight:700;font-family:inherit;color:#191F28;background:#fff;transition:border-color .2s}
 .input:focus{outline:none;border-color:#3182F6}
-.input::placeholder{color:#B0B8C1;font-weight:500;font-size:16px}
-.input-suffix{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:14px;color:#8B95A1;font-weight:500}
+.input::placeholder{color:#B0B8C1;font-weight:500;font-size:14px}
+.input-suffix{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:13px;color:#8B95A1;font-weight:500}
 .hint{font-size:12px;color:#8B95A1;margin-top:6px}
 
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{height:42px;padding:0 18px;border:1.5px solid #E5E8EB;border-radius:12px;background:#fff;color:#4E5968;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .12s}
+.chip{height:44px;padding:0 20px;border:1.5px solid #E5E8EB;border-radius:12px;background:#fff;color:#4E5968;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .12s}
 .chip:hover{border-color:#3182F6;color:#3182F6}
 .chip.on{background:#3182F6;color:#fff;border-color:#3182F6}
 
@@ -92,14 +92,14 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 .footer{text-align:center;padding:32px 0;font-size:11px;color:#8B95A1}
 
-.row-group{display:flex;gap:10px;align-items:flex-start}
+.row-group{display:flex;gap:12px;align-items:flex-start}
 .row-item{flex:1;min-width:0}
 
 .dti-btn{background:#3182F6!important;color:#fff!important;border-color:#3182F6!important}
 .dti-display{display:inline-block;font-size:18px;font-weight:800;color:#3182F6;min-width:60px;text-align:center}
 
-.chip-half{flex:1;min-width:0;padding:0 8px;text-align:center}
-.chip-flex{flex:1;min-width:0;padding:0 8px;text-align:center}
+.chip-half{flex:1;min-width:0;padding:0;text-align:center;justify-content:center;display:flex;align-items:center}
+.chip-flex{flex:1;min-width:0;padding:0;text-align:center;justify-content:center;display:flex;align-items:center}
 
 .chip.toggle-on{background:#FF6B35;color:#fff;border-color:#FF6B35}
 .chip.toggle-on:hover{background:#E55A2B;border-color:#E55A2B}
@@ -120,16 +120,16 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 <div class="card">
   <div class="card-title">신청자 정보</div>
   <div class="field">
-    <div class="row-group">
-      <div class="row-item">
-        <div class="label">출생년도</div>
+    <div class="label">출생년도</div>
+    <div class="row-group" style="align-items:center">
+      <div class="row-item" style="flex:0 0 140px">
         <div class="input-wrap">
-          <input type="number" class="input" id="birthYear" value="1990" placeholder="1990" style="font-size:18px">
+          <input type="number" class="input" id="birthYear" value="1990" placeholder="1990">
           <span class="input-suffix">년</span>
         </div>
       </div>
-      <div class="row-item" style="flex:0 0 auto;align-self:flex-end;padding-bottom:2px">
-        <div class="hint" id="ageHint" style="margin:0;font-size:14px;font-weight:600;color:#3182F6">만 36세</div>
+      <div style="flex:0 0 auto">
+        <span class="hint" id="ageHint" style="margin:0;font-size:15px;font-weight:700;color:#3182F6">만 36세</span>
       </div>
     </div>
   </div>
@@ -153,14 +153,14 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   </div>
   <div class="field">
     <div class="label">대출유형</div>
-    <div class="row-group" style="gap:6px">
-      <div class="chips" style="flex:1;gap:6px">
+    <div class="row-group" style="align-items:center">
+      <div class="chips" style="flex:1">
         <button class="chip chip-flex on" onclick="setVal(this,'borrower','general')">일반</button>
         <button class="chip chip-flex" onclick="setVal(this,'borrower','newlywed')">신혼부부</button>
         <button class="chip chip-flex" onclick="setVal(this,'borrower','newbaby')">신생아</button>
       </div>
-      <div style="width:1px;background:#E5E8EB;align-self:stretch;margin:0 4px"></div>
-      <div class="chips" style="flex:0 0 auto">
+      <div style="width:1px;height:28px;background:#E5E8EB;margin:0 6px"></div>
+      <div style="flex:0 0 auto">
         <button class="chip" id="firstTimeBtn" onclick="toggleFirstTime(this)">생애최초</button>
       </div>
     </div>
@@ -173,18 +173,32 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   <div class="field">
     <div class="row-group">
       <div class="row-item">
-        <div class="label">매매가격 <span class="unit">(만원)</span></div>
+        <div class="label">매매가격</div>
         <div class="input-wrap">
           <input type="number" class="input" id="housePrice" value="35000" placeholder="35000">
           <span class="input-suffix">만원</span>
         </div>
       </div>
       <div class="row-item">
-        <div class="label">KB시세 <span class="unit">(만원)</span></div>
+        <div class="label">KB시세</div>
         <div class="input-wrap">
           <input type="number" class="input" id="kbPrice" value="" placeholder="시세입력">
           <span class="input-suffix">만원</span>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">전용면적</div>
+    <div class="row-group" style="align-items:center">
+      <div class="row-item" style="flex:0 0 140px">
+        <div class="input-wrap">
+          <input type="number" class="input" id="area" value="" placeholder="84">
+          <span class="input-suffix">㎡</span>
+        </div>
+      </div>
+      <div style="flex:0 0 auto">
+        <span class="hint" id="areaHint" style="margin:0;font-size:13px;color:#8B95A1"></span>
       </div>
     </div>
   </div>
@@ -197,8 +211,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
           <span class="input-suffix">만원</span>
         </div>
       </div>
-      <div style="flex:0 0 auto;display:flex;align-items:center;gap:8px">
-        <button class="chip dti-btn" onclick="calcDTI()" style="height:52px;padding:0 20px;font-weight:700;white-space:nowrap">DTI</button>
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:10px">
+        <button class="chip dti-btn" onclick="calcDTI()" style="height:48px;padding:0 20px;font-weight:700;white-space:nowrap">DTI</button>
         <span class="dti-display" id="dtiDisplay">--%</span>
       </div>
     </div>
@@ -370,9 +384,17 @@ function updateAge(){
   if(y>1900&&y<=2026){var age=2026-y;document.getElementById('ageHint').textContent='만 '+age+'세';}
   else{document.getElementById('ageHint').textContent='';}
 }
+function updateArea(){
+  var m=parseFloat(document.getElementById('area').value)||0;
+  var el=document.getElementById('areaHint');
+  if(m>0){el.textContent='약 '+(m/3.3058).toFixed(1)+'평';}
+  else{el.textContent='';}
+}
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('birthYear').addEventListener('input',updateAge);
+  document.getElementById('area').addEventListener('input',updateArea);
   updateAge();
+  updateArea();
 });
 
 function toggleFirstTime(el){

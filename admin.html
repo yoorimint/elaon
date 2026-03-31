@@ -873,17 +873,25 @@ async function uploadPost() {
   }
 }
 
-/* ── Auto-fill if token exists ── */
+/* ── Auto-login / Auto-fill ── */
 window.addEventListener('DOMContentLoaded', () => {
   const token = localStorage.getItem(GH_TOKEN_KEY);
-  if (token) {
+  const cred = localStorage.getItem(ADMIN_CRED_KEY);
+  const gemKey = localStorage.getItem(GEMINI_KEY_KEY);
+  const govKey = localStorage.getItem(GOV_KEY_KEY);
+
+  // 로그인 유지: credential + token 둘 다 있으면 자동 로그인
+  if (cred && token) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminPanel').classList.add('show');
+    loadExistingPosts();
+  } else if (token) {
     document.getElementById('githubToken').value = token;
     document.getElementById('githubRepo').value = localStorage.getItem(GH_REPO_KEY) || 'yoorimint/elaon';
   }
-  const gemKey = localStorage.getItem(GEMINI_KEY_KEY);
-  if (gemKey) {
-    document.getElementById('geminiKey').value = gemKey;
-  }
+
+  if (gemKey) document.getElementById('geminiKey').value = gemKey;
+  if (govKey) document.getElementById('govApiKey').value = govKey;
 });
 </script>
 

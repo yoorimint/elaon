@@ -182,7 +182,7 @@ def generate_post(keyword, cat):
             'extra': '실존 도구명만 사용. 객관적 비교. 공식 URL 포함.'
         }
     }
-    cc = cat_config.get(cat, cat_config['지원금'])
+    cc = cat_config.get(cat, cat_config['AI챗봇'])
 
     prompt = f"""당신은 한국 {cc['role']}이자 SEO 전문가입니다.
 
@@ -210,7 +210,7 @@ def generate_post(keyword, cat):
 5. 첫 문장에서 바로 핵심 정보. 서론 인사/자기소개 금지
 6. 절대 금지: "알아보겠습니다", "이는", "또한,", "아울러,", "결론적으로", "마무리하며", "도움이 되셨기를", "~하는 것이 중요합니다", 블로거 캐릭터. "이는" 절대 금지.
 7. <table>: <thead>+<tbody> 필수, <th>에 인라인 스타일 금지, overflow-x:auto 래퍼
-8. 시각적 요소 5~8개 자유 배치 (그라데이션 카드, 프로그레스 바, 도넛 차트, 타임라인, 비교 카드 등). 매번 다른 조합/색상. 인라인 style 사용.
+8. 시각적 요소는 정보 전달에 필요한 경우만 사용 (비교 테이블, 장단점 리스트 등). 그라데이션 카드, PPT 스타일 장식은 금지. 깔끔하고 읽기 편한 텍스트 중심 레이아웃. 인라인 style 최소화.
 9. {year}년 기준. 과거 기준이면 "({year}년 확인 필요)" 표기
 10. 실존하지 않는 제도/기관/URL 절대 금지
 {cc['extra']}"""
@@ -251,12 +251,22 @@ def build_post_html(article):
     c = article['content']
     md = article['meta_description']
     kw = article['keyword']
-    tags_html = '\n'.join([f'<span class="article-tag">{tag}</span>' for tag in article.get('tags', [])])
+    cat = article.get('category', 'AI 도구')
+    tags_html = '\n'.join([f'<span class="tag">{tag}</span>' for tag in article.get('tags', [])])
     now = datetime.now()
     date_str = now.strftime('%Y.%m.%d')
     slug = make_slug(t)
     text_only = re.sub(r'<[^>]+>', '', c)
     read_min = max(1, len(text_only) // 500)
+
+    cat_colors = {
+        'AI챗봇': ('#2563EB', '#EFF6FF'),
+        '이미지': ('#7C3AED', '#F5F3FF'),
+        '생산성': ('#059669', '#ECFDF5'),
+        '개발': ('#EA580C', '#FFF7ED'),
+        '비교': ('#B45309', '#FEF3C7'),
+    }
+    cat_color, cat_bg = cat_colors.get(cat, ('#2563EB', '#EFF6FF'))
 
     html = f"""<!DOCTYPE html>
 <html lang="ko">
@@ -269,26 +279,71 @@ def build_post_html(article):
 <meta property="og:description" content="{md}">
 <meta property="og:type" content="article">
 <link rel="canonical" href="{SITE_URL}/{BLOG_DIR}/{slug}.html">
-<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-SDY3EXP31H"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}gtag('js',new Date());gtag('config','G-SDY3EXP31H');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{{--navy:#0D1B3E;--blue:#2563EB;--gold:#B8860B;--gold-light:#D4A933;--bg:#FAFBFC;--white:#FFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;--border-light:#F3F4F6}}*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:"Noto Sans KR",-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8}}.topbar{{background:var(--navy);padding:10px 0;border-bottom:2px solid var(--gold)}}.topbar-inner{{max-width:800px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center}}.topbar-logo{{color:#fff;text-decoration:none;font-size:16px;font-weight:700}}.topbar-logo span{{color:var(--gold-light);font-weight:300;font-size:11px;margin-left:8px}}.topbar-nav a{{color:rgba(255,255,255,.7);text-decoration:none;font-size:12px;margin-left:16px}}.breadcrumb{{max-width:800px;margin:0 auto;padding:14px 24px;font-size:12px;color:var(--text-muted)}}.breadcrumb a{{color:var(--text-muted);text-decoration:none}}.breadcrumb span{{margin:0 6px}}.article-header{{max-width:800px;margin:0 auto;padding:8px 24px 32px}}.article-category{{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:#EFF6FF;padding:3px 10px;border-radius:3px;margin-bottom:14px}}.article-header h1{{font-size:28px;font-weight:700;color:var(--navy);line-height:1.4;margin-bottom:16px}}.article-meta-bar{{display:flex;align-items:center;gap:16px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}}.dot{{width:3px;height:3px;border-radius:50%;background:var(--text-muted)}}.article-layout{{max-width:800px;margin:0 auto;padding:0 24px 60px}}.article-content h2{{font-size:20px;font-weight:700;color:var(--navy);margin:40px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border)}}.article-content h2:first-child{{margin-top:0}}.article-content h3{{font-size:16px;font-weight:600;margin:28px 0 10px}}.article-content p{{font-size:15px;color:var(--text-sub);margin-bottom:16px;line-height:1.9;word-break:keep-all}}.article-content strong{{color:var(--navy);font-weight:600}}.article-content ul,.article-content ol{{margin:14px 0 18px;padding:0;list-style:none}}.article-content ul li{{position:relative;padding-left:16px;margin-bottom:8px;font-size:15px;color:var(--text-sub)}}.article-content ul li::before{{content:"—";position:absolute;left:0;color:var(--gold);font-weight:700}}.article-content ol{{counter-reset:item}}.article-content ol li{{counter-increment:item;position:relative;padding-left:28px;margin-bottom:12px;font-size:15px;color:var(--text-sub)}}.article-content ol li::before{{content:counter(item);position:absolute;left:0;top:3px;width:20px;height:20px;border:1.5px solid var(--navy);border-radius:50%;font-size:11px;font-weight:600;color:var(--navy);display:flex;align-items:center;justify-content:center}}.article-content table{{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:14px}}.article-content thead{{background:#0D1B3E!important}}.article-content th{{background:#0D1B3E!important;color:#ffffff!important;font-weight:600;padding:11px 16px;text-align:left;font-size:13px}}.article-content td{{padding:11px 16px;border-bottom:1px solid var(--border-light);color:var(--text-sub)}}.article-content tr:nth-child(even) td{{background:#F9FAFB}}.article-tags{{display:flex;flex-wrap:wrap;gap:6px;margin-top:40px;padding-top:20px;border-top:1px solid var(--border)}}.article-tag{{font-size:12px;color:var(--text-muted);background:var(--border-light);padding:3px 10px;border-radius:3px}}.footer{{background:var(--navy);padding:32px 0;margin-top:40px}}.footer-inner{{max-width:800px;margin:0 auto;padding:0 24px;text-align:center}}.footer p{{font-size:12px;color:rgba(255,255,255,.5);line-height:1.9}}.footer a{{color:rgba(255,255,255,.7);text-decoration:none}}
+:root{{--navy:#0F172A;--navy-light:#1E293B;--accent:#2563EB;--accent-bg:#EFF6FF;--bg:#F8F9FB;--surface:#FFF;--text:#111827;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;--border-light:#F3F4F6}}
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{font-family:"Noto Sans KR","Inter",-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased}}
+a{{text-decoration:none;color:inherit}}
+.nav{{background:var(--navy);position:sticky;top:0;z-index:100}}
+.nav-inner{{max-width:760px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between}}
+.nav-logo{{color:#fff;font-size:18px;font-weight:800;letter-spacing:-0.5px}}
+.nav-logo span{{color:#60A5FA;font-weight:400;font-size:12px;margin-left:6px}}
+.nav-links a{{color:rgba(255,255,255,.6);font-size:13px;margin-left:16px}}
+.nav-links a:hover{{color:#fff}}
+.breadcrumb{{max-width:760px;margin:0 auto;padding:14px 24px;font-size:12px;color:var(--text-muted)}}
+.breadcrumb a{{color:var(--text-muted)}}
+.breadcrumb a:hover{{color:var(--accent)}}
+.breadcrumb span{{margin:0 6px;opacity:.5}}
+.post-header{{max-width:760px;margin:0 auto;padding:0 24px 32px}}
+.post-cat{{display:inline-block;font-size:12px;font-weight:700;padding:4px 10px;border-radius:4px;margin-bottom:14px;background:{cat_bg};color:{cat_color}}}
+.post-header h1{{font-size:28px;font-weight:800;color:var(--navy);line-height:1.4;letter-spacing:-0.5px;margin-bottom:16px}}
+.post-meta{{display:flex;align-items:center;gap:12px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--text-muted)}}
+.post-meta .sep{{width:3px;height:3px;border-radius:50%;background:var(--text-muted)}}
+.post-body{{max-width:760px;margin:0 auto;padding:0 24px 60px}}
+.post-body h2{{font-size:20px;font-weight:800;color:var(--navy);margin:44px 0 16px;padding-bottom:10px;border-bottom:2px solid var(--border)}}
+.post-body h2:first-child{{margin-top:0}}
+.post-body h3{{font-size:16px;font-weight:700;color:var(--navy-light);margin:28px 0 10px}}
+.post-body p{{font-size:15px;color:var(--text-sub);margin-bottom:16px;line-height:1.9;word-break:keep-all}}
+.post-body strong{{color:var(--navy);font-weight:600}}
+.post-body a{{color:var(--accent);font-weight:500;border-bottom:1px solid transparent}}
+.post-body a:hover{{border-bottom-color:var(--accent)}}
+.post-body ul,.post-body ol{{margin:14px 0 18px;padding:0;list-style:none}}
+.post-body ul li{{position:relative;padding-left:18px;margin-bottom:8px;font-size:15px;color:var(--text-sub);line-height:1.8}}
+.post-body ul li::before{{content:"";position:absolute;left:2px;top:11px;width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.5}}
+.post-body ol{{counter-reset:item}}
+.post-body ol li{{counter-increment:item;position:relative;padding-left:32px;margin-bottom:12px;font-size:15px;color:var(--text-sub)}}
+.post-body ol li::before{{content:counter(item);position:absolute;left:0;top:2px;width:22px;height:22px;background:var(--navy);border-radius:50%;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center}}
+.post-body table{{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:14px;border-radius:8px;overflow:hidden}}
+.post-body thead{{background:var(--navy)}}
+.post-body th{{background:var(--navy);color:#fff;font-weight:600;padding:12px 16px;text-align:left;font-size:13px}}
+.post-body td{{padding:12px 16px;border-bottom:1px solid var(--border-light);color:var(--text-sub)}}
+.post-body tr:nth-child(even) td{{background:#F9FAFB}}
+.post-body tr:hover td{{background:var(--accent-bg)}}
+.post-tags{{display:flex;flex-wrap:wrap;gap:6px;margin-top:44px;padding-top:20px;border-top:1px solid var(--border)}}
+.tag{{font-size:12px;color:var(--text-muted);background:var(--border-light);padding:4px 10px;border-radius:4px}}
+.notice{{margin-top:32px;padding:16px 20px;background:#FEF3C7;border-radius:10px;font-size:13px;color:#92400E;line-height:1.7}}
+.footer{{background:var(--navy);padding:32px 0;margin-top:48px}}
+.footer-inner{{max-width:760px;margin:0 auto;padding:0 24px;text-align:center}}
+.footer p{{font-size:12px;color:rgba(255,255,255,.4);line-height:1.9}}
+.footer a{{color:rgba(255,255,255,.6)}}
+@media(max-width:640px){{.post-header h1{{font-size:22px}}.post-body h2{{font-size:18px}}}}
 </style>
 </head>
 <body>
-<div class="topbar"><div class="topbar-inner"><a href="{SITE_URL}" class="topbar-logo">eloan.kr<span>AI 도구 가이드</span></a><nav class="topbar-nav"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}/{BLOG_DIR}/">가이드</a></nav></div></div>
-<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}/{BLOG_DIR}/">가이드</a><span>›</span>{kw}</div>
-<div class="article-header"><div class="article-category">{article.get('category', 'AI 도구')}</div><h1>{t}</h1><div class="article-meta-bar"><span>{date_str}</span><div class="dot"></div><span>eloan.kr</span><div class="dot"></div><span>읽는 시간 약 {read_min}분</span></div></div>
-<div class="article-layout"><article class="article-content">
+<nav class="nav"><div class="nav-inner"><a href="{SITE_URL}" class="nav-logo">eloan.kr<span>AI TOOL GUIDE</span></a><div class="nav-links"><a href="{SITE_URL}">홈</a><a href="{SITE_URL}">리뷰</a></div></div></nav>
+<div class="breadcrumb"><a href="{SITE_URL}">홈</a><span>›</span><a href="{SITE_URL}">리뷰</a><span>›</span>{kw}</div>
+<header class="post-header"><span class="post-cat">{cat}</span><h1>{t}</h1><div class="post-meta"><span>{date_str}</span><div class="sep"></div><span>eloan.kr</span><div class="sep"></div><span>읽는 시간 약 {read_min}분</span></div></header>
+<article class="post-body">
 {c}
-<div class="article-tags">{tags_html}</div>
-<div style="margin-top:32px;padding:16px 18px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;line-height:1.7;">이 글은 AI를 활용해 작성되었으며, 도구의 기능·가격은 변경될 수 있습니다. 최신 정보는 각 도구의 공식 사이트에서 확인하세요.</div>
-</article></div>
-<footer class="footer"><div class="footer-inner"><p><a href="{SITE_URL}"><strong>eloan.kr</strong></a> · AI 도구 가이드</p><p>AI 도구 정보는 변경될 수 있으니 공식 사이트에서 확인하세요<br><br>&copy; {now.year} eloan.kr</p></div></footer>
+<div class="post-tags">{tags_html}</div>
+<div class="notice">이 글은 AI를 활용해 작성되었으며, 도구의 기능·가격은 변경될 수 있습니다. 최신 정보는 각 도구의 공식 사이트에서 확인하세요.</div>
+</article>
+<footer class="footer"><div class="footer-inner"><p><a href="{SITE_URL}"><strong>eloan.kr</strong></a> &middot; AI 도구 리뷰 가이드</p><p>&copy; {now.year} eloan.kr</p></div></footer>
 </body>
 </html>"""
     return html

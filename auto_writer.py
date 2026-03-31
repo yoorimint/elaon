@@ -119,9 +119,17 @@ def make_slug(title):
 
 
 def get_topic(cat, existing_titles):
-    """Gemini로 주제 추천"""
+    """Gemini로 주제 추천 (카테고리별)"""
     year = datetime.now().year
+
+    cat_context = {
+        '지원금': f'정부 지원금, 보조금, 수당, 급여, 장려금 등 실제 존재하는 제도. "{year} OOO 자격조건 신청방법 총정리" 형태.',
+        '절약': f'생활비 절약, 세금 줄이기, 통신비/보험료/구독료 절감, 할인 꿀팁 등. "{year} OOO 방법 꿀팁 비교 총정리" 형태. 정부 제도가 아닌 실생활 팁.',
+        '재테크': f'적금, ETF, 주식, 부업, 저축 등 재테크 정보. "{year} OOO 비교 추천 수익률 총정리" 형태. 없는 정부 프로그램 금지. 실제 금융 상품/방법만.',
+    }
+
     prompt = f"""한국에서 "{cat}" 분야로 사람들이 많이 검색하는 주제를 5개 추천해줘.
+{cat_context.get(cat, '')}
 각 주제는 블로그 글 제목으로 쓸 수 있는 롱테일 키워드 형태로.
 이미 작성된 주제는 제외: {', '.join(existing_titles[-20:])}
 연도는 {year}년 기준.
@@ -139,18 +147,39 @@ def generate_post(keyword, cat):
     year = datetime.now().year
     today = datetime.now().strftime('%Y-%m-%d')
 
-    prompt = f"""당신은 한국 정부 지원금/절약/재테크 전문 블로거이자 SEO 전문가입니다.
+    # 카테고리별 프롬프트
+    cat_config = {
+        '지원금': {
+            'role': '정부 지원금/공공서비스 전문 블로거',
+            'title_pattern': f'{year} {keyword} 자격조건 신청방법 지원금액 총정리',
+            'structure': '1) 이 제도란? (개요+핵심 수치) 2) 지원대상 및 자격조건 (<table>) 3) 지원내용 및 금액 4) 신청방법 및 필요서류 5) FAQ 5개 이상',
+            'extra': f'글 마지막에 "문의 및 신청" 섹션: 공식 사이트 URL+전화번호.\n정보 출처는 기관명으로만 언급.'
+        },
+        '절약': {
+            'role': '생활 절약/살림 전문 블로거',
+            'title_pattern': f'{year} {keyword} 방법 꿀팁 비교 총정리',
+            'structure': '1) 핵심 요약 (얼마나 절약 가능한지) 2) 구체적 실천 방법 (단계별, 숫자로) 3) 실제 사례/비교 (Before vs After) 4) 주의점 및 흔한 실수 5) 추가 팁+FAQ',
+            'extra': '글 마지막에 "핵심 요약" 섹션: 효과 큰 실천법 3가지.\n이 주제는 정부 제도가 아님. "신청방법","자격조건","지원금액" 표현 금지.\n구체적 금액 제시 (예: "월 15만원 절약").'
+        },
+        '재테크': {
+            'role': '재테크/투자 정보 전문 블로거',
+            'title_pattern': f'{year} {keyword} 비교 추천 수익률 총정리',
+            'structure': '1) 핵심 개념 (초보도 이해) 2) 상품/방법 비교 (<table>) 3) 수익률/장단점 분석 4) 시작 방법 (단계별) 5) 리스크+FAQ',
+            'extra': '글 마지막에 "시작 가이드": 초보자 1-2-3 단계.\n이 주제는 정부 제도가 아님. "신청방법","자격조건" 금지.\n투자 위험 고지 필수. 실존 상품명만 사용.'
+        }
+    }
+    cc = cat_config.get(cat, cat_config['지원금'])
+
+    prompt = f"""당신은 한국 {cc['role']}이자 SEO 전문가입니다.
 
 [중요] 오늘 날짜: {today}. 현재 연도는 {year}년입니다. 과거 연도가 아닌 {year}년 기준으로 작성하세요.
 
 주제: {keyword}
 카테고리: {cat}
 
-아래 형식으로 응답하세요:
-
 ===JSON_START===
 {{
-  "title": "SEO 롱테일 키워드 제목 (40~60자, {year}년 포함)",
+  "title": "SEO 롱테일 키워드 제목 (40~60자, {year}년 포함, 예: '{cc['title_pattern']}')",
   "meta_description": "155자 이내 메타 설명",
   "tags": ["태그1", "태그2", "태그3", "태그4", "태그5"]
 }}
@@ -161,29 +190,16 @@ def generate_post(keyword, cat):
 
 [본문 규칙]
 1. HTML 태그 (<h2>, <h3>, <p>, <ul>, <li>, <table>) 사용
-2. 섹션 4~5개, 6000자 이상
-3. 구어체 ("~해요", "~거든요")
-4. AI 투 표현 절대 금지 ("알아보겠습니다", "또한", "아울러", "결론적으로")
-5. 블로거 캐릭터/자기소개 금지
-6. 첫 문장에서 바로 핵심 정보
-7. "API", "데이터상" 같은 내부 소스 언급 금지
-8. 글 마지막에 "문의 및 신청" 섹션 + 공식 사이트 URL/전화번호 포함
-IMPORTANT: 절대로 실존하지 않는 제도, 기관, 프로그램, URL을 만들어내지 마라. 확실하지 않으면 "공식 기관에서 확인 필요"로 표기. 재테크/투자 주제는 없는 정부 프로그램으로 포장하지 말 것.
-9. <table>은 반드시 <div style="overflow-x:auto;"> 로 감싸서 모바일 대응
-10. 핵심 수치는 그라데이션 카드로:
-   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:20px 0;">
-     <div style="background:linear-gradient(135deg,#2563EB,#3B82F6);border-radius:14px;padding:20px 14px;text-align:center;color:#fff;">
-       <div style="font-size:28px;font-weight:800;">금액</div>
-       <div style="font-size:11px;opacity:0.8;margin-top:4px;">항목명</div>
-     </div>
-   </div>
-11. 비교 데이터는 프로그레스 바도 활용:
-   <div style="margin:16px 0;">
-     <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>항목</span><span>금액</span></div>
-     <div style="background:#E5E7EB;border-radius:8px;height:24px;overflow:hidden;">
-       <div style="background:linear-gradient(90deg,#2563EB,#3B82F6);height:100%;width:50%;border-radius:8px;"></div>
-     </div>
-   </div>"""
+2. 섹션 구조: {cc['structure']}
+3. 6000자 이상
+4. 구어체 ("~해요", "~거든요"). 과하게 친절하거나 감탄하지 말 것
+5. 첫 문장에서 바로 핵심 정보. 서론 인사/자기소개 금지
+6. 절대 금지: "알아보겠습니다", "또한,", "아울러,", "결론적으로", "도움이 되셨기를", 블로거 캐릭터
+7. <table>: <thead>+<tbody> 필수, <th>에 인라인 스타일 금지, overflow-x:auto 래퍼
+8. 시각적 요소 5~8개 자유 배치 (그라데이션 카드, 프로그레스 바, 도넛 차트, 타임라인, 비교 카드 등). 매번 다른 조합/색상. 인라인 style 사용.
+9. {year}년 기준. 과거 기준이면 "({year}년 확인 필요)" 표기
+10. 실존하지 않는 제도/기관/URL 절대 금지
+{cc['extra']}"""
 
     resp = call_gemini(prompt)
 

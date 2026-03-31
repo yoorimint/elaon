@@ -224,6 +224,20 @@ body {
 
 </div>
 
+<!-- 방문자 통계 -->
+<div style="max-width:800px;margin:0 auto;padding:0 20px 24px;">
+  <div style="display:flex;gap:12px;justify-content:center;">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 24px;text-align:center;flex:1;max-width:180px;">
+      <div style="font-size:20px;font-weight:800;color:var(--navy);" id="todayCount">-</div>
+      <div style="font-size:11px;color:var(--text-muted);">오늘 방문자</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 24px;text-align:center;flex:1;max-width:180px;">
+      <div style="font-size:20px;font-weight:800;color:var(--blue);" id="totalCount">-</div>
+      <div style="font-size:11px;color:var(--text-muted);">누적 방문자</div>
+    </div>
+  </div>
+</div>
+
 <footer class="footer">
   <div class="container">
     <p>
@@ -280,7 +294,33 @@ function filterPosts(query) {
   });
 }
 
+// 방문자 통계 (localStorage 기반)
+function trackVisitor() {
+  const today = new Date().toISOString().slice(0, 10);
+  const stored = JSON.parse(localStorage.getItem('eloan_visitor') || '{}');
+
+  if (!stored.total) stored.total = 0;
+  if (!stored.lastDate) stored.lastDate = '';
+  if (!stored.todayCount) stored.todayCount = 0;
+
+  if (stored.lastDate !== today) {
+    stored.todayCount = 0;
+    stored.lastDate = today;
+  }
+
+  if (!sessionStorage.getItem('eloan_counted')) {
+    stored.total += 1;
+    stored.todayCount += 1;
+    sessionStorage.setItem('eloan_counted', '1');
+    localStorage.setItem('eloan_visitor', JSON.stringify(stored));
+  }
+
+  document.getElementById('todayCount').textContent = stored.todayCount.toLocaleString();
+  document.getElementById('totalCount').textContent = stored.total.toLocaleString();
+}
+
 loadPosts();
+trackVisitor();
 </script>
 
 </body>

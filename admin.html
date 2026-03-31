@@ -454,6 +454,28 @@ function saveGovKey() {
   showToast('정부24 API Key 저장됨', 'success');
 }
 
+/* ── 인기 키워드 점수 ── */
+const HOT_KEYWORDS = [
+  '대출','전세','청년','신생아','주거','월세','보조금','지원금','장려금',
+  '육아','출산','양육','보육','학자금','장학','취업','창업','소상공인',
+  '기초','연금','의료','건강보험','실업','고용','근로','임대','주택',
+  '교육','돌봄','급여','수당','감면','면제','무료','할인','바우처',
+  '저소득','한부모','다자녀','장애','노인','어르신','국민취업','자녀'
+];
+
+function scoreService(svc) {
+  const text = `${svc['서비스명']||''} ${svc['서비스목적요약']||''} ${svc['지원대상']||''}`;
+  let score = 0;
+  for (const kw of HOT_KEYWORDS) {
+    if (text.includes(kw)) score += 2;
+  }
+  // 지원대상이 넓을수록 관심도 높음
+  const target = svc['지원대상'] || '';
+  if (target.includes('국민') || target.includes('누구나')) score += 3;
+  if (target.includes('청년') || target.includes('신혼')) score += 2;
+  return score;
+}
+
 async function fetchServices() {
   const govKey = localStorage.getItem(GOV_KEY_KEY);
   if (!govKey) { showToast('정부24 API Key를 먼저 입력하세요', 'error'); return; }
@@ -463,10 +485,17 @@ async function fetchServices() {
   btn.textContent = '불러오는 중...';
 
   try {
-    const resp = await fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=1&perPage=50&returnType=JSON`);
-    if (!resp.ok) throw new Error('API 오류: ' + resp.status);
-    const data = await resp.json();
-    const services = data.data || [];
+    // 3페이지(300건) 가져와서 인기순 정렬
+    const pages = await Promise.all([1,2,3].map(p =>
+      fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=${p}&perPage=100&returnType=JSON`)
+        .then(r => r.json()).then(d => d.data || []).catch(() => [])
+    ));
+    const allServices = pages.flat();
+
+    // 인기순 정렬
+    const scored = allServices.map(s => ({ ...s, _score: scoreService(s) }));
+    scored.sort((a, b) => b._score - a._score);
+    const services = scored.slice(0, 80);
 
     const listEl = document.getElementById('svcList');
     listEl.style.display = 'block';
@@ -474,16 +503,16 @@ async function fetchServices() {
       const name = svc['서비스명'] || '';
       const summary = svc['서비스목적요약'] || '';
       const dept = svc['소관기관명'] || '';
-      const svcId = svc['서비스ID'] || '';
       const duplicate = isAlreadyWritten(name);
+      const hot = svc._score >= 6 ? '<span style="color:#FCD34D;margin-right:4px;">HOT</span>' : '';
       return `<div onclick="selectService(${i})" data-idx="${i}" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;opacity:${duplicate?'0.4':'1'};${duplicate?'text-decoration:line-through;':''}">
-        <div style="font-size:14px;font-weight:600;">${duplicate?'[작성됨] ':''}${name}</div>
+        <div style="font-size:14px;font-weight:600;">${hot}${duplicate?'[작성됨] ':''}${name}</div>
         <div style="font-size:11px;opacity:0.7;margin-top:2px;">${dept} · ${summary.slice(0,60)}</div>
       </div>`;
     }).join('');
 
     window._svcData = services;
-    writerLog(`${services.length}건 로드 (작성됨 제외하고 선택하세요)`, 'info');
+    writerLog(`${allServices.length}건 중 인기순 ${services.length}건 표시`, 'info');
   } catch(e) {
     showToast('서비스 목록 로드 실패: ' + e.message, 'error');
   } finally {

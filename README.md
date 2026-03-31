@@ -61,7 +61,6 @@ blog_automation/
 ├── keyword_fetcher.py     # 키워드 수집
 ├── content_generator.py   # Gemini 섹션별 글 생성 (5000자+)
 ├── fact_checker.py        # 팩트체크
-├── ai_detector.py         # AI 투 표현 탐지
 ├── link_checker.py        # 링크 상태 확인
 ├── thumbnail.py           # Pillow 썸네일 생성
 ├── github_uploader.py     # GitHub API push + 블로그 목록 관리
@@ -85,7 +84,6 @@ eloan.kr/
 ## 커스터마이징
 
 - **키워드 추가**: `keyword_fetcher.py` → `get_manual_keywords()`
-- **AI 탐지 기준**: `config.py` → `AI_DETECTION_THRESHOLD`
 - **글 톤/스타일**: `content_generator.py` → 프롬프트 수정
 - **썸네일 디자인**: `config.py` → `THUMBNAIL_*` 값
 - **블로그 디자인**: `github_uploader.py` → `build_blog_html()` 수정

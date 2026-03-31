@@ -1,7 +1,7 @@
 """
 메인 파이프라인
 - 전체 자동화 흐름 실행
-- 키워드 수집 → 글 생성(섹션별) → AI 탐지 → 팩트체크 → 링크 체크 → 썸네일 → GitHub push
+- 키워드 수집 → 글 생성(섹션별) → 팩트체크 → 링크 체크 → 썸네일 → GitHub push
 
 사용법:
     python main.py                    # 수동 키워드 1개로 테스트 (업로드 없이)
@@ -19,7 +19,6 @@ from datetime import datetime
 from keyword_fetcher import get_keywords
 from content_generator import generate_article
 from fact_checker import fact_check
-from ai_detector import detect_ai
 from link_checker import check_links
 from thumbnail import create_thumbnail
 from github_uploader import upload_post
@@ -63,11 +62,10 @@ def process_one_keyword(keyword, upload=True):
     키워드 하나에 대해 전체 파이프라인 실행
 
     1. 글 생성 (Gemini, 섹션별)
-    2. AI 탐지 검사 → 실패 시 재생성
-    3. 팩트체크 → 경고만 (발행은 함)
-    4. 링크 체크 → 죽은 링크 자동 제거
-    5. 썸네일 생성
-    6. GitHub push (또는 로컬 저장)
+    2. 팩트체크 → 경고만 (발행은 함)
+    3. 링크 체크 → 죽은 링크 자동 제거
+    4. 썸네일 생성
+    5. GitHub push (또는 로컬 저장)
     """
     print("\n" + "=" * 60)
     print(f"📝 키워드: {keyword}")
@@ -86,21 +84,9 @@ def process_one_keyword(keyword, upload=True):
         print(f"\n[1단계] 글 생성 (시도 {attempt}/{MAX_RETRY})")
         article = generate_article(keyword)
 
-        if not article:
-            print("  → 글 생성 실패, 재시도...")
-            continue
-
-        # ── 2단계: AI 탐지 검사 ─────────────────────────
-        print(f"\n[2단계] AI 탐지 검사")
-        ai_result = detect_ai(article)
-        result["steps"]["ai_detection"] = ai_result
-
-        if ai_result["passed"]:
-            print("  → AI 탐지 통과!")
+        if article:
             break
-        else:
-            print(f"  → AI 탐지 실패 (점수: {ai_result['score']}), 재생성...")
-            article = None
+        print("  → 글 생성 실패, 재시도...")
 
     if not article:
         print("\n❌ 글 생성 실패 (최대 시도 횟수 초과)")
@@ -113,8 +99,8 @@ def process_one_keyword(keyword, upload=True):
         "content_length": len(article["content"]),
     }
 
-    # ── 3단계: 팩트체크 ─────────────────────────────────
-    print(f"\n[3단계] 팩트체크")
+    # ── 2단계: 팩트체크 ─────────────────────────────────
+    print(f"\n[2단계] 팩트체크")
     fc_result = fact_check(article)
     result["steps"]["fact_check"] = {
         "passed": fc_result["passed"],
@@ -126,8 +112,8 @@ def process_one_keyword(keyword, upload=True):
         for w in fc_result["warnings"]:
             print(f"    {w}")
 
-    # ── 4단계: 링크 체크 ────────────────────────────────
-    print(f"\n[4단계] 링크 체크")
+    # ── 3단계: 링크 체크 ────────────────────────────────
+    print(f"\n[3단계] 링크 체크")
     lc_result = check_links(article)
     result["steps"]["link_check"] = {
         "passed": lc_result["passed"],
@@ -138,14 +124,14 @@ def process_one_keyword(keyword, upload=True):
         article["content"] = lc_result["fixed_content"]
         print("  → 죽은 링크 자동 제거 완료")
 
-    # ── 5단계: 썸네일 생성 ──────────────────────────────
-    print(f"\n[5단계] 썸네일 생성")
+    # ── 4단계: 썸네일 생성 ──────────────────────────────
+    print(f"\n[4단계] 썸네일 생성")
     thumbnail_path = create_thumbnail(article["title"])
     result["steps"]["thumbnail"] = {"path": thumbnail_path}
 
-    # ── 6단계: 업로드 또는 로컬 저장 ────────────────────
+    # ── 5단계: 업로드 또는 로컬 저장 ────────────────────
     if upload:
-        print(f"\n[6단계] GitHub push")
+        print(f"\n[5단계] GitHub push")
         gh_result = upload_post(article, thumbnail_path)
         result["steps"]["github_upload"] = gh_result
 

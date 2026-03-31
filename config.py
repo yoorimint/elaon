@@ -32,10 +32,6 @@ SECTION_LENGTH = 1500          # 섹션당 글자 수
 MIN_CONTENT_LENGTH = 5000      # 최종 글 최소 길이
 MAX_CONTENT_LENGTH = 8000      # 최종 글 최대 길이
 
-# AI 탐지 점수 기준 (이 점수 이상이면 재생성)
-# 0.0 = 사람이 쓴 글, 1.0 = AI가 쓴 글
-AI_DETECTION_THRESHOLD = 0.5
-
 # 재생성 최대 시도 횟수
 MAX_RETRY = 3
 

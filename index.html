@@ -103,6 +103,11 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 .chip.toggle-on{background:#FF6B35;color:#fff;border-color:#FF6B35}
 .chip.toggle-on:hover{background:#E55A2B;border-color:#E55A2B}
+
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:400px;overflow:hidden;animation:fadeUp .3s ease}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0}
+.modal-body{padding:20px 24px 24px}
 </style>
 </head>
 <body>
@@ -169,22 +174,25 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <div class="card">
-  <div class="card-title">주택 · 소득정보</div>
+  <div class="card-title">주택정보</div>
   <div class="field">
-    <div class="row-group">
+    <div class="label">매매가격</div>
+    <div class="input-wrap">
+      <input type="number" class="input" id="housePrice" value="35000" placeholder="35000">
+      <span class="input-suffix">만원</span>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">KB시세</div>
+    <div class="row-group" style="align-items:center">
       <div class="row-item">
-        <div class="label">매매가격</div>
-        <div class="input-wrap">
-          <input type="number" class="input" id="housePrice" value="35000" placeholder="35000">
-          <span class="input-suffix">만원</span>
-        </div>
-      </div>
-      <div class="row-item">
-        <div class="label">KB시세</div>
         <div class="input-wrap">
           <input type="number" class="input" id="kbPrice" value="" placeholder="시세입력">
           <span class="input-suffix">만원</span>
         </div>
+      </div>
+      <div style="flex:0 0 auto">
+        <a href="https://kbland.kr" target="_blank" class="chip" style="height:48px;padding:0 14px;display:flex;align-items:center;text-decoration:none;font-size:13px;color:#3182F6;border-color:#3182F6">KB시세 조회 →</a>
       </div>
     </div>
   </div>
@@ -202,17 +210,31 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       </div>
     </div>
   </div>
+</div>
+
+<div class="card">
+  <div class="card-title">소득 · 대출정보</div>
   <div class="field">
     <div class="label">연소득 <span class="unit">(부부합산)</span></div>
+    <div class="input-wrap">
+      <input type="number" class="input" id="income" value="3000" placeholder="3000">
+      <span class="input-suffix">만원</span>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">대출신청금액</div>
+    <div class="input-wrap">
+      <input type="number" class="input" id="loanAmount" value="25000" placeholder="25000">
+      <span class="input-suffix">만원</span>
+    </div>
+  </div>
+  <div class="field">
+    <div class="label">DTI (총부채상환비율)</div>
     <div class="row-group" style="align-items:center">
-      <div class="row-item">
-        <div class="input-wrap">
-          <input type="number" class="input" id="income" value="3000" placeholder="3000">
-          <span class="input-suffix">만원</span>
-        </div>
+      <div class="row-item" style="flex:0 0 auto">
+        <button class="chip dti-btn" onclick="openDTI()" style="height:48px;padding:0 20px;font-weight:700">DTI 계산하기</button>
       </div>
-      <div style="flex:0 0 auto;display:flex;align-items:center;gap:10px">
-        <button class="chip dti-btn" onclick="calcDTI()" style="height:48px;padding:0 20px;font-weight:700;white-space:nowrap">DTI</button>
+      <div style="flex:0 0 auto">
         <span class="dti-display" id="dtiDisplay">--%</span>
       </div>
     </div>
@@ -222,13 +244,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 
 <div class="card">
   <div class="card-title">대출조건</div>
-  <div class="field">
-    <div class="label">대출신청금액</div>
-    <div class="input-wrap">
-      <input type="number" class="input" id="loanAmount" value="25000" placeholder="25000">
-      <span class="input-suffix">만원</span>
-    </div>
-  </div>
   <div class="field">
     <div class="label">대출기간</div>
     <div class="chips">
@@ -256,39 +271,72 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
   </div>
   <div class="field">
     <div class="label">금리유형</div>
-    <div class="chips">
+    <div class="chips" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button class="chip chip-flex on" onclick="setVal(this,'rateType','fixed')">고정금리</button>
-      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed10')">혼합(10년)</button>
-      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed5')">혼합(5년)</button>
+      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed5')">5년변동</button>
+      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed10')">10년고정후변동</button>
       <button class="chip chip-flex" onclick="setVal(this,'rateType','variable')">변동금리</button>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <div class="card-title">우대금리</div>
+  <div class="card-title">우대금리 <span class="unit">(중복적용 불가 택1)</span></div>
   <div class="field">
-    <div class="label">가구 우대 (택1)</div>
     <div class="radio-list">
       <label class="radio-item"><input type="radio" name="familyDiscount" value="0" checked>해당없음<span class="val">-</span></label>
-      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.7">다자녀 (3명↑)<span class="val">-0.7%</span></label>
-      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.5">2자녀 · 한부모<span class="val">-0.5%</span></label>
-      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.3">1자녀<span class="val">-0.3%</span></label>
+      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.7">다자녀가구 (3명↑)<span class="val">-0.7%</span></label>
+      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.5">2자녀가구<span class="val">-0.5%</span></label>
+      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.5">한부모가구 (소득 6천↓)<span class="val">-0.5%</span></label>
+      <label class="radio-item"><input type="radio" name="familyDiscount" value="0.3">1자녀가구<span class="val">-0.3%</span></label>
       <label class="radio-item"><input type="radio" name="familyDiscount" value="0.2">다문화·장애인·생애최초·신혼<span class="val">-0.2%</span></label>
     </div>
   </div>
+</div>
+
+<div class="card">
+  <div class="card-title">우대금리 <span class="unit">(중복적용 가능)</span></div>
   <div class="field">
-    <div class="label">청약저축</div>
-    <div class="chips">
-      <button class="chip chip-flex on" onclick="setVal(this,'savings','0')">없음</button>
-      <button class="chip chip-flex" onclick="setVal(this,'savings','0.3')">5년↑</button>
-      <button class="chip chip-flex" onclick="setVal(this,'savings','0.4')">10년↑</button>
-      <button class="chip chip-flex" onclick="setVal(this,'savings','0.5')">15년↑</button>
+    <div class="label">청약저축 <span class="unit">(본인 또는 배우자)</span></div>
+    <div class="radio-list">
+      <label class="radio-item"><input type="radio" name="savings" value="0" checked>미가입<span class="val">-</span></label>
+      <label class="radio-item"><input type="radio" name="savings" value="0.3">5년↑ 60회차↑ 납입 (또는 민영 예치금 5년↑)<span class="val">-0.3%</span></label>
+      <label class="radio-item"><input type="radio" name="savings" value="0.4">10년↑ 120회차↑ 납입 (또는 민영 예치금 10년↑)<span class="val">-0.4%</span></label>
+      <label class="radio-item"><input type="radio" name="savings" value="0.5">15년↑ 180회차↑ 납입 (또는 민영 예치금 15년↑)<span class="val">-0.5%</span></label>
     </div>
   </div>
-  <label class="check-item"><input type="checkbox" id="econtract">전자계약<span class="val">-0.1%</span></label>
-  <label class="check-item"><input type="checkbox" id="lowLoan">대출금액 30%이하<span class="val">-0.1%</span></label>
-  <label class="check-item"><input type="checkbox" id="localUnsold">지방 미분양주택<span class="val">-0.2%</span></label>
+  <label class="check-item"><input type="checkbox" id="econtract">전자계약 체결 (2026.12.31 신규접수분까지)<span class="val">-0.1%</span></label>
+  <label class="check-item"><input type="checkbox" id="lowLoan">대출금액이 산정액의 30% 이하<span class="val">-0.1%</span></label>
+  <label class="check-item"><input type="checkbox" id="localHouse">지방소재 주택 (신생아특례) / 지방미분양 (디딤돌)<span class="val">-0.2%</span></label>
+</div>
+
+<!-- DTI 계산 팝업 -->
+<div class="modal-overlay" id="dtiModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:16px;font-weight:700">DTI 계산기</span>
+      <button onclick="closeDTI()" style="border:none;background:none;font-size:20px;color:#8B95A1;cursor:pointer">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <div class="label">기존 주택담보대출 잔액</div>
+        <div class="input-wrap">
+          <input type="number" class="input" id="dtiMortgage" value="0" placeholder="0">
+          <span class="input-suffix">만원</span>
+        </div>
+        <div class="hint">선순위 주택담보대출 잔액 (본건 제외)</div>
+      </div>
+      <div class="field">
+        <div class="label">기타부채 (신용대출 등)</div>
+        <div class="input-wrap">
+          <input type="number" class="input" id="dtiOtherDebt" value="0" placeholder="0">
+          <span class="input-suffix">만원</span>
+        </div>
+        <div class="hint">신용대출, 카드론, 학자금 등 합산</div>
+      </div>
+      <button class="calc-btn" onclick="calcDTI()" style="margin-top:8px">DTI 계산</button>
+    </div>
+  </div>
 </div>
 
 <button class="calc-btn" onclick="calc()">계산하기</button>
@@ -388,7 +436,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <script>
-var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',savings:'0',married:'no',dependents:'no',firstTime:false,grace:'0'};
+var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0'};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
@@ -431,16 +479,24 @@ function updateLimitHint(){
   var key=S.borrower+(S.firstTime?'+first':'');
   document.getElementById('limitHint').textContent=LIMIT_TEXT[key]||LIMIT_TEXT[S.borrower];
 }
+function openDTI(){document.getElementById('dtiModal').style.display='flex';}
+function closeDTI(){document.getElementById('dtiModal').style.display='none';}
 function calcDTI(){
   var income=parseInt(document.getElementById('income').value)||0;
   var loanAmt=parseInt(document.getElementById('loanAmount').value)||0;
-  if(income<=0||loanAmt<=0){document.getElementById('dtiDisplay').textContent='--%';return;}
+  var mortgage=parseInt(document.getElementById('dtiMortgage').value)||0;
+  var otherDebt=parseInt(document.getElementById('dtiOtherDebt').value)||0;
+  if(income<=0||loanAmt<=0){document.getElementById('dtiDisplay').textContent='--%';closeDTI();return;}
   var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var P=loanAmt*10000;
   var annualPay=pmt(P,mr,months)*12;
-  var dti=(annualPay/(income*10000))*100;
+  var mortgageAnnual=mortgage>0?(mortgage*10000*0.04):0;
+  var otherInterest=otherDebt*10000*0.055;
+  var totalAnnual=annualPay+mortgageAnnual+otherInterest;
+  var dti=(totalAnnual/(income*10000))*100;
   var el=document.getElementById('dtiDisplay');
   el.textContent=dti.toFixed(1)+'%';
   el.style.color=dti>60?'#F04452':'#3182F6';
+  closeDTI();
 }
 
 function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')updateLimitHint();}
@@ -455,7 +511,7 @@ function getBaseRate(){
   }
   return rate;
 }
-function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;d+=parseFloat(S.savings)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('localUnsold').checked)d+=0.2;return d;}
+function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('localHouse').checked)d+=0.2;return d;}
 function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}

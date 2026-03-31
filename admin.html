@@ -341,6 +341,16 @@ const SITE_NAME = '공공서비스 가이드 | eloan.kr';
 let generatedArticle = null;
 let existingPosts = [];
 let selectedService = null;
+let totalTokens = { input: 0, output: 0 };
+
+// Gemini 2.5 Flash 가격 (USD per 1M tokens)
+const GEMINI_PRICE = { input: 0.15, output: 0.60 };
+const USD_TO_KRW = 1400;
+
+function calcCostKRW(input, output) {
+  const usd = (input / 1e6) * GEMINI_PRICE.input + (output / 1e6) * GEMINI_PRICE.output;
+  return Math.round(usd * USD_TO_KRW * 100) / 100;
+}
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -724,7 +734,13 @@ async function callGemini(prompt, retries = 5) {
       writerLog(`${model} 빈 응답, 다음 시도...`, 'warn');
       continue;
     }
-    writerLog(`${model} (${ver}) 성공!`, 'ok');
+    const usage = data.usageMetadata || {};
+    const inTok = usage.promptTokenCount || 0;
+    const outTok = usage.candidatesTokenCount || 0;
+    totalTokens.input += inTok;
+    totalTokens.output += outTok;
+    const cost = calcCostKRW(inTok, outTok);
+    writerLog(`${model} 성공! (입력:${inTok} 출력:${outTok} 토큰 / ${cost}원)`, 'ok');
     return data.candidates[0].content.parts[0].text;
   }
   throw new Error('모든 모델 시도 실패 - Google AI Studio에서 API Key를 새 프로젝트로 재발급하세요');
@@ -782,6 +798,7 @@ async function generatePost() {
   logEl.classList.add('show');
   document.getElementById('writerResult').classList.remove('show');
   generatedArticle = null;
+  totalTokens = { input: 0, output: 0 };
 
   // 키워드와 selectedService 동기화 확인
   if (selectedService && (selectedService['서비스명'] || '') !== keyword) {
@@ -832,7 +849,15 @@ ${svcContext}
 5. 구어체 ("~해요", "~거든요")
 6. AI 투 표현 금지 ("알아보겠습니다", "또한", "아울러", "결론적으로")
 7. 6000자 이상 충실하게 작성
-8. <table> 적극 활용`;
+8. <table> 적극 활용
+9. 핵심 수치/조건은 아래와 같은 인포그래픽 스타일 박스로 강조:
+   <div style="display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;">
+     <div style="flex:1;min-width:120px;background:#EFF6FF;border-radius:12px;padding:16px;text-align:center;">
+       <div style="font-size:24px;font-weight:800;color:#2563EB;">금액</div>
+       <div style="font-size:12px;color:#6B7280;">항목명</div>
+     </div>
+   </div>
+   이런 패턴으로 지원금액, 소득기준, 자산기준 등 핵심 수치 3~4개를 시각적으로 보여줄 것`;
 
     const fullResp = await callGemini(fullPrompt);
 
@@ -869,12 +894,15 @@ ${svcContext}
     writerLog(`제목: ${title}`, 'ok');
     writerLog(`본문: ${finalContent.length}자`, 'ok');
 
-    generatedArticle = { title, content: finalContent, meta_description: metaDesc, tags, keyword };
+    const totalCost = calcCostKRW(totalTokens.input, totalTokens.output);
+    generatedArticle = { title, content: finalContent, meta_description: metaDesc, tags, keyword, tokens: { ...totalTokens }, cost: totalCost };
     writerLog(`완료! "${title}" (${finalContent.length}자)`, 'ok');
+    writerLog(`총 토큰: 입력 ${totalTokens.input.toLocaleString()} + 출력 ${totalTokens.output.toLocaleString()} = ${(totalTokens.input+totalTokens.output).toLocaleString()} 토큰`, 'info');
+    writerLog(`비용: 약 ${totalCost}원 (₩${USD_TO_KRW}/$ 기준)`, 'info');
 
     document.getElementById('writerTitle').textContent = title;
-    document.getElementById('writerMeta').textContent = metaDesc;
-    document.getElementById('writerTags').innerHTML = tags.map(t => `<span class="tag">${t}</span>`).join('');
+    document.getElementById('writerMeta').textContent = `${metaDesc}`;
+    document.getElementById('writerTags').innerHTML = tags.map(t => `<span class="tag">${t}</span>`).join('') + `<span class="tag" style="background:#FEF3C7;color:#92400E;">비용: ${totalCost}원</span>`;
     document.getElementById('writerResult').classList.add('show');
 
   } catch(e) {

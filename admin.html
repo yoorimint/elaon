@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
   --primary: #1B65E3;
@@ -220,13 +221,16 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
 <div id="loginScreen" class="login-wrap">
   <div class="login-card">
     <h1>eloan.kr 관리자</h1>
-    <p>정책대출 데이터를 업데이트합니다</p>
-    <input type="password" class="login-input" id="adminPw" placeholder="관리자 비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
-    <input type="text" class="login-input" id="githubToken" placeholder="GitHub Personal Access Token" onkeydown="if(event.key==='Enter')doLogin()">
-    <input type="text" class="login-input" id="githubRepo" placeholder="GitHub Repo (예: username/elaon)" value="yoorimint/elaon" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="login-btn" onclick="doLogin()">로그인</button>
-    <div class="login-error" id="loginError">비밀번호가 틀렸습니다</div>
-    <p style="font-size:11px;color:var(--text-light);margin-top:16px;">비밀번호는 처음 설정 시 localStorage에 해시로 저장됩니다.<br>GitHub Token은 repo 권한이 필요합니다.</p>
+    <p>허가된 Google 계정으로 로그인하세요</p>
+    <div id="googleLoginBtn" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+    <div id="githubStep" style="display:none;">
+      <div style="font-size:13px;color:var(--accent);font-weight:600;margin-bottom:12px;" id="googleEmail"></div>
+      <input type="text" class="login-input" id="githubToken" placeholder="GitHub Personal Access Token" onkeydown="if(event.key==='Enter')doGithubLogin()">
+      <input type="text" class="login-input" id="githubRepo" placeholder="GitHub Repo (예: username/elaon)" value="yoorimint/elaon" onkeydown="if(event.key==='Enter')doGithubLogin()">
+      <button class="login-btn" onclick="doGithubLogin()">접속</button>
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <p style="font-size:11px;color:var(--text-light);margin-top:16px;">허가된 Google 계정만 접근할 수 있습니다.<br>GitHub Token은 repo 권한이 필요합니다.</p>
   </div>
 </div>
 
@@ -483,7 +487,8 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
 
 <script>
 /* ── Config ── */
-const ADMIN_PW_KEY = 'eloan_admin_pw_hash';
+const ALLOWED_EMAIL = 'ylis0219@gmail.com';
+const GOOGLE_CLIENT_ID = ''; // Google Cloud Console에서 OAuth 2.0 클라이언트 ID 입력
 const GH_TOKEN_KEY = 'eloan_gh_token';
 const GH_REPO_KEY = 'eloan_gh_repo';
 const DATA_PATH = 'data/rates.json';
@@ -491,14 +496,7 @@ const DATA_PATH = 'data/rates.json';
 let currentData = null;
 let originalData = null;
 let changeCount = 0;
-
-/* ── Utility ── */
-async function hashPassword(pw) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pw + 'eloan_salt_2026');
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
+let googleAuthed = false;
 
 function getNestedValue(obj, path) {
   return path.split('.').reduce((o, k) => o && o[k], obj);
@@ -518,28 +516,47 @@ function showToast(msg, type) {
   setTimeout(() => t.className = 'toast', 3000);
 }
 
-/* ── Login ── */
-async function doLogin() {
-  const pw = document.getElementById('adminPw').value;
-  const token = document.getElementById('githubToken').value;
-  const repo = document.getElementById('githubRepo').value;
+/* ── Google Login ── */
+function decodeJwtPayload(token) {
+  const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(atob(base64));
+}
 
-  if (!pw || !token) {
+function handleGoogleLogin(response) {
+  const payload = decodeJwtPayload(response.credential);
+  const email = payload.email;
+
+  if (email !== ALLOWED_EMAIL) {
     document.getElementById('loginError').style.display = 'block';
-    document.getElementById('loginError').textContent = '비밀번호와 GitHub Token을 입력해주세요';
+    document.getElementById('loginError').textContent = '허가되지 않은 계정입니다: ' + email;
+    document.getElementById('githubStep').style.display = 'none';
     return;
   }
 
-  const hash = await hashPassword(pw);
-  const stored = localStorage.getItem(ADMIN_PW_KEY);
+  googleAuthed = true;
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('googleEmail').textContent = email + ' 인증됨';
+  document.getElementById('googleLoginBtn').style.display = 'none';
+  document.getElementById('githubStep').style.display = 'block';
 
-  if (!stored) {
-    // 첫 로그인 - 비밀번호 설정
-    localStorage.setItem(ADMIN_PW_KEY, hash);
-    showToast('비밀번호가 설정되었습니다', 'success');
-  } else if (stored !== hash) {
+  // GitHub token이 저장되어 있으면 자동 진행
+  const savedToken = localStorage.getItem(GH_TOKEN_KEY);
+  if (savedToken) {
+    document.getElementById('githubToken').value = savedToken;
+    document.getElementById('githubRepo').value = localStorage.getItem(GH_REPO_KEY) || 'yoorimint/elaon';
+    doGithubLogin();
+  }
+}
+
+function doGithubLogin() {
+  if (!googleAuthed) return;
+
+  const token = document.getElementById('githubToken').value;
+  const repo = document.getElementById('githubRepo').value;
+
+  if (!token) {
     document.getElementById('loginError').style.display = 'block';
-    document.getElementById('loginError').textContent = '비밀번호가 틀렸습니다';
+    document.getElementById('loginError').textContent = 'GitHub Token을 입력해주세요';
     return;
   }
 
@@ -553,11 +570,13 @@ async function doLogin() {
 }
 
 function doLogout() {
+  googleAuthed = false;
   localStorage.removeItem(GH_TOKEN_KEY);
   document.getElementById('adminPanel').classList.remove('show');
   document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('adminPw').value = '';
   document.getElementById('githubToken').value = '';
+  document.getElementById('githubStep').style.display = 'none';
+  document.getElementById('googleLoginBtn').style.display = 'flex';
 }
 
 /* ── GitHub API ── */
@@ -919,12 +938,34 @@ async function applyAndSave() {
   }
 }
 
-/* ── Auto-login if token exists ── */
+/* ── Initialize Google Sign-In ── */
 window.addEventListener('DOMContentLoaded', () => {
-  const token = localStorage.getItem(GH_TOKEN_KEY);
-  if (token) {
-    document.getElementById('githubToken').value = token;
-    document.getElementById('githubRepo').value = localStorage.getItem(GH_REPO_KEY) || '';
+  if (typeof google !== 'undefined' && google.accounts) {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleGoogleLogin,
+      auto_select: true,
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('googleLoginBtn'),
+      { theme: 'outline', size: 'large', width: 300, text: 'signin_with', locale: 'ko' }
+    );
+  } else {
+    // GIS 로딩 대기
+    const interval = setInterval(() => {
+      if (typeof google !== 'undefined' && google.accounts) {
+        clearInterval(interval);
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleLogin,
+          auto_select: true,
+        });
+        google.accounts.id.renderButton(
+          document.getElementById('googleLoginBtn'),
+          { theme: 'outline', size: 'large', width: 300, text: 'signin_with', locale: 'ko' }
+        );
+      }
+    }, 200);
   }
 });
 </script>

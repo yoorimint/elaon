@@ -637,8 +637,15 @@ async function selectService(idx) {
       if (detailResp.ok) {
         const d = await detailResp.json();
         const detail = (d.data || [])[0] || {};
-        selectedService._detail = detail;
-        writerLog(`상세: ${(detail['서비스목적']||'').slice(0,50)}...`, 'info');
+        // 상세 응답이 선택한 서비스와 일치하는지 검증
+        const detailName = detail['서비스명'] || '';
+        if (detailName && !detailName.includes(name.slice(0,4)) && !name.includes(detailName.slice(0,4))) {
+          writerLog(`[주의] 상세 API가 다른 서비스 반환: "${detailName}" → 상세 데이터 무시`, 'err');
+          selectedService._detail = {};
+        } else {
+          selectedService._detail = detail;
+          writerLog(`상세: ${(detail['서비스목적']||'').slice(0,80)}...`, 'info');
+        }
       }
       if (condResp.ok) {
         const c = await condResp.json();

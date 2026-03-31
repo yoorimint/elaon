@@ -15,89 +15,82 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;color:#fff;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;color:#191F28;line-height:1.5;-webkit-font-smoothing:antialiased}
 .wrap{max-width:480px;margin:0 auto;padding:0 20px 100px}
 
-/* 헤더 */
-.header{padding:24px 0 8px}
-.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
-.header h1{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-.header-badge{font-size:11px;font-weight:600;color:#3182F6;background:rgba(49,130,246,0.15);padding:4px 10px;border-radius:99px}
-.header-sub{font-size:13px;color:#8B95A1;margin-top:2px}
+.header{padding:20px 0 4px}
+.header-top{display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:22px;font-weight:800;color:#191F28;letter-spacing:-0.5px}
+.header-badge{font-size:11px;font-weight:600;color:#3182F6;background:rgba(49,130,246,0.08);padding:4px 10px;border-radius:99px}
+.header-sub{font-size:13px;color:#8B95A1;margin-top:4px}
 
-/* 카드 */
-.card{background:#212832;border-radius:16px;padding:24px 20px;margin-bottom:10px}
-.card-title{font-size:13px;font-weight:600;color:#8B95A1;margin-bottom:16px;letter-spacing:-0.2px}
+.card{background:#fff;border-radius:16px;padding:24px 20px;margin-top:10px}
+.card-title{font-size:13px;font-weight:700;color:#8B95A1;margin-bottom:16px;letter-spacing:-0.2px}
 
-/* 입력 */
 .field{margin-bottom:18px}
 .field:last-child{margin-bottom:0}
-.label{font-size:14px;font-weight:600;color:#B0B8C1;margin-bottom:8px}
-.label .unit{font-weight:400;color:#6B7684;font-size:12px}
+.label{font-size:14px;font-weight:600;color:#333D4B;margin-bottom:8px}
+.label .unit{font-weight:400;color:#8B95A1;font-size:12px}
 .input-wrap{position:relative}
-.input{width:100%;height:52px;border:none;border-radius:12px;padding:0 16px;font-size:22px;font-weight:700;font-family:inherit;color:#fff;background:#2B3340;transition:box-shadow .2s}
-.input:focus{outline:none;box-shadow:0 0 0 2px #3182F6}
-.input::placeholder{color:#4E5968;font-weight:500;font-size:16px}
-.input-suffix{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:14px;color:#6B7684;font-weight:500}
-.hint{font-size:12px;color:#6B7684;margin-top:6px}
+.input{width:100%;height:52px;border:1.5px solid #E5E8EB;border-radius:12px;padding:0 50px 0 16px;font-size:22px;font-weight:700;font-family:inherit;color:#191F28;background:#fff;transition:border-color .2s}
+.input:focus{outline:none;border-color:#3182F6}
+.input::placeholder{color:#B0B8C1;font-weight:500;font-size:16px}
+.input-suffix{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:14px;color:#8B95A1;font-weight:500}
+.hint{font-size:12px;color:#8B95A1;margin-top:6px}
 
-/* 칩 버튼 */
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{height:42px;padding:0 18px;border:none;border-radius:12px;background:#2B3340;color:#B0B8C1;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s}
-.chip:hover{background:#333D4B}
-.chip.on{background:#3182F6;color:#fff}
+.chip{height:42px;padding:0 18px;border:1.5px solid #E5E8EB;border-radius:12px;background:#fff;color:#4E5968;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .12s}
+.chip:hover{border-color:#3182F6;color:#3182F6}
+.chip.on{background:#3182F6;color:#fff;border-color:#3182F6}
 
-/* 라디오 */
-.radio-list{display:flex;flex-direction:column;gap:6px}
-.radio-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#2B3340;cursor:pointer;transition:background .12s;font-size:14px;color:#D1D6DB}
-.radio-item:hover{background:#333D4B}
+.radio-list{display:flex;flex-direction:column;gap:4px}
+.radio-item{display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;cursor:pointer;transition:background .1s;font-size:14px;color:#333D4B}
+.radio-item:hover{background:#F4F5F7}
 .radio-item input{accent-color:#3182F6;width:18px;height:18px;cursor:pointer}
 .radio-item .val{margin-left:auto;font-size:13px;font-weight:700;color:#3182F6}
 
-/* 체크박스 */
-.check-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:#2B3340;margin-bottom:6px;font-size:14px;color:#D1D6DB;cursor:pointer}
+.check-item{display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;font-size:14px;color:#333D4B;cursor:pointer}
+.check-item:hover{background:#F4F5F7}
 .check-item input{accent-color:#3182F6;width:18px;height:18px}
 .check-item .val{margin-left:auto;font-size:13px;font-weight:700;color:#3182F6}
 
-/* 계산 버튼 */
-.calc-btn{width:100%;height:56px;border:none;border-radius:14px;background:#3182F6;color:#fff;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;transition:background .15s;margin-top:6px}
+.calc-btn{width:100%;height:56px;border:none;border-radius:14px;background:#3182F6;color:#fff;font-size:17px;font-weight:800;font-family:inherit;cursor:pointer;transition:background .15s;margin-top:12px}
 .calc-btn:hover{background:#1B64DA}
 .calc-btn:active{transform:scale(.98)}
 
-/* 결과 */
-.result{display:none;margin-bottom:10px}
+.result{display:none;margin-top:10px}
 .result.show{display:block;animation:fadeUp .4s ease}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.result-hero{background:linear-gradient(135deg,#3182F6 0%,#1B64DA 100%);border-radius:16px;padding:32px 24px;text-align:center;margin-bottom:10px}
-.result-amount{font-size:36px;font-weight:800;letter-spacing:-1px}
-.result-label{font-size:14px;color:rgba(255,255,255,.7);margin-top:4px}
-.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.result-cell{background:#212832;border-radius:14px;padding:16px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+.result-hero{background:#3182F6;border-radius:16px;padding:32px 24px;text-align:center;color:#fff}
+.result-label{font-size:14px;opacity:.8}
+.result-amount{font-size:36px;font-weight:800;letter-spacing:-1px;margin-top:4px}
+
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.result-cell{background:#fff;border-radius:14px;padding:16px}
 .result-cell-label{font-size:12px;color:#8B95A1;margin-bottom:4px}
-.result-cell-value{font-size:18px;font-weight:700;color:#fff}
+.result-cell-value{font-size:18px;font-weight:700;color:#191F28}
 .result-cell-value.blue{color:#3182F6}
 
-/* 상환일정 */
-.schedule-btn{width:100%;padding:14px;border:none;border-radius:14px;background:#212832;font-size:14px;font-weight:600;color:#8B95A1;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .12s}
-.schedule-btn:hover{background:#2B3340}
+.schedule-btn{width:100%;padding:14px;border:none;border-radius:14px;background:#fff;font-size:14px;font-weight:600;color:#8B95A1;cursor:pointer;font-family:inherit;margin-top:8px;transition:background .1s}
+.schedule-btn:hover{background:#F4F5F7}
 .schedule-wrap{display:none;margin-top:8px}
 .schedule-wrap.show{display:block;animation:fadeUp .3s ease}
-.schedule-table{width:100%;border-collapse:collapse;font-size:12px;background:#212832;border-radius:14px;overflow:hidden}
-.schedule-table th{padding:10px 12px;text-align:right;font-weight:600;color:#6B7684;background:#2B3340;border-bottom:1px solid #333D4B}
+.schedule-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:14px;overflow:hidden}
+.schedule-table th{padding:10px 12px;text-align:right;font-weight:600;color:#8B95A1;background:#F4F5F7;border-bottom:1px solid #E5E8EB}
 .schedule-table th:first-child{text-align:left}
-.schedule-table td{padding:10px 12px;text-align:right;color:#B0B8C1;border-bottom:1px solid #262D37}
-.schedule-table td:first-child{text-align:left;font-weight:600;color:#D1D6DB}
+.schedule-table td{padding:10px 12px;text-align:right;color:#4E5968;border-bottom:1px solid #F4F5F7}
+.schedule-table td:first-child{text-align:left;font-weight:600;color:#333D4B}
 
-/* 안내 */
 .info-section{margin-top:24px}
-.info-title{font-size:16px;font-weight:700;margin-bottom:12px}
-.info-card{background:#212832;border-radius:14px;padding:18px;margin-bottom:8px}
-.info-card h3{font-size:14px;font-weight:700;color:#D1D6DB;margin-bottom:10px}
-.info-card li{font-size:13px;color:#8B95A1;line-height:1.8;padding-left:14px;position:relative;list-style:none}
+.info-title{font-size:16px;font-weight:700;margin-bottom:10px;color:#191F28}
+.info-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:8px}
+.info-card h3{font-size:14px;font-weight:700;color:#333D4B;margin-bottom:10px}
+.info-card ul{list-style:none;padding:0;margin:0}
+.info-card li{font-size:13px;color:#6B7684;line-height:1.8;padding-left:14px;position:relative}
 .info-card li::before{content:'';width:4px;height:4px;background:#3182F6;border-radius:50%;position:absolute;left:0;top:10px}
-.info-card ul{padding:0;margin:0}
 
-.footer{text-align:center;padding:32px 0;font-size:11px;color:#4E5968}
+.footer{text-align:center;padding:32px 0;font-size:11px;color:#8B95A1}
 </style>
 </head>
 <body>
@@ -112,7 +105,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
   <div class="header-sub">소득·유형별 금리가 자동 적용돼요</div>
 </div>
 
-<!-- 기본정보 -->
 <div class="card">
   <div class="card-title">기본정보</div>
   <div class="field">
@@ -155,7 +147,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
   </div>
 </div>
 
-<!-- 대출유형 -->
 <div class="card">
   <div class="card-title">대출유형</div>
   <div class="field">
@@ -177,7 +168,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
   </div>
 </div>
 
-<!-- 우대금리 -->
 <div class="card">
   <div class="card-title">우대금리</div>
   <div class="field">
@@ -205,7 +195,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
 
 <button class="calc-btn" onclick="calc()">계산하기</button>
 
-<!-- 결과 -->
 <div class="result" id="result">
   <div class="result-hero">
     <div class="result-label">월 상환금</div>
@@ -238,7 +227,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
   </div>
 </div>
 
-<!-- 안내 -->
 <div class="info-section">
   <div class="info-title">디딤돌대출 핵심 정보</div>
   <div class="info-card">
@@ -288,129 +276,44 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#191F28;colo
 
 <script>
 var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',savings:'0'};
-
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   firstTime:{limit:24000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:7000,r:{10:3.25,15:3.35,20:3.40,30:3.45}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]}
 };
+var LIMIT_TEXT={general:'대출한도 최대 2억 · 주택가격 5억 이하',firstTime:'대출한도 최대 2.4억 · 주택가격 5억 이하',newlywed:'대출한도 최대 3.2억 · 주택가격 6억 이하'};
 
-var LIMIT_TEXT={
-  general:'대출한도 최대 2억 · 주택가격 5억 이하',
-  firstTime:'대출한도 최대 2.4억 · 주택가격 5억 이하',
-  newlywed:'대출한도 최대 3.2억 · 주택가격 6억 이하'
-};
-
-function setVal(el,key,val){
-  S[key]=val;
-  el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});
-  el.classList.add('on');
-  if(key==='borrower')document.getElementById('limitHint').textContent=LIMIT_TEXT[val];
-}
-
-function getBaseRate(){
-  var t=RATES[S.borrower];
-  var income=parseInt(document.getElementById('income').value)||0;
-  var period=parseInt(S.period);
-  var rate=3.35;
-  for(var i=0;i<t.ranges.length;i++){
-    if(income<=t.ranges[i].max){rate=t.ranges[i].r[period]||3.35;break;}
-  }
-  return rate;
-}
-
-function getDiscount(){
-  var d=0;
-  var fd=document.querySelector('input[name="familyDiscount"]:checked');
-  if(fd)d+=parseFloat(fd.value)||0;
-  d+=parseFloat(S.savings)||0;
-  if(document.getElementById('econtract').checked)d+=0.1;
-  if(document.getElementById('isLocal').checked)d+=0.2;
-  return d;
-}
-
-function getRate(){
-  var base=getBaseRate();
-  if(S.rateType==='mixed')base-=0.2;
-  else if(S.rateType==='variable')base-=0.3;
-  return Math.max(base-getDiscount(),1.5);
-}
-
+function setVal(el,key,val){S[key]=val;el.parentNode.querySelectorAll('.chip').forEach(function(b){b.classList.remove('on');});el.classList.add('on');if(key==='borrower')document.getElementById('limitHint').textContent=LIMIT_TEXT[val];}
+function getBaseRate(){var t=RATES[S.borrower];var income=parseInt(document.getElementById('income').value)||0;var period=parseInt(S.period);var rate=3.35;for(var i=0;i<t.ranges.length;i++){if(income<=t.ranges[i].max){rate=t.ranges[i].r[period]||3.35;break;}}return rate;}
+function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;d+=parseFloat(S.savings)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('isLocal').checked)d+=0.2;return d;}
+function getRate(){var base=getBaseRate();if(S.rateType==='mixed')base-=0.2;else if(S.rateType==='variable')base-=0.3;return Math.max(base-getDiscount(),1.5);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
 
 function calc(){
-  var income=parseInt(document.getElementById('income').value)||0;
-  var housePrice=parseInt(document.getElementById('housePrice').value)||0;
-  var loanAmt=parseInt(document.getElementById('loanAmount').value)||0;
-  var t=RATES[S.borrower];
-
+  var income=parseInt(document.getElementById('income').value)||0;var housePrice=parseInt(document.getElementById('housePrice').value)||0;var loanAmt=parseInt(document.getElementById('loanAmount').value)||0;var t=RATES[S.borrower];
   if(income<=0||housePrice<=0||loanAmt<=0){alert('입력값을 확인해주세요.');return;}
-
   var maxIncome=t.ranges[t.ranges.length-1].max;
   if(income>maxIncome){alert('소득 기준 초과 (최대 '+maxIncome+'만원)');return;}
   if(loanAmt>t.limit){alert('대출한도 초과 (최대 '+t.limit.toLocaleString()+'만원)');return;}
   if(housePrice>t.houseLimit){alert('주택가격 한도 초과 (최대 '+t.houseLimit.toLocaleString()+'만원)');return;}
-
-  var rate=getRate();
-  var mr=rate/100/12;
-  var months=parseInt(S.period)*12;
-  var P=loanAmt*10000;
-  var monthly=0,totalPay=0,totalInt=0;
-
-  if(S.repay==='equal'){
-    monthly=pmt(P,mr,months);totalPay=monthly*months;totalInt=totalPay-P;
-  }else if(S.repay==='principal'){
-    var pp=P/months;var bal=P;totalPay=0;
-    for(var i=0;i<months;i++){totalPay+=pp+bal*mr;bal-=pp;}
-    monthly=totalPay/months;totalInt=totalPay-P;
-  }else{
-    var base=pmt(P,mr,months);monthly=base*0.7;
-    var coeff=0.7,rem=months;totalPay=0;
-    while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}
-    totalInt=totalPay-P;monthly=totalPay/months;
-  }
-
+  var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var P=loanAmt*10000;var monthly=0,totalPay=0,totalInt=0;
+  if(S.repay==='equal'){monthly=pmt(P,mr,months);totalPay=monthly*months;totalInt=totalPay-P;}
+  else if(S.repay==='principal'){var pp=P/months;var bal=P;totalPay=0;for(var i=0;i<months;i++){totalPay+=pp+bal*mr;bal-=pp;}monthly=totalPay/months;totalInt=totalPay-P;}
+  else{var base=pmt(P,mr,months);monthly=base*0.7;var coeff=0.7,rem=months;totalPay=0;while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}totalInt=totalPay-P;monthly=totalPay/months;}
   var maxLimit=Math.floor(housePrice*(S.borrower==='general'?0.7:0.8));
-
-  document.getElementById('rMonthly').textContent=fmt(monthly);
-  document.getElementById('rRate').textContent=rate.toFixed(2)+'%';
-  document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';
-  document.getElementById('rInterest').textContent=fmt(totalInt);
-  document.getElementById('rTotal').textContent=fmt(totalPay);
-
-  buildSchedule(P,mr,months);
-  document.getElementById('result').classList.add('show');
-  document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
+  buildSchedule(P,mr,months);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function buildSchedule(P,mr,months){
-  var tbody=document.getElementById('scheduleBody');
-  tbody.innerHTML='';var bal=P;
-
-  if(S.repay==='equal'){
-    var mp=pmt(P,mr,months);
-    for(var i=0;i<months;i++){var interest=bal*mr;var pp=mp-interest;bal-=pp;
-      if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}
-    }
-  }else if(S.repay==='principal'){
-    var pp=P/months;
-    for(var i=0;i<months;i++){var interest=bal*mr;bal-=pp;
-      if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(pp+interest)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}
-    }
-  }else{
-    var base=pmt(P,mr,months);var coeff=0.7;
-    for(var i=0;i<months;i++){if(i>0&&i%60===0)coeff+=0.1;var mp=base*coeff;var interest=bal*mr;var pp=mp-interest;bal-=pp;
-      if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(Math.max(0,pp))+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}
-    }
-  }
+  var tbody=document.getElementById('scheduleBody');tbody.innerHTML='';var bal=P;
+  if(S.repay==='equal'){var mp=pmt(P,mr,months);for(var i=0;i<months;i++){var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
+  else if(S.repay==='principal'){var pp=P/months;for(var i=0;i<months;i++){var interest=bal*mr;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(pp+interest)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
+  else{var base=pmt(P,mr,months);var coeff=0.7;for(var i=0;i<months;i++){if(i>0&&i%60===0)coeff+=0.1;var mp=base*coeff;var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(Math.max(0,pp))+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
 }
 
-function toggleSchedule(){
-  var w=document.getElementById('scheduleWrap');var b=document.getElementById('scheduleBtn');
-  if(w.classList.contains('show')){w.classList.remove('show');b.textContent='상환일정표 보기 ▾';}
-  else{w.classList.add('show');b.textContent='상환일정표 접기 ▴';}
-}
+function toggleSchedule(){var w=document.getElementById('scheduleWrap');var b=document.getElementById('scheduleBtn');if(w.classList.contains('show')){w.classList.remove('show');b.textContent='상환일정표 보기 ▾';}else{w.classList.add('show');b.textContent='상환일정표 접기 ▴';}}
 </script>
 </body>
 </html>

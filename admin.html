@@ -301,9 +301,17 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
         <input type="password" class="gemini-key-input" id="govApiKey" placeholder="정부24 API Key">
         <button class="gemini-key-save" onclick="saveGovKey()">저장</button>
       </div>
-      <button class="writer-btn" id="fetchSvcBtn" onclick="fetchServices()" style="margin-bottom:10px;background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);">공공서비스 불러오기</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <select class="writer-input" id="writerCat" style="flex:1;height:44px;">
+          <option value="지원금">지원금</option>
+          <option value="절약">절약</option>
+          <option value="재테크">재테크</option>
+        </select>
+        <button class="writer-btn" onclick="autoTopic()" style="flex:1;height:44px;font-size:13px;">주제 자동 추천</button>
+      </div>
+      <button class="writer-btn" id="fetchSvcBtn" onclick="fetchServices()" style="margin-bottom:10px;background:rgba(255,255,255,0.15);color:#fff;border:2px solid rgba(255,255,255,0.3);font-size:13px;height:40px;">공공서비스에서 가져오기</button>
       <div id="svcList" style="display:none;max-height:300px;overflow-y:auto;margin-bottom:10px;border-radius:10px;"></div>
-      <input type="text" class="writer-input" id="writerKeyword" placeholder="또는 키워드 직접 입력" onkeydown="if(event.key==='Enter')generatePost()">
+      <input type="text" class="writer-input" id="writerKeyword" placeholder="키워드 직접 입력 또는 자동 추천 사용" onkeydown="if(event.key==='Enter')generatePost()">
       <button class="writer-btn" id="writerBtn" onclick="generatePost()">글 생성하기</button>
       <div class="writer-log" id="writerLog"></div>
       <div class="writer-result" id="writerResult">
@@ -312,6 +320,38 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
         <div class="tags" id="writerTags"></div>
         <button class="writer-upload-btn" id="writerUploadBtn" onclick="uploadPost()">GitHub에 발행하기</button>
       </div>
+    </div>
+
+    <!-- 자동 작성 설정 -->
+    <div class="settings-card" style="margin-bottom:14px;background:#F0EAFF;">
+      <div class="settings-title" style="color:#7C3AED;">자동 작성 설정</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:#4B5563;display:flex;align-items:center;gap:4px;">
+          <input type="checkbox" id="autoEnabled"> 자동 작성 활성화
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#6B7280;margin-bottom:2px;">작성 시간</div>
+          <input type="time" id="autoTime" value="09:00" style="width:100%;height:34px;border:1px solid #D1D5DB;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;">
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:#6B7280;margin-bottom:2px;">일일 작성 수</div>
+          <select id="autoCount" style="width:100%;height:34px;border:1px solid #D1D5DB;border-radius:6px;padding:0 8px;font-size:13px;font-family:inherit;">
+            <option value="1">1개</option>
+            <option value="2">2개</option>
+            <option value="3" selected>3개</option>
+            <option value="5">5개</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="autoCat1" checked> 지원금</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="autoCat2" checked> 절약</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="autoCat3" checked> 재테크</label>
+      </div>
+      <button onclick="saveAutoSettings()" style="width:100%;height:36px;border:none;border-radius:6px;background:#7C3AED;color:#fff;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;">설정 저장</button>
+      <div id="autoStatus" style="font-size:11px;color:#6B7280;margin-top:6px;"></div>
     </div>
 
     <!-- 발행된 글 목록 -->
@@ -402,6 +442,7 @@ async function doLogin() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminPanel').classList.add('show');
   loadExistingPosts();
+  loadAutoSettings();
 }
 
 function doLogout() {
@@ -517,6 +558,128 @@ function isAlreadyWritten(serviceName) {
 }
 
 /* ── Gov24 API ── */
+/* ── 자동 주제 추천 ── */
+async function autoTopic() {
+  var cat = document.getElementById('writerCat').value;
+  if (!localStorage.getItem(GEMINI_KEY_KEY)) { showToast('Gemini API Key를 먼저 입력하세요', 'error'); return; }
+
+  writerLog(cat + ' 분야 주제 추천 중...', 'info');
+  var existingTitles = existingPosts.map(function(p) { return p.title; }).join(', ');
+
+  var prompt = '한국에서 "' + cat + '" 분야로 사람들이 많이 검색하는 주제를 5개 추천해줘.\n' +
+    '각 주제는 블로그 글 제목으로 쓸 수 있는 롱테일 키워드 형태로.\n' +
+    '이미 작성된 주제는 제외해줘: ' + existingTitles + '\n' +
+    '연도는 ' + new Date().getFullYear() + '년 기준.\n' +
+    '반드시 JSON 배열로만 응답: ["주제1","주제2","주제3","주제4","주제5"]';
+
+  try {
+    var resp = await callGemini(prompt);
+    var clean = resp.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    var topics = JSON.parse(clean);
+    var listEl = document.getElementById('svcList');
+    listEl.style.display = 'block';
+    listEl.innerHTML = topics.map(function(t, i) {
+      return '<div onclick="pickTopic(\'' + t.replace(/'/g, "\\'") + '\')" style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:14px;font-weight:600;">' + t + '</div>';
+    }).join('');
+    writerLog(topics.length + '개 주제 추천됨', 'ok');
+  } catch(e) {
+    writerLog('주제 추천 실패: ' + e.message, 'err');
+  }
+}
+
+function pickTopic(topic) {
+  document.getElementById('writerKeyword').value = topic;
+  document.getElementById('svcList').style.display = 'none';
+  selectedService = null;
+  showToast('"' + topic + '" 선택됨', 'success');
+}
+
+/* ── 자동 작성 설정 ── */
+function saveAutoSettings() {
+  var settings = {
+    enabled: document.getElementById('autoEnabled').checked,
+    time: document.getElementById('autoTime').value,
+    count: parseInt(document.getElementById('autoCount').value),
+    cats: []
+  };
+  if (document.getElementById('autoCat1').checked) settings.cats.push('지원금');
+  if (document.getElementById('autoCat2').checked) settings.cats.push('절약');
+  if (document.getElementById('autoCat3').checked) settings.cats.push('재테크');
+
+  localStorage.setItem('eloan_auto', JSON.stringify(settings));
+  var statusEl = document.getElementById('autoStatus');
+  if (settings.enabled) {
+    statusEl.textContent = '매일 ' + settings.time + '에 ' + settings.cats.join('/') + ' 분야 ' + settings.count + '개 자동 작성 (브라우저가 열려있어야 동작)';
+  } else {
+    statusEl.textContent = '자동 작성 비활성화';
+  }
+  showToast('자동 작성 설정 저장됨', 'success');
+}
+
+function loadAutoSettings() {
+  var s = JSON.parse(localStorage.getItem('eloan_auto') || 'null');
+  if (!s) return;
+  document.getElementById('autoEnabled').checked = s.enabled || false;
+  document.getElementById('autoTime').value = s.time || '09:00';
+  document.getElementById('autoCount').value = s.count || 3;
+  document.getElementById('autoCat1').checked = (s.cats || []).includes('지원금');
+  document.getElementById('autoCat2').checked = (s.cats || []).includes('절약');
+  document.getElementById('autoCat3').checked = (s.cats || []).includes('재테크');
+  if (s.enabled) {
+    document.getElementById('autoStatus').textContent = '매일 ' + s.time + '에 ' + (s.cats||[]).join('/') + ' 분야 ' + s.count + '개 자동 작성 예정';
+    scheduleAutoWrite();
+  }
+}
+
+function scheduleAutoWrite() {
+  var s = JSON.parse(localStorage.getItem('eloan_auto') || 'null');
+  if (!s || !s.enabled || !s.cats.length) return;
+
+  function checkAndRun() {
+    var now = new Date();
+    var hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    var todayKey = 'eloan_auto_ran_' + now.toISOString().slice(0,10);
+    if (hhmm === s.time && !sessionStorage.getItem(todayKey)) {
+      sessionStorage.setItem(todayKey, '1');
+      runAutoWrite(s);
+    }
+  }
+  setInterval(checkAndRun, 60000);
+}
+
+async function runAutoWrite(settings) {
+  writerLog('=== 자동 작성 시작 ===', 'info');
+  var cats = settings.cats;
+  var count = settings.count || 3;
+  var written = 0;
+
+  for (var i = 0; i < count; i++) {
+    var cat = cats[i % cats.length];
+    document.getElementById('writerCat').value = cat;
+    writerLog('[자동 ' + (i+1) + '/' + count + '] ' + cat + ' 주제 생성 중...', 'info');
+
+    try {
+      await autoTopic();
+      var topics = document.querySelectorAll('#svcList div');
+      if (topics.length > 0) {
+        var topic = topics[0].textContent;
+        document.getElementById('writerKeyword').value = topic;
+        document.getElementById('svcList').style.display = 'none';
+        await generatePost();
+        if (generatedArticle) {
+          await uploadPost();
+          written++;
+          writerLog('[자동] ' + topic + ' 발행 완료', 'ok');
+          await new Promise(function(r) { setTimeout(r, 10000); });
+        }
+      }
+    } catch(e) {
+      writerLog('[자동] 오류: ' + e.message, 'err');
+    }
+  }
+  writerLog('=== 자동 작성 완료: ' + written + '/' + count + '건 ===', 'ok');
+}
+
 function saveGovKey() {
   const key = document.getElementById('govApiKey').value.trim();
   if (!key) return;
@@ -1057,7 +1220,8 @@ async function uploadPost() {
     const newPost = {
       title: generatedArticle.title, slug, date: dateStr, date_iso: dateIso,
       meta_description: generatedArticle.meta_description,
-      tags: generatedArticle.tags, keyword: generatedArticle.keyword
+      tags: generatedArticle.tags, keyword: generatedArticle.keyword,
+      category: document.getElementById('writerCat').value || '지원금'
     };
     posts = posts.filter(p => p.slug !== slug);
     posts.unshift(newPost);

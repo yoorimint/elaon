@@ -584,13 +584,9 @@ async function fetchServices() {
     }
 
     // 지원금/보조금 관련만 필터
-    const SUPPORT_KEYWORDS = ['지원','보조','수당','급여','장려','대출','장학','연금','양육','보육','돌봄','바우처','감면','수급','임대'];
-    const EXCLUDE_KEYWORDS = ['채용','시험','선박','수산','해운','산림','축산','농업용','면허','등록','신고','발급','조회','확인서','증명','허가','인가','검사','측량','광업'];
     const supportOnly = allServices.filter(function(s) {
-      var text = (s['서비스명']||'') + ' ' + (s['서비스목적요약']||'');
-      var hasSupport = SUPPORT_KEYWORDS.some(function(kw) { return text.includes(kw); });
-      var hasExclude = EXCLUDE_KEYWORDS.some(function(kw) { return text.includes(kw); });
-      return hasSupport && !hasExclude;
+      var name = s['서비스명'] || '';
+      return name.includes('지원') || name.includes('장려') || name.includes('수당') || name.includes('급여') || name.includes('보조금') || name.includes('바우처') || name.includes('대출') || name.includes('장학') || name.includes('연금');
     });
 
     // 인기순 정렬

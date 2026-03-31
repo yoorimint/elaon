@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-SDY3EXP31H"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-SDY3EXP31H');</script>
-<title>지원금 찾기 - 정부 지원금·보조금 가이드 | eloan.kr</title>
-<meta name="description" content="정부 지원금, 보조금, 공공서비스 자격조건과 신청방법을 한눈에 확인하세요.">
-<meta property="og:title" content="지원금 찾기 - eloan.kr">
-<meta property="og:description" content="정부 지원금·보조금 가이드">
+<title>AI 도구 리뷰 비교 - 최신 AI 툴 가이드 | eloan.kr</title>
+<meta name="description" content="ChatGPT, Gemini, Claude 등 최신 AI 도구를 비교하고 리뷰합니다. 무료/유료 AI 툴 추천, 가격, 기능 비교.">
+<meta property="og:title" content="AI 도구 리뷰 비교 - eloan.kr">
+<meta property="og:description" content="최신 AI 도구 비교 리뷰, 추천, 가격 가이드">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://eloan.kr">
 <link rel="canonical" href="https://eloan.kr">
@@ -70,22 +70,24 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 
 <div class="topbar">
   <div class="topbar-inner">
-    <a href="/" class="topbar-logo">eloan.kr<span>지원금 가이드</span></a>
+    <a href="/" class="topbar-logo">eloan.kr<span>AI 도구 가이드</span></a>
   </div>
 </div>
 
 <div class="hero">
-  <h1>지원금 찾기</h1>
-  <div class="hero-sub">정부 지원금·보조금 조건과 신청방법</div>
+  <h1>AI 도구 리뷰 & 비교</h1>
+  <div class="hero-sub">최신 AI 툴 비교, 추천, 가격 가이드</div>
   <div class="search-box">
     <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <input type="text" placeholder="검색 (예: 청년 월세, 장려금)" id="searchInput" oninput="doSearch()">
   </div>
   <div class="tag-row">
     <button class="tag-btn active" onclick="filterTag(this,'')">전체</button>
-    <button class="tag-btn" onclick="filterTag(this,'지원금')">지원금</button>
-    <button class="tag-btn" onclick="filterTag(this,'절약')">절약</button>
-    <button class="tag-btn" onclick="filterTag(this,'재테크')">재테크</button>
+    <button class="tag-btn" onclick="filterTag(this,'AI챗봇')">AI 챗봇</button>
+    <button class="tag-btn" onclick="filterTag(this,'이미지')">이미지/영상</button>
+    <button class="tag-btn" onclick="filterTag(this,'생산성')">생산성</button>
+    <button class="tag-btn" onclick="filterTag(this,'개발')">개발</button>
+    <button class="tag-btn" onclick="filterTag(this,'비교')">비교/추천</button>
   </div>
 </div>
 
@@ -103,7 +105,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
       <span>오늘 <span class="stat-num" id="todayCount">-</span></span>
       <span>누적 <span class="stat-num" id="totalCount">-</span></span>
     </div>
-    정부 공공데이터 기반 · 정확한 조건은 해당 기관에 확인하세요
+    AI 도구 정보는 변경될 수 있으니 공식 사이트에서 최신 정보를 확인하세요
   </div>
 </div>
 
@@ -115,9 +117,11 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 var allPosts = [], filtered = [], page = 1, PER = 10, activeTag = '';
 
 var TAG_KEYWORDS = {
-  '지원금':['지원금','보조금','수당','급여','장려금','바우처','대출','장학금','연금','양육','보육','임대','돌봄','지원'],
-  '절약':['절약','절세','환급','감면','할인','무료','면제','아끼','줄이기','비교','저렴'],
-  '재테크':['재테크','적금','저축','투자','이자','배당','펀드','주식','부업','수익','가입']
+  'AI챗봇':['chatgpt','gpt','gemini','claude','챗봇','대화형','llm','ai채팅','copilot','perplexity'],
+  '이미지':['이미지','영상','사진','그림','미드저니','midjourney','dall-e','stable diffusion','동영상','편집','생성'],
+  '생산성':['생산성','자동화','노션','notion','업무','문서','요약','번역','메일','회의록','엑셀'],
+  '개발':['개발','코딩','프로그래밍','vscode','cursor','github','api','배포','프레임워크','라이브러리'],
+  '비교':['비교','추천','순위','top','best','무료','유료','가격','요금','플랜']
 };
 
 function postMatchesTag(p, tag) {

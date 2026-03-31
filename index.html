@@ -14,109 +14,193 @@
 <link rel="canonical" href="https://eloan.kr">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#0D1B3E;--blue:#2563EB;--blue-light:#EFF6FF;--gold:#B8860B;--gold-light:#D4A933;--accent:#059669;--bg:#F7F8FA;--white:#FFF;--text:#1F2937;--text-sub:#4B5563;--text-muted:#9CA3AF;--border:#E5E7EB;}
+:root{
+  --bg:#F8F9FB;--surface:#FFF;--text:#111827;--text-sub:#4B5563;--text-muted:#9CA3AF;
+  --border:#E5E7EB;--border-light:#F3F4F6;
+  --accent:#2563EB;--accent-bg:#EFF6FF;--accent-dark:#1D4ED8;
+  --green:#059669;--green-bg:#ECFDF5;
+  --purple:#7C3AED;--purple-bg:#F5F3FF;
+  --orange:#EA580C;--orange-bg:#FFF7ED;
+  --navy:#0F172A;--navy-light:#1E293B;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
-.topbar{background:var(--navy);padding:14px 0;border-bottom:2px solid var(--gold);}
-.topbar-inner{max-width:640px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;}
-.topbar-logo{color:#fff;text-decoration:none;font-size:17px;font-weight:800;}
-.topbar-logo span{color:var(--gold-light);font-weight:300;font-size:11px;margin-left:6px;}
-.container{max-width:640px;margin:0 auto;padding:0 20px;}
+body{font-family:'Noto Sans KR','Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;}
+a{text-decoration:none;color:inherit;}
 
-/* 히어로 */
-.hero{background:var(--navy);padding:32px 20px 44px;text-align:center;position:relative;}
-.hero::after{content:'';position:absolute;bottom:-14px;left:0;right:0;height:28px;background:var(--bg);border-radius:16px 16px 0 0;}
-.hero h1{color:#fff;font-size:20px;font-weight:800;margin-bottom:6px;}
-.hero-sub{color:rgba(255,255,255,.55);font-size:12px;margin-bottom:16px;}
-.search-box{max-width:440px;margin:0 auto 14px;position:relative;}
-.search-box input{width:100%;height:46px;border:none;border-radius:10px;padding:0 16px 0 42px;font-size:14px;font-family:inherit;outline:none;box-shadow:0 2px 12px rgba(0,0,0,.12);}
-.search-box input::placeholder{color:var(--text-muted);}
-.search-box svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
+/* NAV */
+.nav{background:var(--navy);position:sticky;top:0;z-index:100;}
+.nav-inner{max-width:960px;margin:0 auto;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{color:#fff;font-size:18px;font-weight:800;letter-spacing:-0.5px;}
+.nav-logo span{color:#60A5FA;font-weight:400;font-size:12px;margin-left:6px;letter-spacing:0;}
+.nav-links{display:flex;gap:20px;}
+.nav-links a{color:rgba(255,255,255,.65);font-size:13px;font-weight:500;transition:color .15s;}
+.nav-links a:hover{color:#fff;}
 
-/* 태그 버튼 */
-.tag-row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:440px;margin:0 auto;}
-.tag-btn{padding:6px 14px;border-radius:20px;border:none;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;}
-.tag-btn:hover,.tag-btn.active{background:#fff;color:var(--navy);font-weight:700;}
+/* HERO */
+.hero{background:var(--navy);padding:40px 24px 56px;position:relative;}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:24px;background:var(--bg);border-radius:24px 24px 0 0;}
+.hero-inner{max-width:960px;margin:0 auto;text-align:center;}
+.hero h1{color:#fff;font-size:28px;font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;}
+.hero-desc{color:rgba(255,255,255,.5);font-size:14px;margin-bottom:24px;}
+.search-wrap{max-width:520px;margin:0 auto 20px;position:relative;}
+.search-wrap input{width:100%;height:48px;border:none;border-radius:12px;padding:0 16px 0 44px;font-size:15px;font-family:inherit;background:rgba(255,255,255,.95);box-shadow:0 4px 20px rgba(0,0,0,.15);outline:none;transition:box-shadow .2s;}
+.search-wrap input:focus{box-shadow:0 4px 20px rgba(37,99,235,.3);}
+.search-wrap input::placeholder{color:var(--text-muted);}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-muted);}
 
-/* 게시판 */
-.board{padding-top:20px;}
-.board-header{display:flex;justify-content:space-between;align-items:center;padding:0 2px 10px;border-bottom:2px solid var(--navy);}
-.board-title{font-size:15px;font-weight:700;color:var(--navy);}
-.board-count{font-size:12px;color:var(--text-muted);}
-.board-row{display:flex;align-items:center;padding:14px 2px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;gap:10px;transition:background .1s;}
-.board-row:hover{background:var(--blue-light);}
-.board-num{width:28px;font-size:12px;font-weight:600;color:var(--text-muted);text-align:center;flex-shrink:0;}
-.board-body{flex:1;min-width:0;}
-.board-row-title{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.board-row-desc{font-size:11px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
-.board-date{font-size:11px;color:var(--text-muted);flex-shrink:0;}
-.paging{display:flex;justify-content:center;gap:4px;padding:20px 0;}
-.page-btn{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;background:var(--white);font-size:13px;font-family:inherit;color:var(--text-sub);cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.page-btn:hover{border-color:var(--blue);color:var(--blue);}
-.page-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-.page-btn:disabled{opacity:.3;cursor:default;}
-.empty{text-align:center;padding:40px 0;color:var(--text-muted);font-size:14px;}
-.bottom-info{text-align:center;padding:20px 0;font-size:11px;color:var(--text-muted);line-height:1.8;}
-.stats{display:flex;gap:20px;justify-content:center;margin-bottom:6px;}
-.stat-num{font-weight:800;color:var(--navy);}
-.footer{background:var(--navy);padding:20px 0;text-align:center;}
-.footer p{font-size:11px;color:rgba(255,255,255,.4);}
-.footer a{color:rgba(255,255,255,.6);text-decoration:none;}
+/* CATEGORY PILLS */
+.cat-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:520px;margin:0 auto;}
+.cat-pill{padding:7px 16px;border-radius:99px;border:1.5px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;}
+.cat-pill:hover{border-color:rgba(255,255,255,.4);color:#fff;}
+.cat-pill.active{background:#fff;color:var(--navy);border-color:#fff;font-weight:700;}
+
+/* MAIN CONTENT */
+.main{max-width:960px;margin:0 auto;padding:0 24px;}
+
+/* FEATURED (카드 그리드) */
+.section-bar{display:flex;align-items:center;justify-content:space-between;padding:28px 0 16px;}
+.section-title{font-size:18px;font-weight:800;letter-spacing:-0.3px;}
+.section-count{font-size:13px;color:var(--text-muted);}
+.card-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+@media(min-width:640px){.card-grid{grid-template-columns:repeat(2,1fr);}}
+
+.card{background:var(--surface);border-radius:14px;border:1px solid var(--border);overflow:hidden;transition:box-shadow .2s,transform .15s;display:flex;flex-direction:column;}
+.card:hover{box-shadow:0 8px 30px rgba(0,0,0,.08);transform:translateY(-2px);}
+.card-top{padding:20px 20px 0;flex:1;}
+.card-cat{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;margin-bottom:10px;}
+.card-cat.ai-chatbot{background:var(--accent-bg);color:var(--accent);}
+.card-cat.image{background:var(--purple-bg);color:var(--purple);}
+.card-cat.productivity{background:var(--green-bg);color:var(--green);}
+.card-cat.dev{background:var(--orange-bg);color:var(--orange);}
+.card-cat.compare{background:#FEF3C7;color:#B45309;}
+.card-title{font-size:16px;font-weight:700;line-height:1.45;color:var(--text);margin-bottom:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-desc{font-size:13px;color:var(--text-sub);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-bottom{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border-light);margin-top:16px;}
+.card-date{font-size:12px;color:var(--text-muted);}
+.card-tags{display:flex;gap:4px;}
+.card-tag{font-size:11px;color:var(--text-muted);background:var(--border-light);padding:2px 7px;border-radius:3px;}
+.card-arrow{width:28px;height:28px;border-radius:50%;background:var(--border-light);display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all .15s;}
+.card:hover .card-arrow{background:var(--accent);color:#fff;}
+
+/* LIST VIEW */
+.list-view{display:none;}
+.list-item{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border-light);}
+.list-item:last-child{border-bottom:none;}
+.list-num{width:28px;font-size:13px;font-weight:700;color:var(--text-muted);text-align:center;flex-shrink:0;}
+.list-body{flex:1;min-width:0;}
+.list-title{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.list-desc{font-size:12px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.list-right{flex-shrink:0;text-align:right;}
+.list-date{font-size:12px;color:var(--text-muted);}
+.list-cat{font-size:11px;font-weight:600;color:var(--accent);}
+
+/* VIEW TOGGLE */
+.view-toggle{display:flex;gap:4px;background:var(--border-light);border-radius:8px;padding:3px;}
+.view-btn{width:32px;height:28px;border:none;border-radius:6px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-muted);transition:all .15s;}
+.view-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08);}
+
+/* PAGINATION */
+.paging{display:flex;justify-content:center;gap:4px;padding:28px 0;}
+.pg-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-size:14px;font-family:inherit;color:var(--text-sub);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.pg-btn:hover{border-color:var(--accent);color:var(--accent);}
+.pg-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+.pg-btn:disabled{opacity:.3;cursor:default;}
+
+/* FOOTER */
+.footer-info{text-align:center;padding:16px 0 8px;font-size:12px;color:var(--text-muted);line-height:1.8;}
+.footer{background:var(--navy);padding:28px 0;margin-top:32px;}
+.footer-inner{max-width:960px;margin:0 auto;padding:0 24px;display:flex;justify-content:space-between;align-items:center;}
+.footer p{font-size:12px;color:rgba(255,255,255,.4);}
+.footer a{color:rgba(255,255,255,.6);}
+.footer-links{display:flex;gap:16px;}
+.footer-links a{color:rgba(255,255,255,.5);font-size:12px;transition:color .15s;}
+.footer-links a:hover{color:rgba(255,255,255,.8);}
+
+/* EMPTY */
+.empty{text-align:center;padding:60px 0;color:var(--text-muted);}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:.3;}
+.empty-text{font-size:15px;}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  .hero h1{font-size:22px;}
+  .card-title{font-size:15px;}
+  .footer-inner{flex-direction:column;gap:12px;text-align:center;}
+}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="topbar-inner">
-    <a href="/" class="topbar-logo">eloan.kr<span>AI 도구 가이드</span></a>
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">eloan.kr<span>AI TOOL GUIDE</span></a>
+    <div class="nav-links">
+      <a href="/">리뷰</a>
+      <a href="/admin.html">관리</a>
+    </div>
   </div>
-</div>
+</nav>
 
 <div class="hero">
-  <h1>AI 도구 리뷰 & 비교</h1>
-  <div class="hero-sub">최신 AI 툴 비교, 추천, 가격 가이드</div>
-  <div class="search-box">
-    <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-    <input type="text" placeholder="검색 (예: 청년 월세, 장려금)" id="searchInput" oninput="doSearch()">
-  </div>
-  <div class="tag-row">
-    <button class="tag-btn active" onclick="filterTag(this,'')">전체</button>
-    <button class="tag-btn" onclick="filterTag(this,'AI챗봇')">AI 챗봇</button>
-    <button class="tag-btn" onclick="filterTag(this,'이미지')">이미지/영상</button>
-    <button class="tag-btn" onclick="filterTag(this,'생산성')">생산성</button>
-    <button class="tag-btn" onclick="filterTag(this,'개발')">개발</button>
-    <button class="tag-btn" onclick="filterTag(this,'비교')">비교/추천</button>
+  <div class="hero-inner">
+    <h1>AI 도구 리뷰 & 비교 가이드</h1>
+    <div class="hero-desc">ChatGPT, Gemini, Claude, Midjourney 등 최신 AI 도구를 직접 비교하고 리뷰합니다</div>
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.8"/><path d="M12 12l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input type="text" placeholder="AI 도구 검색 (예: ChatGPT, 이미지 생성, 코딩)" id="searchInput" oninput="doSearch()">
+    </div>
+    <div class="cat-row">
+      <button class="cat-pill active" onclick="filterCat(this,'')">전체</button>
+      <button class="cat-pill" onclick="filterCat(this,'AI챗봇')">AI 챗봇</button>
+      <button class="cat-pill" onclick="filterCat(this,'이미지')">이미지/영상</button>
+      <button class="cat-pill" onclick="filterCat(this,'생산성')">생산성</button>
+      <button class="cat-pill" onclick="filterCat(this,'개발')">개발</button>
+      <button class="cat-pill" onclick="filterCat(this,'비교')">비교/추천</button>
+    </div>
   </div>
 </div>
 
-<div class="container">
-  <div class="board">
-    <div class="board-header">
-      <div class="board-title" id="boardTitle">전체 글</div>
-      <div class="board-count" id="boardCount"></div>
+<div class="main">
+  <div class="section-bar">
+    <div class="section-title" id="sectionTitle">최신 리뷰</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="section-count" id="sectionCount"></div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')" title="카드 뷰">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+        <button class="view-btn" id="listViewBtn" onclick="setView('list')" title="리스트 뷰">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M1 3h14M1 8h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </div>
-    <div id="boardList"></div>
-    <div class="paging" id="paging"></div>
   </div>
-  <div class="bottom-info">
-    <div class="stats">
-      <span>오늘 <span class="stat-num" id="todayCount">-</span></span>
-      <span>누적 <span class="stat-num" id="totalCount">-</span></span>
-    </div>
-    AI 도구 정보는 변경될 수 있으니 공식 사이트에서 최신 정보를 확인하세요
+
+  <div class="card-grid" id="cardGrid"></div>
+  <div class="list-view" id="listView"></div>
+  <div class="paging" id="paging"></div>
+
+  <div class="footer-info">
+    AI 도구 정보는 수시로 변경됩니다. 최신 가격과 기능은 각 도구 공식 사이트에서 확인하세요.
   </div>
 </div>
 
 <footer class="footer">
-  <p><a href="/"><strong>eloan.kr</strong></a> &copy; 2026</p>
+  <div class="footer-inner">
+    <p><a href="/"><strong>eloan.kr</strong></a> &copy; 2026 &middot; AI 도구 리뷰 가이드</p>
+    <div class="footer-links">
+      <a href="/">홈</a>
+      <a href="/admin.html">관리자</a>
+    </div>
+  </div>
 </footer>
 
 <script>
-var allPosts = [], filtered = [], page = 1, PER = 10, activeTag = '';
+var allPosts=[], filtered=[], page=1, PER=10, activeCat='', viewMode='grid';
 
-var TAG_KEYWORDS = {
+var CAT_MAP = {
   'AI챗봇':['chatgpt','gpt','gemini','claude','챗봇','대화형','llm','ai채팅','copilot','perplexity'],
   '이미지':['이미지','영상','사진','그림','미드저니','midjourney','dall-e','stable diffusion','동영상','편집','생성'],
   '생산성':['생산성','자동화','노션','notion','업무','문서','요약','번역','메일','회의록','엑셀'],
@@ -124,37 +208,44 @@ var TAG_KEYWORDS = {
   '비교':['비교','추천','순위','top','best','무료','유료','가격','요금','플랜']
 };
 
-function postMatchesTag(p, tag) {
-  if (!tag) return true;
-  // posts.json에 category 필드가 있으면 그걸로 매칭
-  if (p.category) return p.category === tag;
-  // 없으면 키워드로 fallback
-  var kws = TAG_KEYWORDS[tag] || [tag];
-  var text = ((p.title||'') + ' ' + (p.meta_description||'') + ' ' + (p.tags||[]).join(' ') + ' ' + (p.keyword||'')).toLowerCase();
-  return kws.some(function(k) { return text.indexOf(k) !== -1; });
+var CAT_CLASS = {'AI챗봇':'ai-chatbot','이미지':'image','생산성':'productivity','개발':'dev','비교':'compare'};
+
+function matchCat(p, cat) {
+  if (!cat) return true;
+  if (p.category) return p.category === cat;
+  var kws = CAT_MAP[cat] || [cat];
+  var text = ((p.title||'')+' '+(p.meta_description||'')+' '+(p.tags||[]).join(' ')+' '+(p.keyword||'')).toLowerCase();
+  return kws.some(function(k){return text.indexOf(k)!==-1;});
+}
+
+function getCatClass(p) {
+  if (p.category && CAT_CLASS[p.category]) return CAT_CLASS[p.category];
+  return 'ai-chatbot';
+}
+
+function getCatLabel(p) {
+  if (p.category) return p.category;
+  return 'AI 도구';
 }
 
 function loadPosts() {
-  fetch('/blog/posts.json').then(function(r) {
-    if (!r.ok) throw 0;
-    return r.json();
-  }).then(function(data) {
-    allPosts = data;
-    filtered = allPosts;
-    render();
-  }).catch(function() {
-    document.getElementById('boardList').innerHTML = '<div class="empty">아직 발행된 글이 없습니다.</div>';
+  fetch('/blog/posts.json').then(function(r){
+    if(!r.ok) throw 0; return r.json();
+  }).then(function(data){
+    allPosts=data; filtered=allPosts; render();
+  }).catch(function(){
+    document.getElementById('cardGrid').innerHTML='<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">&#x1F50D;</div><div class="empty-text">아직 발행된 리뷰가 없습니다</div></div>';
   });
 }
 
 function applyFilters() {
-  var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  var q = (document.getElementById('searchInput').value||'').trim().toLowerCase();
   page = 1;
-  filtered = allPosts.filter(function(p) {
-    if (!postMatchesTag(p, activeTag)) return false;
-    if (q) {
-      var text = ((p.title||'') + ' ' + (p.meta_description||'') + ' ' + (p.tags||[]).join(' ') + ' ' + (p.keyword||'')).toLowerCase();
-      if (text.indexOf(q) === -1) return false;
+  filtered = allPosts.filter(function(p){
+    if(!matchCat(p, activeCat)) return false;
+    if(q){
+      var text=((p.title||'')+' '+(p.meta_description||'')+' '+(p.tags||[]).join(' ')+' '+(p.keyword||'')).toLowerCase();
+      if(text.indexOf(q)===-1) return false;
     }
     return true;
   });
@@ -162,62 +253,86 @@ function applyFilters() {
 }
 
 function render() {
-  var total = filtered.length;
-  var pages = Math.ceil(total / PER) || 1;
-  if (page > pages) page = pages;
-  var start = (page - 1) * PER;
-  var slice = filtered.slice(start, start + PER);
+  var total=filtered.length;
+  var pages=Math.ceil(total/PER)||1;
+  if(page>pages) page=pages;
+  var start=(page-1)*PER;
+  var slice=filtered.slice(start,start+PER);
 
-  document.getElementById('boardCount').textContent = total + '건';
-  document.getElementById('boardTitle').textContent = activeTag ? activeTag + ' 관련' : '전체 글';
+  document.getElementById('sectionCount').textContent=total+'건';
+  document.getElementById('sectionTitle').textContent=activeCat?(activeCat+' 리뷰'):'최신 리뷰';
 
-  var list = document.getElementById('boardList');
-  if (!total) {
-    list.innerHTML = '<div class="empty">' + (allPosts.length ? '해당 분야의 글이 없습니다.' : '아직 발행된 글이 없습니다.') + '</div>';
+  // Card grid
+  var grid=document.getElementById('cardGrid');
+  var list=document.getElementById('listView');
+
+  if(!total){
+    var emptyHtml='<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">&#x1F50D;</div><div class="empty-text">'+(allPosts.length?'해당 분야의 리뷰가 없습니다':'아직 발행된 리뷰가 없습니다')+'</div></div>';
+    grid.innerHTML=emptyHtml;
+    list.innerHTML=emptyHtml;
   } else {
-    list.innerHTML = slice.map(function(p, i) {
-      var num = total - start - i;
-      var date = (p.date_iso || '').replace(/-/g, '.');
-      return '<a href="/blog/' + p.slug + '.html" class="board-row">' +
-        '<div class="board-num">' + num + '</div>' +
-        '<div class="board-body"><div class="board-row-title">' + p.title + '</div>' +
-        '<div class="board-row-desc">' + (p.meta_description || '') + '</div></div>' +
-        '<div class="board-date">' + date + '</div></a>';
+    // Cards
+    grid.innerHTML=slice.map(function(p){
+      var date=(p.date_iso||'').replace(/-/g,'.');
+      var catCls=getCatClass(p);
+      var catLabel=getCatLabel(p);
+      var tags=(p.tags||[]).slice(0,2);
+      var tagsHtml=tags.map(function(t){return '<span class="card-tag">'+t+'</span>';}).join('');
+      return '<a href="/blog/'+p.slug+'.html" class="card">'+
+        '<div class="card-top">'+
+        '<span class="card-cat '+catCls+'">'+catLabel+'</span>'+
+        '<div class="card-title">'+p.title+'</div>'+
+        '<div class="card-desc">'+(p.meta_description||'')+'</div>'+
+        '</div>'+
+        '<div class="card-bottom">'+
+        '<div class="card-date">'+date+'</div>'+
+        '<div class="card-tags">'+tagsHtml+'</div>'+
+        '<div class="card-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2.5l4 3.5-4 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+        '</div></a>';
+    }).join('');
+
+    // List
+    list.innerHTML=slice.map(function(p,i){
+      var num=total-start-i;
+      var date=(p.date_iso||'').replace(/-/g,'.');
+      var catLabel=getCatLabel(p);
+      return '<a href="/blog/'+p.slug+'.html" class="list-item">'+
+        '<div class="list-num">'+num+'</div>'+
+        '<div class="list-body"><div class="list-title">'+p.title+'</div>'+
+        '<div class="list-desc">'+(p.meta_description||'')+'</div></div>'+
+        '<div class="list-right"><div class="list-cat">'+catLabel+'</div><div class="list-date">'+date+'</div></div></a>';
     }).join('');
   }
 
-  var pg = document.getElementById('paging');
-  if (pages <= 1) { pg.innerHTML = ''; return; }
-  var html = '<button class="page-btn" onclick="goPage(' + (page-1) + ')"' + (page===1?' disabled':'') + '>&lt;</button>';
-  for (var i = 1; i <= pages; i++) {
-    html += '<button class="page-btn' + (i===page?' active':'') + '" onclick="goPage(' + i + ')">' + i + '</button>';
+  // Pagination
+  var pg=document.getElementById('paging');
+  if(pages<=1){pg.innerHTML='';return;}
+  var html='<button class="pg-btn" onclick="goPage('+(page-1)+')"'+(page===1?' disabled':'')+'>&lsaquo;</button>';
+  for(var i=1;i<=pages;i++){
+    html+='<button class="pg-btn'+(i===page?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
   }
-  html += '<button class="page-btn" onclick="goPage(' + (page+1) + ')"' + (page===pages?' disabled':'') + '>&gt;</button>';
-  pg.innerHTML = html;
+  html+='<button class="pg-btn" onclick="goPage('+(page+1)+')"'+(page===pages?' disabled':'')+'>&rsaquo;</button>';
+  pg.innerHTML=html;
 }
 
-function goPage(p) { page = p; render(); window.scrollTo({top:document.querySelector('.board').offsetTop-20,behavior:'smooth'}); }
-function doSearch() { applyFilters(); }
-function filterTag(el, tag) {
-  activeTag = tag;
-  document.querySelectorAll('.tag-btn').forEach(function(b){b.classList.remove('active');});
+function goPage(p){page=p;render();window.scrollTo({top:document.querySelector('.section-bar').offsetTop-60,behavior:'smooth'});}
+function doSearch(){applyFilters();}
+function filterCat(el,cat){
+  activeCat=cat;
+  document.querySelectorAll('.cat-pill').forEach(function(b){b.classList.remove('active');});
   el.classList.add('active');
-  document.getElementById('searchInput').value = '';
+  document.getElementById('searchInput').value='';
   applyFilters();
 }
-
-function trackVisitor() {
-  var today = new Date().toISOString().slice(0,10);
-  var s = JSON.parse(localStorage.getItem('eloan_v') || '{}');
-  if (!s.t) s.t=0; if (!s.d) s.d=''; if (!s.c) s.c=0;
-  if (s.d!==today){s.c=0;s.d=today;}
-  if (!sessionStorage.getItem('ev')){s.t++;s.c++;sessionStorage.setItem('ev','1');localStorage.setItem('eloan_v',JSON.stringify(s));}
-  document.getElementById('todayCount').textContent = s.c;
-  document.getElementById('totalCount').textContent = s.t.toLocaleString();
+function setView(mode){
+  viewMode=mode;
+  document.getElementById('cardGrid').style.display=mode==='grid'?'grid':'none';
+  document.getElementById('listView').style.display=mode==='list'?'block':'none';
+  document.getElementById('gridViewBtn').classList.toggle('active',mode==='grid');
+  document.getElementById('listViewBtn').classList.toggle('active',mode==='list');
 }
 
 loadPosts();
-trackVisitor();
 </script>
 </body>
 </html>

@@ -20,15 +20,29 @@
     "slug": "2026-챗GPT-vs-제미나이-vs-클로바X-업무-효율-AI-툴-비교-추천-순위-가격-장단점-총정리",
     "date": "2026년 03월 31일",
     "date_iso": "2026-03-31",
-    "meta_description": "2026년 최신 챗GPT, 제미나이(구 바드), 클로바X를 비교하여 업무 생산성을 극대화하세요. 각 AI 툴의 기능, 가격, 장단점을 분석하고, 초보자부터 전문가까지 용도별 맞춤형 추천 가이드를 제공합니다.",
-    "tags": [
-      "AI 툴 비교",
-      "챗GPT 2026",
-      "제미나이 2026",
-      "클로바X 2026",
-      "업무 효율 AI"
-    ],
+    "meta_description": "2026년 최신 챗GPT, 제미나이(구 바드), 클로바X를 비교하여 업무 생산성을 극대화하세요. 각 AI 툴의 기능, 가격, 장단점을 분석하고, 용도별 맞춤형 추천 가이드를 제공합니다.",
+    "tags": ["AI 툴 비교", "챗GPT 2026", "제미나이 2026", "클로바X 2026", "업무 효율 AI"],
     "keyword": "챗GPT vs. 바드 vs. 클로바X 2026년 버전: 업무 효율 높이는 AI 툴 비교 추천",
     "category": "비교"
+  },
+  {
+    "title": "2026 Midjourney vs DALL-E 3 vs Stable Diffusion 이미지 생성 AI 비교 추천 총정리",
+    "slug": "2026-midjourney-vs-dall-e-3-이미지-생성-ai-비교-추천-총정리",
+    "date": "2026년 03월 30일",
+    "date_iso": "2026-03-30",
+    "meta_description": "Midjourney, DALL-E 3, Stable Diffusion 세 가지 이미지 생성 AI의 퀄리티, 가격, 사용 편의성을 비교합니다.",
+    "tags": ["Midjourney", "DALL-E", "Stable Diffusion", "이미지생성", "AI"],
+    "keyword": "이미지 생성 AI 비교",
+    "category": "이미지"
+  },
+  {
+    "title": "2026 Cursor vs GitHub Copilot AI 코딩 도구 비교 리뷰",
+    "slug": "2026-cursor-vs-github-copilot-ai-코딩-도구-비교-리뷰",
+    "date": "2026년 03월 29일",
+    "date_iso": "2026-03-29",
+    "meta_description": "Cursor와 GitHub Copilot, 두 AI 코딩 도구의 기능과 가격을 비교합니다. 개발자라면 어떤 걸 써야 할까요?",
+    "tags": ["Cursor", "GitHub Copilot", "AI코딩", "개발도구", "비교"],
+    "keyword": "Cursor vs GitHub Copilot",
+    "category": "개발"
   }
 ]

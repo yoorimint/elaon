@@ -223,7 +223,7 @@ body { font-family:'Noto Sans KR',-apple-system,sans-serif; background:var(--bg)
     <p>정책대출 데이터를 업데이트합니다</p>
     <input type="text" class="login-input" id="adminId" placeholder="아이디" onkeydown="if(event.key==='Enter')document.getElementById('adminPw').focus()">
     <input type="password" class="login-input" id="adminPw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
-    <input type="text" class="login-input" id="githubToken" placeholder="GitHub Personal Access Token" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" class="login-input" id="githubToken" placeholder="GitHub Personal Access Token" onkeydown="if(event.key==='Enter')doLogin()">
     <input type="text" class="login-input" id="githubRepo" placeholder="GitHub Repo (예: username/elaon)" value="yoorimint/elaon" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="login-btn" onclick="doLogin()">로그인</button>
     <div class="login-error" id="loginError"></div>

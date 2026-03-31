@@ -245,12 +245,21 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <button class="chip chip-flex" onclick="setVal(this,'repay','principal')">원금균등</button>
       <button class="chip chip-flex" onclick="setVal(this,'repay','graduated')">체증식</button>
     </div>
+    <div class="hint" id="repayHint"></div>
+  </div>
+  <div class="field">
+    <div class="label">거치기간</div>
+    <div class="chips">
+      <button class="chip chip-half on" onclick="setVal(this,'grace','0')">비거치</button>
+      <button class="chip chip-half" onclick="setVal(this,'grace','1')">1년 거치</button>
+    </div>
   </div>
   <div class="field">
     <div class="label">금리유형</div>
     <div class="chips">
       <button class="chip chip-flex on" onclick="setVal(this,'rateType','fixed')">고정금리</button>
-      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed')">혼합(5년)</button>
+      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed10')">혼합(10년)</button>
+      <button class="chip chip-flex" onclick="setVal(this,'rateType','mixed5')">혼합(5년)</button>
       <button class="chip chip-flex" onclick="setVal(this,'rateType','variable')">변동금리</button>
     </div>
   </div>
@@ -277,8 +286,9 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <button class="chip chip-flex" onclick="setVal(this,'savings','0.5')">15년↑</button>
     </div>
   </div>
-  <label class="check-item"><input type="checkbox" id="econtract">전자계약 (e-contract)<span class="val">-0.1%</span></label>
-  <label class="check-item"><input type="checkbox" id="isLocal">지방 거주<span class="val">-0.2%</span></label>
+  <label class="check-item"><input type="checkbox" id="econtract">전자계약<span class="val">-0.1%</span></label>
+  <label class="check-item"><input type="checkbox" id="lowLoan">대출금액 30%이하<span class="val">-0.1%</span></label>
+  <label class="check-item"><input type="checkbox" id="localUnsold">지방 미분양주택<span class="val">-0.2%</span></label>
 </div>
 
 <button class="calc-btn" onclick="calc()">계산하기</button>
@@ -322,8 +332,9 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
     <ul>
       <li>무주택 세대주 (만 19세 이상)</li>
       <li>부부합산 연소득: 일반 6천, 생애최초 7천, 신혼 8,500만원 이하</li>
-      <li>순자산 약 3.61억원 이하</li>
-      <li>주택가격: 일반·생애최초 5억, 신혼 6억 이하</li>
+      <li>순자산: 소득 4분위 전체가구 평균값 이하</li>
+      <li>주택가격: 일반·생애최초 5억, 신혼·다자녀·2자녀 6억 이하</li>
+      <li>전용면적: 85㎡ 이하 (면지역 100㎡)</li>
     </ul>
   </div>
   <div class="info-card">
@@ -331,17 +342,19 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
     <ul>
       <li>일반: 최대 2억 (LTV 70%)</li>
       <li>생애최초: 최대 2.4억 (LTV 80%)</li>
-      <li>신혼가구: 최대 3.2억 (LTV 80%)</li>
+      <li>신혼·다자녀·2자녀: 최대 3.2억 (LTV 80%)</li>
+      <li>미혼 단독세대주(30세↑): 최대 1.5억 (생애최초 2억)</li>
       <li>DTI 60% 이내</li>
     </ul>
   </div>
   <div class="info-card">
-    <h3>2026년 금리표 (고정금리)</h3>
+    <h3>2026년 금리표 (고정금리 기준)</h3>
     <ul>
       <li>소득 2천만원↓ : 연 2.45~2.65%</li>
       <li>소득 4천만원↓ : 연 2.70~2.90%</li>
       <li>소득 6천만원↓ : 연 3.15~3.35%</li>
-      <li>혼합 -0.2% / 변동 -0.3%</li>
+      <li>혼합10년 -0.1% / 혼합5년 -0.2% / 변동 -0.3%</li>
+      <li>최저금리: 1.5% (생애최초 신혼가구 1.2%)</li>
     </ul>
   </div>
   <div class="info-card">
@@ -350,7 +363,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <li>수탁은행 방문 (우리·국민·신한·하나·농협)</li>
       <li>기금e든든 포털 온라인 신청</li>
       <li>주택금융공사 1688-8114</li>
-      <li>조기상환 수수료 없음</li>
+      <li>조기상환 수수료: 3년 이내 0.6% (2026.1.1 이후)</li>
     </ul>
   </div>
 </div>
@@ -363,7 +376,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <script>
-var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',savings:'0',married:'no',dependents:'no',firstTime:false};
+var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',savings:'0',married:'no',dependents:'no',firstTime:false,grace:'0'};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
@@ -430,8 +443,8 @@ function getBaseRate(){
   }
   return rate;
 }
-function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;d+=parseFloat(S.savings)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('isLocal').checked)d+=0.2;return d;}
-function getRate(){var base=getBaseRate();if(S.rateType==='mixed')base-=0.2;else if(S.rateType==='variable')base-=0.3;return Math.max(base-getDiscount(),1.5);}
+function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;d+=parseFloat(S.savings)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('localUnsold').checked)d+=0.2;return d;}
+function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=(S.firstTime&&S.borrower==='newlywed')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
 
@@ -440,26 +453,34 @@ function calc(){
   var effectiveLimit=t.limit;var effectiveHouseLimit=t.houseLimit;
   if(S.firstTime&&S.borrower==='general'){effectiveLimit=FIRST_TIME_BONUS.limit;effectiveHouseLimit=FIRST_TIME_BONUS.houseLimit;}
   if(income<=0||housePrice<=0||loanAmt<=0){alert('입력값을 확인해주세요.');return;}
+  var birthY=parseInt(document.getElementById('birthYear').value)||0;
+  var age=2026-birthY;
+  if(S.repay==='graduated'){
+    if(age>=40){alert('체증식 상환은 만 40세 미만만 가능합니다.');return;}
+    if(S.rateType!=='fixed'){alert('체증식 상환은 고정금리만 가능합니다.');return;}
+  }
   var maxIncome=t.ranges[t.ranges.length-1].max;
   if(S.firstTime&&S.borrower==='general')maxIncome=Math.max(maxIncome,7000);
   if(income>maxIncome){alert('소득 기준 초과 (최대 '+maxIncome+'만원)');return;}
   if(loanAmt>effectiveLimit){alert('대출한도 초과 (최대 '+effectiveLimit.toLocaleString()+'만원)');return;}
   if(housePrice>effectiveHouseLimit){alert('주택가격 한도 초과 (최대 '+effectiveHouseLimit.toLocaleString()+'만원)');return;}
-  var rate=getRate();var mr=rate/100/12;var months=parseInt(S.period)*12;var P=loanAmt*10000;var monthly=0,totalPay=0,totalInt=0;
-  if(S.repay==='equal'){monthly=pmt(P,mr,months);totalPay=monthly*months;totalInt=totalPay-P;}
-  else if(S.repay==='principal'){var pp=P/months;var bal=P;totalPay=0;for(var i=0;i<months;i++){totalPay+=pp+bal*mr;bal-=pp;}monthly=totalPay/months;totalInt=totalPay-P;}
-  else{var base=pmt(P,mr,months);monthly=base*0.7;var coeff=0.7,rem=months;totalPay=0;while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}totalInt=totalPay-P;monthly=totalPay/months;}
+  var rate=getRate();var mr=rate/100/12;var totalMonths=parseInt(S.period)*12;var graceMonths=parseInt(S.grace)*12;var repayMonths=totalMonths-graceMonths;var P=loanAmt*10000;var monthly=0,totalPay=0,totalInt=0;
+  var graceInt=P*mr*graceMonths;
+  if(S.repay==='equal'){monthly=pmt(P,mr,repayMonths);totalPay=graceInt+monthly*repayMonths;totalInt=totalPay-P;}
+  else if(S.repay==='principal'){var pp=P/repayMonths;var bal=P;totalPay=graceInt;for(var i=0;i<repayMonths;i++){totalPay+=pp+bal*mr;bal-=pp;}monthly=pp+P*mr;totalInt=totalPay-P;}
+  else{var base=pmt(P,mr,repayMonths);monthly=base*0.7;var coeff=0.7,rem=repayMonths;totalPay=graceInt;while(rem>0){var m=Math.min(60,rem);totalPay+=base*coeff*m;rem-=m;coeff+=0.1;}totalInt=totalPay-P;monthly=totalPay/totalMonths;}
   var ltvRate=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
   var maxLimit=Math.floor(housePrice*ltvRate);
   document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
-  buildSchedule(P,mr,months);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
+  buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function buildSchedule(P,mr,months){
-  var tbody=document.getElementById('scheduleBody');tbody.innerHTML='';var bal=P;
-  if(S.repay==='equal'){var mp=pmt(P,mr,months);for(var i=0;i<months;i++){var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
-  else if(S.repay==='principal'){var pp=P/months;for(var i=0;i<months;i++){var interest=bal*mr;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(pp+interest)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
-  else{var base=pmt(P,mr,months);var coeff=0.7;for(var i=0;i<months;i++){if(i>0&&i%60===0)coeff+=0.1;var mp=base*coeff;var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(Math.max(0,pp))+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
+function buildSchedule(P,mr,totalMonths,graceMonths){
+  var tbody=document.getElementById('scheduleBody');tbody.innerHTML='';var bal=P;var repayMonths=totalMonths-graceMonths;
+  for(var i=0;i<graceMonths;i++){var interest=bal*mr;if(i%12===0){var yr=Math.floor(i/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차 (거치)</td><td>'+fmt(interest)+'</td><td>-</td><td>'+fmt(interest)+'</td><td>'+fmt(bal)+'</td></tr>';}}
+  if(S.repay==='equal'){var mp=pmt(P,mr,repayMonths);for(var i=0;i<repayMonths;i++){var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor((i+graceMonths)/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
+  else if(S.repay==='principal'){var pp=P/repayMonths;for(var i=0;i<repayMonths;i++){var interest=bal*mr;bal-=pp;if(i%12===0){var yr=Math.floor((i+graceMonths)/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(pp+interest)+'</td><td>'+fmt(pp)+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
+  else{var base=pmt(P,mr,repayMonths);var coeff=0.7;for(var i=0;i<repayMonths;i++){if(i>0&&i%60===0)coeff+=0.1;var mp=base*coeff;var interest=bal*mr;var pp=mp-interest;bal-=pp;if(i%12===0){var yr=Math.floor((i+graceMonths)/12)+1;tbody.innerHTML+='<tr><td>'+yr+'년차</td><td>'+fmt(mp)+'</td><td>'+fmt(Math.max(0,pp))+'</td><td>'+fmt(interest)+'</td><td>'+fmt(Math.max(0,bal))+'</td></tr>';}}}
 }
 
 function toggleSchedule(){var w=document.getElementById('scheduleWrap');var b=document.getElementById('scheduleBtn');if(w.classList.contains('show')){w.classList.remove('show');b.textContent='상환일정표 보기 ▾';}else{w.classList.add('show');b.textContent='상환일정표 접기 ▴';}}

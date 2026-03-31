@@ -343,18 +343,30 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <li>일반: 최대 2억 (LTV 70%)</li>
       <li>생애최초: 최대 2.4억 (LTV 80%)</li>
       <li>신혼·다자녀·2자녀: 최대 3.2억 (LTV 80%)</li>
+      <li>신생아특례: 최대 4억 (LTV 70%, 생애최초 80%)</li>
       <li>미혼 단독세대주(30세↑): 최대 1.5억 (생애최초 2억)</li>
       <li>DTI 60% 이내</li>
     </ul>
   </div>
   <div class="info-card">
-    <h3>2026년 금리표 (고정금리 기준)</h3>
+    <h3>일반 디딤돌 금리 (고정금리 기준)</h3>
     <ul>
       <li>소득 2천만원↓ : 연 2.45~2.65%</li>
       <li>소득 4천만원↓ : 연 2.70~2.90%</li>
       <li>소득 6천만원↓ : 연 3.15~3.35%</li>
       <li>혼합10년 -0.1% / 혼합5년 -0.2% / 변동 -0.3%</li>
-      <li>최저금리: 1.5% (생애최초 신혼가구 1.2%)</li>
+      <li>최저금리: 1.5% (생애최초 신혼 1.2%)</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>신생아특례 금리 (특례금리 5년)</h3>
+    <ul>
+      <li>소득 2천↓: 1.80~2.05% / 4천↓: 2.15~2.40%</li>
+      <li>소득 6천↓: 2.40~2.65% / 8.5천↓: 2.65~2.90%</li>
+      <li>소득 1억↓: 2.90~3.20% / 1.3억↓: 3.20~3.50%</li>
+      <li>맞벌이 1.5억↓: 3.50~3.80% / 2억↓: 4.20~4.50%</li>
+      <li>추가출산 1명당 특례기간 5년 연장 (최장 15년)</li>
+      <li>최저금리: 1.2%</li>
     </ul>
   </div>
   <div class="info-card">
@@ -380,7 +392,7 @@ var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',savings:'0'
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
   newlywed:{limit:32000,houseLimit:60000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}},{max:8500,r:{10:3.45,15:3.50,20:3.55,30:3.55}}]},
-  newbaby:{limit:50000,houseLimit:90000,ranges:[{max:2000,r:{10:1.60,15:1.70,20:1.75,30:1.80}},{max:4000,r:{10:2.00,15:2.10,20:2.15,30:2.20}},{max:6000,r:{10:2.40,15:2.50,20:2.55,30:2.60}},{max:8500,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:13000,r:{10:3.00,15:3.10,20:3.15,30:3.20}}]}
+  newbaby:{limit:40000,houseLimit:90000,ranges:[{max:2000,r:{10:1.80,15:1.90,20:2.00,30:2.05}},{max:4000,r:{10:2.15,15:2.25,20:2.35,30:2.40}},{max:6000,r:{10:2.40,15:2.50,20:2.60,30:2.65}},{max:8500,r:{10:2.65,15:2.75,20:2.85,30:2.90}},{max:10000,r:{10:2.90,15:3.00,20:3.10,30:3.20}},{max:13000,r:{10:3.20,15:3.30,20:3.40,30:3.50}},{max:15000,r:{10:3.50,15:3.60,20:3.70,30:3.80}},{max:17000,r:{10:3.85,15:3.95,20:4.05,30:4.15}},{max:20000,r:{10:4.20,15:4.30,20:4.40,30:4.50}}]}
 };
 var FIRST_TIME_BONUS={limit:24000,houseLimit:50000,extraRange:{max:7000,r:{10:3.25,15:3.35,20:3.40,30:3.45}}};
 var LIMIT_TEXT={
@@ -388,8 +400,8 @@ var LIMIT_TEXT={
   'general+first':'대출한도 최대 2.4억 · 주택가격 5억 이하 (생애최초)',
   newlywed:'대출한도 최대 3.2억 · 주택가격 6억 이하',
   'newlywed+first':'대출한도 최대 3.2억 · 주택가격 6억 이하 (생애최초)',
-  newbaby:'대출한도 최대 5억 · 주택가격 9억 이하',
-  'newbaby+first':'대출한도 최대 5억 · 주택가격 9억 이하 (생애최초)'
+  newbaby:'대출한도 최대 4억 · 주택가격 9억 이하 · 소득 1.3억(맞벌이 2억)',
+  'newbaby+first':'대출한도 최대 4억 · 주택가격 9억 이하 (생애최초)'
 };
 
 function updateAge(){
@@ -444,7 +456,7 @@ function getBaseRate(){
   return rate;
 }
 function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;d+=parseFloat(S.savings)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('localUnsold').checked)d+=0.2;return d;}
-function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=(S.firstTime&&S.borrower==='newlywed')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
+function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
 

@@ -591,37 +591,54 @@ async function fetchServices() {
 async function selectService(idx) {
   const svc = window._svcData[idx];
   const name = svc['서비스명'] || '';
+  const svcId = svc['서비스ID'] || '';
 
   if (isAlreadyWritten(name)) {
     showToast('이미 작성된 서비스입니다', 'error');
     return;
   }
 
-  selectedService = svc;
+  // 깨끗한 복사본으로 selectedService 설정 (이전 데이터 잔존 방지)
+  selectedService = {
+    '서비스명': svc['서비스명'] || '',
+    '서비스ID': svcId,
+    '서비스목적요약': svc['서비스목적요약'] || '',
+    '지원대상': svc['지원대상'] || '',
+    '신청방법': svc['신청방법'] || '',
+    '소관기관명': svc['소관기관명'] || '',
+    _detail: {},
+    _conditions: []
+  };
   document.getElementById('writerKeyword').value = name;
   document.getElementById('svcList').style.display = 'none';
+  document.getElementById('writerLog').innerHTML = '';
+  document.getElementById('writerLog').classList.remove('show');
 
-  // 상세 정보도 가져오기
+  // 상세 정보 가져오기
   const govKey = localStorage.getItem(GOV_KEY_KEY);
-  const svcId = svc['서비스ID'];
   if (govKey && svcId) {
     try {
-      writerLog(`${name} 상세정보 조회 중...`, 'info');
+      writerLog(`"${name}" (ID:${svcId}) 상세정보 조회 중...`, 'info');
       const [detailResp, condResp] = await Promise.all([
         fetch(`https://api.odcloud.kr/api/gov24/v3/serviceDetail?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`),
         fetch(`https://api.odcloud.kr/api/gov24/v3/supportConditions?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`)
       ]);
       if (detailResp.ok) {
         const d = await detailResp.json();
-        selectedService._detail = (d.data || [])[0] || {};
+        const detail = (d.data || [])[0] || {};
+        selectedService._detail = detail;
+        writerLog(`상세: ${(detail['서비스목적']||'').slice(0,50)}...`, 'info');
       }
       if (condResp.ok) {
         const c = await condResp.json();
         selectedService._conditions = c.data || [];
+        writerLog(`지원조건: ${selectedService._conditions.length}건`, 'info');
       }
-      writerLog('상세정보 로드 완료', 'ok');
+      writerLog(`"${name}" 상세정보 로드 완료`, 'ok');
     } catch(e) {
       writerLog('상세정보 로드 실패 (기본 정보로 진행)', 'warn');
+      selectedService._detail = {};
+      selectedService._conditions = [];
     }
   }
 
@@ -802,12 +819,18 @@ async function generatePost() {
 
   // 키워드와 selectedService 동기화 확인
   if (selectedService && (selectedService['서비스명'] || '') !== keyword) {
-    writerLog(`선택된 서비스(${selectedService['서비스명']})와 키워드(${keyword})가 다릅니다. 키워드 기준으로 생성합니다.`, 'warn');
+    writerLog(`[경고] 선택된 서비스: "${selectedService['서비스명']}" ≠ 키워드: "${keyword}"`, 'warn');
+    writerLog('→ selectedService 초기화, 키워드 기준으로 생성', 'warn');
     selectedService = null;
   }
   const svcContext = buildServiceContext();
   const year = new Date().getFullYear();
-  writerLog(`서비스: ${selectedService ? selectedService['서비스명'] : '없음 (키워드 직접 입력)'}`, 'info');
+  if (selectedService) {
+    writerLog(`서비스: "${selectedService['서비스명']}" (ID:${selectedService['서비스ID']})`, 'info');
+    writerLog(`상세목적: ${(selectedService._detail?.['서비스목적']||'없음').slice(0,80)}`, 'info');
+  } else {
+    writerLog(`서비스 데이터 없음 - 키워드 "${keyword}" 기준 생성`, 'info');
+  }
 
   try {
     // 단일 호출: 제목 + 메타 + 본문 한번에 생성

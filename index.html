@@ -217,7 +217,7 @@ body {
   <section class="section" style="padding-bottom:20px;">
     <div style="background:var(--blue-light);border-radius:12px;padding:20px;font-size:13px;color:var(--text-sub);line-height:1.8;">
       <strong style="color:var(--navy);">안내</strong><br>
-      본 사이트의 정보는 정부24 공공서비스 API 데이터를 기반으로 작성되었습니다.
+      본 사이트의 정보는 정부 공공데이터를 기반으로 작성되었습니다.
       정확한 조건과 신청은 해당 기관에 직접 확인하세요.
     </div>
   </section>
@@ -242,36 +242,59 @@ body {
   <div class="container">
     <p>
       <a href="/"><strong>eloan.kr</strong></a> · 공공서비스 가이드<br><br>
-      &copy; 2026 eloan.kr · 출처: 정부24 공공서비스 API
+      &copy; 2026 eloan.kr
     </p>
   </div>
 </footer>
 
 <script>
-// posts.json에서 최신 글 로드
+// 카테고리 매핑: 키워드 → 분야
+const CAT_MAP = {
+  '청년': ['청년','취업준비','사회초년','청년월세','청년전세','도약계좌','청년내일'],
+  '육아': ['육아','출산','양육','보육','유아','어린이','아이돌봄','신생아','영유아','누리과정','아동'],
+  '주거': ['주거','월세','전세','대출','임대','주택','보증금','매입임대','공공임대','LH'],
+  '복지': ['복지','기초','장애','노인','돌봄','수급','의료','건강보험','어르신','저소득','한부모'],
+  '취업': ['취업','창업','고용','소상공인','근로','일자리','자영업','국민취업','직업훈련'],
+  '교육': ['교육','학자금','장학','학비','학자','학교','대학','수업료']
+};
+
+function getPostCategories(post) {
+  const text = `${post.title||''} ${post.meta_description||''} ${(post.tags||[]).join(' ')} ${post.keyword||''}`.toLowerCase();
+  const cats = [];
+  for (const [cat, keywords] of Object.entries(CAT_MAP)) {
+    if (keywords.some(kw => text.includes(kw))) cats.push(cat);
+  }
+  return cats;
+}
+
+let allPosts = [];
+
 async function loadPosts() {
   try {
     const resp = await fetch('/blog/posts.json');
     if (!resp.ok) throw new Error();
-    const posts = await resp.json();
-    const listEl = document.getElementById('postList');
-
-    if (!posts.length) {
-      listEl.innerHTML = '<div class="empty">아직 발행된 글이 없습니다.</div>';
-      return;
-    }
-
-    listEl.innerHTML = posts.slice(0, 10).map(p => `
-      <a href="/blog/${p.slug}.html" class="post-card">
-        <div class="post-date">${p.date || p.date_iso || ''}</div>
-        <div class="post-title">${p.title}</div>
-        <div class="post-desc">${p.meta_description || ''}</div>
-        <div class="post-tags">${(p.tags||[]).slice(0,4).map(t => `<span class="post-tag">${t}</span>`).join('')}</div>
-      </a>
-    `).join('');
+    allPosts = await resp.json();
+    renderPosts(allPosts);
   } catch(e) {
     document.getElementById('postList').innerHTML = '<div class="empty">아직 발행된 글이 없습니다.</div>';
   }
+}
+
+function renderPosts(posts) {
+  const listEl = document.getElementById('postList');
+  if (!posts.length) {
+    listEl.innerHTML = '<div class="empty">해당 분야의 글이 없습니다.</div>';
+    return;
+  }
+  listEl.innerHTML = posts.slice(0, 20).map(p => {
+    const cats = getPostCategories(p);
+    return `<a href="/blog/${p.slug}.html" class="post-card" data-cats="${cats.join(',')}">
+      <div class="post-date">${p.date || p.date_iso || ''}</div>
+      <div class="post-title">${p.title}</div>
+      <div class="post-desc">${p.meta_description || ''}</div>
+      <div class="post-tags">${(p.tags||[]).slice(0,4).map(t => `<span class="post-tag">${t}</span>`).join('')}</div>
+    </a>`;
+  }).join('');
 }
 
 function handleSearch(e) {
@@ -283,15 +306,28 @@ function handleSearch(e) {
 
 function searchTag(tag) {
   document.getElementById('searchInput').value = tag;
-  filterPosts(tag);
+  // 카테고리 매핑에 있으면 카테고리 필터, 없으면 텍스트 검색
+  if (CAT_MAP[tag]) {
+    filterByCategory(tag);
+  } else {
+    filterPosts(tag);
+  }
+}
+
+function filterByCategory(cat) {
+  const filtered = allPosts.filter(p => getPostCategories(p).includes(cat));
+  renderPosts(filtered);
+  // 스크롤
+  document.getElementById('postList').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function filterPosts(query) {
   const q = query.toLowerCase();
-  document.querySelectorAll('.post-card').forEach(card => {
-    const text = card.textContent.toLowerCase();
-    card.style.display = text.includes(q) ? 'block' : 'none';
+  const filtered = allPosts.filter(p => {
+    const text = `${p.title||''} ${p.meta_description||''} ${(p.tags||[]).join(' ')} ${p.keyword||''}`.toLowerCase();
+    return text.includes(q);
   });
+  renderPosts(filtered);
 }
 
 // 방문자 통계 (localStorage 기반)

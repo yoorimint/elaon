@@ -993,20 +993,40 @@ async function generatePost() {
     writerLog('Gemini API 호출 중 (제목 + 본문 통합 생성)...', 'info');
 
     const todayStr = new Date().toISOString().slice(0,10);
-    const fullPrompt = `당신은 한국 정부 지원금/공공서비스 전문 블로거이자 SEO 전문가입니다.
-아래 공공서비스 데이터를 기반으로 블로그 글을 작성하세요.
+    var cat = document.getElementById('writerCat').value || '지원금';
 
-[중요] 오늘 날짜: ${todayStr}. 현재 연도는 ${year}년입니다. 과거 연도(2024, 2025 등)가 아닌 ${year}년 기준으로 작성하세요.
-글에 언급하는 모든 연도, 조건, 금액은 ${year}년 기준으로 작성하세요.
+    // 카테고리별 프롬프트 분기
+    var catPrompt = {};
+    catPrompt['지원금'] = {
+      role: '한국 정부 지원금/공공서비스 전문 블로거',
+      titlePattern: year + ' ' + keyword + ' 자격조건 신청방법 지원금액 총정리',
+      structure: '1) 이 제도란? (개요 + 핵심 수치)\n   2) 지원대상 및 자격조건 (<table>로 조건표)\n   3) 지원내용 및 금액\n   4) 신청방법 및 필요서류 (단계별)\n   5) 자주 묻는 질문 (FAQ 5개 이상)'
+    };
+    catPrompt['절약'] = {
+      role: '생활 절약/살림 전문 블로거',
+      titlePattern: year + ' ' + keyword + ' 방법 꿀팁 비교 총정리',
+      structure: '1) 핵심 요약 (이 방법으로 얼마나 절약 가능한지)\n   2) 구체적 실천 방법 (단계별, 숫자로)\n   3) 실제 사례/비교 (Before vs After)\n   4) 주의할 점 및 흔한 실수\n   5) 관련 추가 팁 및 FAQ'
+    };
+    catPrompt['재테크'] = {
+      role: '재테크/투자 정보 전문 블로거',
+      titlePattern: year + ' ' + keyword + ' 비교 추천 수익률 총정리',
+      structure: '1) 핵심 개념 설명 (초보도 이해할 수 있게)\n   2) 구체적 상품/방법 비교 (<table>로)\n   3) 수익률/장단점 분석\n   4) 시작하는 방법 (단계별)\n   5) 리스크 및 주의사항 + FAQ'
+    };
+    var cp = catPrompt[cat] || catPrompt['지원금'];
 
-서비스명: ${keyword}
+    const fullPrompt = `당신은 한국 ${cp.role}이자 SEO 전문가입니다.
+
+[중요] 오늘 날짜: ${todayStr}. 현재 연도는 ${year}년입니다. 과거 연도가 아닌 ${year}년 기준으로 작성하세요.
+
+주제: ${keyword}
+카테고리: ${cat}
 ${svcContext}
 
 아래 JSON+HTML 형식으로 응답하세요. 반드시 이 형식만 출력하고 다른 텍스트는 없어야 합니다:
 
 ===JSON_START===
 {
-  "title": "SEO 롱테일 키워드 제목 (40~60자, ${year}년 포함, '조건 신청방법 총정리' 같은 패턴)",
+  "title": "SEO 롱테일 키워드 제목 (40~60자, ${year}년 포함, 예: '${cp.titlePattern}')",
   "meta_description": "155자 이내 메타 설명",
   "tags": ["태그1", "태그2", "태그3", "태그4", "태그5"]
 }
@@ -1016,17 +1036,14 @@ ${svcContext}
 ===HTML_END===
 
 [제목 규칙]
-- 사람들이 실제 검색할 롱테일 키워드 조합 (예: "${year} ${keyword} 자격조건 신청방법 지원금액 총정리")
+- 사람들이 실제 검색할 롱테일 키워드 조합
 - 연도(${year}) 반드시 포함
+- ${cat === '지원금' ? '"자격조건 신청방법" 패턴 사용' : cat === '절약' ? '"방법 꿀팁 비교" 패턴 사용. 정부 제도처럼 쓰지 말 것' : '"비교 추천 수익률" 패턴 사용. 없는 정부 프로그램으로 포장하지 말 것'}
 
 [본문 규칙]
 1. HTML 태그 (<h2>, <h3>, <p>, <ul>, <li>, <table>) 사용
 2. 섹션 구조:
-   - 1) ${keyword}란? (제도 개요 + 핵심 수치)
-   - 2) 지원대상 및 자격조건 (<table>로 조건표)
-   - 3) 지원내용 및 금액 (구체적 금액, 비율)
-   - 4) 신청방법 및 필요서류 (단계별)
-   - 5) 자주 묻는 질문 (FAQ 5개 이상)
+   - ${cp.structure}
 3. API 데이터의 수치/조건 정확히 반영
 4. API에 없는 부분은 알려진 정보로 보강
 5. 구어체 ("~해요", "~거든요") 사용하되, 과하게 친절하거나 감탄하지 말 것
@@ -1078,7 +1095,7 @@ ${svcContext}
 
       if (jsonMatch) {
         const meta = JSON.parse(jsonMatch[1].trim());
-        title = meta.title || `${year} ${keyword} 조건 신청방법 총정리`;
+        title = meta.title || `${year} ${keyword} ${cat === '지원금' ? '조건 신청방법 총정리' : cat === '절약' ? '방법 꿀팁 총정리' : '비교 추천 총정리'}`;
         metaDesc = meta.meta_description || keyword;
         tags = meta.tags || [];
       } else {
@@ -1088,14 +1105,14 @@ ${svcContext}
           const meta = JSON.parse(jsonPart[0]);
           title = meta.title; metaDesc = meta.meta_description; tags = meta.tags || [];
         } else {
-          title = `${year} ${keyword} 조건 신청방법 총정리`;
+          title = `${year} ${keyword} ${cat === '지원금' ? '조건 신청방법 총정리' : cat === '절약' ? '방법 꿀팁 총정리' : '비교 추천 총정리'}`;
           metaDesc = keyword; tags = [keyword];
         }
       }
 
       finalContent = htmlMatch ? cleanHtml(htmlMatch[1]) : cleanHtml(fullResp.replace(/===JSON_START===[\s\S]*?===JSON_END===/, ''));
     } catch(e) {
-      title = `${year} ${keyword} 조건 신청방법 총정리`;
+      title = `${year} ${keyword} ${cat === '지원금' ? '조건 신청방법 총정리' : cat === '절약' ? '방법 꿀팁 총정리' : '비교 추천 총정리'}`;
       metaDesc = keyword; tags = [keyword];
       finalContent = cleanHtml(fullResp);
     }

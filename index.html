@@ -514,11 +514,20 @@ function checkEligibility(){
   if(S.firstTime&&S.borrower==='general')maxIncome=Math.max(maxIncome,7000);
   if(income>0&&income>maxIncome){showWarn('warnIncome','소득 기준 초과 (최대 '+maxIncome.toLocaleString()+'만원)');}
   else{showWarn('warnIncome','');}
-  // 대출한도 제한
+  // 대출한도 제한 (제도한도 + LTV)
   var loanLimit=effectiveLimit;
   if(single&&age>=30){loanLimit=S.firstTime?20000:15000;}
-  if(loanAmt>0&&loanAmt>loanLimit){showWarn('warnLoan','대출한도 초과 (최대 '+loanLimit.toLocaleString()+'만원'+(single&&age>=30?' · 미혼 단독세대주':'')+')');}
-  else{showWarn('warnLoan','');}
+  var kbP=parseInt(document.getElementById('kbPrice').value)||0;
+  var ltvRate2=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
+  var ltvBase2=(kbP>0)?Math.min(housePrice,kbP):housePrice;
+  var ltvMax2=(ltvBase2>0)?Math.floor(ltvBase2*ltvRate2):0;
+  var realLimit=(ltvMax2>0)?Math.min(loanLimit,ltvMax2):loanLimit;
+  if(loanAmt>0&&loanAmt>realLimit){
+    var msg='대출한도 초과 (최대 '+realLimit.toLocaleString()+'만원';
+    if(ltvMax2>0&&ltvMax2<loanLimit){msg+=' · LTV '+(ltvRate2*100)+'% 기준';}
+    else if(single&&age>=30){msg+=' · 미혼 단독세대주';}
+    showWarn('warnLoan',msg+')');
+  }else{showWarn('warnLoan','');}
   // 신생아특례 전용 우대금리 표시
   document.getElementById('newbabyDiscountWrap').style.display=(S.borrower==='newbaby')?'block':'none';
 }
@@ -526,6 +535,7 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('birthYear').addEventListener('input',updateAge);
   document.getElementById('area').addEventListener('input',updateArea);
   document.getElementById('housePrice').addEventListener('input',checkEligibility);
+  document.getElementById('kbPrice').addEventListener('input',checkEligibility);
   document.getElementById('income').addEventListener('input',checkEligibility);
   document.getElementById('loanAmount').addEventListener('input',checkEligibility);
   updateAge();

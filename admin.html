@@ -962,6 +962,8 @@ function buildPostHtml(article) {
   h.push('<head>');
   h.push('<meta charset="UTF-8">');
   h.push('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  h.push('<scr' + 'ipt async src="https://www.googletagmanager.com/gtag/js?id=G-SDY3EXP31H"><' + '/scr' + 'ipt>');
+  h.push('<scr' + 'ipt>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-SDY3EXP31H");<' + '/scr' + 'ipt>');
   h.push('<title>' + t + ' | ' + SITE_NAME + '<\/title>');
   h.push('<meta name="description" content="' + md + '">');
   h.push('<meta property="og:title" content="' + t + '">');

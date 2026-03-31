@@ -625,40 +625,13 @@ async function selectService(idx) {
   document.getElementById('writerLog').innerHTML = '';
   document.getElementById('writerLog').classList.remove('show');
 
-  // 상세 정보 가져오기
-  const govKey = localStorage.getItem(GOV_KEY_KEY);
-  if (govKey && svcId) {
-    try {
-      writerLog(`"${name}" (ID:${svcId}) 상세정보 조회 중...`, 'info');
-      const [detailResp, condResp] = await Promise.all([
-        fetch(`https://api.odcloud.kr/api/gov24/v3/serviceDetail?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`),
-        fetch(`https://api.odcloud.kr/api/gov24/v3/supportConditions?serviceKey=${govKey}&svc_id=${svcId}&returnType=JSON`)
-      ]);
-      if (detailResp.ok) {
-        const d = await detailResp.json();
-        const detail = (d.data || [])[0] || {};
-        // 상세 응답이 선택한 서비스와 일치하는지 검증
-        const detailName = detail['서비스명'] || '';
-        if (detailName && !detailName.includes(name.slice(0,4)) && !name.includes(detailName.slice(0,4))) {
-          writerLog(`[주의] 상세 API가 다른 서비스 반환: "${detailName}" → 상세 데이터 무시`, 'err');
-          selectedService._detail = {};
-        } else {
-          selectedService._detail = detail;
-          writerLog(`상세: ${(detail['서비스목적']||'').slice(0,80)}...`, 'info');
-        }
-      }
-      if (condResp.ok) {
-        const c = await condResp.json();
-        selectedService._conditions = c.data || [];
-        writerLog(`지원조건: ${selectedService._conditions.length}건`, 'info');
-      }
-      writerLog(`"${name}" 상세정보 로드 완료`, 'ok');
-    } catch(e) {
-      writerLog('상세정보 로드 실패 (기본 정보로 진행)', 'warn');
-      selectedService._detail = {};
-      selectedService._conditions = [];
-    }
-  }
+  // Gov24 상세 API가 svc_id를 무시하고 항상 같은 데이터를 반환하는 버그가 있어서
+  // 상세 API 호출을 제거하고, 목록 데이터 + Gemini 지식으로 글 생성
+  writerLog(`"${name}" 선택됨`, 'ok');
+  writerLog(`목적: ${svc['서비스목적요약']||'정보 없음'}`, 'info');
+  writerLog(`대상: ${(svc['지원대상']||'정보 없음').slice(0,60)}`, 'info');
+  writerLog(`신청: ${svc['신청방법']||'정보 없음'}`, 'info');
+  writerLog(`기관: ${svc['소관기관명']||'정보 없음'}`, 'info');
 
   showToast(`"${name}" 선택됨 - 글 생성하기를 누르세요`, 'success');
 }
@@ -795,22 +768,16 @@ function writerLog(msg, cls) {
 function buildServiceContext() {
   if (!selectedService) return '';
   const s = selectedService;
-  const d = s._detail || {};
-  const conds = (s._conditions || []).map(c => `${c['지원조건명']}: ${c['지원조건내용']}`).join('\n');
   return `
-[공공서비스 API 원본 데이터 - 반드시 이 정보를 기반으로 작성]
+[공공서비스 정보 - 이 서비스에 대해서만 작성할 것]
 서비스명: ${s['서비스명'] || ''}
-서비스목적: ${d['서비스목적'] || s['서비스목적요약'] || ''}
-지원대상: ${d['지원대상'] || s['지원대상'] || ''}
-지원내용: ${d['지원내용'] || ''}
-선정기준: ${d['선정기준'] || ''}
-신청방법: ${d['신청방법'] || s['신청방법'] || ''}
-신청기한: ${d['신청기한'] || ''}
-구비서류: ${d['구비서류'] || ''}
-문의처: ${d['문의처전화번호'] || ''}
-온라인신청: ${d['온라인신청사이트URL'] || ''}
+서비스목적: ${s['서비스목적요약'] || ''}
+지원대상: ${s['지원대상'] || ''}
+신청방법: ${s['신청방법'] || ''}
 소관기관: ${s['소관기관명'] || ''}
-${conds ? '지원조건:\n' + conds : ''}
+
+위 정보를 기반으로 하되, "${s['서비스명']}"에 대해 일반적으로 알려진 추가 정보(자격조건, 지원금액, 필요서류, 신청절차 등)를 보강하여 작성하세요.
+다른 서비스의 내용을 섞지 마세요.
 `;
 }
 

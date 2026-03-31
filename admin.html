@@ -1067,7 +1067,7 @@ ${svcContext}
 
       if (jsonMatch) {
         const meta = JSON.parse(jsonMatch[1].trim());
-        title = meta.title || `${year} ${keyword} ${'비교 리뷰 가격 총정리'}`;
+        title = meta.title || `${year} ${keyword} ${'조건 금리 한도 총정리'}`;
         metaDesc = meta.meta_description || keyword;
         tags = meta.tags || [];
       } else {
@@ -1077,14 +1077,14 @@ ${svcContext}
           const meta = JSON.parse(jsonPart[0]);
           title = meta.title; metaDesc = meta.meta_description; tags = meta.tags || [];
         } else {
-          title = `${year} ${keyword} ${'비교 리뷰 가격 총정리'}`;
+          title = `${year} ${keyword} ${'조건 금리 한도 총정리'}`;
           metaDesc = keyword; tags = [keyword];
         }
       }
 
       finalContent = htmlMatch ? cleanHtml(htmlMatch[1]) : cleanHtml(fullResp.replace(/===JSON_START===[\s\S]*?===JSON_END===/, ''));
     } catch(e) {
-      title = `${year} ${keyword} ${'비교 리뷰 가격 총정리'}`;
+      title = `${year} ${keyword} ${'조건 금리 한도 총정리'}`;
       metaDesc = keyword; tags = [keyword];
       finalContent = cleanHtml(fullResp);
     }
@@ -1093,7 +1093,7 @@ ${svcContext}
     writerLog(`본문: ${finalContent.length}자`, 'ok');
 
     const totalCost = calcCostKRW(totalTokens.input, totalTokens.output);
-    generatedArticle = { title, content: finalContent, meta_description: metaDesc, tags, keyword, tokens: { ...totalTokens }, cost: totalCost };
+    generatedArticle = { title, content: finalContent, meta_description: metaDesc, tags, keyword, category: cat, tokens: { ...totalTokens }, cost: totalCost };
     writerLog(`완료! "${title}" (${finalContent.length}자)`, 'ok');
     writerLog(`총 토큰: 입력 ${totalTokens.input.toLocaleString()} + 출력 ${totalTokens.output.toLocaleString()} = ${(totalTokens.input+totalTokens.output).toLocaleString()} 토큰`, 'info');
     writerLog(`비용: 약 ${totalCost}원 (₩${USD_TO_KRW}/$ 기준)`, 'info');
@@ -1153,7 +1153,7 @@ function buildPostHtml(article) {
   h.push('<body>');
   h.push('<div class="topbar"><div class="topbar-inner"><a href="' + SITE_URL + '" class="topbar-logo">eloan.kr<span>대출 가이드<' + '/span><' + '/a><nav class="topbar-nav"><a href="' + SITE_URL + '">홈<' + '/a><a href="' + SITE_URL + '/' + BLOG_DIR + '/">대출정보<' + '/a><' + '/nav><' + '/div><' + '/div>');
   h.push('<div class="breadcrumb"><a href="' + SITE_URL + '">홈<' + '/a><span>›<' + '/span><a href="' + SITE_URL + '/' + BLOG_DIR + '/">가이드<' + '/a><span>›<' + '/span>' + kw + '<' + '/div>');
-  h.push('<div class="article-header"><div class="article-category">' + (cat || '대출정보') + '<' + '/div><h1>' + t + '<' + '/h1><div class="article-meta-bar"><span>' + dateStr + '<' + '/span><div class="dot"><' + '/div><span>eloan.kr<' + '/span><div class="dot"><' + '/div><span>읽는 시간 약 ' + readMin + '분<' + '/span><' + '/div><' + '/div>');
+  h.push('<div class="article-header"><div class="article-category">' + (article.category || '대출정보') + '<' + '/div><h1>' + t + '<' + '/h1><div class="article-meta-bar"><span>' + dateStr + '<' + '/span><div class="dot"><' + '/div><span>eloan.kr<' + '/span><div class="dot"><' + '/div><span>읽는 시간 약 ' + readMin + '분<' + '/span><' + '/div><' + '/div>');
   h.push('<div class="article-layout"><article class="article-content">');
   h.push(c);
   h.push('<div class="article-tags">' + tagsHtml + '<' + '/div>');

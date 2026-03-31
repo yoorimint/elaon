@@ -305,14 +305,6 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 <div class="card">
   <div class="card-title">대출조건</div>
   <div class="field">
-    <div class="label">구입자금 보증</div>
-    <div class="chips">
-      <button class="chip chip-flex on" onclick="setVal(this,'guarantee','hf')">일반 구입자금보증(HF)</button>
-      <button class="chip chip-flex" onclick="setVal(this,'guarantee','first')">생애최초 특례보증(HF)</button>
-      <button class="chip chip-flex" onclick="setVal(this,'guarantee','none')">해당사항 없음</button>
-    </div>
-    <div class="warn" id="warnGuarantee"></div>
-  </div>
   <div class="field">
     <div class="label">대출기간</div>
     <div class="chips">
@@ -445,16 +437,43 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <div class="result-cell-value blue" id="rRate">0%</div>
     </div>
     <div class="result-cell">
-      <div class="result-cell-label">대출한도</div>
-      <div class="result-cell-value" id="rLimit">0원</div>
-    </div>
-    <div class="result-cell">
       <div class="result-cell-label">총 이자</div>
       <div class="result-cell-value" id="rInterest">0원</div>
     </div>
     <div class="result-cell">
       <div class="result-cell-label">총 상환액</div>
       <div class="result-cell-value" id="rTotal">0원</div>
+    </div>
+    <div class="result-cell">
+      <div class="result-cell-label">최대 대출가능</div>
+      <div class="result-cell-value" id="rLimit">0원</div>
+    </div>
+  </div>
+  <div style="background:#fff;border-radius:14px;padding:16px;margin-top:8px">
+    <div style="font-size:13px;font-weight:700;color:#8B95A1;margin-bottom:12px">대출 구조 상세</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F4F5F7">
+      <span style="font-size:13px;color:#4E5968">LTV</span>
+      <span style="font-size:14px;font-weight:700;color:#191F28" id="rLtv">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F4F5F7">
+      <span style="font-size:13px;color:#4E5968">담보가능금액</span>
+      <span style="font-size:14px;font-weight:700;color:#191F28" id="rMortgage">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F4F5F7">
+      <span style="font-size:13px;color:#4E5968">방공제 차감</span>
+      <span style="font-size:14px;font-weight:700;color:#F04452" id="rDeduct">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F4F5F7">
+      <span style="font-size:13px;color:#4E5968">담보취급 가능</span>
+      <span style="font-size:14px;font-weight:700;color:#191F28" id="rNetMortgage">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F4F5F7">
+      <span style="font-size:13px;color:#4E5968">MCG보증 금액</span>
+      <span style="font-size:14px;font-weight:700;color:#3182F6" id="rGuarantee">-</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 0">
+      <span style="font-size:14px;font-weight:700;color:#191F28">총 대출가능금액</span>
+      <span style="font-size:16px;font-weight:800;color:#3182F6" id="rTotalLoan">-</span>
     </div>
   </div>
   <button class="schedule-btn" id="scheduleBtn" onclick="toggleSchedule()">상환일정표 보기 ▾</button>
@@ -763,7 +782,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 </div>
 
 <script>
-var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0',region:'seoul',guarantee:'hf'};
+var S={period:'20',repay:'equal',borrower:'general',rateType:'fixed',married:'no',dependents:'no',firstTime:false,grace:'0',extraChild:'0',existChild:'0',region:'seoul'};
 var DEDUCT={seoul:5500,metro:4800,city:2800,etc:2500};
 var RATES={
   general:{limit:20000,houseLimit:50000,ranges:[{max:2000,r:{10:2.45,15:2.55,20:2.60,30:2.65}},{max:4000,r:{10:2.70,15:2.80,20:2.85,30:2.90}},{max:6000,r:{10:3.15,15:3.25,20:3.30,30:3.35}}]},
@@ -842,20 +861,17 @@ function checkEligibility(){
   var ltvRate2=(S.borrower==='general'&&!S.firstTime)?0.7:0.8;
   var ltvBase2=(kbP>0)?Math.min(housePrice,kbP):housePrice;
   var deduct2=DEDUCT[S.region]||5500;
-  var ltvMax2=(ltvBase2>0)?Math.max(0,Math.floor(ltvBase2*ltvRate2)-deduct2):0;
+  var isSudo2=(S.region==='seoul'||S.region==='metro');
+  var canG2=!isSudo2||(income<=4000&&housePrice<=30000);
+  var ltvRaw2=(ltvBase2>0)?Math.floor(ltvBase2*ltvRate2):0;
+  var ltvMax2=canG2?ltvRaw2:Math.max(0,ltvRaw2-deduct2);
   var realLimit=(ltvMax2>0)?Math.min(loanLimit,ltvMax2):loanLimit;
   if(loanAmt>0&&loanAmt>realLimit){
     var msg='대출한도 초과 (최대 '+realLimit.toLocaleString()+'만원';
-    if(ltvMax2>0&&ltvMax2<loanLimit){msg+=' · LTV '+(ltvRate2*100)+'% 기준';}
+    if(!canG2&&ltvMax2<loanLimit){msg+=' · 수도권 보증불가, 담보만';}
     else if(single&&age>=30){msg+=' · 미혼 단독세대주';}
     showWarn('warnLoan',msg+')');
   }else{showWarn('warnLoan','');}
-  // 보증 제한: 수도권 아파트
-  var isSudo=(S.region==='seoul'||S.region==='metro');
-  if(S.guarantee!=='none'&&isSudo){
-    if(income>4000||housePrice>30000){showWarn('warnGuarantee','수도권 아파트는 보증가입 불가 (소득 4천만↓ + 3억↓ 아파트만 가능)');}
-    else{showWarn('warnGuarantee','');}
-  }else{showWarn('warnGuarantee','');}
   // 신생아특례 전용 우대금리 표시
   document.getElementById('newbabyDiscountWrap').style.display=(S.borrower==='newbaby')?'block':'none';
 }
@@ -950,9 +966,27 @@ function calc(){
   var kbPrice=parseInt(document.getElementById('kbPrice').value)||0;
   var ltvBase=(kbPrice>0)?Math.min(housePrice,kbPrice):housePrice;
   var deduct=DEDUCT[S.region]||5500;
-  var ltvMax=Math.max(0,Math.floor(ltvBase*ltvRate)-deduct);
-  var maxLimit=Math.min(ltvMax,loanLimit);
+  var mortgageRaw=Math.floor(ltvBase*ltvRate);
+  var netMortgage=Math.max(0,mortgageRaw-deduct);
+  var isSudo=(S.region==='seoul'||S.region==='metro');
+  var canGuarantee=!isSudo||(income<=4000&&housePrice<=30000);
+  var guaranteeAmt=0;
+  if(canGuarantee){guaranteeAmt=Math.max(0,Math.min(loanLimit,loanAmt)-netMortgage);}
+  var totalLoanMax=canGuarantee?Math.min(loanLimit,netMortgage+guaranteeAmt+netMortgage):Math.min(loanLimit,netMortgage);
+  totalLoanMax=canGuarantee?Math.min(loanLimit,mortgageRaw):Math.min(loanLimit,netMortgage);
+  var maxLimit;
+  if(canGuarantee){maxLimit=Math.min(loanLimit,mortgageRaw);}
+  else{maxLimit=Math.min(loanLimit,netMortgage);}
+  // 보증금액 재계산
+  if(canGuarantee&&maxLimit>netMortgage){guaranteeAmt=maxLimit-netMortgage;}else{guaranteeAmt=0;}
   document.getElementById('rMonthly').textContent=fmt(monthly);document.getElementById('rRate').textContent=rate.toFixed(2)+'%';document.getElementById('rLimit').textContent=maxLimit.toLocaleString()+'만원';document.getElementById('rInterest').textContent=fmt(totalInt);document.getElementById('rTotal').textContent=fmt(totalPay);
+  document.getElementById('rLtv').textContent=(ltvRate*100)+'% ('+ltvBase.toLocaleString()+'만원 기준)';
+  document.getElementById('rMortgage').textContent=mortgageRaw.toLocaleString()+'만원';
+  document.getElementById('rDeduct').textContent='-'+deduct.toLocaleString()+'만원';
+  document.getElementById('rNetMortgage').textContent=netMortgage.toLocaleString()+'만원';
+  if(canGuarantee){document.getElementById('rGuarantee').textContent=guaranteeAmt>0?guaranteeAmt.toLocaleString()+'만원':'불필요';document.getElementById('rGuarantee').style.color='#3182F6';}
+  else{document.getElementById('rGuarantee').textContent='수도권 보증 불가';document.getElementById('rGuarantee').style.color='#F04452';}
+  document.getElementById('rTotalLoan').textContent=maxLimit.toLocaleString()+'만원';
   buildSchedule(P,mr,totalMonths,graceMonths);document.getElementById('result').classList.add('show');document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'});addCount();
 }
 

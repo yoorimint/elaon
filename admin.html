@@ -541,21 +541,30 @@ function saveGeminiKey() {
 }
 
 /* ── Writer: Gemini API ── */
-async function callGemini(prompt) {
+async function callGemini(prompt, retries = 3) {
   const key = localStorage.getItem(GEMINI_KEY_KEY);
   if (!key) throw new Error('Gemini API Key를 먼저 입력하세요');
 
-  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 }
-    })
-  });
-  if (!resp.ok) throw new Error('Gemini API 오류: ' + resp.status);
-  const data = await resp.json();
-  return data.candidates[0].content.parts[0].text;
+  for (let i = 0; i < retries; i++) {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 8192 }
+      })
+    });
+    if (resp.status === 429) {
+      const wait = (i + 1) * 15;
+      writerLog(`API 요청 제한 (429) - ${wait}초 후 재시도 (${i+1}/${retries})...`, 'warn');
+      await new Promise(r => setTimeout(r, wait * 1000));
+      continue;
+    }
+    if (!resp.ok) throw new Error('Gemini API 오류: ' + resp.status);
+    const data = await resp.json();
+    return data.candidates[0].content.parts[0].text;
+  }
+  throw new Error('API 요청 제한 초과 - 잠시 후 다시 시도하세요');
 }
 
 function cleanHtml(text) {

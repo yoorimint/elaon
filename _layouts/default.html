@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="naver-site-verification" content="528239121cedbaa387cfba30220bc2ee8e397a47" />
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SDY3EXP31H"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-SDY3EXP31H');</script>
+<title>{{ page.title }} | eloan.kr</title>
+<meta name="description" content="{{ page.description | default: site.description }}">
+<meta property="og:title" content="{{ page.title }}">
+<meta property="og:description" content="{{ page.description | default: site.description }}">
+<meta property="og:type" content="{{ page.og_type | default: 'website' }}">
+<link rel="canonical" href="{{ page.url | absolute_url }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0D1B3E;--navy-light:#1A2D5A;--blue:#3182F6;--bg:#F4F5F7;--white:#fff;--text:#191F28;--text-sub:#4E5968;--text-muted:#8B95A1;--border:#E5E8EB}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased}
+.topbar{background:var(--navy);padding:12px 0}
+.topbar-inner{max-width:640px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center}
+.topbar-logo{color:#fff;text-decoration:none;font-size:16px;font-weight:800}
+.topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;font-weight:500;margin-left:16px}
+.topbar-nav a:hover{color:#fff}
+.container{max-width:640px;margin:0 auto;padding:0 16px 80px}
+.footer{text-align:center;padding:32px 0;font-size:11px;color:var(--text-muted)}
+.footer a{color:var(--text-muted)}
+</style>
+{{ page.extra_head }}
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <a href="/" class="topbar-logo">eloan.kr</a>
+    <nav class="topbar-nav">
+      <a href="/">계산기</a>
+      <a href="/blog/">블로그</a>
+    </nav>
+  </div>
+</div>
+
+{{ content }}
+
+<div class="footer">
+  이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.<br>
+  &copy; 2026 <a href="/">eloan.kr</a>
+</div>
+
+</body>
+</html>

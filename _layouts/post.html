@@ -1,0 +1,48 @@
+---
+layout: default
+---
+<style>
+.article-header{padding:32px 0 24px}
+.article-category{display:inline-block;font-size:12px;font-weight:600;color:var(--blue);background:rgba(49,130,246,0.08);padding:4px 12px;border-radius:8px;margin-bottom:12px}
+.article-header h1{font-size:24px;font-weight:800;color:var(--text);line-height:1.4;letter-spacing:-0.5px}
+.article-meta{font-size:13px;color:var(--text-muted);margin-top:10px}
+.article-content{background:var(--white);border-radius:16px;padding:28px 24px;margin-top:12px}
+.article-content h2{font-size:18px;font-weight:700;color:var(--text);margin:32px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.article-content h2:first-child{margin-top:0}
+.article-content h3{font-size:15px;font-weight:700;color:var(--navy-light);margin:24px 0 10px}
+.article-content p{font-size:15px;color:var(--text-sub);margin-bottom:14px;line-height:1.9;word-break:keep-all}
+.article-content strong{color:var(--text);font-weight:700}
+.article-content ul,.article-content ol{margin:12px 0 16px;padding-left:20px}
+.article-content li{font-size:14px;color:var(--text-sub);line-height:1.9;margin-bottom:6px}
+.article-content table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:13px}
+.article-content th{background:var(--navy);color:#fff;font-weight:600;padding:10px 14px;text-align:center}
+.article-content td{padding:10px 14px;border-bottom:1px solid var(--border);text-align:center;color:var(--text-sub)}
+.article-content tr:nth-child(even) td{background:#F9FAFB}
+.article-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:28px;padding-top:16px;border-top:1px solid var(--border)}
+.article-tag{font-size:12px;color:var(--text-muted);background:var(--bg);padding:4px 10px;border-radius:8px}
+.coupang-ad{text-align:center;margin-top:20px}
+</style>
+
+<div class="container">
+  <div class="article-header">
+    {% if page.category %}<span class="article-category">{{ page.category }}</span>{% endif %}
+    <h1>{{ page.title }}</h1>
+    <div class="article-meta">{{ page.date | date: "%Y년 %m월 %d일" }}{% if page.author %} · {{ page.author }}{% endif %}</div>
+  </div>
+
+  <div class="article-content">
+    {{ content }}
+  </div>
+
+  {% if page.tags %}
+  <div class="article-tags">
+    {% for tag in page.tags %}
+    <span class="article-tag">#{{ tag }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="coupang-ad">
+    <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+  </div>
+</div>

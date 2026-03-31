@@ -1,0 +1,24 @@
+title: eloan.kr
+description: 디딤돌대출 계산기 & 금융정보
+url: "https://eloan.kr"
+baseurl: ""
+
+permalink: /blog/:title/
+
+plugins:
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+exclude:
+  - README.md
+  - requirements.txt
+  - auto_writer.py
+  - auto_settings.json
+  - admin.html
+
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"

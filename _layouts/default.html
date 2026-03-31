@@ -14,32 +14,32 @@
 <link rel="canonical" href="{{ page.url | absolute_url }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#0D1B3E;--navy-light:#1A2D5A;--blue:#3182F6;--bg:#F4F5F7;--white:#fff;--text:#191F28;--text-sub:#4E5968;--text-muted:#8B95A1;--border:#E5E8EB}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased}
-.topbar{background:var(--navy);padding:12px 0}
-.topbar-inner{max-width:640px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center}
-.topbar-logo{color:#fff;text-decoration:none;font-size:16px;font-weight:800}
-.topbar-nav a{color:rgba(255,255,255,.7);text-decoration:none;font-size:13px;font-weight:500;margin-left:16px}
-.topbar-nav a:hover{color:#fff}
-.container{max-width:640px;margin:0 auto;padding:0 16px 80px}
-.footer{text-align:center;padding:32px 0;font-size:11px;color:var(--text-muted)}
-.footer a{color:var(--text-muted)}
+body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;color:#191F28;line-height:1.8;-webkit-font-smoothing:antialiased}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px 80px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
+.topbar-logo{font-size:16px;font-weight:800;color:#191F28;text-decoration:none}
+.topbar-nav{display:flex;gap:16px}
+.topbar-nav a{font-size:13px;font-weight:500;color:#8B95A1;text-decoration:none}
+.topbar-nav a:hover{color:#3182F6}
+.topbar-nav a.active{font-weight:600;color:#3182F6}
+.footer{text-align:center;padding:32px 0;font-size:11px;color:#8B95A1}
+.footer a{color:#8B95A1;text-decoration:none}
 </style>
 {{ page.extra_head }}
 </head>
 <body>
 
+<div class="wrap">
+
 <div class="topbar">
-  <div class="topbar-inner">
-    <a href="/" class="topbar-logo">eloan.kr</a>
-    <nav class="topbar-nav">
-      <a href="/">계산기</a>
-      <a href="/blog/">블로그</a>
-    </nav>
-  </div>
+  <a href="/" class="topbar-logo">eloan.kr</a>
+  <nav class="topbar-nav">
+    <a href="/">계산기</a>
+    <a href="/blog/" class="active">블로그</a>
+  </nav>
 </div>
 
 {{ content }}
@@ -47,6 +47,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);co
 <div class="footer">
   이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.<br>
   &copy; 2026 <a href="/">eloan.kr</a>
+</div>
+
 </div>
 
 </body>

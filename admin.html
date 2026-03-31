@@ -435,9 +435,65 @@ async function loadExistingPosts() {
   if (existingPosts.length === 0) {
     listEl.textContent = '발행된 글이 없습니다.';
   } else {
-    listEl.innerHTML = existingPosts.map(p =>
-      `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${p.date_iso || ''} · ${p.title}</div>`
+    listEl.innerHTML = existingPosts.map((p, i) =>
+      `<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        <span style="flex:1;">${p.date_iso || ''} · ${p.title}</span>
+        <button onclick="deletePost(${i})" style="background:var(--danger);color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;flex-shrink:0;">삭제</button>
+      </div>`
     ).join('');
+  }
+}
+
+async function deletePost(idx) {
+  const post = existingPosts[idx];
+  if (!post) return;
+  if (!confirm(`"${post.title}" 글을 삭제하시겠습니까?`)) return;
+
+  const token = localStorage.getItem(GH_TOKEN_KEY);
+  const repo = localStorage.getItem(GH_REPO_KEY);
+
+  try {
+    showToast('삭제 중...', '');
+
+    // 1. 글 HTML 삭제
+    const filePath = `${BLOG_DIR}/${post.slug}.html`;
+    try {
+      const fileResp = await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+        headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (fileResp.ok) {
+        const fileData = await fileResp.json();
+        await fetch(`https://api.github.com/repos/${repo}/contents/${filePath}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: `글 삭제: ${post.title}`, sha: fileData.sha, branch: 'main' })
+        });
+      }
+    } catch(e) {}
+
+    // 2. posts.json 업데이트
+    const pResp = await fetch(`https://api.github.com/repos/${repo}/contents/${BLOG_DIR}/posts.json`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (pResp.ok) {
+      const pData = await pResp.json();
+      const posts = JSON.parse(decodeURIComponent(escape(atob(pData.content.replace(/\n/g, '')))));
+      const updated = posts.filter(p => p.slug !== post.slug);
+      await fetch(`https://api.github.com/repos/${repo}/contents/${BLOG_DIR}/posts.json`, {
+        method: 'PUT',
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `글 목록에서 삭제: ${post.title}`,
+          content: btoa(unescape(encodeURIComponent(JSON.stringify(updated, null, 2)))),
+          sha: pData.sha, branch: 'main'
+        })
+      });
+    }
+
+    showToast('삭제 완료!', 'success');
+    await loadExistingPosts();
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
   }
 }
 

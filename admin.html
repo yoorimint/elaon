@@ -561,7 +561,6 @@ function renderServiceList(services) {
     </div>`;
   }).join('');
   window._svcData = services;
-  writerLog(`인기순 ${services.length}건 표시`, 'info');
 }
 
 async function fetchServices() {
@@ -574,14 +573,19 @@ async function fetchServices() {
   btn.textContent = '불러오는 중...';
 
   try {
-    const resp = await fetch(`https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=${govKey}&page=1&perPage=100&returnType=JSON`);
-    if (!resp.ok) throw new Error('API 오류: ' + resp.status);
-    const data = await resp.json();
-    const allServices = data.data || [];
+    var allServices = [];
+    for (var pg = 1; pg <= 5; pg++) {
+      var resp = await fetch('https://api.odcloud.kr/api/gov24/v3/serviceList?serviceKey=' + govKey + '&page=' + pg + '&perPage=100&returnType=JSON');
+      if (!resp.ok) break;
+      var data = await resp.json();
+      var items = data.data || [];
+      allServices = allServices.concat(items);
+      if (items.length < 100) break;
+    }
 
     // 지원금/보조금 관련만 필터
-    const SUPPORT_KEYWORDS = ['지원금','보조금','수당','급여','장려금','바우처','대출','장학금','연금','양육'];
-    const EXCLUDE_KEYWORDS = ['채용','시험','면제','등록','신고','발급','조회','확인서','증명'];
+    const SUPPORT_KEYWORDS = ['지원','보조','수당','급여','장려','대출','장학','연금','양육','보육','돌봄','바우처','감면','수급','임대'];
+    const EXCLUDE_KEYWORDS = ['채용','시험','선박','수산','해운','산림','축산','농업용','면허','등록','신고','발급','조회','확인서','증명','허가','인가','검사','측량','광업'];
     const supportOnly = allServices.filter(function(s) {
       var text = (s['서비스명']||'') + ' ' + (s['서비스목적요약']||'');
       var hasSupport = SUPPORT_KEYWORDS.some(function(kw) { return text.includes(kw); });
@@ -595,6 +599,7 @@ async function fetchServices() {
     const services = scored.slice(0, 50);
 
     renderServiceList(services);
+    writerLog('전체 ' + allServices.length + '건 중 지원금 ' + supportOnly.length + '건 → 인기순 ' + services.length + '건 표시', 'info');
   } catch(e) {
     showToast('서비스 목록 로드 실패: ' + e.message, 'error');
   } finally {

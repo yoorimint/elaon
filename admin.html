@@ -586,10 +586,13 @@ async function fetchServices() {
     const allServices = data.data || [];
 
     // 지원금/보조금 관련만 필터
-    const SUPPORT_KEYWORDS = ['지원','보조','수당','급여','장려','감면','바우처','대출','임대','장학','연금','돌봄','보육'];
+    const SUPPORT_KEYWORDS = ['지원금','보조금','수당','급여','장려금','바우처','대출','장학금','연금','양육'];
+    const EXCLUDE_KEYWORDS = ['채용','시험','면제','등록','신고','발급','조회','확인서','증명'];
     const supportOnly = allServices.filter(function(s) {
       var text = (s['서비스명']||'') + ' ' + (s['서비스목적요약']||'');
-      return SUPPORT_KEYWORDS.some(function(kw) { return text.includes(kw); });
+      var hasSupport = SUPPORT_KEYWORDS.some(function(kw) { return text.includes(kw); });
+      var hasExclude = EXCLUDE_KEYWORDS.some(function(kw) { return text.includes(kw); });
+      return hasSupport && !hasExclude;
     });
 
     // 인기순 정렬

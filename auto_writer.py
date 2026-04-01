@@ -115,61 +115,38 @@ def fetch_official_data():
     return data
 
 
+def load_manual_data():
+    """업무매뉴얼 데이터 파일 로드"""
+    path = os.path.join(os.path.dirname(__file__), 'manual_data.txt')
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return f.read()
+    return ''
+
+
 def build_data_context(official_data):
-    """수집된 공식 데이터를 프롬프트용 텍스트로 변환"""
-    # 검증된 대출 데이터 파일 우선 로드
+    """매뉴얼 데이터 + loan_data.json을 프롬프트용 텍스트로 변환"""
+    manual = load_manual_data()
     loan_data = load_loan_data()
 
-    if not official_data and not loan_data:
-        return '''
-[중요 - 데이터 정확성 규칙]
-공식 데이터를 가져오지 못했습니다.
-금리, 소득기준, 한도, 주택가격 등 구체적인 숫자를 절대 임의로 작성하지 마세요.
-구체적 숫자 대신 "한국주택금융공사(hf.go.kr) 또는 마이홈(myhome.go.kr)에서 최신 기준을 확인하세요"로 대체하세요.
-"2026년 예상" 같은 추측성 숫자도 절대 금지입니다.
-'''
+    if not manual and not loan_data:
+        return '[데이터 없음] 금리/소득/한도 등 구체적 숫자 사용 금지. 공식사이트 안내만 하세요.'
 
-    context = '\n[공식 데이터 - 반드시 이 숫자만 사용하세요. 아래에 없는 숫자는 절대 만들지 마세요.]\n'
+    context = '\n[공식 데이터 - 반드시 이 데이터만 사용. 없는 숫자는 절대 만들지 마세요.]\n'
 
-    # 검증된 대출 데이터 (최우선)
+    if manual:
+        context += manual + '\n'
+
     if loan_data:
-        context += '\n## 검증된 디딤돌대출·신생아특례 데이터 (eloan.kr 계산기 기준)\n'
+        context += '\n## 금리표 (eloan.kr 계산기 기준)\n'
         context += json.dumps(loan_data, ensure_ascii=False, indent=2)
         context += '\n'
 
-    if 'didimdol_rates' in official_data:
-        context += '\n## 디딤돌대출 금리 (공공데이터포털 기준)\n'
-        for item in official_data['didimdol_rates'][:5]:
-            context += f'{json.dumps(item, ensure_ascii=False)}\n'
-
-    if 'bogeumjari_rates' in official_data:
-        context += '\n## 보금자리론 금리 (공공데이터포털 기준)\n'
-        for item in official_data['bogeumjari_rates'][:5]:
-            context += f'{json.dumps(item, ensure_ascii=False)}\n'
-
-    if 'jeonse_rates' in official_data:
-        context += '\n## 전세자금보증 평균금리 (공공데이터포털 기준)\n'
-        for item in official_data['jeonse_rates'][:5]:
-            context += f'{json.dumps(item, ensure_ascii=False)}\n'
-
-    if 'hf_didimdol' in official_data:
-        context += f'\n## 디딤돌대출 상품소개 (한국주택금융공사)\n{official_data["hf_didimdol"][:2000]}\n'
-
-    if 'hf_rates' in official_data:
-        context += f'\n## 디딤돌대출 금리안내 (한국주택금융공사)\n{official_data["hf_rates"][:2000]}\n'
-
-    if 'myhome_newbaby' in official_data:
-        context += f'\n## 신생아특례대출 (마이홈)\n{official_data["myhome_newbaby"][:2000]}\n'
-
     context += '''
-[중요 - 데이터 정확성 규칙 (절대 위반 금지)]
-1. 위 데이터에 있는 숫자만 사용하세요. 한 글자도 바꾸지 마세요.
-2. 위 데이터에 없는 금리, 소득기준, 한도, 주택가격 등 구체적 숫자를 절대 만들어내지 마세요.
-3. 데이터에 없는 내용은 "한국주택금융공사(hf.go.kr) 또는 마이홈(myhome.go.kr)에서 최신 기준을 확인하세요"로 대체하세요.
-4. "2026년 예상", "~로 변경될 예정", "~로 조정될 수 있음" 같은 추측성 숫자/표현 절대 금지.
-5. 디딤돌대출 일반가구 한도는 2억원, 생애최초 2.4억원, 신혼/2자녀 3.2억원입니다. 이 외 숫자 사용 금지.
-6. 디딤돌대출 금리는 2.45%~3.55%입니다. 이 범위 밖 금리 사용 금지.
-7. 신생아특례 한도는 최대 4억원, 주택가격 9억원 이하입니다.
+[데이터 규칙]
+1. 위 데이터에 있는 숫자만 사용. 없는 숫자 만들기 금지.
+2. 추측성 표현("예상", "변경될 수 있음") 금지.
+3. 모르는 내용은 언급하지 마세요.
 '''
     return context
 
@@ -273,22 +250,21 @@ def make_slug(title):
 
 
 def get_topic(cat, existing_titles):
-    """Gemini로 주제 추천 (카테고리별)"""
-    year = datetime.now().year
+    """Gemini로 매뉴얼 데이터 기반 질문 생성"""
+    manual = load_manual_data()
 
-    cat_context = {
-        '디딤돌대출': f'디딤돌대출 조건, 금리, 한도, 자격, 상환방식 등. "{year} 디딤돌대출 OOO 조건 금리 한도 총정리" 형태.',
-        '신생아특례': f'신생아특례대출 조건, 금리, 주택가격, 소득기준 등. "{year} 신생아특례대출 OOO 조건 자격 금리 총정리" 형태.',
-        '부동산대출': f'주택담보대출, LTV, DTI, DSR, 대환대출, 전세대출 등 부동산 금융 전반. "{year} OOO 대출 조건 금리 비교 총정리" 형태.',
-    }
+    prompt = f"""아래는 디딤돌대출·신생아특례대출 공식 업무매뉴얼 데이터입니다.
+이 데이터를 읽고, 실제 대출을 알아보는 사람들이 궁금해할 검색 질문을 5개 만드세요.
 
-    prompt = f"""한국에서 "{cat}" 분야로 사람들이 많이 검색하는 롱테일 키워드 주제를 5개 추천해줘.
-{cat_context.get(cat, '')}
-각 주제는 블로그 글 제목으로 쓸 수 있는 롱테일 키워드 형태로.
-대출을 알아보는 실수요자가 검색할만한 구체적인 키워드로 (예: "신생아특례대출 소득기준 맞벌이", "디딤돌대출 중도상환수수료", "주택담보대출 LTV DTI 계산").
-이미 작성된 주제는 제외: {', '.join(existing_titles[-20:])}
-연도는 {year}년 기준.
-반드시 JSON 배열로만 응답: ["주제1","주제2","주제3","주제4","주제5"]"""
+[데이터]
+{manual[:4000]}
+
+[규칙]
+1. 질문은 구체적이고 실용적이어야 합니다 (예: "디딤돌대출 30세 미만 단독세대주 신청 가능한가요?")
+2. 카테고리: {cat}
+3. 이미 작성된 글 제외: {', '.join(existing_titles[-20:])}
+4. 질문형 또는 검색키워드형으로 (예: "신생아특례대출 맞벌이 소득기준", "디딤돌대출 전입의무 기간")
+5. 반드시 JSON 배열로만 응답: ["질문1","질문2","질문3","질문4","질문5"]"""
 
     resp = call_gemini(prompt)
     clean = re.sub(r'```json\s*', '', resp)

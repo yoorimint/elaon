@@ -114,11 +114,9 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
 .board-section{margin-top:24px;padding:0 0 32px}
 .board-title{font-size:16px;font-weight:700;color:#333D4B;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #333D4B}
 .board-list{margin:0;padding:0}
-.board-row{display:flex;align-items:center;padding:12px 8px;border-bottom:1px solid #E5E8EB;text-decoration:none;transition:background .1s}
+.board-row{display:block;padding:14px 8px;border-bottom:1px solid #E5E8EB;text-decoration:none;transition:background .1s}
 .board-row:hover{background:#F8F9FA}
-.board-row-cat{flex-shrink:0;font-size:11px;font-weight:600;color:#3182F6;background:#EBF5FF;padding:2px 8px;border-radius:4px;margin-right:10px}
-.board-row-title{flex:1;font-size:14px;font-weight:600;color:#333D4B;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.board-row-date{flex-shrink:0;font-size:12px;color:#8B95A1;margin-left:10px}
+.board-row-title{font-size:15px;font-weight:600;color:#333D4B;line-height:1.5}
 .board-paging{display:flex;justify-content:center;gap:6px;margin-top:16px}
 .board-page{min-width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid #E5E8EB;border-radius:6px;font-size:13px;color:#333D4B;background:#fff;cursor:pointer;text-decoration:none}
 .board-page:hover{border-color:#3182F6;color:#3182F6}
@@ -1057,9 +1055,7 @@ function renderBoard(page){
   for(var i=start;i<end;i++){
     var p=boardPosts[i];
     html+='<a class="board-row" href="blog/'+p.slug+'.html">'
-      +'<span class="board-row-cat">'+(p.category||'대출')+'</span>'
       +'<span class="board-row-title">'+p.title+'</span>'
-      +'<span class="board-row-date">'+(p.date||'')+'</span>'
       +'</a>';
   }
   list.innerHTML=html;

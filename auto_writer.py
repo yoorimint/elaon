@@ -336,7 +336,7 @@ def generate_post(keyword, cat, data_context=''):
 
 ===JSON_START===
 {{
-  "title": "질문을 SEO에 맞게 다듬은 제목 (40~60자, {year}년 포함)",
+  "title": "질문을 SEO에 맞게 다듬은 제목 (40~60자, 연도 넣지 말 것)",
   "meta_description": "155자 이내 메타 설명",
   "tags": ["태그1", "태그2", "태그3", "태그4", "태그5"]
 }}
@@ -347,7 +347,7 @@ def generate_post(keyword, cat, data_context=''):
 
 [제목 규칙]
 - 실제 검색자의 질문을 반영한 자연스러운 제목
-- 연도({year}) 포함
+- 연도 넣지 말 것
 
 [본문 규칙 - Q&A 형식]
 1. 순수 HTML만 사용. 마크다운 문법(**굵게**, *기울임*, # 제목 등) 절대 금지. 굵게는 <strong>, 기울임은 <em> 사용.
@@ -379,7 +379,7 @@ def generate_post(keyword, cat, data_context=''):
         meta_desc = meta.get('meta_description', keyword)
         tags = meta.get('tags', [])
     else:
-        title = f'{year} {keyword}'
+        title = keyword
         meta_desc = keyword
         tags = [keyword]
 

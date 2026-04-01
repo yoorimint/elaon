@@ -453,7 +453,12 @@ const LOAN_DATA_CONTEXT = `[검증된 공식 데이터]
 
 [추가출산 우대]
 - 추가출산 1명당: 금리 -0.2%p + 특례기간 5년 연장
-- 기존 미성년 자녀: 1명당 -0.1%p, 특례기간 최장 15년`;
+- 기존 미성년 자녀: 1명당 -0.1%p, 특례기간 최장 15년
+
+[신청]
+- 수탁은행: 우리, 국민, 신한, 하나, 농협
+- 온라인: 기금e든든(enhuf.molit.go.kr), 고객센터 1688-8114
+- 필요서류: 주민등록등본, 가족관계증명서, 출생증명서, 혼인관계증명서, 소득확인서류, 재직증명서, 매매계약서, 등기부등본, 건축물대장, 인감증명서, 신분증`;
 
 function calcCostKRW(input, output) {
   const usd = (input / 1e6) * GEMINI_PRICE.input + (output / 1e6) * GEMINI_PRICE.output;

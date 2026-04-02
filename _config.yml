@@ -10,6 +10,7 @@ plugins:
 
 include:
   - sitemap.xml
+  - robots.txt
 
 exclude:
   - README.md

@@ -406,8 +406,8 @@ def generate_post(keyword, cat, data_context=''):
     }
 
 
-COUPANG_BANNER = '''<div style="margin:28px 0;text-align:center;overflow:hidden;">
-  <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=680&height=140&tsource=" style="max-width:100%;width:680px;height:140px;border:none;" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+COUPANG_BANNER = '''<div style="margin:28px 0;text-align:center;">
+<iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
 </div>'''
 
 
@@ -473,9 +473,9 @@ def build_post_html(article):
 {c}
 <div class="article-tags">{tags_html}</div>
 <div style="margin-top:32px;padding:16px 18px;background:#FEF3C7;border-radius:8px;font-size:12px;color:#92400E;line-height:1.7;">이 글은 AI를 활용해 작성되었으며, 대출 조건·금리는 변경될 수 있습니다. 최신 정보는 한국주택금융공사, 마이홈 등 공식 사이트에서 확인하세요.</div>
-<div style="margin-top:24px;text-align:center;overflow:hidden;">
-  <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=680&height=140&tsource=" style="max-width:100%;width:680px;height:140px;border:none;" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
-  <p style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.6;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+<div style="margin-top:24px;text-align:center;">
+<iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+<p style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.6;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
 </div>
 </article></div>
 <footer class="footer"><div class="footer-inner"><p><a href="{SITE_URL}"><strong>eloan.kr</strong></a> · 대출 가이드</p><p>대출 조건·금리는 변경될 수 있으니 공식 사이트에서 확인하세요<br><br>&copy; {now.year} eloan.kr</p></div></footer>

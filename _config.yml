@@ -9,6 +9,9 @@ plugins:
   - jekyll-sitemap
   - jekyll-seo-tag
 
+include:
+  - sitemap.xml
+
 exclude:
   - README.md
   - requirements.txt

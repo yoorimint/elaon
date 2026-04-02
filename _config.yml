@@ -6,7 +6,6 @@ baseurl: ""
 permalink: /blog/:title/
 
 plugins:
-  - jekyll-sitemap
   - jekyll-seo-tag
 
 include:

@@ -406,10 +406,36 @@ def generate_post(keyword, cat, data_context=''):
     }
 
 
+COUPANG_BANNER = '''<div style="margin:28px 0;text-align:center;">
+  <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
+  <p style="margin-top:8px;font-size:11px;color:#9CA3AF;line-height:1.6;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
+</div>'''
+
+
+def insert_mid_banner(content):
+    """본문 중간에 쿠팡 배너 삽입 (두 번째 </h2> 또는 세 번째 </p> 뒤)"""
+    # h2 태그 기준으로 중간 삽입 시도
+    h2_positions = [m.end() for m in re.finditer(r'</h2>', content)]
+    if len(h2_positions) >= 2:
+        pos = h2_positions[1]
+        return content[:pos] + '\n' + COUPANG_BANNER + '\n' + content[pos:]
+    # h2가 부족하면 p 태그 기준
+    p_positions = [m.end() for m in re.finditer(r'</p>', content)]
+    if len(p_positions) >= 3:
+        pos = p_positions[2]
+        return content[:pos] + '\n' + COUPANG_BANNER + '\n' + content[pos:]
+    # 그래도 부족하면 중간 지점에 삽입
+    mid = len(content) // 2
+    newline = content.find('\n', mid)
+    if newline != -1:
+        return content[:newline] + '\n' + COUPANG_BANNER + '\n' + content[newline:]
+    return content + '\n' + COUPANG_BANNER
+
+
 def build_post_html(article):
     """글 HTML 생성"""
     t = article['title']
-    c = article['content']
+    c = insert_mid_banner(article['content'])
     md = article['meta_description']
     kw = article['keyword']
     tags_html = '\n'.join([f'<span class="article-tag">{tag}</span>' for tag in article.get('tags', [])])

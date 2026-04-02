@@ -408,7 +408,6 @@ def generate_post(keyword, cat, data_context=''):
 
 COUPANG_BANNER = '''<div style="margin:28px 0;text-align:center;">
   <iframe src="https://ads-partners.coupang.com/widgets.html?id=976950&template=carousel&trackingCode=AF0866991&subId=&width=320&height=100&tsource=" width="320" height="100" frameborder="0" scrolling="no" referrerpolicy="unsafe-url" browsingtopics></iframe>
-  <p style="margin-top:8px;font-size:11px;color:#9CA3AF;line-height:1.6;">이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>
 </div>'''
 
 

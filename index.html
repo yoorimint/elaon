@@ -548,8 +548,8 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
     <h3>대출 한도</h3>
     <ul>
       <li>일반: 최대 2억원 (LTV 70%)</li>
-      <li>생애최초: 최대 2.4억원 (LTV 80%)</li>
-      <li>신혼부부·2자녀·다자녀: 최대 3.2억원 (LTV 80%)</li>
+      <li>생애최초: 최대 2.4억원 (LTV 수도권 70%, 비수도권 80%)</li>
+      <li>신혼부부·2자녀·다자녀: 최대 3.2억원 (LTV 일반 70%, 생초 수도권 70% 비수도권 80%)</li>
       <li>미혼 단독세대주(30세↑): 최대 1.5억 (생애최초 2억)</li>
       <li>DTI 60% 이내</li>
     </ul>
@@ -579,7 +579,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <tr><td>변동금리</td><td>-0.3%</td><td>6개월 주기 변동</td></tr>
     </table>
     <ul style="margin-top:8px">
-      <li>최저금리: 1.5% (생애최초+신혼 1.2%)</li>
+      <li>최저금리: 일반 1.5%, 신혼 1.2%, 신생아특례 1.5%</li>
     </ul>
   </div>
 
@@ -954,7 +954,7 @@ function getBaseRate(){
   return rate;
 }
 function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('earlyRepay').checked)d+=0.2;if(document.getElementById('localHouse').checked)d+=0.2;if(document.getElementById('localUnsold').checked)d+=0.2;if(S.borrower==='newbaby'){d+=parseInt(S.extraChild)*0.2;d+=parseInt(S.existChild)*0.1;}return d;}
-function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
+function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=(S.borrower==='newlywed')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
 

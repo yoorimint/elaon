@@ -256,6 +256,41 @@ def load_posts():
     return [], None
 
 
+def update_sitemap(posts):
+    """sitemap.xml 업데이트"""
+    urls = f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{SITE_URL}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>{SITE_URL}/blog/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+'''
+    for p in posts:
+        slug = p.get('slug', '')
+        date_iso = p.get('date_iso', '')
+        urls += f'''  <url>
+    <loc>{SITE_URL}/{BLOG_DIR}/{slug}.html</loc>
+    <lastmod>{date_iso}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+'''
+    urls += '</urlset>\n'
+
+    try:
+        existing = github_get('sitemap.xml')
+        sha = existing['sha'] if existing else None
+        github_put('sitemap.xml', urls, '사이트맵 업데이트', sha=sha)
+    except Exception as e:
+        print(f'  Sitemap update failed: {e}')
+
+
 def is_duplicate(posts, keyword):
     """중복 체크 (같은 연도)"""
     year = str(datetime.now().year)
@@ -590,6 +625,12 @@ def run():
         # API 쿨다운
         import time
         time.sleep(10)
+
+    # 사이트맵 업데이트
+    if written > 0:
+        print('\n--- 사이트맵 업데이트 ---')
+        posts, _ = load_posts()
+        update_sitemap(posts)
 
     print(f'\n=== Done: {written}/{count} posts written ===')
 

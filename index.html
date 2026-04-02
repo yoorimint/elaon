@@ -529,7 +529,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <li>일반: 연소득 6,000만원 이하</li>
       <li>생애최초: 연소득 7,000만원 이하</li>
       <li>신혼부부 (혼인 7년 이내): 연소득 8,500만원 이하</li>
-      <li>2자녀 이상·다자녀: 연소득 8,500만원 이하 (생애최초 시 1억원 이하)</li>
+      <li>2자녀 이상·다자녀: 연소득 7,000만원 이하</li>
       <li>순자산: 소득 4분위 전체가구 평균값 이하</li>
     </ul>
   </div>
@@ -643,7 +643,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
       <li>수탁은행 방문: 우리·국민·신한·하나·농협</li>
       <li>기금e든든 포털 온라인 신청</li>
       <li>주택금융공사 고객센터: 1688-8114</li>
-      <li>조기상환 수수료: 3년 이내 상환 시 1.2% (2025.12.31까지 한시적 면제)</li>
+      <li>조기상환 수수료: 3년 이내 상환 시 0.6% (2026.12.31까지 한시적 면제)</li>
     </ul>
   </div>
 
@@ -693,7 +693,7 @@ body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:#F4F5F7;colo
     <h3>대출 한도</h3>
     <ul>
       <li>최대 4억원</li>
-      <li>LTV: 일반 70% / 생애최초 80%</li>
+      <li>LTV: 일반 70% / 생애최초 수도권 70%, 비수도권 80%</li>
       <li>매매가와 KB시세 중 낮은 금액 기준</li>
       <li>DTI 60% 이내</li>
     </ul>
@@ -955,7 +955,7 @@ function getBaseRate(){
   return rate;
 }
 function getDiscount(){var d=0;var fd=document.querySelector('input[name="familyDiscount"]:checked');if(fd)d+=parseFloat(fd.value)||0;var sv=document.querySelector('input[name="savings"]:checked');if(sv)d+=parseFloat(sv.value)||0;if(document.getElementById('econtract').checked)d+=0.1;if(document.getElementById('lowLoan').checked)d+=0.1;if(document.getElementById('earlyRepay').checked)d+=0.2;if(document.getElementById('localHouse').checked)d+=0.2;if(document.getElementById('localUnsold').checked)d+=0.2;if(S.borrower==='newbaby'){d+=parseInt(S.extraChild)*0.2;d+=parseInt(S.existChild)*0.1;}return d;}
-function getRate(){var base=getBaseRate();if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
+function getRate(){var base=getBaseRate();if(S.borrower!=='newbaby'){if(S.rateType==='mixed10')base-=0.1;else if(S.rateType==='mixed5')base-=0.2;else if(S.rateType==='variable')base-=0.3;}var minRate=((S.firstTime&&S.borrower==='newlywed')||S.borrower==='newbaby')?1.2:1.5;return Math.max(base-getDiscount(),minRate);}
 function pmt(P,mr,n){if(mr===0)return P/n;return(P*mr*Math.pow(1+mr,n))/(Math.pow(1+mr,n)-1);}
 function fmt(n){return Math.round(n).toLocaleString()+'원';}
 

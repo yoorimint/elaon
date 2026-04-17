@@ -11,7 +11,8 @@ export type StrategyId =
   | "ichimoku"
   | "dca"
   | "ma_dca"
-  | "grid";
+  | "grid"
+  | "custom";
 
 export type Signal =
   | "buy"
@@ -37,7 +38,7 @@ export type StrategyConfig = {
   id: StrategyId;
   name: string;
   description: string;
-  group: "추세" | "역추세" | "적립";
+  group: "추세" | "역추세" | "적립" | "커스텀";
 };
 
 export const STRATEGIES: StrategyConfig[] = [
@@ -113,6 +114,13 @@ export const STRATEGIES: StrategyConfig[] = [
     description:
       "가격 범위를 N구간으로 나눠 구간 하단 닿으면 1/N씩 매수, 상단 닿으면 1/N씩 매도. 박스권 최강.",
     group: "적립",
+  },
+  {
+    id: "custom",
+    name: "커스텀 (DIY)",
+    description:
+      "여러 지표 조건을 AND로 조합해 매수, OR로 조합해 매도. 손절/익절 설정 가능. 나만의 전략을 만드세요.",
+    group: "커스텀",
   },
 ];
 

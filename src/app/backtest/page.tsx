@@ -8,6 +8,12 @@ import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { NumInput } from "@/components/NumInput";
+import { ConditionRow } from "@/components/ConditionEditor";
+import {
+  computeDIYSignals,
+  defaultCondition,
+  type Condition,
+} from "@/lib/diy-strategy";
 
 const POPULAR_MARKETS = [
   "KRW-BTC",
@@ -51,6 +57,10 @@ export default function BacktestPage() {
   const [gridLow, setGridLow] = useState(0);
   const [gridHigh, setGridHigh] = useState(0);
   const [gridCount, setGridCount] = useState(10);
+  const [customBuy, setCustomBuy] = useState<Condition[]>([defaultCondition()]);
+  const [customSell, setCustomSell] = useState<Condition[]>([]);
+  const [stopLoss, setStopLoss] = useState(0);
+  const [takeProfit, setTakeProfit] = useState(0);
   const [initialCash, setInitialCash] = useState(1_000_000);
   const [feeBps, setFeeBps] = useState(5);
   const [loading, setLoading] = useState(false);
@@ -94,36 +104,47 @@ export default function BacktestPage() {
         setGridLow(Math.round(gLow));
         setGridHigh(Math.round(gHigh));
       }
-      const signals = computeSignals(
-        data,
-        strategy,
-        {
-          ma_cross: { short: shortMa, long: longMa },
-          rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-          bollinger: { period: bbPeriod, stddev: bbStddev },
-          macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
-          breakout: { k: breakoutK },
-          stoch: {
-            period: stochPeriod,
-            smooth: stochSmooth,
-            oversold: stochLow,
-            overbought: stochHigh,
+      let signals;
+      if (strategy === "custom") {
+        if (customBuy.length === 0) throw new Error("매수 조건을 1개 이상 추가해주세요");
+        signals = computeDIYSignals(data, {
+          buy: customBuy,
+          sell: customSell,
+          stopLossPct: stopLoss > 0 ? stopLoss : undefined,
+          takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+        });
+      } else {
+        signals = computeSignals(
+          data,
+          strategy,
+          {
+            ma_cross: { short: shortMa, long: longMa },
+            rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+            bollinger: { period: bbPeriod, stddev: bbStddev },
+            macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
+            breakout: { k: breakoutK },
+            stoch: {
+              period: stochPeriod,
+              smooth: stochSmooth,
+              oversold: stochLow,
+              overbought: stochHigh,
+            },
+            ichimoku: {
+              conversion: ichimokuConv,
+              base: ichimokuBase,
+              lagging: ichimokuLag,
+            },
+            dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
+            ma_dca: {
+              intervalDays: dcaInterval,
+              amountKRW: dcaAmount,
+              maPeriod: maDcaMaPeriod,
+            },
+            grid: { low: gLow, high: gHigh, grids: gridCount },
           },
-          ichimoku: {
-            conversion: ichimokuConv,
-            base: ichimokuBase,
-            lagging: ichimokuLag,
-          },
-          dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
-          ma_dca: {
-            intervalDays: dcaInterval,
-            amountKRW: dcaAmount,
-            maPeriod: maDcaMaPeriod,
-          },
-          grid: { low: gLow, high: gHigh, grids: gridCount },
-        },
-        { initialCash },
-      );
+          { initialCash },
+        );
+      }
       const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
       setResult(r);
       setCandles(r.equity);
@@ -236,6 +257,13 @@ export default function BacktestPage() {
               </optgroup>
               <optgroup label="적립식">
                 {STRATEGIES.filter((s) => s.group === "적립").map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="DIY">
+                {STRATEGIES.filter((s) => s.group === "커스텀").map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -568,6 +596,115 @@ export default function BacktestPage() {
             </label>
             <div className="sm:col-span-3 text-xs text-neutral-500">
               0으로 두시면 기간 내 최저/최고가로 자동 설정됩니다.
+            </div>
+          </div>
+        )}
+
+        {strategy === "custom" && (
+          <div className="mt-4 space-y-5">
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  매수 조건{" "}
+                  <span className="text-xs text-neutral-500">(전부 만족 시 매수)</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setCustomBuy((prev) => [...prev, defaultCondition()])}
+                  className="text-xs text-brand hover:underline"
+                >
+                  + 조건 추가
+                </button>
+              </div>
+              <div className="mt-2 space-y-2">
+                {customBuy.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center text-xs text-neutral-500">
+                    조건을 1개 이상 추가해주세요
+                  </div>
+                ) : (
+                  customBuy.map((c, idx) => (
+                    <ConditionRow
+                      key={c.id}
+                      cond={c}
+                      onChange={(nc) =>
+                        setCustomBuy((prev) =>
+                          prev.map((x, i) => (i === idx ? nc : x)),
+                        )
+                      }
+                      onRemove={() =>
+                        setCustomBuy((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">
+                  매도 조건{" "}
+                  <span className="text-xs text-neutral-500">(하나라도 만족 시 매도)</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setCustomSell((prev) => [...prev, defaultCondition()])}
+                  className="text-xs text-brand hover:underline"
+                >
+                  + 조건 추가
+                </button>
+              </div>
+              <div className="mt-2 space-y-2">
+                {customSell.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-center text-xs text-neutral-500">
+                    매도 조건 없으면 손절/익절로만 청산됩니다
+                  </div>
+                ) : (
+                  customSell.map((c, idx) => (
+                    <ConditionRow
+                      key={c.id}
+                      cond={c}
+                      onChange={(nc) =>
+                        setCustomSell((prev) =>
+                          prev.map((x, i) => (i === idx ? nc : x)),
+                        )
+                      }
+                      onRemove={() =>
+                        setCustomSell((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium">손절 (%)</span>
+                <NumInput
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                  value={stopLoss}
+                  min={0}
+                  step={0.5}
+                  onChange={setStopLoss}
+                />
+                <span className="mt-1 block text-xs text-neutral-500">
+                  0 = 사용 안 함. 예: 10 → 진입가 -10% 도달 시 즉시 매도
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium">익절 (%)</span>
+                <NumInput
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                  value={takeProfit}
+                  min={0}
+                  step={0.5}
+                  onChange={setTakeProfit}
+                />
+                <span className="mt-1 block text-xs text-neutral-500">
+                  0 = 사용 안 함. 예: 20 → 진입가 +20% 도달 시 즉시 매도
+                </span>
+              </label>
             </div>
           </div>
         )}

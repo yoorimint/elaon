@@ -12,8 +12,11 @@ import {
   deletePost,
   getPost,
   incrementPostView,
+  isLiked,
+  likePost,
   listComments,
   timeAgo,
+  unlikePost,
   type Comment,
   type Post,
 } from "@/lib/community";
@@ -31,6 +34,8 @@ export default function PostDetailPage() {
 
   const [newComment, setNewComment] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -45,10 +50,37 @@ export default function PostDetailPage() {
         const cs = await listComments(p.id);
         setComments(cs);
         incrementPostView(slug).catch(() => {});
+        if (user) {
+          isLiked(p.id, user.id).then(setLiked);
+        }
       })
       .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, user]);
+
+  async function onToggleLike() {
+    if (!post) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (likeBusy) return;
+    setLikeBusy(true);
+    const was = liked;
+    setLiked(!was);
+    setPost({ ...post, like_count: post.like_count + (was ? -1 : 1) });
+    try {
+      if (was) await unlikePost(post.id);
+      else await likePost(post.id);
+    } catch {
+      setLiked(was);
+      setPost((prev) =>
+        prev ? { ...prev, like_count: prev.like_count + (was ? 1 : -1) } : prev,
+      );
+    } finally {
+      setLikeBusy(false);
+    }
+  }
 
   async function onSubmitComment(e: React.FormEvent) {
     e.preventDefault();
@@ -147,6 +179,21 @@ export default function PostDetailPage() {
         </div>
 
         {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
+
+        <div className="mt-6 flex justify-center">
+          <button
+            onClick={onToggleLike}
+            disabled={likeBusy}
+            className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition ${
+              liked
+                ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
+                : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+            }`}
+          >
+            <span>{liked ? "♥" : "♡"}</span>
+            <span>좋아요 {post.like_count}</span>
+          </button>
+        </div>
       </article>
 
       <section className="mt-10">

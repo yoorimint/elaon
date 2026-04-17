@@ -22,6 +22,7 @@ export type Post = {
   backtest_slug: string | null;
   view_count: number;
   comment_count: number;
+  like_count: number;
   created_at: string;
   author_username?: string;
 };
@@ -48,13 +49,17 @@ type PostRow = Omit<Post, "author_username"> & {
   profiles: { username: string } | null;
 };
 
-export async function listPosts(opts: { category?: Category; limit?: number } = {}): Promise<Post[]> {
+export async function listPosts(opts: { category?: Category; limit?: number; sort?: "new" | "hot" } = {}): Promise<Post[]> {
   let q = supabase
     .from("posts")
     .select("*, profiles(username)")
-    .order("created_at", { ascending: false })
     .limit(opts.limit ?? 50);
   if (opts.category) q = q.eq("category", opts.category);
+  if (opts.sort === "hot") {
+    q = q.order("like_count", { ascending: false }).order("created_at", { ascending: false });
+  } else {
+    q = q.order("created_at", { ascending: false });
+  }
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -140,6 +145,37 @@ export async function createComment(postId: string, body: string): Promise<Comme
 
 export async function deleteComment(id: string) {
   const { error } = await supabase.from("comments").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function isLiked(postId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("post_likes")
+    .select("post_id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+export async function likePost(postId: string): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const { error } = await supabase
+    .from("post_likes")
+    .insert({ post_id: postId, user_id: userData.user.id });
+  if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+}
+
+export async function unlikePost(postId: string): Promise<void> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const { error } = await supabase
+    .from("post_likes")
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", userData.user.id);
   if (error) throw new Error(error.message);
 }
 

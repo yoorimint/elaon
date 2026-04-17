@@ -10,19 +10,21 @@ function CommunityList() {
   const router = useRouter();
   const params = useSearchParams();
   const catParam = params.get("c") as Category | null;
+  const sortParam = (params.get("sort") === "hot" ? "hot" : "new") as "new" | "hot";
   const { user } = useAuth();
   const [category, setCategory] = useState<Category | null>(catParam);
+  const [sort, setSort] = useState<"new" | "hot">(sortParam);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    listPosts({ category: category ?? undefined })
+    listPosts({ category: category ?? undefined, sort })
       .then(setPosts)
       .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"))
       .finally(() => setLoading(false));
-  }, [category]);
+  }, [category, sort]);
 
   function onWrite() {
     if (!user) {
@@ -44,30 +46,54 @@ function CommunityList() {
         </button>
       </div>
 
-      <div className="mt-5 flex gap-2 overflow-x-auto">
-        <button
-          onClick={() => setCategory(null)}
-          className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
-            category === null
-              ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
-              : "border-neutral-300 dark:border-neutral-700"
-          }`}
-        >
-          전체
-        </button>
-        {CATEGORIES.map((c) => (
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto">
           <button
-            key={c.id}
-            onClick={() => setCategory(c.id)}
+            onClick={() => setCategory(null)}
             className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
-              category === c.id
+              category === null
                 ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
                 : "border-neutral-300 dark:border-neutral-700"
             }`}
           >
-            {c.label}
+            전체
           </button>
-        ))}
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setCategory(c.id)}
+              className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
+                category === c.id
+                  ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
+                  : "border-neutral-300 dark:border-neutral-700"
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex gap-1 text-sm">
+          <button
+            onClick={() => setSort("new")}
+            className={`px-3 py-1 rounded ${
+              sort === "new"
+                ? "font-semibold text-neutral-900 dark:text-white"
+                : "text-neutral-500"
+            }`}
+          >
+            최신
+          </button>
+          <button
+            onClick={() => setSort("hot")}
+            className={`px-3 py-1 rounded ${
+              sort === "hot"
+                ? "font-semibold text-neutral-900 dark:text-white"
+                : "text-neutral-500"
+            }`}
+          >
+            인기
+          </button>
+        </div>
       </div>
 
       <div className="mt-6">
@@ -97,12 +123,18 @@ function CommunityList() {
                         <span className="ml-2 text-brand text-sm">[{p.comment_count}]</span>
                       )}
                     </div>
-                    <div className="mt-1 text-xs text-neutral-500 flex gap-2">
+                    <div className="mt-1 text-xs text-neutral-500 flex gap-2 flex-wrap">
                       <span>{p.author_username ?? "익명"}</span>
                       <span>·</span>
                       <span>{timeAgo(p.created_at)}</span>
                       <span>·</span>
                       <span>조회 {p.view_count}</span>
+                      {p.like_count > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="text-red-500">♥ {p.like_count}</span>
+                        </>
+                      )}
                       {p.backtest_slug && (
                         <>
                           <span>·</span>

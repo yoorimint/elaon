@@ -32,6 +32,11 @@ export default function BacktestPage() {
   const [rsiPeriod, setRsiPeriod] = useState(14);
   const [rsiLow, setRsiLow] = useState(30);
   const [rsiHigh, setRsiHigh] = useState(70);
+  const [bbPeriod, setBbPeriod] = useState(20);
+  const [bbStddev, setBbStddev] = useState(2);
+  const [macdFast, setMacdFast] = useState(12);
+  const [macdSlow, setMacdSlow] = useState(26);
+  const [macdSignal, setMacdSignal] = useState(9);
   const [initialCash, setInitialCash] = useState(1_000_000);
   const [feeBps, setFeeBps] = useState(5);
   const [loading, setLoading] = useState(false);
@@ -69,6 +74,8 @@ export default function BacktestPage() {
       const signals = computeSignals(data, strategy, {
         ma_cross: { short: shortMa, long: longMa },
         rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+        bollinger: { period: bbPeriod, stddev: bbStddev },
+        macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
       });
       const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
       setResult(r);
@@ -90,6 +97,8 @@ export default function BacktestPage() {
         params: {
           ma_cross: { short: shortMa, long: longMa },
           rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+          bollinger: { period: bbPeriod, stddev: bbStddev },
+          macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
         },
         days,
         initialCash,
@@ -246,6 +255,62 @@ export default function BacktestPage() {
                 min={50}
                 max={95}
                 onChange={setRsiHigh}
+              />
+            </label>
+          </div>
+        )}
+
+        {strategy === "bollinger" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">기간</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={bbPeriod}
+                min={5}
+                onChange={setBbPeriod}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">표준편차 배수</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={bbStddev}
+                min={1}
+                step={0.1}
+                onChange={setBbStddev}
+              />
+            </label>
+          </div>
+        )}
+
+        {strategy === "macd" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <label className="block">
+              <span className="text-sm font-medium">빠른 EMA</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={macdFast}
+                min={2}
+                onChange={setMacdFast}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">느린 EMA</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={macdSlow}
+                min={5}
+                onChange={setMacdSlow}
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">시그널</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={macdSignal}
+                min={2}
+                onChange={setMacdSignal}
               />
             </label>
           </div>

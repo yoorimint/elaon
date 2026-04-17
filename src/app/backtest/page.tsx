@@ -6,6 +6,7 @@ import { fetchDailyCandlesRange, fetchMarkets, type UpbitMarket } from "@/lib/up
 import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
+import { saveShare } from "@/lib/share";
 
 const POPULAR_MARKETS = [
   "KRW-BTC",
@@ -36,6 +37,8 @@ export default function BacktestPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [candles, setCandles] = useState<ReturnType<typeof runBacktest>["equity"] | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     fetchMarkets()
@@ -58,6 +61,7 @@ export default function BacktestPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setShareUrl(null);
     try {
       const data = await fetchDailyCandlesRange(market, days);
       if (data.length < 30) throw new Error("데이터가 부족합니다");
@@ -72,6 +76,34 @@ export default function BacktestPage() {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onShare() {
+    if (!result) return;
+    setSharing(true);
+    try {
+      const slug = await saveShare({
+        market,
+        strategy,
+        params: {
+          ma_cross: { short: shortMa, long: longMa },
+          rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+        },
+        days,
+        initialCash,
+        feeBps,
+        result,
+      });
+      const url = `${window.location.origin}/r/?id=${slug}`;
+      setShareUrl(url);
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {}
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "공유 실패");
+    } finally {
+      setSharing(false);
     }
   }
 
@@ -240,6 +272,25 @@ export default function BacktestPage() {
 
       {result && candles && (
         <section className="mt-8">
+          <div className="mb-4 flex flex-wrap gap-3 items-center">
+            <button
+              onClick={onShare}
+              disabled={sharing}
+              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
+            >
+              {sharing ? "공유 링크 만드는 중…" : shareUrl ? "링크 복사됨 ✓" : "결과 공유하기"}
+            </button>
+            {shareUrl && (
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-brand underline break-all"
+              >
+                {shareUrl}
+              </a>
+            )}
+          </div>
           <ResultView result={result} />
         </section>
       )}

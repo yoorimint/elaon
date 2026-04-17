@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  fetchDailyCandlesBetween,
-  fetchDailyCandlesRange,
+  fetchCandlesBetween,
   fetchMarkets,
+  TIMEFRAMES,
   type Candle,
+  type Timeframe,
   type UpbitMarket,
 } from "@/lib/upbit";
 import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
@@ -55,6 +56,7 @@ const POPULAR_MARKETS = [
 export default function BacktestPage() {
   const [markets, setMarkets] = useState<UpbitMarket[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
+  const [timeframe, setTimeframe] = useState<Timeframe>("1d");
   const [strategy, setStrategy] = useState<StrategyId>("ma_cross");
   const [rangePreset, setRangePreset] = useState("365d");
   const [dateFrom, setDateFrom] = useState(todayYmd(-365));
@@ -126,7 +128,7 @@ export default function BacktestPage() {
     try {
       const fromMs = new Date(dateFrom).getTime();
       const toMs = new Date(dateTo).getTime();
-      const data = await fetchDailyCandlesBetween(market, fromMs, toMs);
+      const data = await fetchCandlesBetween(market, timeframe, fromMs, toMs);
       if (data.length < 30) throw new Error("데이터가 부족합니다");
       let gLow = gridLow;
       let gHigh = gridHigh;
@@ -265,6 +267,24 @@ export default function BacktestPage() {
                 ))
               )}
             </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium">타임프레임 (봉 간격)</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              value={timeframe}
+              onChange={(e) => setTimeframe(e.target.value as Timeframe)}
+            >
+              {TIMEFRAMES.map((tf) => (
+                <option key={tf.id} value={tf.id}>
+                  {tf.label}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-neutral-500">
+              짧은 봉일수록 데이터 많아 느릴 수 있습니다 (최대 5000봉)
+            </span>
           </label>
 
           <label className="block">

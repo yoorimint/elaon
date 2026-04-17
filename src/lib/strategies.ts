@@ -571,6 +571,32 @@ export function slowStochD(
   return sma(arr, dSmooth);
 }
 
+export type HeikinAshi = {
+  open: number[];
+  high: number[];
+  low: number[];
+  close: number[];
+};
+
+export function heikinAshi(candles: Candle[]): HeikinAshi {
+  const open: number[] = [];
+  const high: number[] = [];
+  const low: number[] = [];
+  const close: number[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const haClose = (c.open + c.high + c.low + c.close) / 4;
+    const haOpen = i === 0 ? (c.open + c.close) / 2 : (open[i - 1] + close[i - 1]) / 2;
+    const haHigh = Math.max(c.high, haOpen, haClose);
+    const haLow = Math.min(c.low, haOpen, haClose);
+    open.push(haOpen);
+    close.push(haClose);
+    high.push(haHigh);
+    low.push(haLow);
+  }
+  return { open, high, low, close };
+}
+
 function rangeHigh(candles: Candle[], i: number, n: number): number {
   let m = -Infinity;
   for (let k = Math.max(0, i - n + 1); k <= i; k++) m = Math.max(m, candles[k].high);

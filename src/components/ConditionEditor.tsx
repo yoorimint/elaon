@@ -15,6 +15,10 @@ const INDICATOR_GROUPS: { label: string; kinds: IndicatorRef["kind"][] }[] = [
     kinds: ["close", "open", "high", "low", "volume"],
   },
   {
+    label: "하이킨아시",
+    kinds: ["ha_open", "ha_high", "ha_low", "ha_close"],
+  },
+  {
     label: "이동평균",
     kinds: ["sma", "ema"],
   },
@@ -64,6 +68,10 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
     case "obv":
     case "vwap":
     case "ao":
+    case "ha_open":
+    case "ha_high":
+    case "ha_low":
+    case "ha_close":
       return { kind };
     case "sma":
     case "ema":
@@ -165,7 +173,7 @@ function IndicatorInline({
             min={2}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-500">봉</span>
         </>
       )}
 
@@ -177,7 +185,7 @@ function IndicatorInline({
             min={3}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-500">봉</span>
           <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
@@ -197,7 +205,7 @@ function IndicatorInline({
             min={3}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-500">봉</span>
           <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
@@ -225,7 +233,7 @@ function IndicatorInline({
             min={3}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-500">봉</span>
           <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
@@ -245,7 +253,7 @@ function IndicatorInline({
             min={5}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-500">봉</span>
           <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
@@ -360,6 +368,10 @@ function indicatorUnit(ref: IndicatorRef): UnitKind {
     case "atr":
     case "donchian_upper":
     case "donchian_lower":
+    case "ha_open":
+    case "ha_high":
+    case "ha_low":
+    case "ha_close":
       return "price";
     case "volume":
     case "obv":
@@ -402,37 +414,37 @@ function indToNatural(ref: IndicatorRef): string {
     case "vwap":
       return "VWAP(거래량 평균가)";
     case "sma":
-      return `${ref.period}일 단순이평`;
+      return `${ref.period}봉 단순이평`;
     case "ema":
-      return `${ref.period}일 지수이평`;
+      return `${ref.period}봉 지수이평`;
     case "rsi":
-      return `${ref.period}일 RSI`;
+      return `${ref.period}봉 RSI`;
     case "atr":
-      return `${ref.period}일 ATR(변동폭)`;
+      return `${ref.period}봉 ATR(변동폭)`;
     case "williams_r":
-      return `${ref.period}일 Williams %R`;
+      return `${ref.period}봉 Williams %R`;
     case "cci":
-      return `${ref.period}일 CCI`;
+      return `${ref.period}봉 CCI`;
     case "adx":
-      return `${ref.period}일 ADX`;
+      return `${ref.period}봉 ADX`;
     case "roc":
-      return `${ref.period}일 변화율`;
+      return `${ref.period}봉 변화율`;
     case "mfi":
-      return `${ref.period}일 MFI`;
+      return `${ref.period}봉 MFI`;
     case "stoch_k":
-      return `${ref.period}일 스토캐스틱 %K`;
+      return `${ref.period}봉 스토캐스틱 %K`;
     case "stoch_d":
-      return `${ref.period}일 스토캐스틱 %D(${ref.smooth}일 평활)`;
+      return `${ref.period}봉 스토캐스틱 %D(${ref.smooth}봉 평활)`;
     case "slow_stoch_k":
-      return `${ref.period}일 슬로우 %K(${ref.slowSmooth} 평활)`;
+      return `${ref.period}봉 슬로우 %K(${ref.slowSmooth} 평활)`;
     case "slow_stoch_d":
-      return `${ref.period}일 슬로우 %D(${ref.slowSmooth}/${ref.dSmooth} 평활)`;
+      return `${ref.period}봉 슬로우 %D(${ref.slowSmooth}/${ref.dSmooth} 평활)`;
     case "bb_middle":
-      return `${ref.period}일 볼린저 중단선`;
+      return `${ref.period}봉 볼린저 중단선`;
     case "bb_upper":
-      return `${ref.period}일 볼린저 상단(${ref.stddev}σ)`;
+      return `${ref.period}봉 볼린저 상단(${ref.stddev}σ)`;
     case "bb_lower":
-      return `${ref.period}일 볼린저 하단(${ref.stddev}σ)`;
+      return `${ref.period}봉 볼린저 하단(${ref.stddev}σ)`;
     case "macd":
       return `MACD 라인(${ref.fast},${ref.slow})`;
     case "macd_signal":
@@ -440,17 +452,25 @@ function indToNatural(ref: IndicatorRef): string {
     case "sar":
       return "Parabolic SAR";
     case "ichimoku_conv":
-      return `일목 전환선(${ref.period}일)`;
+      return `일목 전환선(${ref.period}봉)`;
     case "ichimoku_base":
-      return `일목 기준선(${ref.period}일)`;
+      return `일목 기준선(${ref.period}봉)`;
     case "donchian_upper":
-      return `${ref.period}일 돈치안 상단`;
+      return `${ref.period}봉 돈치안 상단`;
     case "donchian_lower":
-      return `${ref.period}일 돈치안 하단`;
+      return `${ref.period}봉 돈치안 하단`;
     case "ao":
       return "AO(어썸 오실레이터)";
     case "momentum":
-      return `${ref.period}일 모멘텀`;
+      return `${ref.period}봉 모멘텀`;
+    case "ha_open":
+      return "하이킨아시 시가";
+    case "ha_high":
+      return "하이킨아시 고가";
+    case "ha_low":
+      return "하이킨아시 저가";
+    case "ha_close":
+      return "하이킨아시 종가";
     case "const":
       return String(ref.value);
   }

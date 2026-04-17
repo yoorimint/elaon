@@ -89,14 +89,61 @@ export async function fetchMarkets(): Promise<UpbitMarket[]> {
   return all.filter((m) => m.market.startsWith("KRW-"));
 }
 
-export async function fetchDailyCandles(
+export type Timeframe =
+  | "1m"
+  | "5m"
+  | "15m"
+  | "30m"
+  | "1h"
+  | "4h"
+  | "1d"
+  | "1w"
+  | "1M";
+
+export const TIMEFRAMES: { id: Timeframe; label: string; seconds: number }[] = [
+  { id: "1m", label: "1분", seconds: 60 },
+  { id: "5m", label: "5분", seconds: 60 * 5 },
+  { id: "15m", label: "15분", seconds: 60 * 15 },
+  { id: "30m", label: "30분", seconds: 60 * 30 },
+  { id: "1h", label: "1시간", seconds: 60 * 60 },
+  { id: "4h", label: "4시간", seconds: 60 * 60 * 4 },
+  { id: "1d", label: "1일", seconds: 86400 },
+  { id: "1w", label: "1주", seconds: 86400 * 7 },
+  { id: "1M", label: "1달", seconds: 86400 * 30 },
+];
+
+function timeframeEndpoint(tf: Timeframe): string {
+  switch (tf) {
+    case "1m":
+      return "candles/minutes/1";
+    case "5m":
+      return "candles/minutes/5";
+    case "15m":
+      return "candles/minutes/15";
+    case "30m":
+      return "candles/minutes/30";
+    case "1h":
+      return "candles/minutes/60";
+    case "4h":
+      return "candles/minutes/240";
+    case "1d":
+      return "candles/days";
+    case "1w":
+      return "candles/weeks";
+    case "1M":
+      return "candles/months";
+  }
+}
+
+async function fetchCandlesPage(
+  endpoint: string,
   market: string,
   count: number,
   to?: string,
 ): Promise<Candle[]> {
   const params = new URLSearchParams({ market, count: String(count) });
   if (to) params.set("to", to);
-  const res = await fetchWithRetry(`${BASE}/candles/days?${params.toString()}`);
+  const res = await fetchWithRetry(`${BASE}/${endpoint}?${params.toString()}`);
   const raw = (await res.json()) as Array<{
     timestamp: number;
     opening_price: number;
@@ -115,6 +162,49 @@ export async function fetchDailyCandles(
       volume: c.candle_acc_trade_volume,
     }))
     .reverse();
+}
+
+export async function fetchDailyCandles(
+  market: string,
+  count: number,
+  to?: string,
+): Promise<Candle[]> {
+  return fetchCandlesPage("candles/days", market, count, to);
+}
+
+export async function fetchCandlesBetween(
+  market: string,
+  tf: Timeframe,
+  startMs: number,
+  endMs: number,
+  maxBars = 5000,
+): Promise<Candle[]> {
+  if (endMs <= startMs) throw new Error("시작일이 종료일보다 늦습니다");
+  const endpoint = timeframeEndpoint(tf);
+  const tfEntry = TIMEFRAMES.find((t) => t.id === tf)!;
+  const estBars = Math.ceil((endMs - startMs) / (tfEntry.seconds * 1000)) + 2;
+  let remaining = Math.min(estBars, maxBars);
+
+  const out: Candle[] = [];
+  let to: string | undefined = new Date(endMs + tfEntry.seconds * 1000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+
+  while (remaining > 0) {
+    const batch = Math.min(200, remaining);
+    const chunk = await fetchCandlesPage(endpoint, market, batch, to);
+    if (chunk.length === 0) break;
+    const inRange = chunk.filter(
+      (c) => c.timestamp >= startMs && c.timestamp <= endMs + tfEntry.seconds * 1000,
+    );
+    out.unshift(...inRange);
+    remaining -= chunk.length;
+    const earliest = chunk[0];
+    to = new Date(earliest.timestamp - 1).toISOString().replace(/\.\d{3}Z$/, "Z");
+    if (chunk.length < batch || earliest.timestamp < startMs) break;
+    await sleep(150);
+  }
+  return out.sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export async function fetchDailyCandlesRange(

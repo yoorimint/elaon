@@ -7,6 +7,7 @@ import {
   donchianHigh,
   donchianLow,
   ema,
+  heikinAshi,
   ichimokuConvLine,
   mfi,
   momentum,
@@ -57,6 +58,10 @@ export type IndicatorRef =
   | { kind: "donchian_lower"; period: number }
   | { kind: "ao" }
   | { kind: "momentum"; period: number }
+  | { kind: "ha_open" }
+  | { kind: "ha_high" }
+  | { kind: "ha_low" }
+  | { kind: "ha_close" }
   | { kind: "const"; value: number };
 
 export type ConditionOp = "gt" | "lt" | "gte" | "lte" | "cross_up" | "cross_down";
@@ -108,6 +113,10 @@ export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
   donchian_lower: "돈치안 하단",
   ao: "AO (어썸 오실레이터)",
   momentum: "모멘텀",
+  ha_open: "하이킨아시 시가",
+  ha_high: "하이킨아시 고가",
+  ha_low: "하이킨아시 저가",
+  ha_close: "하이킨아시 종가",
   const: "숫자값",
 };
 
@@ -129,6 +138,10 @@ function indicatorKey(ref: IndicatorRef): string {
     case "volume":
     case "obv":
     case "vwap":
+    case "ha_open":
+    case "ha_high":
+    case "ha_low":
+    case "ha_close":
       return ref.kind;
     case "sma":
     case "ema":
@@ -267,6 +280,14 @@ function computeIndicator(
       return awesomeOscillator(candles);
     case "momentum":
       return momentum(closes, ref.period);
+    case "ha_open":
+      return heikinAshi(candles).open;
+    case "ha_high":
+      return heikinAshi(candles).high;
+    case "ha_low":
+      return heikinAshi(candles).low;
+    case "ha_close":
+      return heikinAshi(candles).close;
     case "const":
       return candles.map(() => ref.value);
   }

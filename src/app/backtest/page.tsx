@@ -8,6 +8,7 @@ import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { NumInput } from "@/components/NumInput";
+import { StrategyDetailCard } from "@/components/StrategyDetailCard";
 
 const POPULAR_MARKETS = [
   "KRW-BTC",
@@ -281,9 +282,7 @@ export default function BacktestPage() {
           </label>
         </div>
 
-        <div className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
-          {strategyConfig.description}
-        </div>
+        <StrategyDetailCard strategy={strategyConfig} />
 
         {strategy === "ma_cross" && (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">

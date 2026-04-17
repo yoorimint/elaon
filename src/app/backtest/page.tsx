@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { fetchDailyCandlesRange, fetchMarkets, type UpbitMarket } from "@/lib/upbit";
-import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
+import { fetchDailyCandlesRange, fetchMarkets, type UpbitMarket, type Candle } from "@/lib/upbit";
+import {
+  STRATEGIES,
+  computeSignals,
+  type Signal,
+  type StrategyId,
+  type StrategyParams,
+} from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
@@ -57,7 +63,10 @@ export default function BacktestPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
-  const [candles, setCandles] = useState<ReturnType<typeof runBacktest>["equity"] | null>(null);
+  const [runCandles, setRunCandles] = useState<Candle[] | null>(null);
+  const [runSignals, setRunSignals] = useState<Signal[] | null>(null);
+  const [runParams, setRunParams] = useState<StrategyParams | null>(null);
+  const [runStrategy, setRunStrategy] = useState<StrategyId | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -82,6 +91,10 @@ export default function BacktestPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setRunCandles(null);
+    setRunSignals(null);
+    setRunParams(null);
+    setRunStrategy(null);
     setShareUrl(null);
     try {
       const data = await fetchDailyCandlesRange(market, days);
@@ -95,39 +108,38 @@ export default function BacktestPage() {
         setGridLow(Math.round(gLow));
         setGridHigh(Math.round(gHigh));
       }
-      const signals = computeSignals(
-        data,
-        strategy,
-        {
-          ma_cross: { short: shortMa, long: longMa },
-          rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-          bollinger: { period: bbPeriod, stddev: bbStddev },
-          macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
-          breakout: { k: breakoutK },
-          stoch: {
-            period: stochPeriod,
-            smooth: stochSmooth,
-            oversold: stochLow,
-            overbought: stochHigh,
-          },
-          ichimoku: {
-            conversion: ichimokuConv,
-            base: ichimokuBase,
-            lagging: ichimokuLag,
-          },
-          dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
-          ma_dca: {
-            intervalDays: dcaInterval,
-            amountKRW: dcaAmount,
-            maPeriod: maDcaMaPeriod,
-          },
-          grid: { low: gLow, high: gHigh, grids: gridCount },
+      const paramsSnapshot: StrategyParams = {
+        ma_cross: { short: shortMa, long: longMa },
+        rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+        bollinger: { period: bbPeriod, stddev: bbStddev },
+        macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
+        breakout: { k: breakoutK },
+        stoch: {
+          period: stochPeriod,
+          smooth: stochSmooth,
+          oversold: stochLow,
+          overbought: stochHigh,
         },
-        { initialCash },
-      );
+        ichimoku: {
+          conversion: ichimokuConv,
+          base: ichimokuBase,
+          lagging: ichimokuLag,
+        },
+        dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
+        ma_dca: {
+          intervalDays: dcaInterval,
+          amountKRW: dcaAmount,
+          maPeriod: maDcaMaPeriod,
+        },
+        grid: { low: gLow, high: gHigh, grids: gridCount },
+      };
+      const signals = computeSignals(data, strategy, paramsSnapshot, { initialCash });
       const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
       setResult(r);
-      setCandles(r.equity);
+      setRunCandles(data);
+      setRunSignals(signals);
+      setRunParams(paramsSnapshot);
+      setRunStrategy(strategy);
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {
@@ -583,7 +595,7 @@ export default function BacktestPage() {
         </div>
       </section>
 
-      {result && candles && (
+      {result && runCandles && runSignals && runParams && runStrategy && (
         <section className="mt-8">
           <div className="mb-4 flex flex-wrap gap-3 items-center">
             <button
@@ -604,7 +616,13 @@ export default function BacktestPage() {
               </a>
             )}
           </div>
-          <ResultView result={result} />
+          <ResultView
+            result={result}
+            candles={runCandles}
+            signals={runSignals}
+            strategy={runStrategy}
+            params={runParams}
+          />
         </section>
       )}
     </main>

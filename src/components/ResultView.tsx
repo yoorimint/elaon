@@ -2,6 +2,9 @@
 
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { BacktestResult } from "@/lib/backtest";
+import type { Candle } from "@/lib/upbit";
+import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
+import { IndicatorChart } from "./IndicatorChart";
 
 function formatKRW(n: number) {
   return new Intl.NumberFormat("ko-KR").format(Math.round(n));
@@ -22,7 +25,19 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "po
   );
 }
 
-export function ResultView({ result }: { result: BacktestResult }) {
+export function ResultView({
+  result,
+  candles,
+  signals,
+  strategy,
+  params,
+}: {
+  result: BacktestResult;
+  candles?: Candle[];
+  signals?: Signal[];
+  strategy?: StrategyId;
+  params?: StrategyParams;
+}) {
   const data = result.equity.map((p) => ({
     date: new Date(p.timestamp).toISOString().slice(0, 10),
     전략: Math.round(p.equity),
@@ -69,7 +84,23 @@ export function ResultView({ result }: { result: BacktestResult }) {
         )}
       </div>
 
-      <div className="mt-6 h-72 sm:h-96 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+      {candles && signals && strategy && params && (
+        <div className="mt-6">
+          <h3 className="text-base font-semibold mb-2">가격 차트 · 지표</h3>
+          <IndicatorChart
+            candles={candles}
+            signals={signals}
+            strategy={strategy}
+            params={params}
+          />
+        </div>
+      )}
+
+      <div className="mt-6">
+        <h3 className="text-base font-semibold mb-2">자산 곡선 (전략 vs 단순 보유)</h3>
+      </div>
+
+      <div className="h-72 sm:h-96 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <XAxis dataKey="date" minTickGap={40} stroke="currentColor" opacity={0.4} />

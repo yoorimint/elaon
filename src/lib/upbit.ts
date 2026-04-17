@@ -13,7 +13,7 @@ export type UpbitMarket = {
   english_name: string;
 };
 
-const BASE = "https://api.upbit.com/v1";
+const BASE = "/api/upbit";
 
 class UpbitError extends Error {
   constructor(
@@ -75,9 +75,7 @@ async function fetchWithRetry(
         throw new UpbitError("업비트 응답이 너무 느립니다. 네트워크를 확인해주세요.");
       }
       if (isNetwork) {
-        throw new UpbitError(
-          "업비트 서버에 접속할 수 없습니다. 광고 차단기나 보안 앱이 api.upbit.com을 막고 있을 수 있어요.",
-        );
+        throw new UpbitError("네트워크 오류입니다. 잠시 후 다시 시도해주세요.");
       }
       throw e;
     }

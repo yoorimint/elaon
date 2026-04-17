@@ -1,0 +1,130 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CATEGORIES, categoryLabel, listPosts, timeAgo, type Category, type Post } from "@/lib/community";
+import { useAuth } from "@/components/AuthProvider";
+
+function CommunityList() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const catParam = params.get("c") as Category | null;
+  const { user } = useAuth();
+  const [category, setCategory] = useState<Category | null>(catParam);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    listPosts({ category: category ?? undefined })
+      .then(setPosts)
+      .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"))
+      .finally(() => setLoading(false));
+  }, [category]);
+
+  function onWrite() {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    router.push("/community/new");
+  }
+
+  return (
+    <main className="mx-auto max-w-4xl px-5 py-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">커뮤니티</h1>
+        <button
+          onClick={onWrite}
+          className="rounded-full bg-brand px-5 py-2 text-white font-semibold text-sm hover:bg-brand-dark"
+        >
+          글쓰기
+        </button>
+      </div>
+
+      <div className="mt-5 flex gap-2 overflow-x-auto">
+        <button
+          onClick={() => setCategory(null)}
+          className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
+            category === null
+              ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
+              : "border-neutral-300 dark:border-neutral-700"
+          }`}
+        >
+          전체
+        </button>
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => setCategory(c.id)}
+            className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
+              category === c.id
+                ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
+                : "border-neutral-300 dark:border-neutral-700"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        {loading ? (
+          <div className="text-neutral-500 text-sm">불러오는 중…</div>
+        ) : error ? (
+          <div className="text-red-600 text-sm">{error}</div>
+        ) : posts.length === 0 ? (
+          <div className="text-neutral-500 text-sm py-12 text-center">
+            아직 글이 없습니다. 첫 글을 남겨주세요.
+          </div>
+        ) : (
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800 border-t border-b border-neutral-200 dark:border-neutral-800">
+            {posts.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/community/${p.slug}`}
+                  className="flex items-start gap-3 py-4 hover:bg-neutral-50 dark:hover:bg-neutral-900 px-2 -mx-2 rounded"
+                >
+                  <span className="shrink-0 mt-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs px-2 py-0.5">
+                    {categoryLabel(p.category)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">
+                      {p.title}
+                      {p.comment_count > 0 && (
+                        <span className="ml-2 text-brand text-sm">[{p.comment_count}]</span>
+                      )}
+                    </div>
+                    <div className="mt-1 text-xs text-neutral-500 flex gap-2">
+                      <span>{p.author_username ?? "익명"}</span>
+                      <span>·</span>
+                      <span>{timeAgo(p.created_at)}</span>
+                      <span>·</span>
+                      <span>조회 {p.view_count}</span>
+                      {p.backtest_slug && (
+                        <>
+                          <span>·</span>
+                          <span className="text-brand">백테스트 첨부</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-4xl px-5 py-8 text-neutral-500">불러오는 중…</div>}>
+      <CommunityList />
+    </Suspense>
+  );
+}

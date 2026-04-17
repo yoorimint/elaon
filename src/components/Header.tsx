@@ -28,6 +28,12 @@ export function Header() {
           >
             백테스트
           </Link>
+          <Link
+            href="/community"
+            className="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+          >
+            커뮤니티
+          </Link>
           {loading ? null : user ? (
             <>
               <span className="text-neutral-600 dark:text-neutral-400 hidden sm:inline truncate max-w-[140px]">

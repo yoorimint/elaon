@@ -9,34 +9,47 @@ import {
 } from "@/lib/diy-strategy";
 import { NumInput } from "./NumInput";
 
-const INDICATOR_KINDS: IndicatorRef["kind"][] = [
-  "close",
-  "open",
-  "high",
-  "low",
-  "volume",
-  "sma",
-  "ema",
-  "rsi",
-  "bb_upper",
-  "bb_middle",
-  "bb_lower",
-  "macd",
-  "macd_signal",
-  "stoch_k",
-  "stoch_d",
-  "atr",
-  "williams_r",
-  "cci",
-  "adx",
-  "roc",
-  "obv",
-  "mfi",
-  "sar",
-  "vwap",
-  "ichimoku_conv",
-  "ichimoku_base",
-  "const",
+const INDICATOR_GROUPS: { label: string; kinds: IndicatorRef["kind"][] }[] = [
+  {
+    label: "가격 / 거래량",
+    kinds: ["close", "open", "high", "low", "volume"],
+  },
+  {
+    label: "이동평균",
+    kinds: ["sma", "ema"],
+  },
+  {
+    label: "볼린저 밴드",
+    kinds: ["bb_upper", "bb_middle", "bb_lower"],
+  },
+  {
+    label: "MACD",
+    kinds: ["macd", "macd_signal"],
+  },
+  {
+    label: "스토캐스틱",
+    kinds: ["stoch_k", "stoch_d", "slow_stoch_k", "slow_stoch_d"],
+  },
+  {
+    label: "모멘텀 / 오실레이터",
+    kinds: ["rsi", "williams_r", "cci", "adx", "mfi", "roc", "momentum", "ao"],
+  },
+  {
+    label: "변동성 / 채널",
+    kinds: ["atr", "donchian_upper", "donchian_lower"],
+  },
+  {
+    label: "추세 / 기준선",
+    kinds: ["vwap", "sar", "ichimoku_conv", "ichimoku_base"],
+  },
+  {
+    label: "거래량 지표",
+    kinds: ["obv"],
+  },
+  {
+    label: "기타",
+    kinds: ["const"],
+  },
 ];
 
 const OP_ORDER: ConditionOp[] = ["gt", "lt", "gte", "lte", "cross_up", "cross_down"];
@@ -50,6 +63,7 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
     case "volume":
     case "obv":
     case "vwap":
+    case "ao":
       return { kind };
     case "sma":
     case "ema":
@@ -61,11 +75,16 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
     case "adx":
     case "roc":
     case "mfi":
+    case "momentum":
       return { kind, period: 14 };
     case "stoch_k":
       return { kind, period: 14 };
     case "stoch_d":
       return { kind, period: 14, smooth: 3 };
+    case "slow_stoch_k":
+      return { kind, period: 14, slowSmooth: 3 };
+    case "slow_stoch_d":
+      return { kind, period: 14, slowSmooth: 3, dSmooth: 3 };
     case "bb_middle":
       return { kind, period: 20 };
     case "bb_upper":
@@ -81,6 +100,9 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
       return { kind, period: 9 };
     case "ichimoku_base":
       return { kind, period: 26 };
+    case "donchian_upper":
+    case "donchian_lower":
+      return { kind, period: 20 };
     case "const":
       return { kind, value: 0 };
   }
@@ -109,10 +131,14 @@ function IndicatorInline({
         onChange={(e) => setKind(e.target.value as IndicatorRef["kind"])}
         className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-sm font-medium"
       >
-        {INDICATOR_KINDS.map((k) => (
-          <option key={k} value={k}>
-            {INDICATOR_LABELS[k]}
-          </option>
+        {INDICATOR_GROUPS.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.kinds.map((k) => (
+              <option key={k} value={k}>
+                {INDICATOR_LABELS[k]}
+              </option>
+            ))}
+          </optgroup>
         ))}
       </select>
 
@@ -125,10 +151,13 @@ function IndicatorInline({
         value.kind === "adx" ||
         value.kind === "roc" ||
         value.kind === "mfi" ||
+        value.kind === "momentum" ||
         value.kind === "stoch_k" ||
         value.kind === "bb_middle" ||
         value.kind === "ichimoku_conv" ||
-        value.kind === "ichimoku_base") && (
+        value.kind === "ichimoku_base" ||
+        value.kind === "donchian_upper" ||
+        value.kind === "donchian_lower") && (
         <>
           <NumInput
             className={SMALL_NUM}
@@ -137,6 +166,54 @@ function IndicatorInline({
             onChange={(period) => onChange({ ...value, period })}
           />
           <span className="text-xs text-neutral-500">일</span>
+        </>
+      )}
+
+      {value.kind === "slow_stoch_k" && (
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.period}
+            min={3}
+            onChange={(period) => onChange({ ...value, period })}
+          />
+          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-300">·</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.slowSmooth}
+            min={1}
+            onChange={(slowSmooth) => onChange({ ...value, slowSmooth })}
+          />
+          <span className="text-xs text-neutral-500">슬로우</span>
+        </>
+      )}
+
+      {value.kind === "slow_stoch_d" && (
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.period}
+            min={3}
+            onChange={(period) => onChange({ ...value, period })}
+          />
+          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-300">·</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.slowSmooth}
+            min={1}
+            onChange={(slowSmooth) => onChange({ ...value, slowSmooth })}
+          />
+          <span className="text-xs text-neutral-500">슬로우</span>
+          <span className="text-xs text-neutral-300">·</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.dSmooth}
+            min={1}
+            onChange={(dSmooth) => onChange({ ...value, dSmooth })}
+          />
+          <span className="text-xs text-neutral-500">D평활</span>
         </>
       )}
 
@@ -281,6 +358,8 @@ function indicatorUnit(ref: IndicatorRef): UnitKind {
     case "ichimoku_conv":
     case "ichimoku_base":
     case "atr":
+    case "donchian_upper":
+    case "donchian_lower":
       return "price";
     case "volume":
     case "obv":
@@ -288,11 +367,15 @@ function indicatorUnit(ref: IndicatorRef): UnitKind {
     case "rsi":
     case "stoch_k":
     case "stoch_d":
+    case "slow_stoch_k":
+    case "slow_stoch_d":
     case "williams_r":
     case "cci":
     case "adx":
     case "mfi":
     case "roc":
+    case "momentum":
+    case "ao":
       return "oscillator";
     case "macd":
     case "macd_signal":
@@ -340,6 +423,10 @@ function indToNatural(ref: IndicatorRef): string {
       return `${ref.period}일 스토캐스틱 %K`;
     case "stoch_d":
       return `${ref.period}일 스토캐스틱 %D(${ref.smooth}일 평활)`;
+    case "slow_stoch_k":
+      return `${ref.period}일 슬로우 %K(${ref.slowSmooth} 평활)`;
+    case "slow_stoch_d":
+      return `${ref.period}일 슬로우 %D(${ref.slowSmooth}/${ref.dSmooth} 평활)`;
     case "bb_middle":
       return `${ref.period}일 볼린저 중단선`;
     case "bb_upper":
@@ -356,6 +443,14 @@ function indToNatural(ref: IndicatorRef): string {
       return `일목 전환선(${ref.period}일)`;
     case "ichimoku_base":
       return `일목 기준선(${ref.period}일)`;
+    case "donchian_upper":
+      return `${ref.period}일 돈치안 상단`;
+    case "donchian_lower":
+      return `${ref.period}일 돈치안 하단`;
+    case "ao":
+      return "AO(어썸 오실레이터)";
+    case "momentum":
+      return `${ref.period}일 모멘텀`;
     case "const":
       return String(ref.value);
   }
@@ -440,6 +535,13 @@ function contextHint(cond: Condition): string | null {
   if (left === "adx") {
     if (v >= 25) return "강한 추세";
   }
+  if (left === "slow_stoch_k" || left === "slow_stoch_d") {
+    if (v <= 20) return "과매도 구간";
+    if (v >= 80) return "과매수 구간";
+  }
+  if (left === "ao" || left === "momentum") {
+    if (v === 0) return "상승/하락 전환선";
+  }
   return null;
 }
 
@@ -498,6 +600,8 @@ function sensibleConstFor(kind: IndicatorRef["kind"]): number | null {
       return 30;
     case "stoch_k":
     case "stoch_d":
+    case "slow_stoch_k":
+    case "slow_stoch_d":
       return 20;
     case "williams_r":
       return -80;
@@ -506,6 +610,8 @@ function sensibleConstFor(kind: IndicatorRef["kind"]): number | null {
     case "adx":
       return 25;
     case "roc":
+    case "momentum":
+    case "ao":
       return 0;
     default:
       return null;
@@ -553,6 +659,8 @@ const REFERENCE_LEVEL_KINDS: IndicatorRef["kind"][] = [
   "sar",
   "ichimoku_conv",
   "ichimoku_base",
+  "donchian_upper",
+  "donchian_lower",
 ];
 
 function isReferenceLevel(kind: IndicatorRef["kind"]): boolean {

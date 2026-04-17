@@ -6,6 +6,7 @@ import {
   fetchDailyCandlesBetween,
   fetchDailyCandlesRange,
   fetchMarkets,
+  type Candle,
   type UpbitMarket,
 } from "@/lib/upbit";
 import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
@@ -96,7 +97,7 @@ export default function BacktestPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
-  const [candles, setCandles] = useState<ReturnType<typeof runBacktest>["equity"] | null>(null);
+  const [priceCandles, setPriceCandles] = useState<Candle[] | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -179,7 +180,7 @@ export default function BacktestPage() {
       }
       const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
       setResult(r);
-      setCandles(r.equity);
+      setPriceCandles(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {
@@ -824,7 +825,7 @@ export default function BacktestPage() {
         </div>
       </section>
 
-      {result && candles && (
+      {result && priceCandles && (
         <section className="mt-8">
           <div className="mb-4 flex flex-wrap gap-3 items-center">
             <button
@@ -845,7 +846,7 @@ export default function BacktestPage() {
               </a>
             )}
           </div>
-          <ResultView result={result} />
+          <ResultView result={result} candles={priceCandles} />
         </section>
       )}
     </main>

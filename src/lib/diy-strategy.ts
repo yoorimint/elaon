@@ -2,14 +2,20 @@ import type { Candle } from "./upbit";
 import {
   adx,
   atr,
+  awesomeOscillator,
   cci,
+  donchianHigh,
+  donchianLow,
   ema,
   ichimokuConvLine,
   mfi,
+  momentum,
   obv,
   parabolicSAR,
   roc,
   rsi,
+  slowStochD,
+  slowStochK,
   sma,
   stddev,
   stochD,
@@ -34,6 +40,8 @@ export type IndicatorRef =
   | { kind: "macd_signal"; fast: number; slow: number; signal: number }
   | { kind: "stoch_k"; period: number }
   | { kind: "stoch_d"; period: number; smooth: number }
+  | { kind: "slow_stoch_k"; period: number; slowSmooth: number }
+  | { kind: "slow_stoch_d"; period: number; slowSmooth: number; dSmooth: number }
   | { kind: "atr"; period: number }
   | { kind: "williams_r"; period: number }
   | { kind: "cci"; period: number }
@@ -45,6 +53,10 @@ export type IndicatorRef =
   | { kind: "vwap" }
   | { kind: "ichimoku_conv"; period: number }
   | { kind: "ichimoku_base"; period: number }
+  | { kind: "donchian_upper"; period: number }
+  | { kind: "donchian_lower"; period: number }
+  | { kind: "ao" }
+  | { kind: "momentum"; period: number }
   | { kind: "const"; value: number };
 
 export type ConditionOp = "gt" | "lt" | "gte" | "lte" | "cross_up" | "cross_down";
@@ -77,8 +89,10 @@ export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
   bb_lower: "볼린저 하단",
   macd: "MACD 라인",
   macd_signal: "MACD 시그널",
-  stoch_k: "스토캐스틱 %K",
-  stoch_d: "스토캐스틱 %D",
+  stoch_k: "스토캐스틱 %K (Fast)",
+  stoch_d: "스토캐스틱 %D (Fast)",
+  slow_stoch_k: "슬로우 스토캐스틱 %K",
+  slow_stoch_d: "슬로우 스토캐스틱 %D",
   atr: "ATR (변동폭)",
   williams_r: "Williams %R",
   cci: "CCI",
@@ -90,6 +104,10 @@ export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
   vwap: "VWAP",
   ichimoku_conv: "일목 전환선",
   ichimoku_base: "일목 기준선",
+  donchian_upper: "돈치안 상단",
+  donchian_lower: "돈치안 하단",
+  ao: "AO (어썸 오실레이터)",
+  momentum: "모멘텀",
   const: "숫자값",
 };
 
@@ -128,6 +146,16 @@ function indicatorKey(ref: IndicatorRef): string {
       return `${ref.kind}_${ref.period}`;
     case "stoch_d":
       return `stoch_d_${ref.period}_${ref.smooth}`;
+    case "slow_stoch_k":
+      return `slow_stoch_k_${ref.period}_${ref.slowSmooth}`;
+    case "slow_stoch_d":
+      return `slow_stoch_d_${ref.period}_${ref.slowSmooth}_${ref.dSmooth}`;
+    case "donchian_upper":
+    case "donchian_lower":
+    case "momentum":
+      return `${ref.kind}_${ref.period}`;
+    case "ao":
+      return "ao";
     case "bb_upper":
     case "bb_lower":
       return `${ref.kind}_${ref.period}_${ref.stddev}`;
@@ -205,6 +233,10 @@ function computeIndicator(
       return stochK(candles, ref.period);
     case "stoch_d":
       return stochD(candles, ref.period, ref.smooth);
+    case "slow_stoch_k":
+      return slowStochK(candles, ref.period, ref.slowSmooth);
+    case "slow_stoch_d":
+      return slowStochD(candles, ref.period, ref.slowSmooth, ref.dSmooth);
     case "atr":
       return atr(candles, ref.period);
     case "williams_r":
@@ -227,6 +259,14 @@ function computeIndicator(
       return ichimokuConvLine(candles, ref.period);
     case "ichimoku_base":
       return ichimokuConvLine(candles, ref.period);
+    case "donchian_upper":
+      return donchianHigh(candles, ref.period);
+    case "donchian_lower":
+      return donchianLow(candles, ref.period);
+    case "ao":
+      return awesomeOscillator(candles);
+    case "momentum":
+      return momentum(closes, ref.period);
     case "const":
       return candles.map(() => ref.value);
   }

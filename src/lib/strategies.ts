@@ -499,6 +499,78 @@ export function ichimokuConvLine(
   return out;
 }
 
+export function donchianHigh(candles: Candle[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      out.push(null);
+      continue;
+    }
+    let hi = -Infinity;
+    for (let k = i - period + 1; k <= i; k++) hi = Math.max(hi, candles[k].high);
+    out.push(hi);
+  }
+  return out;
+}
+
+export function donchianLow(candles: Candle[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      out.push(null);
+      continue;
+    }
+    let lo = Infinity;
+    for (let k = i - period + 1; k <= i; k++) lo = Math.min(lo, candles[k].low);
+    out.push(lo);
+  }
+  return out;
+}
+
+export function awesomeOscillator(candles: Candle[]): (number | null)[] {
+  const mid = candles.map((c) => (c.high + c.low) / 2);
+  const short = sma(mid, 5);
+  const long = sma(mid, 34);
+  return mid.map((_, i) => {
+    const s = short[i];
+    const l = long[i];
+    return s == null || l == null ? null : s - l;
+  });
+}
+
+export function momentum(values: number[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < values.length; i++) {
+    if (i < period) {
+      out.push(null);
+      continue;
+    }
+    out.push(values[i] - values[i - period]);
+  }
+  return out;
+}
+
+export function slowStochK(
+  candles: Candle[],
+  period: number,
+  slowSmooth: number,
+): (number | null)[] {
+  const fast = stochK(candles, period);
+  const arr = fast.map((v) => (v == null ? 0 : v));
+  return sma(arr, slowSmooth);
+}
+
+export function slowStochD(
+  candles: Candle[],
+  period: number,
+  slowSmooth: number,
+  dSmooth: number,
+): (number | null)[] {
+  const slowK = slowStochK(candles, period, slowSmooth);
+  const arr = slowK.map((v) => (v == null ? 0 : v));
+  return sma(arr, dSmooth);
+}
+
 function rangeHigh(candles: Candle[], i: number, n: number): number {
   let m = -Infinity;
   for (let k = Math.max(0, i - n + 1); k <= i; k++) m = Math.max(m, candles[k].high);

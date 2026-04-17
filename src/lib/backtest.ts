@@ -40,6 +40,7 @@ export function runBacktest(
   const { initialCash, feeRate } = opts;
   let cash = initialCash;
   let position = 0;
+  let avgCost = 0;
   const trades: Trade[] = [];
   const equity: EquityPoint[] = [];
 
@@ -53,6 +54,7 @@ export function runBacktest(
     if (signal === "buy" && position === 0 && cash > 0) {
       const spend = cash * (1 - feeRate);
       position = spend / price;
+      avgCost = price;
       cash = 0;
       currentTrade = {
         entryIndex: i,
@@ -72,6 +74,48 @@ export function runBacktest(
         currentTrade = null;
       }
       position = 0;
+      avgCost = 0;
+    } else if (typeof signal === "object" && "buy_krw" in signal) {
+      const want = Math.min(signal.buy_krw, cash);
+      if (want > 0) {
+        const spend = want * (1 - feeRate);
+        const qty = spend / price;
+        const newAvg =
+          position === 0
+            ? price
+            : (avgCost * position + price * qty) / (position + qty);
+        position += qty;
+        avgCost = newAvg;
+        cash -= want;
+        trades.push({
+          entryIndex: i,
+          entryPrice: price,
+          exitIndex: null,
+          exitPrice: null,
+          pnlPct: null,
+        });
+      }
+    } else if (typeof signal === "object" && "sell_qty_frac" in signal) {
+      const frac = Math.min(Math.max(signal.sell_qty_frac, 0), 1);
+      const qty = position * frac;
+      if (qty > 0) {
+        cash += qty * price * (1 - feeRate);
+        position -= qty;
+        if (position < 1e-12) {
+          position = 0;
+          avgCost = 0;
+        }
+        const last = trades[trades.length - 1];
+        const entryPrice = last && last.exitIndex === null ? last.entryPrice : avgCost;
+        trades.push({
+          entryIndex: i,
+          entryPrice,
+          exitIndex: i,
+          exitPrice: price,
+          pnlPct:
+            ((price * (1 - feeRate)) / (entryPrice * (1 + feeRate)) - 1) * 100,
+        });
+      }
     }
 
     const eq = cash + position * price;
@@ -99,8 +143,9 @@ export function runBacktest(
     if (dd > maxDd) maxDd = dd;
   }
 
-  const wins = trades.filter((t) => (t.pnlPct ?? 0) > 0).length;
-  const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
+  const closedTrades = trades.filter((t) => t.pnlPct !== null);
+  const wins = closedTrades.filter((t) => (t.pnlPct ?? 0) > 0).length;
+  const winRate = closedTrades.length > 0 ? (wins / closedTrades.length) * 100 : 0;
 
   return {
     trades,
@@ -111,6 +156,6 @@ export function runBacktest(
     benchmarkReturnPct: (benchmarkEquity / initialCash - 1) * 100,
     maxDrawdownPct: maxDd * 100,
     winRate,
-    tradeCount: trades.length,
+    tradeCount: closedTrades.length,
   };
 }

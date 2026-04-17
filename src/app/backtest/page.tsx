@@ -7,6 +7,7 @@ import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
+import { NumInput } from "@/components/NumInput";
 
 const POPULAR_MARKETS = [
   "KRW-BTC",
@@ -154,37 +155,34 @@ export default function BacktestPage() {
 
           <label className="block">
             <span className="text-sm font-medium">기간 (일)</span>
-            <input
-              type="number"
+            <NumInput
               className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
               value={days}
               min={30}
               max={2000}
-              onChange={(e) => setDays(Number(e.target.value))}
+              onChange={setDays}
             />
           </label>
 
           <label className="block">
             <span className="text-sm font-medium">초기 자본 (원)</span>
-            <input
-              type="number"
+            <NumInput
               className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
               value={initialCash}
               min={10000}
               step={10000}
-              onChange={(e) => setInitialCash(Number(e.target.value))}
+              onChange={setInitialCash}
             />
           </label>
 
           <label className="block">
             <span className="text-sm font-medium">수수료 (bps)</span>
-            <input
-              type="number"
+            <NumInput
               className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
               value={feeBps}
               min={0}
               max={50}
-              onChange={(e) => setFeeBps(Number(e.target.value))}
+              onChange={setFeeBps}
             />
             <span className="mt-1 block text-xs text-neutral-500">
               업비트 기본 5bps(0.05%)
@@ -200,22 +198,20 @@ export default function BacktestPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium">단기 이평</span>
-              <input
-                type="number"
+              <NumInput
                 className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
                 value={shortMa}
                 min={2}
-                onChange={(e) => setShortMa(Number(e.target.value))}
+                onChange={setShortMa}
               />
             </label>
             <label className="block">
               <span className="text-sm font-medium">장기 이평</span>
-              <input
-                type="number"
+              <NumInput
                 className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
                 value={longMa}
                 min={5}
-                onChange={(e) => setLongMa(Number(e.target.value))}
+                onChange={setLongMa}
               />
             </label>
           </div>
@@ -225,34 +221,31 @@ export default function BacktestPage() {
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="text-sm font-medium">기간</span>
-              <input
-                type="number"
+              <NumInput
                 className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
                 value={rsiPeriod}
                 min={2}
-                onChange={(e) => setRsiPeriod(Number(e.target.value))}
+                onChange={setRsiPeriod}
               />
             </label>
             <label className="block">
               <span className="text-sm font-medium">과매도</span>
-              <input
-                type="number"
+              <NumInput
                 className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
                 value={rsiLow}
                 min={5}
                 max={50}
-                onChange={(e) => setRsiLow(Number(e.target.value))}
+                onChange={setRsiLow}
               />
             </label>
             <label className="block">
               <span className="text-sm font-medium">과매수</span>
-              <input
-                type="number"
+              <NumInput
                 className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
                 value={rsiHigh}
                 min={50}
                 max={95}
-                onChange={(e) => setRsiHigh(Number(e.target.value))}
+                onChange={setRsiHigh}
               />
             </label>
           </div>

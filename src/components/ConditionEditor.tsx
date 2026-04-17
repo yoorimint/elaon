@@ -581,9 +581,7 @@ export function ConditionRow({
         ...cond,
         left: { kind: "close" },
         right: newLeft,
-        op: cond.op === "gt" || cond.op === "lt" || cond.op === "gte" || cond.op === "lte"
-          ? cond.op
-          : "lte",
+        op: cond.op,
       });
       return;
     }

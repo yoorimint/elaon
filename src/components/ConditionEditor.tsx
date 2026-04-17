@@ -86,7 +86,12 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
   }
 }
 
-function IndicatorPicker({
+const SMALL_NUM =
+  "w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-1.5 py-1 text-xs";
+const TINY_NUM =
+  "w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-1.5 py-1 text-xs";
+
+function IndicatorInline({
   value,
   onChange,
 }: {
@@ -98,11 +103,11 @@ function IndicatorPicker({
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="inline-flex items-center gap-1 flex-wrap">
       <select
         value={value.kind}
         onChange={(e) => setKind(e.target.value as IndicatorRef["kind"])}
-        className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2 text-sm"
+        className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-sm font-medium"
       >
         {INDICATOR_KINDS.map((k) => (
           <option key={k} value={k}>
@@ -124,154 +129,121 @@ function IndicatorPicker({
         value.kind === "bb_middle" ||
         value.kind === "ichimoku_conv" ||
         value.kind === "ichimoku_base") && (
-        <label className="text-xs text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
-          기간
-          <NumInput
-            className="w-20 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-            value={value.period}
-            min={2}
-            onChange={(period) => onChange({ ...value, period })}
-          />
-        </label>
+        <NumInput
+          className={SMALL_NUM}
+          value={value.period}
+          min={2}
+          onChange={(period) => onChange({ ...value, period })}
+        />
       )}
 
       {value.kind === "stoch_d" && (
-        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
-          <label className="flex items-center gap-1">
-            기간
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.period}
-              min={3}
-              onChange={(period) => onChange({ ...value, period })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            평활
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.smooth}
-              min={1}
-              onChange={(smooth) => onChange({ ...value, smooth })}
-            />
-          </label>
-        </div>
-      )}
-
-      {value.kind === "sar" && (
-        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
-          <label className="flex items-center gap-1">
-            가속
-            <NumInput
-              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.step}
-              min={0.01}
-              step={0.01}
-              onChange={(step) => onChange({ ...value, step })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            최대
-            <NumInput
-              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.max}
-              min={0.05}
-              step={0.05}
-              onChange={(max) => onChange({ ...value, max })}
-            />
-          </label>
-        </div>
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.period}
+            min={3}
+            onChange={(period) => onChange({ ...value, period })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.smooth}
+            min={1}
+            onChange={(smooth) => onChange({ ...value, smooth })}
+          />
+        </>
       )}
 
       {(value.kind === "bb_upper" || value.kind === "bb_lower") && (
-        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
-          <label className="flex items-center gap-1">
-            기간
-            <NumInput
-              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.period}
-              min={5}
-              onChange={(period) => onChange({ ...value, period })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            σ
-            <NumInput
-              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.stddev}
-              min={0.5}
-              step={0.1}
-              onChange={(stddev) => onChange({ ...value, stddev })}
-            />
-          </label>
-        </div>
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.period}
+            min={5}
+            onChange={(period) => onChange({ ...value, period })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.stddev}
+            min={0.5}
+            step={0.1}
+            onChange={(stddev) => onChange({ ...value, stddev })}
+          />
+        </>
       )}
 
       {value.kind === "macd" && (
-        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
-          <label className="flex items-center gap-1">
-            빠름
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.fast}
-              min={2}
-              onChange={(fast) => onChange({ ...value, fast })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            느림
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.slow}
-              min={5}
-              onChange={(slow) => onChange({ ...value, slow })}
-            />
-          </label>
-        </div>
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.fast}
+            min={2}
+            onChange={(fast) => onChange({ ...value, fast })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.slow}
+            min={5}
+            onChange={(slow) => onChange({ ...value, slow })}
+          />
+        </>
       )}
 
       {value.kind === "macd_signal" && (
-        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center flex-wrap">
-          <label className="flex items-center gap-1">
-            빠름
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.fast}
-              min={2}
-              onChange={(fast) => onChange({ ...value, fast })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            느림
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.slow}
-              min={5}
-              onChange={(slow) => onChange({ ...value, slow })}
-            />
-          </label>
-          <label className="flex items-center gap-1">
-            시그널
-            <NumInput
-              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-              value={value.signal}
-              min={2}
-              onChange={(signal) => onChange({ ...value, signal })}
-            />
-          </label>
-        </div>
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.fast}
+            min={2}
+            onChange={(fast) => onChange({ ...value, fast })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.slow}
+            min={5}
+            onChange={(slow) => onChange({ ...value, slow })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.signal}
+            min={2}
+            onChange={(signal) => onChange({ ...value, signal })}
+          />
+        </>
+      )}
+
+      {value.kind === "sar" && (
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.step}
+            min={0.01}
+            step={0.01}
+            onChange={(step) => onChange({ ...value, step })}
+          />
+          <span className="text-xs text-neutral-400">/</span>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.max}
+            min={0.05}
+            step={0.05}
+            onChange={(max) => onChange({ ...value, max })}
+          />
+        </>
       )}
 
       {value.kind === "const" && (
-        <label className="text-xs text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
-          값
-          <NumInput
-            className="w-28 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
-            value={value.value}
-            step={0.1}
-            onChange={(v) => onChange({ ...value, value: v })}
-          />
-        </label>
+        <NumInput
+          className={TINY_NUM}
+          value={value.value}
+          step={0.1}
+          onChange={(v) => onChange({ ...value, value: v })}
+        />
       )}
     </div>
   );
@@ -279,41 +251,111 @@ function IndicatorPicker({
 
 export function ConditionRow({
   cond,
+  index,
   onChange,
   onRemove,
 }: {
   cond: Condition;
+  index: number;
   onChange: (c: Condition) => void;
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-start">
-      <IndicatorPicker
-        value={cond.left}
-        onChange={(left) => onChange({ ...cond, left })}
-      />
-      <select
-        value={cond.op}
-        onChange={(e) => onChange({ ...cond, op: e.target.value as ConditionOp })}
-        className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-3 py-2 text-sm self-start"
-      >
-        {OP_ORDER.map((op) => (
-          <option key={op} value={op}>
-            {OP_LABELS[op]}
-          </option>
-        ))}
-      </select>
-      <IndicatorPicker
-        value={cond.right}
-        onChange={(right) => onChange({ ...cond, right })}
-      />
+    <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+      <span className="shrink-0 w-5 text-xs font-bold text-neutral-400">
+        {index + 1}
+      </span>
+      <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+        <IndicatorInline
+          value={cond.left}
+          onChange={(left) => onChange({ ...cond, left })}
+        />
+        <select
+          value={cond.op}
+          onChange={(e) => onChange({ ...cond, op: e.target.value as ConditionOp })}
+          className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-sm font-semibold text-brand"
+        >
+          {OP_ORDER.map((op) => (
+            <option key={op} value={op}>
+              {OP_LABELS[op]}
+            </option>
+          ))}
+        </select>
+        <IndicatorInline
+          value={cond.right}
+          onChange={(right) => onChange({ ...cond, right })}
+        />
+      </div>
       <button
         type="button"
         onClick={onRemove}
-        className="self-start text-xs text-red-500 hover:underline"
+        aria-label="조건 제거"
+        className="shrink-0 text-neutral-400 hover:text-red-500 text-lg leading-none px-1"
       >
-        제거
+        ×
       </button>
     </div>
   );
+}
+
+export function conditionToText(cond: Condition): string {
+  function indToStr(ref: IndicatorRef): string {
+    switch (ref.kind) {
+      case "close":
+        return "종가";
+      case "open":
+        return "시가";
+      case "high":
+        return "고가";
+      case "low":
+        return "저가";
+      case "volume":
+        return "거래량";
+      case "obv":
+        return "OBV";
+      case "vwap":
+        return "VWAP";
+      case "sma":
+        return `SMA(${ref.period})`;
+      case "ema":
+        return `EMA(${ref.period})`;
+      case "rsi":
+        return `RSI(${ref.period})`;
+      case "atr":
+        return `ATR(${ref.period})`;
+      case "williams_r":
+        return `Williams%R(${ref.period})`;
+      case "cci":
+        return `CCI(${ref.period})`;
+      case "adx":
+        return `ADX(${ref.period})`;
+      case "roc":
+        return `ROC(${ref.period})`;
+      case "mfi":
+        return `MFI(${ref.period})`;
+      case "stoch_k":
+        return `%K(${ref.period})`;
+      case "stoch_d":
+        return `%D(${ref.period},${ref.smooth})`;
+      case "bb_middle":
+        return `BB중단(${ref.period})`;
+      case "bb_upper":
+        return `BB상단(${ref.period},${ref.stddev}σ)`;
+      case "bb_lower":
+        return `BB하단(${ref.period},${ref.stddev}σ)`;
+      case "macd":
+        return `MACD(${ref.fast},${ref.slow})`;
+      case "macd_signal":
+        return `MACD시그널(${ref.fast},${ref.slow},${ref.signal})`;
+      case "sar":
+        return `SAR(${ref.step},${ref.max})`;
+      case "ichimoku_conv":
+        return `일목전환선(${ref.period})`;
+      case "ichimoku_base":
+        return `일목기준선(${ref.period})`;
+      case "const":
+        return String(ref.value);
+    }
+  }
+  return `${indToStr(cond.left)} ${OP_LABELS[cond.op]} ${indToStr(cond.right)}`;
 }

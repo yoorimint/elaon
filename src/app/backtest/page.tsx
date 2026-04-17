@@ -2,18 +2,41 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { fetchDailyCandlesRange, fetchMarkets, type UpbitMarket } from "@/lib/upbit";
+import {
+  fetchDailyCandlesBetween,
+  fetchDailyCandlesRange,
+  fetchMarkets,
+  type UpbitMarket,
+} from "@/lib/upbit";
 import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { NumInput } from "@/components/NumInput";
-import { ConditionRow } from "@/components/ConditionEditor";
+import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
 import {
   computeDIYSignals,
   defaultCondition,
   type Condition,
 } from "@/lib/diy-strategy";
+
+function todayYmd(offsetDays = 0): string {
+  const d = new Date(Date.now() + offsetDays * 86400000);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+const RANGE_PRESETS: { id: string; label: string; days: number | null }[] = [
+  { id: "7d", label: "1주", days: 7 },
+  { id: "30d", label: "1달", days: 30 },
+  { id: "90d", label: "3달", days: 90 },
+  { id: "180d", label: "6달", days: 180 },
+  { id: "365d", label: "1년", days: 365 },
+  { id: "730d", label: "2년", days: 730 },
+  { id: "custom", label: "직접 지정", days: null },
+];
 
 const POPULAR_MARKETS = [
   "KRW-BTC",
@@ -32,7 +55,14 @@ export default function BacktestPage() {
   const [markets, setMarkets] = useState<UpbitMarket[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
   const [strategy, setStrategy] = useState<StrategyId>("ma_cross");
-  const [days, setDays] = useState(365);
+  const [rangePreset, setRangePreset] = useState("365d");
+  const [dateFrom, setDateFrom] = useState(todayYmd(-365));
+  const [dateTo, setDateTo] = useState(todayYmd(0));
+  const days = useMemo(() => {
+    const from = new Date(dateFrom).getTime();
+    const to = new Date(dateTo).getTime();
+    return Math.max(1, Math.round((to - from) / 86400000));
+  }, [dateFrom, dateTo]);
   const [shortMa, setShortMa] = useState(20);
   const [longMa, setLongMa] = useState(60);
   const [rsiPeriod, setRsiPeriod] = useState(14);
@@ -93,7 +123,9 @@ export default function BacktestPage() {
     setResult(null);
     setShareUrl(null);
     try {
-      const data = await fetchDailyCandlesRange(market, days);
+      const fromMs = new Date(dateFrom).getTime();
+      const toMs = new Date(dateTo).getTime();
+      const data = await fetchDailyCandlesBetween(market, fromMs, toMs);
       if (data.length < 30) throw new Error("데이터가 부족합니다");
       let gLow = gridLow;
       let gHigh = gridHigh;
@@ -272,16 +304,53 @@ export default function BacktestPage() {
             </select>
           </label>
 
-          <label className="block">
-            <span className="text-sm font-medium">기간 (일)</span>
-            <NumInput
-              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
-              value={days}
-              min={30}
-              max={2000}
-              onChange={setDays}
-            />
-          </label>
+          <div className="block sm:col-span-2">
+            <span className="text-sm font-medium">기간</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {RANGE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setRangePreset(p.id);
+                    if (p.days !== null) {
+                      setDateFrom(todayYmd(-p.days));
+                      setDateTo(todayYmd(0));
+                    }
+                  }}
+                  className={`rounded-full px-3 py-1 text-sm border ${
+                    rangePreset === p.id
+                      ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
+                      : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setRangePreset("custom");
+                }}
+                className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              />
+              <span className="text-neutral-500">~</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setRangePreset("custom");
+                }}
+                className="rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              />
+              <span className="text-xs text-neutral-500">총 {days}일</span>
+            </div>
+          </div>
 
           <label className="block">
             <span className="text-sm font-medium">초기 자본 (원)</span>
@@ -626,6 +695,7 @@ export default function BacktestPage() {
                     <ConditionRow
                       key={c.id}
                       cond={c}
+                      index={idx}
                       onChange={(nc) =>
                         setCustomBuy((prev) =>
                           prev.map((x, i) => (i === idx ? nc : x)),
@@ -664,6 +734,7 @@ export default function BacktestPage() {
                     <ConditionRow
                       key={c.id}
                       cond={c}
+                      index={idx}
                       onChange={(nc) =>
                         setCustomSell((prev) =>
                           prev.map((x, i) => (i === idx ? nc : x)),
@@ -705,6 +776,38 @@ export default function BacktestPage() {
                   0 = 사용 안 함. 예: 20 → 진입가 +20% 도달 시 즉시 매도
                 </span>
               </label>
+            </div>
+          </div>
+        )}
+
+        {strategy === "custom" && customBuy.length > 0 && (
+          <div className="mt-6 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/40 p-4 text-sm">
+            <div className="font-semibold mb-2">이 전략 요약</div>
+            <div className="space-y-1.5">
+              <div>
+                <span className="inline-block rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-xs mr-2 font-semibold">
+                  매수
+                </span>
+                <span className="text-neutral-700 dark:text-neutral-200">
+                  {customBuy.map((c) => conditionToText(c)).join("  AND  ")}
+                </span>
+              </div>
+              <div>
+                <span className="inline-block rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 text-xs mr-2 font-semibold">
+                  매도
+                </span>
+                <span className="text-neutral-700 dark:text-neutral-200">
+                  {customSell.length === 0
+                    ? "조건 없음 (손절/익절만 작동)"
+                    : customSell.map((c) => conditionToText(c)).join("  OR  ")}
+                </span>
+              </div>
+              {(stopLoss > 0 || takeProfit > 0) && (
+                <div className="text-xs text-neutral-500">
+                  {stopLoss > 0 && <>손절 -{stopLoss}% </>}
+                  {takeProfit > 0 && <>익절 +{takeProfit}%</>}
+                </div>
+              )}
             </div>
           </div>
         )}

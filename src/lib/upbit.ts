@@ -137,3 +137,29 @@ export async function fetchDailyCandlesRange(
   }
   return out;
 }
+
+export async function fetchDailyCandlesBetween(
+  market: string,
+  startMs: number,
+  endMs: number,
+): Promise<Candle[]> {
+  if (endMs <= startMs) throw new Error("시작일이 종료일보다 늦습니다");
+  const out: Candle[] = [];
+  const days = Math.ceil((endMs - startMs) / 86400000) + 1;
+  let remaining = days;
+  let to: string | undefined = new Date(endMs + 86400000).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+  while (remaining > 0) {
+    const batch = Math.min(200, remaining);
+    const chunk = await fetchDailyCandles(market, batch, to);
+    if (chunk.length === 0) break;
+    const inRange = chunk.filter((c) => c.timestamp >= startMs && c.timestamp <= endMs + 86400000);
+    out.unshift(...inRange);
+    remaining -= chunk.length;
+    const earliest = chunk[0];
+    to = new Date(earliest.timestamp - 1).toISOString().replace(/\.\d{3}Z$/, "Z");
+    if (chunk.length < batch || earliest.timestamp < startMs) break;
+    await sleep(150);
+  }
+  return out.sort((a, b) => a.timestamp - b.timestamp);
+}

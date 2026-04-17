@@ -545,6 +545,20 @@ function smartRightForLeft(left: IndicatorRef, currentRight: IndicatorRef): Indi
   return currentRight;
 }
 
+const REFERENCE_LEVEL_KINDS: IndicatorRef["kind"][] = [
+  "bb_upper",
+  "bb_middle",
+  "bb_lower",
+  "vwap",
+  "sar",
+  "ichimoku_conv",
+  "ichimoku_base",
+];
+
+function isReferenceLevel(kind: IndicatorRef["kind"]): boolean {
+  return REFERENCE_LEVEL_KINDS.includes(kind);
+}
+
 export function ConditionRow({
   cond,
   index,
@@ -561,6 +575,19 @@ export function ConditionRow({
       onChange({ ...cond, left: newLeft });
       return;
     }
+
+    if (isReferenceLevel(newLeft.kind)) {
+      onChange({
+        ...cond,
+        left: { kind: "close" },
+        right: newLeft,
+        op: cond.op === "gt" || cond.op === "lt" || cond.op === "gte" || cond.op === "lte"
+          ? cond.op
+          : "lte",
+      });
+      return;
+    }
+
     const newRight = smartRightForLeft(newLeft, cond.right);
     onChange({ ...cond, left: newLeft, right: newRight });
   }

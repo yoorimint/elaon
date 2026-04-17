@@ -1,18 +1,50 @@
 import type { Candle } from "./upbit";
-import { ema, rsi, sma, stddev } from "./strategies";
+import {
+  adx,
+  atr,
+  cci,
+  ema,
+  ichimokuConvLine,
+  mfi,
+  obv,
+  parabolicSAR,
+  roc,
+  rsi,
+  sma,
+  stddev,
+  stochD,
+  stochK,
+  vwap,
+  williamsR,
+} from "./strategies";
 
 export type IndicatorRef =
   | { kind: "close" }
   | { kind: "open" }
   | { kind: "high" }
   | { kind: "low" }
+  | { kind: "volume" }
   | { kind: "sma"; period: number }
   | { kind: "ema"; period: number }
   | { kind: "rsi"; period: number }
   | { kind: "bb_upper"; period: number; stddev: number }
+  | { kind: "bb_middle"; period: number }
   | { kind: "bb_lower"; period: number; stddev: number }
   | { kind: "macd"; fast: number; slow: number }
   | { kind: "macd_signal"; fast: number; slow: number; signal: number }
+  | { kind: "stoch_k"; period: number }
+  | { kind: "stoch_d"; period: number; smooth: number }
+  | { kind: "atr"; period: number }
+  | { kind: "williams_r"; period: number }
+  | { kind: "cci"; period: number }
+  | { kind: "adx"; period: number }
+  | { kind: "roc"; period: number }
+  | { kind: "obv" }
+  | { kind: "mfi"; period: number }
+  | { kind: "sar"; step: number; max: number }
+  | { kind: "vwap" }
+  | { kind: "ichimoku_conv"; period: number }
+  | { kind: "ichimoku_base"; period: number }
   | { kind: "const"; value: number };
 
 export type ConditionOp = "gt" | "lt" | "gte" | "lte" | "cross_up" | "cross_down";
@@ -36,13 +68,28 @@ export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
   open: "시가",
   high: "고가",
   low: "저가",
+  volume: "거래량",
   sma: "SMA(단순 이평)",
   ema: "EMA(지수 이평)",
   rsi: "RSI",
   bb_upper: "볼린저 상단",
+  bb_middle: "볼린저 중단",
   bb_lower: "볼린저 하단",
   macd: "MACD 라인",
   macd_signal: "MACD 시그널",
+  stoch_k: "스토캐스틱 %K",
+  stoch_d: "스토캐스틱 %D",
+  atr: "ATR (변동폭)",
+  williams_r: "Williams %R",
+  cci: "CCI",
+  adx: "ADX (추세강도)",
+  roc: "ROC (변화율)",
+  obv: "OBV (누적 거래량)",
+  mfi: "MFI",
+  sar: "Parabolic SAR",
+  vwap: "VWAP",
+  ichimoku_conv: "일목 전환선",
+  ichimoku_base: "일목 기준선",
   const: "숫자값",
 };
 
@@ -61,11 +108,26 @@ function indicatorKey(ref: IndicatorRef): string {
     case "open":
     case "high":
     case "low":
+    case "volume":
+    case "obv":
+    case "vwap":
       return ref.kind;
     case "sma":
     case "ema":
     case "rsi":
+    case "atr":
+    case "williams_r":
+    case "cci":
+    case "adx":
+    case "roc":
+    case "mfi":
+    case "stoch_k":
+    case "bb_middle":
+    case "ichimoku_conv":
+    case "ichimoku_base":
       return `${ref.kind}_${ref.period}`;
+    case "stoch_d":
+      return `stoch_d_${ref.period}_${ref.smooth}`;
     case "bb_upper":
     case "bb_lower":
       return `${ref.kind}_${ref.period}_${ref.stddev}`;
@@ -73,6 +135,8 @@ function indicatorKey(ref: IndicatorRef): string {
       return `macd_${ref.fast}_${ref.slow}`;
     case "macd_signal":
       return `macd_signal_${ref.fast}_${ref.slow}_${ref.signal}`;
+    case "sar":
+      return `sar_${ref.step}_${ref.max}`;
     case "const":
       return `const_${ref.value}`;
   }
@@ -92,12 +156,16 @@ function computeIndicator(
       return candles.map((c) => c.high);
     case "low":
       return candles.map((c) => c.low);
+    case "volume":
+      return candles.map((c) => c.volume);
     case "sma":
       return sma(closes, ref.period);
     case "ema":
       return ema(closes, ref.period);
     case "rsi":
       return rsi(closes, ref.period);
+    case "bb_middle":
+      return sma(closes, ref.period);
     case "bb_upper": {
       const mid = sma(closes, ref.period);
       const sd = stddev(closes, ref.period);
@@ -133,6 +201,32 @@ function computeIndicator(
       });
       return ema(macd, ref.signal);
     }
+    case "stoch_k":
+      return stochK(candles, ref.period);
+    case "stoch_d":
+      return stochD(candles, ref.period, ref.smooth);
+    case "atr":
+      return atr(candles, ref.period);
+    case "williams_r":
+      return williamsR(candles, ref.period);
+    case "cci":
+      return cci(candles, ref.period);
+    case "adx":
+      return adx(candles, ref.period);
+    case "roc":
+      return roc(closes, ref.period);
+    case "obv":
+      return obv(candles);
+    case "mfi":
+      return mfi(candles, ref.period);
+    case "sar":
+      return parabolicSAR(candles, ref.step, ref.max);
+    case "vwap":
+      return vwap(candles);
+    case "ichimoku_conv":
+      return ichimokuConvLine(candles, ref.period);
+    case "ichimoku_base":
+      return ichimokuConvLine(candles, ref.period);
     case "const":
       return candles.map(() => ref.value);
   }

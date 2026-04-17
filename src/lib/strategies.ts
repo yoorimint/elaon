@@ -210,6 +210,295 @@ export function rsi(values: number[], period: number): (number | null)[] {
   return out;
 }
 
+function wildersRma(values: number[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) {
+      sum += values[i];
+      out.push(null);
+    } else if (i === period - 1) {
+      sum += values[i];
+      out.push(sum / period);
+    } else {
+      const prev = out[i - 1]!;
+      out.push((prev * (period - 1) + values[i]) / period);
+    }
+  }
+  return out;
+}
+
+export function atr(candles: Candle[], period: number): (number | null)[] {
+  const tr: number[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    if (i === 0) {
+      tr.push(c.high - c.low);
+    } else {
+      const prev = candles[i - 1];
+      tr.push(
+        Math.max(
+          c.high - c.low,
+          Math.abs(c.high - prev.close),
+          Math.abs(c.low - prev.close),
+        ),
+      );
+    }
+  }
+  return wildersRma(tr, period);
+}
+
+export function stochK(candles: Candle[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      out.push(null);
+      continue;
+    }
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (let k = i - period + 1; k <= i; k++) {
+      hi = Math.max(hi, candles[k].high);
+      lo = Math.min(lo, candles[k].low);
+    }
+    out.push(hi === lo ? 50 : ((candles[i].close - lo) / (hi - lo)) * 100);
+  }
+  return out;
+}
+
+export function stochD(
+  candles: Candle[],
+  period: number,
+  smooth: number,
+): (number | null)[] {
+  const k = stochK(candles, period);
+  const kValid = k.map((v) => (v == null ? 0 : v));
+  return sma(kValid, smooth);
+}
+
+export function williamsR(candles: Candle[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      out.push(null);
+      continue;
+    }
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (let k = i - period + 1; k <= i; k++) {
+      hi = Math.max(hi, candles[k].high);
+      lo = Math.min(lo, candles[k].low);
+    }
+    out.push(hi === lo ? -50 : ((hi - candles[i].close) / (hi - lo)) * -100);
+  }
+  return out;
+}
+
+export function cci(candles: Candle[], period: number): (number | null)[] {
+  const tp = candles.map((c) => (c.high + c.low + c.close) / 3);
+  const smaTp = sma(tp, period);
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const m = smaTp[i];
+    if (m == null) {
+      out.push(null);
+      continue;
+    }
+    let meanDev = 0;
+    for (let k = i - period + 1; k <= i; k++) meanDev += Math.abs(tp[k] - m);
+    meanDev /= period;
+    out.push(meanDev === 0 ? 0 : (tp[i] - m) / (0.015 * meanDev));
+  }
+  return out;
+}
+
+export function adx(candles: Candle[], period: number): (number | null)[] {
+  const tr: number[] = [];
+  const plusDM: number[] = [];
+  const minusDM: number[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    if (i === 0) {
+      tr.push(c.high - c.low);
+      plusDM.push(0);
+      minusDM.push(0);
+      continue;
+    }
+    const prev = candles[i - 1];
+    tr.push(
+      Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close)),
+    );
+    const up = c.high - prev.high;
+    const down = prev.low - c.low;
+    plusDM.push(up > down && up > 0 ? up : 0);
+    minusDM.push(down > up && down > 0 ? down : 0);
+  }
+  const sTR = wildersRma(tr, period);
+  const sPlusDM = wildersRma(plusDM, period);
+  const sMinusDM = wildersRma(minusDM, period);
+  const dx: number[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const t = sTR[i];
+    const p = sPlusDM[i];
+    const m = sMinusDM[i];
+    if (t == null || p == null || m == null || t === 0) {
+      dx.push(0);
+      continue;
+    }
+    const pdi = (p / t) * 100;
+    const mdi = (m / t) * 100;
+    const s = pdi + mdi;
+    dx.push(s === 0 ? 0 : (Math.abs(pdi - mdi) / s) * 100);
+  }
+  const adxVals = wildersRma(dx, period);
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    out.push(i < period * 2 - 1 ? null : adxVals[i]);
+  }
+  return out;
+}
+
+export function roc(values: number[], period: number): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < values.length; i++) {
+    if (i < period || values[i - period] === 0) {
+      out.push(null);
+      continue;
+    }
+    out.push(((values[i] - values[i - period]) / values[i - period]) * 100);
+  }
+  return out;
+}
+
+export function obv(candles: Candle[]): (number | null)[] {
+  const out: number[] = [];
+  let cum = 0;
+  for (let i = 0; i < candles.length; i++) {
+    if (i === 0) {
+      out.push(0);
+      continue;
+    }
+    const c = candles[i];
+    const prev = candles[i - 1];
+    if (c.close > prev.close) cum += c.volume;
+    else if (c.close < prev.close) cum -= c.volume;
+    out.push(cum);
+  }
+  return out;
+}
+
+export function mfi(candles: Candle[], period: number): (number | null)[] {
+  const tp = candles.map((c) => (c.high + c.low + c.close) / 3);
+  const rawMf = candles.map((c, i) => tp[i] * c.volume);
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period) {
+      out.push(null);
+      continue;
+    }
+    let pos = 0;
+    let neg = 0;
+    for (let k = i - period + 1; k <= i; k++) {
+      if (tp[k] > tp[k - 1]) pos += rawMf[k];
+      else if (tp[k] < tp[k - 1]) neg += rawMf[k];
+    }
+    if (neg === 0) out.push(100);
+    else {
+      const mr = pos / neg;
+      out.push(100 - 100 / (1 + mr));
+    }
+  }
+  return out;
+}
+
+export function parabolicSAR(
+  candles: Candle[],
+  step = 0.02,
+  max = 0.2,
+): (number | null)[] {
+  const out: (number | null)[] = [];
+  if (candles.length < 2) return candles.map(() => null);
+
+  let isLong = candles[1].close > candles[0].close;
+  let sar = isLong ? candles[0].low : candles[0].high;
+  let ep = isLong ? candles[0].high : candles[0].low;
+  let af = step;
+
+  out.push(null);
+  for (let i = 1; i < candles.length; i++) {
+    const c = candles[i];
+    sar = sar + af * (ep - sar);
+    if (isLong) {
+      const cap = Math.min(
+        candles[i - 1].low,
+        i >= 2 ? candles[i - 2].low : candles[i - 1].low,
+      );
+      sar = Math.min(sar, cap);
+      if (c.low < sar) {
+        isLong = false;
+        sar = ep;
+        ep = c.low;
+        af = step;
+      } else if (c.high > ep) {
+        ep = c.high;
+        af = Math.min(af + step, max);
+      }
+    } else {
+      const cap = Math.max(
+        candles[i - 1].high,
+        i >= 2 ? candles[i - 2].high : candles[i - 1].high,
+      );
+      sar = Math.max(sar, cap);
+      if (c.high > sar) {
+        isLong = true;
+        sar = ep;
+        ep = c.high;
+        af = step;
+      } else if (c.low < ep) {
+        ep = c.low;
+        af = Math.min(af + step, max);
+      }
+    }
+    out.push(sar);
+  }
+  return out;
+}
+
+export function vwap(candles: Candle[]): (number | null)[] {
+  const out: number[] = [];
+  let cumVP = 0;
+  let cumV = 0;
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i];
+    const tp = (c.high + c.low + c.close) / 3;
+    cumVP += tp * c.volume;
+    cumV += c.volume;
+    out.push(cumV === 0 ? 0 : cumVP / cumV);
+  }
+  return out;
+}
+
+export function ichimokuConvLine(
+  candles: Candle[],
+  period: number,
+): (number | null)[] {
+  const out: (number | null)[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      out.push(null);
+      continue;
+    }
+    let hi = -Infinity;
+    let lo = Infinity;
+    for (let k = i - period + 1; k <= i; k++) {
+      hi = Math.max(hi, candles[k].high);
+      lo = Math.min(lo, candles[k].low);
+    }
+    out.push((hi + lo) / 2);
+  }
+  return out;
+}
+
 function rangeHigh(candles: Candle[], i: number, n: number): number {
   let m = -Infinity;
   for (let k = Math.max(0, i - n + 1); k <= i; k++) m = Math.max(m, candles[k].high);

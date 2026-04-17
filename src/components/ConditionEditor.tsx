@@ -14,13 +14,28 @@ const INDICATOR_KINDS: IndicatorRef["kind"][] = [
   "open",
   "high",
   "low",
+  "volume",
   "sma",
   "ema",
   "rsi",
   "bb_upper",
+  "bb_middle",
   "bb_lower",
   "macd",
   "macd_signal",
+  "stoch_k",
+  "stoch_d",
+  "atr",
+  "williams_r",
+  "cci",
+  "adx",
+  "roc",
+  "obv",
+  "mfi",
+  "sar",
+  "vwap",
+  "ichimoku_conv",
+  "ichimoku_base",
   "const",
 ];
 
@@ -32,12 +47,27 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
     case "open":
     case "high":
     case "low":
+    case "volume":
+    case "obv":
+    case "vwap":
       return { kind };
     case "sma":
     case "ema":
       return { kind, period: 20 };
     case "rsi":
+    case "atr":
+    case "williams_r":
+    case "cci":
+    case "adx":
+    case "roc":
+    case "mfi":
       return { kind, period: 14 };
+    case "stoch_k":
+      return { kind, period: 14 };
+    case "stoch_d":
+      return { kind, period: 14, smooth: 3 };
+    case "bb_middle":
+      return { kind, period: 20 };
     case "bb_upper":
     case "bb_lower":
       return { kind, period: 20, stddev: 2 };
@@ -45,6 +75,12 @@ function defaultIndicator(kind: IndicatorRef["kind"]): IndicatorRef {
       return { kind, fast: 12, slow: 26 };
     case "macd_signal":
       return { kind, fast: 12, slow: 26, signal: 9 };
+    case "sar":
+      return { kind, step: 0.02, max: 0.2 };
+    case "ichimoku_conv":
+      return { kind, period: 9 };
+    case "ichimoku_base":
+      return { kind, period: 26 };
     case "const":
       return { kind, value: 0 };
   }
@@ -77,7 +113,17 @@ function IndicatorPicker({
 
       {(value.kind === "sma" ||
         value.kind === "ema" ||
-        value.kind === "rsi") && (
+        value.kind === "rsi" ||
+        value.kind === "atr" ||
+        value.kind === "williams_r" ||
+        value.kind === "cci" ||
+        value.kind === "adx" ||
+        value.kind === "roc" ||
+        value.kind === "mfi" ||
+        value.kind === "stoch_k" ||
+        value.kind === "bb_middle" ||
+        value.kind === "ichimoku_conv" ||
+        value.kind === "ichimoku_base") && (
         <label className="text-xs text-neutral-600 dark:text-neutral-400 flex items-center gap-2">
           기간
           <NumInput
@@ -87,6 +133,54 @@ function IndicatorPicker({
             onChange={(period) => onChange({ ...value, period })}
           />
         </label>
+      )}
+
+      {value.kind === "stoch_d" && (
+        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
+          <label className="flex items-center gap-1">
+            기간
+            <NumInput
+              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
+              value={value.period}
+              min={3}
+              onChange={(period) => onChange({ ...value, period })}
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            평활
+            <NumInput
+              className="w-14 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
+              value={value.smooth}
+              min={1}
+              onChange={(smooth) => onChange({ ...value, smooth })}
+            />
+          </label>
+        </div>
+      )}
+
+      {value.kind === "sar" && (
+        <div className="flex gap-2 text-xs text-neutral-600 dark:text-neutral-400 items-center">
+          <label className="flex items-center gap-1">
+            가속
+            <NumInput
+              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
+              value={value.step}
+              min={0.01}
+              step={0.01}
+              onChange={(step) => onChange({ ...value, step })}
+            />
+          </label>
+          <label className="flex items-center gap-1">
+            최대
+            <NumInput
+              className="w-16 rounded border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1 text-sm"
+              value={value.max}
+              min={0.05}
+              step={0.05}
+              onChange={(max) => onChange({ ...value, max })}
+            />
+          </label>
+        </div>
       )}
 
       {(value.kind === "bb_upper" || value.kind === "bb_lower") && (

@@ -129,12 +129,15 @@ function IndicatorInline({
         value.kind === "bb_middle" ||
         value.kind === "ichimoku_conv" ||
         value.kind === "ichimoku_base") && (
-        <NumInput
-          className={SMALL_NUM}
-          value={value.period}
-          min={2}
-          onChange={(period) => onChange({ ...value, period })}
-        />
+        <>
+          <NumInput
+            className={SMALL_NUM}
+            value={value.period}
+            min={2}
+            onChange={(period) => onChange({ ...value, period })}
+          />
+          <span className="text-xs text-neutral-500">일</span>
+        </>
       )}
 
       {value.kind === "stoch_d" && (
@@ -145,13 +148,15 @@ function IndicatorInline({
             min={3}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.smooth}
             min={1}
             onChange={(smooth) => onChange({ ...value, smooth })}
           />
+          <span className="text-xs text-neutral-500">평활</span>
         </>
       )}
 
@@ -163,7 +168,8 @@ function IndicatorInline({
             min={5}
             onChange={(period) => onChange({ ...value, period })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">일</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.stddev}
@@ -171,6 +177,7 @@ function IndicatorInline({
             step={0.1}
             onChange={(stddev) => onChange({ ...value, stddev })}
           />
+          <span className="text-xs text-neutral-500">σ배</span>
         </>
       )}
 
@@ -182,13 +189,15 @@ function IndicatorInline({
             min={2}
             onChange={(fast) => onChange({ ...value, fast })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">빠름</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.slow}
             min={5}
             onChange={(slow) => onChange({ ...value, slow })}
           />
+          <span className="text-xs text-neutral-500">느림</span>
         </>
       )}
 
@@ -200,20 +209,23 @@ function IndicatorInline({
             min={2}
             onChange={(fast) => onChange({ ...value, fast })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">빠름</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.slow}
             min={5}
             onChange={(slow) => onChange({ ...value, slow })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">느림</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.signal}
             min={2}
             onChange={(signal) => onChange({ ...value, signal })}
           />
+          <span className="text-xs text-neutral-500">시그널</span>
         </>
       )}
 
@@ -226,7 +238,8 @@ function IndicatorInline({
             step={0.01}
             onChange={(step) => onChange({ ...value, step })}
           />
-          <span className="text-xs text-neutral-400">/</span>
+          <span className="text-xs text-neutral-500">가속</span>
+          <span className="text-xs text-neutral-300">·</span>
           <NumInput
             className={SMALL_NUM}
             value={value.max}
@@ -234,6 +247,7 @@ function IndicatorInline({
             step={0.05}
             onChange={(max) => onChange({ ...value, max })}
           />
+          <span className="text-xs text-neutral-500">최대</span>
         </>
       )}
 
@@ -249,6 +263,177 @@ function IndicatorInline({
   );
 }
 
+function indicatorUnit(ref: IndicatorRef): "price" | "oscillator" | "volume" | "other" {
+  switch (ref.kind) {
+    case "close":
+    case "open":
+    case "high":
+    case "low":
+    case "sma":
+    case "ema":
+    case "bb_upper":
+    case "bb_middle":
+    case "bb_lower":
+    case "vwap":
+    case "sar":
+    case "ichimoku_conv":
+    case "ichimoku_base":
+      return "price";
+    case "volume":
+    case "obv":
+      return "volume";
+    case "rsi":
+    case "stoch_k":
+    case "stoch_d":
+    case "williams_r":
+    case "cci":
+    case "adx":
+    case "mfi":
+    case "roc":
+    case "macd":
+    case "macd_signal":
+    case "atr":
+      return "oscillator";
+    case "const":
+      return "other";
+  }
+}
+
+function indToNatural(ref: IndicatorRef): string {
+  switch (ref.kind) {
+    case "close":
+      return "종가";
+    case "open":
+      return "시가";
+    case "high":
+      return "고가";
+    case "low":
+      return "저가";
+    case "volume":
+      return "거래량";
+    case "obv":
+      return "OBV(누적 거래량)";
+    case "vwap":
+      return "VWAP(거래량 평균가)";
+    case "sma":
+      return `${ref.period}일 단순이평`;
+    case "ema":
+      return `${ref.period}일 지수이평`;
+    case "rsi":
+      return `${ref.period}일 RSI`;
+    case "atr":
+      return `${ref.period}일 ATR`;
+    case "williams_r":
+      return `${ref.period}일 Williams%R`;
+    case "cci":
+      return `${ref.period}일 CCI`;
+    case "adx":
+      return `${ref.period}일 ADX`;
+    case "roc":
+      return `${ref.period}일 변화율`;
+    case "mfi":
+      return `${ref.period}일 MFI`;
+    case "stoch_k":
+      return `${ref.period}일 스토캐스틱 %K`;
+    case "stoch_d":
+      return `${ref.period}일 %D(${ref.smooth}평활)`;
+    case "bb_middle":
+      return `${ref.period}일 볼린저 중단`;
+    case "bb_upper":
+      return `${ref.period}일 볼린저 상단(${ref.stddev}σ)`;
+    case "bb_lower":
+      return `${ref.period}일 볼린저 하단(${ref.stddev}σ)`;
+    case "macd":
+      return `MACD(${ref.fast},${ref.slow})`;
+    case "macd_signal":
+      return `MACD 시그널선`;
+    case "sar":
+      return "Parabolic SAR";
+    case "ichimoku_conv":
+      return `${ref.period}일 일목 전환선`;
+    case "ichimoku_base":
+      return `${ref.period}일 일목 기준선`;
+    case "const": {
+      return String(ref.value);
+    }
+  }
+}
+
+function opToNatural(op: ConditionOp): string {
+  switch (op) {
+    case "gt":
+      return "보다 크면";
+    case "lt":
+      return "보다 작으면";
+    case "gte":
+      return "이상이면";
+    case "lte":
+      return "이하이면";
+    case "cross_up":
+      return "을 위로 돌파하면";
+    case "cross_down":
+      return "을 아래로 돌파하면";
+  }
+}
+
+function contextHint(cond: Condition): string | null {
+  const left = cond.left.kind;
+  if (cond.right.kind !== "const") return null;
+  const v = cond.right.value;
+
+  if (left === "rsi" || left === "mfi" || left === "stoch_k" || left === "stoch_d") {
+    if (v <= 30) return "과매도 기준";
+    if (v >= 70) return "과매수 기준";
+    if (v === 50) return "중립선";
+  }
+  if (left === "williams_r") {
+    if (v <= -80) return "과매도 기준";
+    if (v >= -20) return "과매수 기준";
+  }
+  if (left === "cci") {
+    if (v <= -100) return "과매도 기준";
+    if (v >= 100) return "과매수 기준";
+  }
+  if (left === "adx") {
+    if (v >= 25) return "강한 추세 기준";
+  }
+  return null;
+}
+
+function unitMismatchWarning(cond: Condition): string | null {
+  const l = indicatorUnit(cond.left);
+  const r = indicatorUnit(cond.right);
+
+  if (cond.right.kind === "const") {
+    if (l === "price" && Math.abs(cond.right.value) < 10_000) {
+      return "⚠ 가격 지표인데 작은 숫자와 비교 중 — 의도한 게 맞나요?";
+    }
+    if (l === "volume" && Math.abs(cond.right.value) < 1) {
+      return "⚠ 거래량과 비교하기엔 값이 너무 작습니다";
+    }
+    return null;
+  }
+
+  if (l !== "other" && r !== "other" && l !== r) {
+    return "⚠ 서로 다른 스케일의 지표 비교 — 결과가 이상할 수 있습니다";
+  }
+  return null;
+}
+
+export function conditionNatural(cond: Condition): string {
+  const leftText = indToNatural(cond.left);
+  const rightText = indToNatural(cond.right);
+  const hint = contextHint(cond);
+
+  if (cond.op === "cross_up") {
+    return `${leftText}이(가) ${rightText}${hint ? `(${hint})` : ""}을 위로 돌파`;
+  }
+  if (cond.op === "cross_down") {
+    return `${leftText}이(가) ${rightText}${hint ? `(${hint})` : ""}을 아래로 돌파`;
+  }
+  return `${leftText}이(가) ${rightText}${hint ? `(${hint})` : ""}${opToNatural(cond.op)}`;
+}
+
 export function ConditionRow({
   cond,
   index,
@@ -260,102 +445,58 @@ export function ConditionRow({
   onChange: (c: Condition) => void;
   onRemove: () => void;
 }) {
+  const natural = conditionNatural(cond);
+  const warning = unitMismatchWarning(cond);
+
   return (
-    <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
-      <span className="shrink-0 w-5 text-xs font-bold text-neutral-400">
-        {index + 1}
-      </span>
-      <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-        <IndicatorInline
-          value={cond.left}
-          onChange={(left) => onChange({ ...cond, left })}
-        />
-        <select
-          value={cond.op}
-          onChange={(e) => onChange({ ...cond, op: e.target.value as ConditionOp })}
-          className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-sm font-semibold text-brand"
+    <div className="py-2 px-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+      <div className="flex items-start gap-2">
+        <span className="shrink-0 w-5 mt-1.5 text-xs font-bold text-neutral-400">
+          {index + 1}
+        </span>
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+          <IndicatorInline
+            value={cond.left}
+            onChange={(left) => onChange({ ...cond, left })}
+          />
+          <select
+            value={cond.op}
+            onChange={(e) => onChange({ ...cond, op: e.target.value as ConditionOp })}
+            className="rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-950 px-2 py-1 text-sm font-semibold text-brand"
+          >
+            {OP_ORDER.map((op) => (
+              <option key={op} value={op}>
+                {OP_LABELS[op]}
+              </option>
+            ))}
+          </select>
+          <IndicatorInline
+            value={cond.right}
+            onChange={(right) => onChange({ ...cond, right })}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="조건 제거"
+          className="shrink-0 text-neutral-400 hover:text-red-500 text-lg leading-none px-1"
         >
-          {OP_ORDER.map((op) => (
-            <option key={op} value={op}>
-              {OP_LABELS[op]}
-            </option>
-          ))}
-        </select>
-        <IndicatorInline
-          value={cond.right}
-          onChange={(right) => onChange({ ...cond, right })}
-        />
+          ×
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label="조건 제거"
-        className="shrink-0 text-neutral-400 hover:text-red-500 text-lg leading-none px-1"
-      >
-        ×
-      </button>
+
+      <div className="mt-2 pl-7 text-xs text-neutral-600 dark:text-neutral-400">
+        → {natural}
+      </div>
+      {warning && (
+        <div className="mt-1 pl-7 text-xs text-amber-600 dark:text-amber-400">
+          {warning}
+        </div>
+      )}
     </div>
   );
 }
 
 export function conditionToText(cond: Condition): string {
-  function indToStr(ref: IndicatorRef): string {
-    switch (ref.kind) {
-      case "close":
-        return "종가";
-      case "open":
-        return "시가";
-      case "high":
-        return "고가";
-      case "low":
-        return "저가";
-      case "volume":
-        return "거래량";
-      case "obv":
-        return "OBV";
-      case "vwap":
-        return "VWAP";
-      case "sma":
-        return `SMA(${ref.period})`;
-      case "ema":
-        return `EMA(${ref.period})`;
-      case "rsi":
-        return `RSI(${ref.period})`;
-      case "atr":
-        return `ATR(${ref.period})`;
-      case "williams_r":
-        return `Williams%R(${ref.period})`;
-      case "cci":
-        return `CCI(${ref.period})`;
-      case "adx":
-        return `ADX(${ref.period})`;
-      case "roc":
-        return `ROC(${ref.period})`;
-      case "mfi":
-        return `MFI(${ref.period})`;
-      case "stoch_k":
-        return `%K(${ref.period})`;
-      case "stoch_d":
-        return `%D(${ref.period},${ref.smooth})`;
-      case "bb_middle":
-        return `BB중단(${ref.period})`;
-      case "bb_upper":
-        return `BB상단(${ref.period},${ref.stddev}σ)`;
-      case "bb_lower":
-        return `BB하단(${ref.period},${ref.stddev}σ)`;
-      case "macd":
-        return `MACD(${ref.fast},${ref.slow})`;
-      case "macd_signal":
-        return `MACD시그널(${ref.fast},${ref.slow},${ref.signal})`;
-      case "sar":
-        return `SAR(${ref.step},${ref.max})`;
-      case "ichimoku_conv":
-        return `일목전환선(${ref.period})`;
-      case "ichimoku_base":
-        return `일목기준선(${ref.period})`;
-      case "const":
-        return String(ref.value);
-    }
-  }
-  return `${indToStr(cond.left)} ${OP_LABELS[cond.op]} ${indToStr(cond.right)}`;
+  return conditionNatural(cond);
 }

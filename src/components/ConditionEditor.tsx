@@ -434,6 +434,57 @@ export function conditionNatural(cond: Condition): string {
   return `${leftText}이(가) ${rightText}${hint ? `(${hint})` : ""}${opToNatural(cond.op)}`;
 }
 
+function sensibleConstFor(kind: IndicatorRef["kind"]): number | null {
+  switch (kind) {
+    case "rsi":
+    case "mfi":
+      return 30;
+    case "stoch_k":
+    case "stoch_d":
+      return 20;
+    case "williams_r":
+      return -80;
+    case "cci":
+      return -100;
+    case "adx":
+      return 25;
+    case "roc":
+      return 0;
+    case "macd":
+    case "macd_signal":
+    case "atr":
+      return 0;
+    default:
+      return null;
+  }
+}
+
+function smartRightForLeft(left: IndicatorRef, currentRight: IndicatorRef): IndicatorRef {
+  const lUnit = indicatorUnit(left);
+  const rUnit = indicatorUnit(currentRight);
+  if (lUnit === "other" || rUnit === "other") {
+    if (rUnit === "other" && lUnit === "price") {
+      return { kind: "close" };
+    }
+    if (rUnit === "other" && lUnit === "oscillator") {
+      const s = sensibleConstFor(left.kind);
+      return s !== null ? { kind: "const", value: s } : currentRight;
+    }
+    if (rUnit === "other" && lUnit === "volume") {
+      return { kind: "volume" };
+    }
+    return currentRight;
+  }
+  if (lUnit === rUnit) return currentRight;
+  if (lUnit === "price") return { kind: "close" };
+  if (lUnit === "oscillator") {
+    const s = sensibleConstFor(left.kind);
+    return s !== null ? { kind: "const", value: s } : { kind: "const", value: 0 };
+  }
+  if (lUnit === "volume") return { kind: "volume" };
+  return currentRight;
+}
+
 export function ConditionRow({
   cond,
   index,
@@ -445,6 +496,15 @@ export function ConditionRow({
   onChange: (c: Condition) => void;
   onRemove: () => void;
 }) {
+  function handleLeftChange(newLeft: IndicatorRef) {
+    if (newLeft.kind === cond.left.kind) {
+      onChange({ ...cond, left: newLeft });
+      return;
+    }
+    const newRight = smartRightForLeft(newLeft, cond.right);
+    onChange({ ...cond, left: newLeft, right: newRight });
+  }
+
   const natural = conditionNatural(cond);
   const warning = unitMismatchWarning(cond);
 
@@ -455,10 +515,7 @@ export function ConditionRow({
           {index + 1}
         </span>
         <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-          <IndicatorInline
-            value={cond.left}
-            onChange={(left) => onChange({ ...cond, left })}
-          />
+          <IndicatorInline value={cond.left} onChange={handleLeftChange} />
           <select
             value={cond.op}
             onChange={(e) => onChange({ ...cond, op: e.target.value as ConditionOp })}

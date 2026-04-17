@@ -95,7 +95,7 @@ export default function BacktestPage() {
         feeBps,
         result,
       });
-      const url = `${window.location.origin}/r/?id=${slug}`;
+      const url = `${window.location.origin}/r/${slug}`;
       setShareUrl(url);
       try {
         await navigator.clipboard.writeText(url);

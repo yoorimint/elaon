@@ -29,6 +29,12 @@ export function Header() {
             백테스트
           </Link>
           <Link
+            href="/ranking"
+            className="hidden sm:inline text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
+          >
+            랭킹
+          </Link>
+          <Link
             href="/community"
             className="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
           >
@@ -36,9 +42,12 @@ export function Header() {
           </Link>
           {loading ? null : user ? (
             <>
-              <span className="text-neutral-600 dark:text-neutral-400 hidden sm:inline truncate max-w-[140px]">
+              <Link
+                href="/me"
+                className="text-neutral-600 dark:text-neutral-400 hidden sm:inline truncate max-w-[140px] hover:text-neutral-900 dark:hover:text-white"
+              >
                 {user.email}
-              </span>
+              </Link>
               <button
                 onClick={onLogout}
                 className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-900"

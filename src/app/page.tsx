@@ -102,7 +102,7 @@ export default async function HomePage() {
               return (
                 <li key={s.slug}>
                   <Link
-                    href={`/r/?id=${s.slug}`}
+                    href={`/r/${s.slug}`}
                     className="block rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand/50 hover:bg-brand/5 transition"
                   >
                     <div className="flex flex-wrap gap-1.5 text-xs text-neutral-500">

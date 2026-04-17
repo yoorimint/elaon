@@ -25,8 +25,10 @@ export default function NewPostPage() {
   function extractBacktestSlug(input: string): string | null {
     const trimmed = input.trim();
     if (!trimmed) return null;
-    const m = trimmed.match(/[?&]id=([a-z0-9]{4,16})/i);
-    if (m) return m[1];
+    const pathMatch = trimmed.match(/\/r\/([a-z0-9]{4,16})(?:[/?#]|$)/i);
+    if (pathMatch) return pathMatch[1];
+    const queryMatch = trimmed.match(/[?&]id=([a-z0-9]{4,16})/i);
+    if (queryMatch) return queryMatch[1];
     if (/^[a-z0-9]{4,16}$/i.test(trimmed)) return trimmed;
     return null;
   }
@@ -124,7 +126,7 @@ export default function NewPostPage() {
           <span className="text-sm font-medium">백테스트 결과 첨부 (선택)</span>
           <input
             type="text"
-            placeholder="공유 URL 붙여넣기 (예: https://eloan.kr/r/?id=abcd1234)"
+            placeholder="공유 URL 붙여넣기 (예: https://eloan.kr/r/abcd1234)"
             className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
             value={backtestUrl}
             onChange={(e) => setBacktestUrl(e.target.value)}

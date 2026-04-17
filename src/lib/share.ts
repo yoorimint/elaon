@@ -30,6 +30,8 @@ export async function saveShare(p: SharePayload): Promise<string> {
     b: Math.round(e.benchmark),
   }));
 
+  const { data: userData } = await supabase.auth.getUser();
+
   const { error } = await supabase.from("shared_backtests").insert({
     slug,
     market: p.market,
@@ -44,6 +46,7 @@ export async function saveShare(p: SharePayload): Promise<string> {
     win_rate: p.result.winRate,
     trade_count: p.result.tradeCount,
     equity_curve: equity,
+    author_id: userData.user?.id ?? null,
   });
 
   if (error) throw new Error(error.message);

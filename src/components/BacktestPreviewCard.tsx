@@ -36,7 +36,7 @@ export function BacktestPreviewCard({ slug }: { slug: string }) {
 
   return (
     <Link
-      href={`/r/?id=${data.slug}`}
+      href={`/r/${data.slug}`}
       className="mt-4 block rounded-xl border border-brand/40 bg-brand/5 p-4 hover:bg-brand/10 transition"
     >
       <div className="flex flex-wrap items-center gap-2 text-xs">

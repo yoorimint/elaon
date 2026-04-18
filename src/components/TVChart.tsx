@@ -71,8 +71,10 @@ function isDark(): boolean {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
-function baseChartOptions(dark: boolean) {
+function baseChartOptions(dark: boolean, width: number, height: number) {
   return {
+    width,
+    height,
     layout: {
       background: { type: ColorType.Solid, color: "transparent" },
       textColor: dark ? "#d4d4d4" : "#404040",
@@ -91,7 +93,6 @@ function baseChartOptions(dark: boolean) {
       secondsVisible: false,
     },
     crosshair: { mode: CrosshairMode.Normal },
-    autoSize: true,
   };
 }
 
@@ -128,7 +129,10 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     if (!mainBox) return;
 
     const dark = isDark();
-    const chart = createChart(mainBox, baseChartOptions(dark));
+    const mainRect = mainBox.getBoundingClientRect();
+    const mainW = Math.max(1, Math.floor(mainRect.width));
+    const mainH = Math.max(1, Math.floor(mainRect.height));
+    const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
     const candleSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
       CandlestickSeries,
       {
@@ -324,7 +328,10 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     let subChart: IChartApi | null = null;
     const subBox = subBoxRef.current;
     if (hasSubPanel && subBox) {
-      subChart = createChart(subBox, baseChartOptions(dark));
+      const subRect = subBox.getBoundingClientRect();
+      const subW = Math.max(1, Math.floor(subRect.width));
+      const subH = Math.max(1, Math.floor(subRect.height));
+      subChart = createChart(subBox, baseChartOptions(dark, subW, subH));
 
       if (strategy === "rsi") {
         const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };
@@ -471,7 +478,36 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       if (r) chart.timeScale().setVisibleLogicalRange(r);
     });
 
+    const mainObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          chart.applyOptions({ width: Math.floor(width), height: Math.floor(height) });
+        }
+      }
+    });
+    mainObserver.observe(mainBox);
+
+    let subObserver: ResizeObserver | null = null;
+    if (subChart && subBox) {
+      const localSub = subChart;
+      subObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            localSub.applyOptions({
+              width: Math.floor(width),
+              height: Math.floor(height),
+            });
+          }
+        }
+      });
+      subObserver.observe(subBox);
+    }
+
     return () => {
+      mainObserver.disconnect();
+      subObserver?.disconnect();
       subChart?.remove();
       chart.remove();
     };

@@ -144,15 +144,23 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         wickDownColor: "#ef4444",
       },
     );
-    candleSeries.setData(
-      candles.map((c) => ({
+    const candleData = candles
+      .filter(
+        (c) =>
+          Number.isFinite(c.timestamp) &&
+          Number.isFinite(c.open) &&
+          Number.isFinite(c.high) &&
+          Number.isFinite(c.low) &&
+          Number.isFinite(c.close),
+      )
+      .map((c) => ({
         time: toTime(c.timestamp),
         open: c.open,
         high: c.high,
         low: c.low,
         close: c.close,
-      })),
-    );
+      }));
+    candleSeries.setData(candleData);
 
     // Buy/Sell markers from the strategy's signals.
     const markers: SeriesMarker<UTCTimestamp>[] = [];

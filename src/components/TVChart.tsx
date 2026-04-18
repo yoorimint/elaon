@@ -488,11 +488,18 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       if (r) chart.timeScale().setVisibleLogicalRange(r);
     });
 
+    // Resize on actual size changes only (not on initial same-size observation).
+    let lastMainW = boxW;
+    let lastMainH = boxH;
     const mainObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          chart.applyOptions({ width: Math.floor(width), height: Math.floor(height) });
+        const w = Math.floor(entry.contentRect.width);
+        const h = Math.floor(entry.contentRect.height);
+        if (w > 0 && h > 0 && (w !== lastMainW || h !== lastMainH)) {
+          lastMainW = w;
+          lastMainH = h;
+          chart.applyOptions({ width: w, height: h });
+          chart.timeScale().fitContent();
         }
       }
     });
@@ -501,19 +508,26 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     let subObserver: ResizeObserver | null = null;
     if (subChart && subBox) {
       const localSub = subChart;
+      const subRect0 = subBox.getBoundingClientRect();
+      let lastSubW = Math.floor(subRect0.width);
+      let lastSubH = Math.floor(subRect0.height);
       subObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
-          const { width, height } = entry.contentRect;
-          if (width > 0 && height > 0) {
-            localSub.applyOptions({
-              width: Math.floor(width),
-              height: Math.floor(height),
-            });
+          const w = Math.floor(entry.contentRect.width);
+          const h = Math.floor(entry.contentRect.height);
+          if (w > 0 && h > 0 && (w !== lastSubW || h !== lastSubH)) {
+            lastSubW = w;
+            lastSubH = h;
+            localSub.applyOptions({ width: w, height: h });
+            localSub.timeScale().fitContent();
           }
         }
       });
       subObserver.observe(subBox);
     }
+
+    // Force a fit right at the end so data range matches the visible window.
+    chart.timeScale().fitContent();
 
     return () => {
       mainObserver.disconnect();

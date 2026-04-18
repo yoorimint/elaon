@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { IChartApi, ISeriesApi, Time, UTCTimestamp } from "lightweight-charts";
+import {
+  createChart,
+  CandlestickSeries,
+  ColorType,
+  CrosshairMode,
+  type IChartApi,
+  type ISeriesApi,
+  type UTCTimestamp,
+} from "lightweight-charts";
 import type { Candle } from "@/lib/upbit";
 import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
 
@@ -12,14 +20,37 @@ export type TVChartProps = {
   params: StrategyParams;
 };
 
-type ChartRefs = {
-  main: IChartApi | null;
-  sub: IChartApi | null;
-  priceSeries: ISeriesApi<"Line" | "Candlestick"> | null;
-};
-
 function toTime(ms: number): UTCTimestamp {
   return Math.floor(ms / 1000) as UTCTimestamp;
+}
+
+function isDark(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
+
+function baseChartOptions(dark: boolean) {
+  return {
+    layout: {
+      background: { type: ColorType.Solid, color: "transparent" },
+      textColor: dark ? "#d4d4d4" : "#404040",
+      fontSize: 11,
+    },
+    grid: {
+      vertLines: { color: dark ? "#27272a" : "#f4f4f5" },
+      horzLines: { color: dark ? "#27272a" : "#f4f4f5" },
+    },
+    rightPriceScale: {
+      borderColor: dark ? "#3f3f46" : "#e5e5e5",
+    },
+    timeScale: {
+      borderColor: dark ? "#3f3f46" : "#e5e5e5",
+      timeVisible: false,
+      secondsVisible: false,
+    },
+    crosshair: { mode: CrosshairMode.Normal },
+    autoSize: true,
+  };
 }
 
 function subtitleFor(strategy: StrategyId): string {
@@ -48,15 +79,54 @@ const OSCILLATOR_STRATEGIES: readonly StrategyId[] = ["rsi", "macd", "stoch"];
 export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
-  const refs = useRef<ChartRefs>({ main: null, sub: null, priceSeries: null });
   const hasSubPanel = OSCILLATOR_STRATEGIES.includes(strategy);
 
   useEffect(() => {
-    // Chart lifecycle setup populated in subsequent passes.
-    void candles;
-    void signals;
-    void params;
-    void refs;
+    const mainBox = mainBoxRef.current;
+    if (!mainBox) return;
+
+    const dark = isDark();
+    const chart = createChart(mainBox, baseChartOptions(dark));
+    const candleSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
+      CandlestickSeries,
+      {
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderUpColor: "#059669",
+        borderDownColor: "#dc2626",
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+      },
+    );
+    candleSeries.setData(
+      candles.map((c) => ({
+        time: toTime(c.timestamp),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      })),
+    );
+    chart.timeScale().fitContent();
+
+    let subChart: IChartApi | null = null;
+    const subBox = subBoxRef.current;
+    if (hasSubPanel && subBox) {
+      subChart = createChart(subBox, baseChartOptions(dark));
+    }
+
+    // Sync time scales between main and sub (unsubscription happens on chart.remove()).
+    chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
+      if (r && subChart) subChart.timeScale().setVisibleLogicalRange(r);
+    });
+    subChart?.timeScale().subscribeVisibleLogicalRangeChange((r) => {
+      if (r) chart.timeScale().setVisibleLogicalRange(r);
+    });
+
+    return () => {
+      subChart?.remove();
+      chart.remove();
+    };
   }, [candles, signals, strategy, params, hasSubPanel]);
 
   const subtitle = subtitleFor(strategy);
@@ -79,5 +149,3 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     </div>
   );
 }
-
-void toTime;

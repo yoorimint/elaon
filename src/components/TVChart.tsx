@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import {
   createChart,
-  CandlestickSeries,
   LineSeries,
   AreaSeries,
   HistogramSeries,
@@ -133,34 +132,21 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     const mainW = Math.max(1, Math.floor(mainRect.width));
     const mainH = Math.max(1, Math.floor(mainRect.height));
     const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
-    const candleSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
-      CandlestickSeries,
-      {
-        upColor: "#10b981",
-        downColor: "#ef4444",
-        borderUpColor: "#059669",
-        borderDownColor: "#dc2626",
-        wickUpColor: "#10b981",
-        wickDownColor: "#ef4444",
-      },
-    );
-    const candleData = candles
-      .filter(
-        (c) =>
-          Number.isFinite(c.timestamp) &&
-          Number.isFinite(c.open) &&
-          Number.isFinite(c.high) &&
-          Number.isFinite(c.low) &&
-          Number.isFinite(c.close),
-      )
-      .map((c) => ({
-        time: toTime(c.timestamp),
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-      }));
-    candleSeries.setData(candleData);
+    const priceSeries: ISeriesApi<"Area"> = chart.addSeries(AreaSeries, {
+      topColor: "rgba(247, 147, 26, 0.28)",
+      bottomColor: "rgba(247, 147, 26, 0.02)",
+      lineColor: "#f7931a",
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title: "종가",
+    });
+    const priceData: LineData<UTCTimestamp>[] = [];
+    for (const c of candles) {
+      if (!Number.isFinite(c.timestamp) || !Number.isFinite(c.close)) continue;
+      priceData.push({ time: toTime(c.timestamp), value: c.close });
+    }
+    priceSeries.setData(priceData);
 
     // Buy/Sell markers from the strategy's signals.
     const markers: SeriesMarker<UTCTimestamp>[] = [];
@@ -191,7 +177,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       }
     }
     if (markers.length > 0) {
-      createSeriesMarkers(candleSeries, markers);
+      createSeriesMarkers(priceSeries, markers);
     }
 
     // === Indicator overlays on the main chart ===

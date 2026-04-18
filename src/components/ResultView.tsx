@@ -3,7 +3,9 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { BacktestResult } from "@/lib/backtest";
 import type { Candle } from "@/lib/upbit";
+import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
 import { PriceChart } from "./PriceChart";
+import { IndicatorChart } from "./IndicatorChart";
 
 function formatKRW(n: number) {
   return new Intl.NumberFormat("ko-KR").format(Math.round(n));
@@ -27,9 +29,15 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "po
 export function ResultView({
   result,
   candles,
+  signals,
+  strategy,
+  params,
 }: {
   result: BacktestResult;
   candles?: Candle[];
+  signals?: Signal[];
+  strategy?: StrategyId;
+  params?: StrategyParams;
 }) {
   const data = result.equity.map((p) => ({
     date: new Date(p.timestamp).toISOString().slice(0, 10),
@@ -79,7 +87,16 @@ export function ResultView({
 
       {candles && candles.length > 0 && (
         <div className="mt-6">
-          <PriceChart candles={candles} trades={result.trades} />
+          {signals && strategy && params ? (
+            <IndicatorChart
+              candles={candles}
+              signals={signals}
+              strategy={strategy}
+              params={params}
+            />
+          ) : (
+            <PriceChart candles={candles} trades={result.trades} />
+          )}
         </div>
       )}
 

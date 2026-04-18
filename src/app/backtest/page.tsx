@@ -10,7 +10,13 @@ import {
   type Timeframe,
   type UpbitMarket,
 } from "@/lib/upbit";
-import { STRATEGIES, computeSignals, type StrategyId } from "@/lib/strategies";
+import {
+  STRATEGIES,
+  computeSignals,
+  type Signal,
+  type StrategyId,
+  type StrategyParams,
+} from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
@@ -100,6 +106,9 @@ export default function BacktestPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [priceCandles, setPriceCandles] = useState<Candle[] | null>(null);
+  const [runSignals, setRunSignals] = useState<Signal[] | null>(null);
+  const [runStrategy, setRunStrategy] = useState<StrategyId | null>(null);
+  const [runParams, setRunParams] = useState<StrategyParams | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -124,6 +133,9 @@ export default function BacktestPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setRunSignals(null);
+    setRunStrategy(null);
+    setRunParams(null);
     setShareUrl(null);
     try {
       const fromMs = new Date(dateFrom).getTime();
@@ -139,6 +151,31 @@ export default function BacktestPage() {
         setGridLow(Math.round(gLow));
         setGridHigh(Math.round(gHigh));
       }
+      const paramsSnapshot: StrategyParams = {
+        ma_cross: { short: shortMa, long: longMa },
+        rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+        bollinger: { period: bbPeriod, stddev: bbStddev },
+        macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
+        breakout: { k: breakoutK },
+        stoch: {
+          period: stochPeriod,
+          smooth: stochSmooth,
+          oversold: stochLow,
+          overbought: stochHigh,
+        },
+        ichimoku: {
+          conversion: ichimokuConv,
+          base: ichimokuBase,
+          lagging: ichimokuLag,
+        },
+        dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
+        ma_dca: {
+          intervalDays: dcaInterval,
+          amountKRW: dcaAmount,
+          maPeriod: maDcaMaPeriod,
+        },
+        grid: { low: gLow, high: gHigh, grids: gridCount },
+      };
       let signals;
       if (strategy === "custom") {
         if (customBuy.length === 0) throw new Error("매수 조건을 1개 이상 추가해주세요");
@@ -149,40 +186,14 @@ export default function BacktestPage() {
           takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
         });
       } else {
-        signals = computeSignals(
-          data,
-          strategy,
-          {
-            ma_cross: { short: shortMa, long: longMa },
-            rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-            bollinger: { period: bbPeriod, stddev: bbStddev },
-            macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
-            breakout: { k: breakoutK },
-            stoch: {
-              period: stochPeriod,
-              smooth: stochSmooth,
-              oversold: stochLow,
-              overbought: stochHigh,
-            },
-            ichimoku: {
-              conversion: ichimokuConv,
-              base: ichimokuBase,
-              lagging: ichimokuLag,
-            },
-            dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
-            ma_dca: {
-              intervalDays: dcaInterval,
-              amountKRW: dcaAmount,
-              maPeriod: maDcaMaPeriod,
-            },
-            grid: { low: gLow, high: gHigh, grids: gridCount },
-          },
-          { initialCash },
-        );
+        signals = computeSignals(data, strategy, paramsSnapshot, { initialCash });
       }
       const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
       setResult(r);
       setPriceCandles(data);
+      setRunSignals(signals);
+      setRunStrategy(strategy);
+      setRunParams(paramsSnapshot);
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {
@@ -866,7 +877,13 @@ export default function BacktestPage() {
               </a>
             )}
           </div>
-          <ResultView result={result} candles={priceCandles} />
+          <ResultView
+            result={result}
+            candles={priceCandles}
+            signals={runSignals ?? undefined}
+            strategy={runStrategy ?? undefined}
+            params={runParams ?? undefined}
+          />
         </section>
       )}
     </main>

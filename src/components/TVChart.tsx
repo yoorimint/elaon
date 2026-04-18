@@ -6,9 +6,12 @@ import {
   CandlestickSeries,
   LineSeries,
   AreaSeries,
+  HistogramSeries,
   ColorType,
   CrosshairMode,
+  LineStyle,
   createSeriesMarkers,
+  type HistogramData,
   type IChartApi,
   type ISeriesApi,
   type LineData,
@@ -21,7 +24,10 @@ import {
   type StrategyId,
   type StrategyParams,
   sma,
+  ema,
   stddev,
+  rsi as rsiCalc,
+  stochK as stochKCalc,
 } from "@/lib/strategies";
 
 export type TVChartProps = {
@@ -319,6 +325,142 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     const subBox = subBoxRef.current;
     if (hasSubPanel && subBox) {
       subChart = createChart(subBox, baseChartOptions(dark));
+
+      if (strategy === "rsi") {
+        const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };
+        const rsiLine = subChart.addSeries(LineSeries, {
+          color: "#8b5cf6",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: "RSI",
+        });
+        rsiLine.setData(toLineData(candles, rsiCalc(closes, p.period)));
+        rsiLine.createPriceLine({
+          price: p.overbought,
+          color: "#ef4444",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "과매수",
+        });
+        rsiLine.createPriceLine({
+          price: p.oversold,
+          color: "#10b981",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "과매도",
+        });
+      }
+
+      if (strategy === "macd") {
+        const p = params.macd ?? { fast: 12, slow: 26, signal: 9 };
+        const fastE = ema(closes, p.fast);
+        const slowE = ema(closes, p.slow);
+        const macdLine = closes.map((_, i) => {
+          const f = fastE[i];
+          const s = slowE[i];
+          return f != null && s != null ? f - s : null;
+        });
+        const validForSignal = macdLine.map((v) => (v == null ? 0 : v));
+        const signalLine = ema(validForSignal, p.signal);
+        const hist = macdLine.map((v, i) =>
+          v != null && signalLine[i] != null ? v - (signalLine[i] as number) : null,
+        );
+
+        const histSeries = subChart.addSeries(HistogramSeries, {
+          priceLineVisible: false,
+          lastValueVisible: false,
+          title: "히스토그램",
+        });
+        const histData: HistogramData<UTCTimestamp>[] = [];
+        for (let i = 0; i < candles.length; i++) {
+          const v = hist[i];
+          if (v == null) continue;
+          histData.push({
+            time: toTime(candles[i].timestamp),
+            value: v,
+            color: v >= 0 ? "rgba(16, 185, 129, 0.6)" : "rgba(239, 68, 68, 0.6)",
+          });
+        }
+        histSeries.setData(histData);
+
+        const macdSeries = subChart.addSeries(LineSeries, {
+          color: "#3b82f6",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: "MACD",
+        });
+        macdSeries.setData(toLineData(candles, macdLine));
+
+        const signalSeries = subChart.addSeries(LineSeries, {
+          color: "#ef4444",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: "Signal",
+        });
+        signalSeries.setData(toLineData(candles, signalLine));
+
+        macdSeries.createPriceLine({
+          price: 0,
+          color: "#a3a3a3",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: false,
+          title: "",
+        });
+      }
+
+      if (strategy === "stoch") {
+        const p = params.stoch ?? {
+          period: 14,
+          smooth: 3,
+          oversold: 20,
+          overbought: 80,
+        };
+        const k = stochKCalc(candles, p.period);
+        const kValid = k.map((v) => (v == null ? 50 : v));
+        const d = sma(kValid, p.smooth);
+
+        const kSeries = subChart.addSeries(LineSeries, {
+          color: "#8b5cf6",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: "%K",
+        });
+        kSeries.setData(toLineData(candles, k));
+        const dSeries = subChart.addSeries(LineSeries, {
+          color: "#f59e0b",
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: "%D",
+        });
+        dSeries.setData(toLineData(candles, d));
+
+        kSeries.createPriceLine({
+          price: p.overbought,
+          color: "#ef4444",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "과매수",
+        });
+        kSeries.createPriceLine({
+          price: p.oversold,
+          color: "#10b981",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "과매도",
+        });
+      }
+
+      subChart.timeScale().fitContent();
     }
 
     // Sync time scales between main and sub (unsubscription happens on chart.remove()).

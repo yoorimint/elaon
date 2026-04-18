@@ -4,8 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import type { BacktestResult } from "@/lib/backtest";
 import type { Candle } from "@/lib/upbit";
 import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
-import { PriceChart } from "./PriceChart";
-import { IndicatorChart } from "./IndicatorChart";
+import { TVChart } from "./TVChart";
 
 function formatKRW(n: number) {
   return new Intl.NumberFormat("ko-KR").format(Math.round(n));
@@ -85,18 +84,14 @@ export function ResultView({
         )}
       </div>
 
-      {candles && candles.length > 0 && (
+      {candles && candles.length > 0 && signals && strategy && params && (
         <div className="mt-6">
-          {signals && strategy && params ? (
-            <IndicatorChart
-              candles={candles}
-              signals={signals}
-              strategy={strategy}
-              params={params}
-            />
-          ) : (
-            <PriceChart candles={candles} trades={result.trades} />
-          )}
+          <TVChart
+            candles={candles}
+            signals={signals}
+            strategy={strategy}
+            params={params}
+          />
         </div>
       )}
 

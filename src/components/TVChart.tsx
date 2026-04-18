@@ -4,16 +4,25 @@ import { useEffect, useRef } from "react";
 import {
   createChart,
   CandlestickSeries,
+  LineSeries,
+  AreaSeries,
   ColorType,
   CrosshairMode,
   createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type LineData,
   type SeriesMarker,
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/upbit";
-import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
+import {
+  type Signal,
+  type StrategyId,
+  type StrategyParams,
+  sma,
+  stddev,
+} from "@/lib/strategies";
 
 export type TVChartProps = {
   candles: Candle[];
@@ -24,6 +33,31 @@ export type TVChartProps = {
 
 function toTime(ms: number): UTCTimestamp {
   return Math.floor(ms / 1000) as UTCTimestamp;
+}
+
+function toLineData(
+  candles: Candle[],
+  values: (number | null)[],
+): LineData<UTCTimestamp>[] {
+  const out: LineData<UTCTimestamp>[] = [];
+  for (let i = 0; i < candles.length; i++) {
+    const v = values[i];
+    if (v == null || !Number.isFinite(v)) continue;
+    out.push({ time: toTime(candles[i].timestamp), value: v });
+  }
+  return out;
+}
+
+function rangeHigh(candles: Candle[], i: number, n: number): number {
+  let m = -Infinity;
+  for (let k = Math.max(0, i - n + 1); k <= i; k++) m = Math.max(m, candles[k].high);
+  return m;
+}
+
+function rangeLow(candles: Candle[], i: number, n: number): number {
+  let m = Infinity;
+  for (let k = Math.max(0, i - n + 1); k <= i; k++) m = Math.min(m, candles[k].low);
+  return m;
 }
 
 function isDark(): boolean {
@@ -142,7 +176,144 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       createSeriesMarkers(candleSeries, markers);
     }
 
-    chart.timeScale().fitContent();
+    // === Indicator overlays on the main chart ===
+    const closes = candles.map((c) => c.close);
+
+    if (strategy === "ma_cross") {
+      const p = params.ma_cross ?? { short: 20, long: 60 };
+      const shortLine = chart.addSeries(LineSeries, {
+        color: "#3b82f6",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: `MA${p.short}`,
+      });
+      shortLine.setData(toLineData(candles, sma(closes, p.short)));
+      const longLine = chart.addSeries(LineSeries, {
+        color: "#ef4444",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: `MA${p.long}`,
+      });
+      longLine.setData(toLineData(candles, sma(closes, p.long)));
+    }
+
+    if (strategy === "ma_dca") {
+      const p = params.ma_dca ?? { intervalDays: 7, amountKRW: 100000, maPeriod: 60 };
+      const maLine = chart.addSeries(LineSeries, {
+        color: "#3b82f6",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: `MA${p.maPeriod}`,
+      });
+      maLine.setData(toLineData(candles, sma(closes, p.maPeriod)));
+    }
+
+    if (strategy === "bollinger") {
+      const p = params.bollinger ?? { period: 20, stddev: 2 };
+      const mid = sma(closes, p.period);
+      const sd = stddev(closes, p.period);
+      const upper = mid.map((m, i) =>
+        m != null && sd[i] != null ? m + p.stddev * (sd[i] as number) : null,
+      );
+      const lower = mid.map((m, i) =>
+        m != null && sd[i] != null ? m - p.stddev * (sd[i] as number) : null,
+      );
+      const upperLine = chart.addSeries(LineSeries, {
+        color: "#60a5fa",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "BB 상단",
+      });
+      upperLine.setData(toLineData(candles, upper));
+      const midLine = chart.addSeries(LineSeries, {
+        color: "#60a5fa",
+        lineWidth: 1,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "BB 중심",
+      });
+      midLine.setData(toLineData(candles, mid));
+      const lowerLine = chart.addSeries(LineSeries, {
+        color: "#60a5fa",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "BB 하단",
+      });
+      lowerLine.setData(toLineData(candles, lower));
+    }
+
+    if (strategy === "ichimoku") {
+      const p = params.ichimoku ?? { conversion: 9, base: 26, lagging: 52 };
+      const conv: (number | null)[] = [];
+      const baseArr: (number | null)[] = [];
+      const spanA: (number | null)[] = [];
+      const spanB: (number | null)[] = [];
+      for (let i = 0; i < candles.length; i++) {
+        if (i < p.lagging + p.base) {
+          conv.push(null);
+          baseArr.push(null);
+          spanA.push(null);
+          spanB.push(null);
+          continue;
+        }
+        const c =
+          (rangeHigh(candles, i, p.conversion) + rangeLow(candles, i, p.conversion)) /
+          2;
+        const b = (rangeHigh(candles, i, p.base) + rangeLow(candles, i, p.base)) / 2;
+        const a = (c + b) / 2;
+        const spanBIdx = i - p.base;
+        const bb =
+          (rangeHigh(candles, spanBIdx, p.lagging) +
+            rangeLow(candles, spanBIdx, p.lagging)) /
+          2;
+        conv.push(c);
+        baseArr.push(b);
+        spanA.push(a);
+        spanB.push(bb);
+      }
+      const convLine = chart.addSeries(LineSeries, {
+        color: "#3b82f6",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "전환선",
+      });
+      convLine.setData(toLineData(candles, conv));
+      const baseLine = chart.addSeries(LineSeries, {
+        color: "#ef4444",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "기준선",
+      });
+      baseLine.setData(toLineData(candles, baseArr));
+      const spanALine = chart.addSeries(AreaSeries, {
+        topColor: "rgba(134, 239, 172, 0.3)",
+        bottomColor: "rgba(134, 239, 172, 0.05)",
+        lineColor: "#86efac",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "선행 A",
+      });
+      spanALine.setData(toLineData(candles, spanA));
+      const spanBLine = chart.addSeries(AreaSeries, {
+        topColor: "rgba(252, 165, 165, 0.2)",
+        bottomColor: "rgba(252, 165, 165, 0.05)",
+        lineColor: "#fca5a5",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "선행 B",
+      });
+      spanBLine.setData(toLineData(candles, spanB));
+    }
 
     let subChart: IChartApi | null = null;
     const subBox = subBoxRef.current;

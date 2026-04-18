@@ -6,8 +6,10 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type SeriesMarker,
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/upbit";
@@ -107,6 +109,39 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         close: c.close,
       })),
     );
+
+    // Buy/Sell markers from the strategy's signals.
+    const markers: SeriesMarker<UTCTimestamp>[] = [];
+    for (let i = 0; i < signals.length; i++) {
+      const s = signals[i];
+      const t = toTime(candles[i].timestamp);
+      const isBuy =
+        s === "buy" || (typeof s === "object" && s !== null && "buy_krw" in s);
+      const isSell =
+        s === "sell" ||
+        (typeof s === "object" && s !== null && "sell_qty_frac" in s);
+      if (isBuy) {
+        markers.push({
+          time: t,
+          position: "belowBar",
+          color: "#10b981",
+          shape: "arrowUp",
+          text: "매수",
+        });
+      } else if (isSell) {
+        markers.push({
+          time: t,
+          position: "aboveBar",
+          color: "#ef4444",
+          shape: "arrowDown",
+          text: "매도",
+        });
+      }
+    }
+    if (markers.length > 0) {
+      createSeriesMarkers(candleSeries, markers);
+    }
+
     chart.timeScale().fitContent();
 
     let subChart: IChartApi | null = null;

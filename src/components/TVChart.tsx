@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   LineSeries,
@@ -122,16 +122,32 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
   const hasSubPanel = OSCILLATOR_STRATEGIES.includes(strategy);
+  const [debug, setDebug] = useState<string>("init");
 
   useEffect(() => {
     const mainBox = mainBoxRef.current;
-    if (!mainBox) return;
+    if (!mainBox) {
+      setDebug("mainBox ref null");
+      return;
+    }
+    const firstClose = candles[0]?.close;
+    const lastClose = candles[candles.length - 1]?.close;
+    const boxW = Math.floor(mainBox.getBoundingClientRect().width);
+    const boxH = Math.floor(mainBox.getBoundingClientRect().height);
+    setDebug(
+      `candles=${candles.length} first=${firstClose} last=${lastClose} box=${boxW}x${boxH}`,
+    );
 
-    const dark = isDark();
-    const mainRect = mainBox.getBoundingClientRect();
-    const mainW = Math.max(1, Math.floor(mainRect.width));
-    const mainH = Math.max(1, Math.floor(mainRect.height));
-    const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
+    let chart: IChartApi;
+    try {
+      const dark = isDark();
+      const mainW = Math.max(1, boxW);
+      const mainH = Math.max(1, boxH);
+      chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
+    } catch (e) {
+      setDebug(`createChart error: ${(e as Error).message}`);
+      return;
+    }
     const priceSeries: ISeriesApi<"Area"> = chart.addSeries(AreaSeries, {
       topColor: "rgba(247, 147, 26, 0.28)",
       bottomColor: "rgba(247, 147, 26, 0.02)",
@@ -325,7 +341,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       const subRect = subBox.getBoundingClientRect();
       const subW = Math.max(1, Math.floor(subRect.width));
       const subH = Math.max(1, Math.floor(subRect.height));
-      subChart = createChart(subBox, baseChartOptions(dark, subW, subH));
+      subChart = createChart(subBox, baseChartOptions(isDark(), subW, subH));
 
       if (strategy === "rsi") {
         const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };
@@ -514,14 +530,17 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       {subtitle && (
         <div className="mb-2 text-xs text-neutral-500">{subtitle}</div>
       )}
+      <div className="mb-1 text-[10px] text-neutral-400 break-all">
+        🔧 {debug}
+      </div>
       <div
         ref={mainBoxRef}
-        className="h-80 sm:h-96 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+        className="h-80 sm:h-96 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden relative"
       />
       {hasSubPanel && (
         <div
           ref={subBoxRef}
-          className="mt-3 h-40 sm:h-48 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+          className="mt-3 h-40 sm:h-48 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden relative"
         />
       )}
     </div>

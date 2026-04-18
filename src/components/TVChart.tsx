@@ -60,20 +60,22 @@ export function TVChart({ candles }: TVChartProps) {
       return;
     }
 
-    const data: LineData<UTCTimestamp>[] = [];
-    for (const c of candles) {
-      if (!Number.isFinite(c.timestamp) || !Number.isFinite(c.close)) continue;
-      data.push({
-        time: Math.floor(c.timestamp / 1000) as UTCTimestamp,
-        value: c.close,
-      });
-    }
+    // Hardcoded smoke test: 5 points on a normalized axis.
+    const data: LineData<UTCTimestamp>[] = [
+      { time: 1700000000 as UTCTimestamp, value: 100 },
+      { time: 1702592000 as UTCTimestamp, value: 150 },
+      { time: 1705184000 as UTCTimestamp, value: 80 },
+      { time: 1707776000 as UTCTimestamp, value: 200 },
+      { time: 1710368000 as UTCTimestamp, value: 120 },
+    ];
 
     try {
       series.setData(data);
       chart.timeScale().fitContent();
+      const vr = chart.timeScale().getVisibleRange();
+      const lr = chart.timeScale().getVisibleLogicalRange();
       setDebug(
-        `OK points=${data.length} firstT=${data[0]?.time} lastT=${data[data.length - 1]?.time} box=${w}x${h}`,
+        `OK points=${data.length} box=${w}x${h} visibleRange=${vr ? `${vr.from}~${vr.to}` : "null"} logical=${lr ? `${lr.from.toFixed(1)}~${lr.to.toFixed(1)}` : "null"}`,
       );
     } catch (e) {
       setDebug(`setData threw: ${(e as Error).message}`);

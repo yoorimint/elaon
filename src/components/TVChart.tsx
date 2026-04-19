@@ -86,6 +86,15 @@ function isDark(): boolean {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
+function koreanPriceFormatter(v: number): string {
+  if (!Number.isFinite(v)) return "-";
+  const abs = Math.abs(v);
+  if (abs >= 100_000_000) return `${(v / 100_000_000).toFixed(2)}억`;
+  if (abs >= 10_000) return `${(v / 10_000).toFixed(1)}만`;
+  if (abs >= 100) return v.toFixed(0);
+  return v.toFixed(2);
+}
+
 function baseChartOptions(dark: boolean, width: number, height: number) {
   return {
     width,
@@ -106,6 +115,9 @@ function baseChartOptions(dark: boolean, width: number, height: number) {
       secondsVisible: false,
     },
     crosshair: { mode: CrosshairMode.Normal },
+    localization: {
+      priceFormatter: koreanPriceFormatter,
+    },
   };
 }
 
@@ -158,7 +170,6 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: true,
-      title: "종가",
     });
     const priceData: LineData<UTCTimestamp>[] = [];
     for (const i of keepIdx) {
@@ -184,7 +195,6 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
           position: "belowBar",
           color: "#10b981",
           shape: "arrowUp",
-          text: "매수",
         });
       } else if (isSell) {
         markers.push({
@@ -192,7 +202,6 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
           position: "aboveBar",
           color: "#ef4444",
           shape: "arrowDown",
-          text: "매도",
         });
       }
     }
@@ -208,7 +217,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 2,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: `MA${p.short}`,
+        title: "",
       });
       shortLine.setData(toLineData(candles, sma(closes, p.short), keepIdx));
       const longLine = chart.addSeries(LineSeries, {
@@ -248,7 +257,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "BB 상단",
+        title: "",
       });
       upperLine.setData(toLineData(candles, upper, keepIdx));
       const midLine = chart.addSeries(LineSeries, {
@@ -257,7 +266,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "BB 중심",
+        title: "",
       });
       midLine.setData(toLineData(candles, mid, keepIdx));
       const lowerLine = chart.addSeries(LineSeries, {
@@ -265,7 +274,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "BB 하단",
+        title: "",
       });
       lowerLine.setData(toLineData(candles, lower, keepIdx));
     }
@@ -304,7 +313,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "전환선",
+        title: "",
       });
       convLine.setData(toLineData(candles, conv, keepIdx));
       const baseLine = chart.addSeries(LineSeries, {
@@ -312,7 +321,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "기준선",
+        title: "",
       });
       baseLine.setData(toLineData(candles, baseArr, keepIdx));
       const spanALine = chart.addSeries(LineSeries, {
@@ -320,7 +329,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "선행 A",
+        title: "",
       });
       spanALine.setData(toLineData(candles, spanA, keepIdx));
       const spanBLine = chart.addSeries(LineSeries, {
@@ -328,7 +337,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "선행 B",
+        title: "",
       });
       spanBLine.setData(toLineData(candles, spanB, keepIdx));
     }
@@ -533,6 +542,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
   }, [candles, signals, strategy, params, hasSubPanel]);
 
   const subtitle = subtitleFor(strategy);
+  const legendItems = legendFor(strategy, params);
 
   return (
     <div>
@@ -541,16 +551,68 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       )}
       <div
         ref={mainBoxRef}
-        style={{ width: "100%", height: "320px", position: "relative" }}
+        style={{ width: "100%", height: "360px", position: "relative" }}
         className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
       />
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-600 dark:text-neutral-300">
+        <LegendDot color="#f7931a" label="종가" />
+        <LegendDot color="#10b981" label="▲ 매수" />
+        <LegendDot color="#ef4444" label="▼ 매도" />
+        {legendItems.map((it) => (
+          <LegendDot key={it.label} color={it.color} label={it.label} />
+        ))}
+      </div>
       {hasSubPanel && (
         <div
           ref={subBoxRef}
-          style={{ width: "100%", height: "176px", position: "relative" }}
+          style={{ width: "100%", height: "200px", position: "relative" }}
           className="mt-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
         />
       )}
     </div>
+  );
+}
+
+type LegendItem = { label: string; color: string };
+
+function legendFor(strategy: StrategyId, params: StrategyParams): LegendItem[] {
+  switch (strategy) {
+    case "ma_cross": {
+      const p = params.ma_cross ?? { short: 20, long: 60 };
+      return [
+        { label: `MA${p.short}`, color: "#3b82f6" },
+        { label: `MA${p.long}`, color: "#ef4444" },
+      ];
+    }
+    case "ma_dca": {
+      const p = params.ma_dca ?? { intervalDays: 7, amountKRW: 100000, maPeriod: 60 };
+      return [{ label: `MA${p.maPeriod}`, color: "#3b82f6" }];
+    }
+    case "bollinger":
+      return [
+        { label: "BB 상/하단", color: "#60a5fa" },
+        { label: "BB 중심", color: "#93c5fd" },
+      ];
+    case "ichimoku":
+      return [
+        { label: "전환선", color: "#3b82f6" },
+        { label: "기준선", color: "#ef4444" },
+        { label: "선행 A", color: "#86efac" },
+        { label: "선행 B", color: "#fca5a5" },
+      ];
+    default:
+      return [];
+  }
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span
+        className="inline-block h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      {label}
+    </span>
   );
 }

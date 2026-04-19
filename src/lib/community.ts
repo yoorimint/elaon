@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type Category = "free" | "strategy" | "question";
 
@@ -45,15 +46,31 @@ export function randomSlug(len = 8) {
   return out;
 }
 
-type PostRow = Omit<Post, "author_username"> & {
-  profiles: { username: string } | null;
-};
+// posts/comments는 author_id가 auth.users(id)를 참조하지만 profiles도
+// auth.users(id)를 참조해서 PostgREST 임베드(`profiles(...)`)가 모호 관계
+// 오류를 냄. 항상 두 쿼리로 나눠 코드에서 author_username을 붙인다.
+export async function fetchUsernameMap(
+  client: SupabaseClient,
+  authorIds: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const ids = Array.from(new Set(authorIds.filter(Boolean)));
+  if (ids.length === 0) return map;
+  const { data, error } = await client
+    .from("profiles")
+    .select("user_id, username")
+    .in("user_id", ids);
+  if (error) return map;
+  for (const p of (data ?? []) as { user_id: string; username: string }[]) {
+    map.set(p.user_id, p.username);
+  }
+  return map;
+}
 
-export async function listPosts(opts: { category?: Category; limit?: number; sort?: "new" | "hot" } = {}): Promise<Post[]> {
-  let q = supabase
-    .from("posts")
-    .select("*, profiles(username)")
-    .limit(opts.limit ?? 50);
+export async function listPosts(
+  opts: { category?: Category; limit?: number; sort?: "new" | "hot" } = {},
+): Promise<Post[]> {
+  let q = supabase.from("posts").select("*").limit(opts.limit ?? 50);
   if (opts.category) q = q.eq("category", opts.category);
   if (opts.sort === "hot") {
     q = q.order("like_count", { ascending: false }).order("created_at", { ascending: false });
@@ -63,22 +80,25 @@ export async function listPosts(opts: { category?: Category; limit?: number; sor
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return (data as PostRow[]).map((p) => ({
-    ...p,
-    author_username: p.profiles?.username,
-  }));
+  const rows = (data ?? []) as Omit<Post, "author_username">[];
+  const usernames = await fetchUsernameMap(
+    supabase,
+    rows.map((r) => r.author_id),
+  );
+  return rows.map((r) => ({ ...r, author_username: usernames.get(r.author_id) }));
 }
 
 export async function getPost(slug: string): Promise<Post | null> {
   const { data, error } = await supabase
     .from("posts")
-    .select("*, profiles(username)")
+    .select("*")
     .eq("slug", slug)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  const row = data as PostRow;
-  return { ...row, author_username: row.profiles?.username };
+  const row = data as Omit<Post, "author_username">;
+  const usernames = await fetchUsernameMap(supabase, [row.author_id]);
+  return { ...row, author_username: usernames.get(row.author_id) };
 }
 
 export async function createPost(input: {
@@ -112,21 +132,19 @@ export async function incrementPostView(slug: string) {
   await supabase.rpc("increment_post_view", { p_slug: slug });
 }
 
-type CommentRow = Omit<Comment, "author_username"> & {
-  profiles: { username: string } | null;
-};
-
 export async function listComments(postId: string): Promise<Comment[]> {
   const { data, error } = await supabase
     .from("comments")
-    .select("*, profiles(username)")
+    .select("*")
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data as CommentRow[]).map((c) => ({
-    ...c,
-    author_username: c.profiles?.username,
-  }));
+  const rows = (data ?? []) as Omit<Comment, "author_username">[];
+  const usernames = await fetchUsernameMap(
+    supabase,
+    rows.map((r) => r.author_id),
+  );
+  return rows.map((r) => ({ ...r, author_username: usernames.get(r.author_id) }));
 }
 
 export async function createComment(postId: string, body: string): Promise<Comment> {
@@ -136,11 +154,12 @@ export async function createComment(postId: string, body: string): Promise<Comme
   const { data, error } = await supabase
     .from("comments")
     .insert({ post_id: postId, author_id: userData.user.id, body })
-    .select("*, profiles(username)")
+    .select("*")
     .single();
   if (error) throw new Error(error.message);
-  const row = data as CommentRow;
-  return { ...row, author_username: row.profiles?.username };
+  const row = data as Omit<Comment, "author_username">;
+  const usernames = await fetchUsernameMap(supabase, [row.author_id]);
+  return { ...row, author_username: usernames.get(row.author_id) };
 }
 
 export async function deleteComment(id: string) {

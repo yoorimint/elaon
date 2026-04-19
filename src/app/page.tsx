@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
-import { categoryLabel, timeAgo, type Category } from "@/lib/community";
+import { categoryLabel, timeAgo, fetchUsernameMap, type Category } from "@/lib/community";
 
 export const revalidate = 30;
 
@@ -24,7 +24,8 @@ type PostRow = {
   view_count: number;
   backtest_slug: string | null;
   created_at: string;
-  profiles: { username: string } | null;
+  author_id: string;
+  author_username?: string;
 };
 
 async function loadHomeData() {
@@ -37,13 +38,21 @@ async function loadHomeData() {
       .limit(6),
     sb
       .from("posts")
-      .select("slug,title,category,comment_count,view_count,backtest_slug,created_at,profiles(username)")
+      .select("slug,title,category,comment_count,view_count,backtest_slug,created_at,author_id")
       .order("created_at", { ascending: false })
       .limit(6),
   ]);
+  const rawPosts = (postsRes.data ?? []) as Omit<PostRow, "author_username">[];
+  const usernames = await fetchUsernameMap(
+    sb,
+    rawPosts.map((p) => p.author_id),
+  );
   return {
     shared: (sharedRes.data ?? []) as SharedRow[],
-    posts: (postsRes.data ?? []) as unknown as PostRow[],
+    posts: rawPosts.map((p) => ({
+      ...p,
+      author_username: usernames.get(p.author_id),
+    })) as PostRow[],
   };
 }
 
@@ -181,7 +190,7 @@ export default async function HomePage() {
                       )}
                     </div>
                     <div className="mt-0.5 text-xs text-neutral-500">
-                      {p.profiles?.username ?? "익명"} · {timeAgo(p.created_at)}
+                      {p.author_username ?? "익명"} · {timeAgo(p.created_at)}
                     </div>
                   </div>
                 </Link>

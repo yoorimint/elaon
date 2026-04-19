@@ -27,6 +27,7 @@ import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { NumInput } from "@/components/NumInput";
+import { MarketPicker } from "@/components/MarketPicker";
 import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
 import {
   computeDIYSignals,
@@ -68,7 +69,6 @@ const POPULAR_MARKETS = [
 export default function BacktestPage() {
   const [markets, setMarkets] = useState<MarketEntry[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
-  const [marketQuery, setMarketQuery] = useState("");
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
   const [strategy, setStrategy] = useState<StrategyId>("ma_cross");
   const [rangePreset, setRangePreset] = useState("365d");
@@ -134,29 +134,6 @@ export default function BacktestPage() {
       .catch(() => setMarkets(STOCK_MARKETS));
   }, []);
 
-  const filteredMarkets = useMemo(() => {
-    const q = marketQuery.trim().toLowerCase();
-    if (!q) return markets;
-    return markets.filter((m) => {
-      return (
-        m.id.toLowerCase().includes(q) ||
-        m.name.toLowerCase().includes(q) ||
-        (m.subtitle?.toLowerCase().includes(q) ?? false)
-      );
-    });
-  }, [markets, marketQuery]);
-
-  const groupedMarkets = useMemo(() => {
-    const crypto = filteredMarkets.filter((m) => m.kind === "crypto");
-    const kr = filteredMarkets.filter((m) => m.kind === "stock_kr");
-    const us = filteredMarkets.filter((m) => m.kind === "stock_us");
-    return { crypto, kr, us };
-  }, [filteredMarkets]);
-
-  const selectedMarket = useMemo(
-    () => markets.find((m) => m.id === market),
-    [markets, market],
-  );
   const currency = currencyOf(market);
 
   const strategyConfig = useMemo(
@@ -300,71 +277,12 @@ export default function BacktestPage() {
 
       <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 sm:p-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
+          <div className="block sm:col-span-2">
             <span className="text-sm font-medium">종목</span>
-            <input
-              type="text"
-              value={marketQuery}
-              onChange={(e) => setMarketQuery(e.target.value)}
-              placeholder="검색 (예: 삼성, BTC, AAPL)"
-              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
-            />
-            <select
-              className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
-              value={market}
-              onChange={(e) => setMarket(e.target.value)}
-              size={1}
-            >
-              {markets.length === 0 ? (
-                <option value="KRW-BTC">KRW-BTC (비트코인)</option>
-              ) : (
-                <>
-                  {selectedMarket &&
-                    !filteredMarkets.some((m) => m.id === selectedMarket.id) && (
-                      <option value={selectedMarket.id}>
-                        {selectedMarket.name} ({selectedMarket.id})
-                      </option>
-                    )}
-                  {groupedMarkets.crypto.length > 0 && (
-                    <optgroup label="코인 (업비트 · KRW)">
-                      {groupedMarkets.crypto.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.id})
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {groupedMarkets.kr.length > 0 && (
-                    <optgroup label="한국 주식 (KRW)">
-                      {groupedMarkets.kr.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.subtitle ?? m.id})
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {groupedMarkets.us.length > 0 && (
-                    <optgroup label="미국 주식 (USD)">
-                      {groupedMarkets.us.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.subtitle ?? m.id})
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </>
-              )}
-            </select>
-            {selectedMarket && (
-              <span className="mt-1 block text-xs text-neutral-500">
-                {selectedMarket.kind === "crypto"
-                  ? "업비트 · KRW"
-                  : selectedMarket.kind === "stock_kr"
-                    ? "한국 주식 · KRW (야후 파이낸스)"
-                    : "미국 주식 · USD (야후 파이낸스)"}
-              </span>
-            )}
-          </label>
+            <div className="mt-1">
+              <MarketPicker markets={markets} value={market} onChange={setMarket} />
+            </div>
+          </div>
 
           <label className="block">
             <span className="text-sm font-medium">타임프레임 (봉 간격)</span>

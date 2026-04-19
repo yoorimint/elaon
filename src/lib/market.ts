@@ -1,10 +1,11 @@
 import type { Candle } from "./upbit";
 import { fetchCandlesBetween, type Timeframe, type UpbitMarket } from "./upbit";
 import { fetchYahooCandles } from "./yahoo";
+import { fetchOkxPerpCandles } from "./okx";
 
 export type Currency = "KRW" | "USD";
 
-export type MarketKind = "crypto" | "stock_kr" | "stock_us";
+export type MarketKind = "crypto" | "crypto_fut" | "stock_kr" | "stock_us";
 
 export type MarketEntry = {
   // Canonical id used throughout the app.
@@ -130,7 +131,52 @@ const US_STOCKS: MarketEntry[] = [
   currency: "USD" as const,
 }));
 
-export const STOCK_MARKETS: MarketEntry[] = [...KOSPI, ...KOSDAQ, ...US_STOCKS];
+// OKX USDT-M 영구선물 (instId: BASE-USDT-SWAP)
+const OKX_PERPS: MarketEntry[] = [
+  ["BTC-USDT-SWAP", "비트코인 (선물)"],
+  ["ETH-USDT-SWAP", "이더리움 (선물)"],
+  ["SOL-USDT-SWAP", "솔라나 (선물)"],
+  ["XRP-USDT-SWAP", "리플 (선물)"],
+  ["DOGE-USDT-SWAP", "도지코인 (선물)"],
+  ["ADA-USDT-SWAP", "에이다 (선물)"],
+  ["BNB-USDT-SWAP", "BNB (선물)"],
+  ["AVAX-USDT-SWAP", "아발란체 (선물)"],
+  ["DOT-USDT-SWAP", "폴카닷 (선물)"],
+  ["LINK-USDT-SWAP", "체인링크 (선물)"],
+  ["TRX-USDT-SWAP", "트론 (선물)"],
+  ["LTC-USDT-SWAP", "라이트코인 (선물)"],
+  ["MATIC-USDT-SWAP", "폴리곤 (선물)"],
+  ["SHIB-USDT-SWAP", "시바이누 (선물)"],
+  ["NEAR-USDT-SWAP", "니어 (선물)"],
+  ["APT-USDT-SWAP", "앱토스 (선물)"],
+  ["ARB-USDT-SWAP", "아비트럼 (선물)"],
+  ["OP-USDT-SWAP", "옵티미즘 (선물)"],
+  ["SUI-USDT-SWAP", "수이 (선물)"],
+  ["INJ-USDT-SWAP", "인젝티브 (선물)"],
+  ["ATOM-USDT-SWAP", "코스모스 (선물)"],
+  ["FIL-USDT-SWAP", "파일코인 (선물)"],
+  ["APE-USDT-SWAP", "에이프코인 (선물)"],
+  ["LDO-USDT-SWAP", "리도 (선물)"],
+  ["TIA-USDT-SWAP", "셀레스티아 (선물)"],
+  ["PEPE-USDT-SWAP", "페페 (선물)"],
+  ["WLD-USDT-SWAP", "월드코인 (선물)"],
+  ["SEI-USDT-SWAP", "세이 (선물)"],
+  ["ORDI-USDT-SWAP", "오디널스 (선물)"],
+  ["TON-USDT-SWAP", "톤 (선물)"],
+].map(([sym, name]) => ({
+  id: `okx_fut:${sym}`,
+  name,
+  subtitle: sym.replace("-USDT-SWAP", ""),
+  kind: "crypto_fut" as const,
+  currency: "USD" as const,
+}));
+
+export const STOCK_MARKETS: MarketEntry[] = [
+  ...OKX_PERPS,
+  ...KOSPI,
+  ...KOSDAQ,
+  ...US_STOCKS,
+];
 
 export function cryptoToEntry(m: UpbitMarket): MarketEntry {
   return {
@@ -143,6 +189,7 @@ export function cryptoToEntry(m: UpbitMarket): MarketEntry {
 }
 
 export function marketKind(marketId: string): MarketKind {
+  if (marketId.startsWith("okx_fut:")) return "crypto_fut";
   if (marketId.startsWith("yahoo:")) {
     const t = marketId.slice("yahoo:".length);
     return t.endsWith(".KS") || t.endsWith(".KQ") ? "stock_kr" : "stock_us";
@@ -152,12 +199,17 @@ export function marketKind(marketId: string): MarketKind {
 
 export function currencyOf(marketId: string): Currency {
   const kind = marketKind(marketId);
-  return kind === "stock_us" ? "USD" : "KRW";
+  return kind === "stock_us" || kind === "crypto_fut" ? "USD" : "KRW";
 }
 
 export function yahooTicker(marketId: string): string | null {
   if (!marketId.startsWith("yahoo:")) return null;
   return marketId.slice("yahoo:".length);
+}
+
+export function okxFutInstId(marketId: string): string | null {
+  if (!marketId.startsWith("okx_fut:")) return null;
+  return marketId.slice("okx_fut:".length);
 }
 
 // Dispatch candle fetch to the right source.
@@ -168,9 +220,9 @@ export async function fetchCandlesForMarket(
   endMs: number,
 ): Promise<Candle[]> {
   const yt = yahooTicker(marketId);
-  if (yt) {
-    return fetchYahooCandles(yt, tf, startMs, endMs);
-  }
+  if (yt) return fetchYahooCandles(yt, tf, startMs, endMs);
+  const inst = okxFutInstId(marketId);
+  if (inst) return fetchOkxPerpCandles(inst, tf, startMs, endMs);
   return fetchCandlesBetween(marketId, tf, startMs, endMs);
 }
 

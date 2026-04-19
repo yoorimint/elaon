@@ -32,8 +32,9 @@ async function loadFullList(
 
 const TABS: { id: MarketKind; label: string }[] = [
   { id: "crypto", label: "코인" },
-  { id: "stock_kr", label: "국내 주식" },
-  { id: "stock_us", label: "해외 주식" },
+  { id: "crypto_fut", label: "선물" },
+  { id: "stock_kr", label: "국내" },
+  { id: "stock_us", label: "해외" },
 ];
 
 const MAX_RESULTS = 300;
@@ -92,6 +93,7 @@ export function MarketPicker({
   const fullSize = useMemo(() => {
     return {
       crypto: markets.filter((m) => m.kind === "crypto").length,
+      crypto_fut: markets.filter((m) => m.kind === "crypto_fut").length,
       stock_kr: krFull.length || markets.filter((m) => m.kind === "stock_kr").length,
       stock_us: usFull.length || markets.filter((m) => m.kind === "stock_us").length,
     };
@@ -122,11 +124,13 @@ export function MarketPicker({
     const kindLabel =
       resolvedSelected?.kind === "crypto"
         ? "업비트"
-        : resolvedSelected?.kind === "stock_kr"
-          ? "국내 주식"
-          : resolvedSelected?.kind === "stock_us"
-            ? "해외 주식"
-            : "종목";
+        : resolvedSelected?.kind === "crypto_fut"
+          ? "OKX 선물"
+          : resolvedSelected?.kind === "stock_kr"
+            ? "국내 주식"
+            : resolvedSelected?.kind === "stock_us"
+              ? "해외 주식"
+              : "종목";
     return (
       <button
         type="button"
@@ -185,9 +189,11 @@ export function MarketPicker({
           placeholder={
             tab === "crypto"
               ? "검색 (예: 비트코인, BTC, XRP)"
-              : tab === "stock_kr"
-                ? "검색 (예: 삼성, Samsung, 005930)"
-                : "검색 (예: Apple, AAPL, TQQQ)"
+              : tab === "crypto_fut"
+                ? "검색 (예: 비트코인, BTC, ETH)"
+                : tab === "stock_kr"
+                  ? "검색 (예: 삼성, Samsung, 005930)"
+                  : "검색 (예: Apple, AAPL, TQQQ)"
           }
           autoFocus
           className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"

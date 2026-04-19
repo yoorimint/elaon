@@ -187,7 +187,12 @@ const picks = [
 
 (async () => {
   // Sanity check: STOCK_MARKETS parsed as expected
-  const expectedKinds = { crypto: 0, stock_kr: 0, stock_us: 0 };
+  const expectedKinds: Record<string, number> = {
+    crypto: 0,
+    crypto_fut: 0,
+    stock_kr: 0,
+    stock_us: 0,
+  };
   for (const m of STOCK_MARKETS) expectedKinds[m.kind]++;
   console.log(
     `STOCK_MARKETS: ${STOCK_MARKETS.length} entries (KR=${expectedKinds.stock_kr}, US=${expectedKinds.stock_us})`,

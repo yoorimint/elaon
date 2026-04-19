@@ -18,8 +18,13 @@ create table if not exists public.shared_backtests (
   trade_count integer not null,
   equity_curve jsonb not null default '[]'::jsonb,
   view_count integer not null default 0,
+  author_id uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+-- 기존 테이블이 있으면 author_id 컬럼만 추가 (멱등)
+alter table public.shared_backtests
+  add column if not exists author_id uuid references auth.users(id) on delete set null;
 
 create index if not exists shared_backtests_slug_idx on public.shared_backtests(slug);
 create index if not exists shared_backtests_created_at_idx on public.shared_backtests(created_at desc);

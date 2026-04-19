@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
-import { timeAgo } from "@/lib/community";
+import { timeAgo, fetchUsernameMap } from "@/lib/community";
 
 export const revalidate = 60;
 
@@ -15,6 +15,8 @@ type RankRow = {
   max_drawdown_pct: number;
   trade_count: number;
   created_at: string;
+  author_id: string | null;
+  author_username?: string;
 };
 
 const PERIODS: { id: string; label: string; days: number | null }[] = [
@@ -32,16 +34,24 @@ async function loadRanks(periodDays: number | null): Promise<RankRow[]> {
   let q = sb
     .from("shared_backtests")
     .select(
-      "slug,market,strategy,days,return_pct,benchmark_return_pct,max_drawdown_pct,trade_count,created_at",
+      "slug,market,strategy,days,return_pct,benchmark_return_pct,max_drawdown_pct,trade_count,created_at,author_id",
     )
     .order("return_pct", { ascending: false })
-    .limit(50);
+    .limit(100);
   if (periodDays !== null) {
     const since = new Date(Date.now() - periodDays * 86400 * 1000).toISOString();
     q = q.gte("created_at", since);
   }
   const { data } = await q;
-  return (data ?? []) as RankRow[];
+  const rows = (data ?? []) as RankRow[];
+  const usernames = await fetchUsernameMap(
+    sb,
+    rows.map((r) => r.author_id ?? "").filter(Boolean),
+  );
+  return rows.map((r) => ({
+    ...r,
+    author_username: r.author_id ? usernames.get(r.author_id) : undefined,
+  }));
 }
 
 export default async function RankingPage({
@@ -106,7 +116,10 @@ export default async function RankingPage({
                       <Link href={`/r/${r.slug}`} className="block hover:text-brand">
                         <div className="font-medium">{r.market}</div>
                         <div className="text-xs text-neutral-500">
-                          {strategyName(r.strategy)} · {r.days}일
+                          {strategyName(r.strategy)} · {r.days}일 ·{" "}
+                          <span className="text-neutral-600 dark:text-neutral-400">
+                            {r.author_username ?? "익명"}
+                          </span>
                         </div>
                       </Link>
                     </td>

@@ -194,12 +194,12 @@ export function MarketPicker({
               }`}
             >
               {t.label}
-              <span className="ml-1 text-[11px] text-neutral-400">
-                {fullSize[t.id]}
-              </span>
             </button>
           );
         })}
+      </div>
+      <div className="mt-1 text-right text-[11px] text-neutral-400">
+        {fullSize[tab].toLocaleString()}개 종목
       </div>
 
       <div className="relative mt-2">
@@ -227,23 +227,26 @@ export function MarketPicker({
       </div>
 
       <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <div ref={scrollRef} className="h-72 overflow-y-auto">
+        <div
+          ref={scrollRef}
+          className="h-72 w-full overflow-x-hidden overflow-y-auto"
+        >
           {list.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-neutral-500">
               {loadingFull ? "불러오는 중..." : "일치하는 종목이 없습니다"}
             </div>
           ) : (
-            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <ul className="w-full divide-y divide-neutral-100 dark:divide-neutral-800">
               {list.map((m) => {
                 const active = m.id === value;
                 const ticker =
                   m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
                 return (
-                  <li key={m.id}>
+                  <li key={m.id} className="min-w-0">
                     <button
                       type="button"
                       onClick={() => handlePick(m.id)}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                      className={`flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
                         active
                           ? "bg-brand/10 text-brand-dark dark:text-brand"
                           : "hover:bg-neutral-50 dark:hover:bg-neutral-900"

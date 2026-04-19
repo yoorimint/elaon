@@ -102,13 +102,13 @@ export function MarketPicker({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`flex-1 min-w-0 rounded-md px-2 py-1.5 text-sm font-medium transition ${
+              className={`flex-1 min-w-0 rounded-md px-1 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
                 active
                   ? "bg-white dark:bg-neutral-800 shadow-sm text-neutral-900 dark:text-white"
                   : "text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
               }`}
             >
-              <span className="truncate">{t.label}</span>
+              {t.label}
               <span className="ml-1 text-[11px] text-neutral-400">
                 {counts[t.id]}
               </span>
@@ -145,7 +145,7 @@ export function MarketPicker({
         </p>
       )}
 
-      <div className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+      <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800"><div className="max-h-60 overflow-y-auto">
         {list.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-neutral-500">
             {searching ? "검색 중..." : "일치하는 종목이 없습니다"}
@@ -166,13 +166,8 @@ export function MarketPicker({
                         : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
                     }`}
                   >
-                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                      <span className="truncate font-medium">{m.name}</span>
-                      {m.subtitle && (
-                        <span className="truncate text-xs text-neutral-500">
-                          {m.subtitle}
-                        </span>
-                      )}
+                    <span className="min-w-0 flex-1 truncate font-medium">
+                      {m.name}
                     </span>
                     <span className="shrink-0 text-[11px] text-neutral-400">
                       {ticker}
@@ -183,6 +178,7 @@ export function MarketPicker({
             })}
           </ul>
         )}
+      </div>
       </div>
 
       {selected && (

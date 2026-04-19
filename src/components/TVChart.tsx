@@ -60,14 +60,27 @@ export function TVChart({ candles }: TVChartProps) {
       return;
     }
 
-    // Hardcoded smoke test: 5 points on a normalized axis.
-    const data: LineData<UTCTimestamp>[] = [
-      { time: 1700000000 as UTCTimestamp, value: 100 },
-      { time: 1702592000 as UTCTimestamp, value: 150 },
-      { time: 1705184000 as UTCTimestamp, value: 80 },
-      { time: 1707776000 as UTCTimestamp, value: 200 },
-      { time: 1710368000 as UTCTimestamp, value: 120 },
-    ];
+    // Real candle data with duplicate-time protection (lightweight-charts requires strictly ascending unique times).
+    const rawData: LineData<UTCTimestamp>[] = [];
+    for (const c of candles) {
+      if (!Number.isFinite(c.timestamp) || !Number.isFinite(c.close)) continue;
+      rawData.push({
+        time: Math.floor(c.timestamp / 1000) as UTCTimestamp,
+        value: c.close,
+      });
+    }
+    rawData.sort((a, b) => (a.time as number) - (b.time as number));
+    const data: LineData<UTCTimestamp>[] = [];
+    let prev = -Infinity;
+    let dropped = 0;
+    for (const p of rawData) {
+      if ((p.time as number) <= prev) {
+        dropped++;
+        continue;
+      }
+      data.push(p);
+      prev = p.time as number;
+    }
 
     try {
       series.setData(data);
@@ -75,7 +88,7 @@ export function TVChart({ candles }: TVChartProps) {
       const vr = chart.timeScale().getVisibleRange();
       const lr = chart.timeScale().getVisibleLogicalRange();
       setDebug(
-        `OK points=${data.length} box=${w}x${h} visibleRange=${vr ? `${vr.from}~${vr.to}` : "null"} logical=${lr ? `${lr.from.toFixed(1)}~${lr.to.toFixed(1)}` : "null"}`,
+        `OK raw=${rawData.length} uniq=${data.length} dropped=${dropped} box=${w}x${h} vr=${vr ? `${vr.from}~${vr.to}` : "null"} lr=${lr ? `${lr.from.toFixed(1)}~${lr.to.toFixed(1)}` : "null"}`,
       );
     } catch (e) {
       setDebug(`setData threw: ${(e as Error).message}`);

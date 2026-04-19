@@ -4,12 +4,13 @@ import { useEffect, useRef } from "react";
 import {
   createChart,
   LineSeries,
-  AreaSeries,
+  CandlestickSeries,
   HistogramSeries,
   ColorType,
   CrosshairMode,
   LineStyle,
   createSeriesMarkers,
+  type CandlestickData,
   type HistogramData,
   type IChartApi,
   type ISeriesApi,
@@ -163,19 +164,37 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
     const mainH = Math.max(1, Math.floor(mainRect.height));
     const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
 
-    const priceSeries: ISeriesApi<"Area"> = chart.addSeries(AreaSeries, {
-      topColor: "rgba(247, 147, 26, 0.28)",
-      bottomColor: "rgba(247, 147, 26, 0.02)",
-      lineColor: "#f7931a",
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-    const priceData: LineData<UTCTimestamp>[] = [];
+    const priceSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
+      CandlestickSeries,
+      {
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderUpColor: "#059669",
+        borderDownColor: "#dc2626",
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+        priceLineVisible: false,
+        lastValueVisible: true,
+      },
+    );
+    const priceData: CandlestickData<UTCTimestamp>[] = [];
     for (const i of keepIdx) {
       const c = candles[i];
-      if (!Number.isFinite(c.close)) continue;
-      priceData.push({ time: allTimes[i], value: c.close });
+      if (
+        !Number.isFinite(c.open) ||
+        !Number.isFinite(c.high) ||
+        !Number.isFinite(c.low) ||
+        !Number.isFinite(c.close)
+      ) {
+        continue;
+      }
+      priceData.push({
+        time: allTimes[i],
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      });
     }
     priceSeries.setData(priceData);
 
@@ -195,6 +214,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
           position: "belowBar",
           color: "#10b981",
           shape: "arrowUp",
+          text: "매수",
         });
       } else if (isSell) {
         markers.push({
@@ -202,6 +222,7 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
           position: "aboveBar",
           color: "#ef4444",
           shape: "arrowDown",
+          text: "매도",
         });
       }
     }
@@ -555,7 +576,8 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
       />
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-600 dark:text-neutral-300">
-        <LegendDot color="#f7931a" label="종가" />
+        <LegendDot color="#10b981" label="양봉" />
+        <LegendDot color="#ef4444" label="음봉" />
         <LegendDot color="#10b981" label="▲ 매수" />
         <LegendDot color="#ef4444" label="▼ 매도" />
         {legendItems.map((it) => (

@@ -179,7 +179,7 @@ export function MarketPicker({
 
   // === EXPANDED VIEW ===
   return (
-    <div>
+    <div className="w-full max-w-full min-w-0">
       <div className="flex gap-1 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1">
         {TABS.map((t) => {
           const active = tab === t.id;
@@ -246,17 +246,21 @@ export function MarketPicker({
                 const ticker =
                   m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
                 return (
-                  <li key={m.id} className="min-w-0">
+                  <li key={m.id} className="block w-full min-w-0">
                     <button
                       type="button"
                       onClick={() => handlePick(m.id)}
-                      className={`flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                      style={{ width: "100%", maxWidth: "100%" }}
+                      className={`flex min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
                         active
                           ? "bg-brand/10 text-brand-dark dark:text-brand"
                           : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
                       }`}
                     >
-                      <span className="min-w-0 flex-1 truncate font-medium">
+                      <span
+                        className="min-w-0 flex-1 overflow-hidden whitespace-nowrap font-medium"
+                        style={{ textOverflow: "ellipsis" }}
+                      >
                         {m.name}
                       </span>
                       <span className="shrink-0 text-[11px] text-neutral-400">

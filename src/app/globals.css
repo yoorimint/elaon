@@ -8,4 +8,11 @@
 
 html, body {
   @apply bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100;
+  overflow-x: hidden;
+}
+
+/* 화면 폭을 넘는 가로 스크롤을 원천 차단 (모바일 overflow 방지) */
+#__next, main {
+  max-width: 100%;
+  overflow-x: hidden;
 }

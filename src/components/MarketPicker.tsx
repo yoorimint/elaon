@@ -2,7 +2,32 @@
 
 import { useMemo, useState, useEffect } from "react";
 import type { MarketEntry, MarketKind } from "@/lib/market";
-import { searchYahoo } from "@/lib/yahoo";
+
+type RawEntry = { t: string; n: string };
+
+// Cache fetched full lists so they're loaded at most once per session.
+const fullListCache = new Map<MarketKind, MarketEntry[]>();
+
+async function loadFullList(kind: "stock_kr" | "stock_us"): Promise<MarketEntry[]> {
+  if (fullListCache.has(kind)) return fullListCache.get(kind)!;
+  const url = kind === "stock_us" ? "/data/stocks-us.json" : "/data/stocks-kr.json";
+  try {
+    const res = await fetch(url, { cache: "force-cache" });
+    if (!res.ok) return [];
+    const raw = (await res.json()) as RawEntry[];
+    const mapped: MarketEntry[] = raw.map((r) => ({
+      id: `yahoo:${r.t}`,
+      name: r.n,
+      subtitle: r.t,
+      kind,
+      currency: kind === "stock_us" ? "USD" : "KRW",
+    }));
+    fullListCache.set(kind, mapped);
+    return mapped;
+  } catch {
+    return [];
+  }
+}
 
 const TABS: { id: MarketKind; label: string; suffix: string }[] = [
   { id: "crypto", label: "코인", suffix: "KRW" },
@@ -22,75 +47,76 @@ export function MarketPicker({
   const selected = markets.find((m) => m.id === value);
   const [tab, setTab] = useState<MarketKind>(selected?.kind ?? "crypto");
   const [query, setQuery] = useState("");
-  const [remoteHits, setRemoteHits] = useState<MarketEntry[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [krFull, setKrFull] = useState<MarketEntry[]>([]);
+  const [usFull, setUsFull] = useState<MarketEntry[]>([]);
+  const [loadingFull, setLoadingFull] = useState(false);
 
-  // Follow selection when it changes externally (e.g., share page load).
+  // Follow selection when it changes externally.
   useEffect(() => {
     if (selected && selected.kind !== tab) setTab(selected.kind);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
-  // Debounced Yahoo live search (stock tabs only; 300ms).
+  // Lazy-load the full list when a stock tab becomes active.
   useEffect(() => {
-    if (tab === "crypto") {
-      setRemoteHits([]);
-      setSearching(false);
-      return;
+    if (tab === "stock_kr" && krFull.length === 0) {
+      setLoadingFull(true);
+      loadFullList("stock_kr").then((list) => {
+        setKrFull(list);
+        setLoadingFull(false);
+      });
+    } else if (tab === "stock_us" && usFull.length === 0) {
+      setLoadingFull(true);
+      loadFullList("stock_us").then((list) => {
+        setUsFull(list);
+        setLoadingFull(false);
+      });
     }
-    const q = query.trim();
-    if (q.length < 1) {
-      setRemoteHits([]);
-      setSearching(false);
-      return;
-    }
-    setSearching(true);
-    const handle = setTimeout(async () => {
-      const hits = await searchYahoo(q);
-      // keep only the tab's kind
-      setRemoteHits(hits.filter((h) => h.kind === tab));
-      setSearching(false);
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [query, tab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const MAX_RESULTS = 150;
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     const tabItems = markets.filter((m) => m.kind === tab);
-    // 기본(빈 검색): 인기 하드코딩 리스트만
-    if (!q) return tabItems;
-    // 코인은 업비트 전체를 이미 들고 있으므로 로컬 필터만
     if (tab === "crypto") {
-      return tabItems.filter(
-        (m) =>
-          m.id.toLowerCase().includes(q) ||
-          m.name.toLowerCase().includes(q) ||
-          (m.subtitle?.toLowerCase().includes(q) ?? false),
-      );
+      // 코인: 업비트 전체 목록이 이미 로컬
+      if (!q) return tabItems.slice(0, MAX_RESULTS);
+      return tabItems
+        .filter(
+          (m) =>
+            m.id.toLowerCase().includes(q) ||
+            m.name.toLowerCase().includes(q) ||
+            (m.subtitle?.toLowerCase().includes(q) ?? false),
+        )
+        .slice(0, MAX_RESULTS);
     }
-    // 주식: 로컬 매칭 + 야후 라이브 검색 결과 병합(중복 제거)
-    const localMatches = tabItems.filter(
+
+    // 주식 탭: full list 사용
+    const full = tab === "stock_kr" ? krFull : usFull;
+    const source = full.length > 0 ? full : tabItems;
+
+    // 빈 쿼리: 인기 하드코딩 먼저 보여주기
+    if (!q) return tabItems.slice(0, MAX_RESULTS);
+
+    const match = source.filter(
       (m) =>
         m.id.toLowerCase().includes(q) ||
         m.name.toLowerCase().includes(q) ||
         (m.subtitle?.toLowerCase().includes(q) ?? false),
     );
-    const seen = new Set(localMatches.map((m) => m.id));
-    const combined = [...localMatches];
-    for (const h of remoteHits) {
-      if (!seen.has(h.id)) {
-        combined.push(h);
-        seen.add(h.id);
-      }
-    }
-    return combined;
-  }, [markets, tab, query, remoteHits]);
+    return match.slice(0, MAX_RESULTS);
+  }, [markets, tab, query, krFull, usFull]);
 
   const counts = useMemo(() => {
     const c: Record<MarketKind, number> = { crypto: 0, stock_kr: 0, stock_us: 0 };
     for (const m of markets) c[m.kind]++;
+    // Replace stock counts with full list size when available.
+    if (krFull.length > 0) c.stock_kr = krFull.length;
+    if (usFull.length > 0) c.stock_us = usFull.length;
     return c;
-  }, [markets]);
+  }, [markets, krFull, usFull]);
 
   return (
     <div>
@@ -131,24 +157,27 @@ export function MarketPicker({
           }
           className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
         />
-        {searching && (
+        {loadingFull && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400">
-            검색 중...
+            불러오는 중...
           </span>
         )}
       </div>
-      {tab !== "crypto" && !query && (
+      {tab === "stock_kr" && !query && (
         <p className="mt-1 text-[11px] text-neutral-500">
-          검색하면 야후에 등록된 {tab === "stock_kr" ? "국내" : "해외"} 종목
-          전체에서 찾습니다
-          {tab === "stock_kr" && " · 한글이 안 되면 영문명이나 6자리 티커(005930)"}
+          한글명·영문명·6자리 티커로 검색 가능 (예: 삼성전자, samsung, 005930)
+        </p>
+      )}
+      {tab === "stock_us" && !query && (
+        <p className="mt-1 text-[11px] text-neutral-500">
+          영문명 또는 티커로 검색 (예: Apple, AAPL, Tesla)
         </p>
       )}
 
       <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800"><div className="max-h-60 overflow-y-auto">
         {list.length === 0 ? (
           <div className="px-3 py-6 text-center text-sm text-neutral-500">
-            {searching ? "검색 중..." : "일치하는 종목이 없습니다"}
+            {loadingFull ? "종목 목록 불러오는 중..." : "일치하는 종목이 없습니다"}
           </div>
         ) : (
           <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">

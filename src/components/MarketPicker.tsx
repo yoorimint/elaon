@@ -56,14 +56,16 @@ export function MarketPicker({
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
+              className={`flex-1 min-w-0 rounded-md px-2 py-1.5 text-sm font-medium transition ${
                 active
                   ? "bg-white dark:bg-neutral-800 shadow-sm text-neutral-900 dark:text-white"
                   : "text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
               }`}
             >
-              {t.label}{" "}
-              <span className="text-xs text-neutral-400">({counts[t.id]})</span>
+              <span className="truncate">{t.label}</span>
+              <span className="ml-1 text-[11px] text-neutral-400">
+                {counts[t.id]}
+              </span>
             </button>
           );
         })}
@@ -92,27 +94,28 @@ export function MarketPicker({
           <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {list.map((m) => {
               const active = m.id === value;
+              const ticker = m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
               return (
                 <li key={m.id}>
                   <button
                     type="button"
                     onClick={() => onChange(m.id)}
-                    className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition ${
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition ${
                       active
                         ? "bg-brand/10 text-brand-dark dark:text-brand"
                         : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
                     }`}
                   >
-                    <span className="truncate">
-                      <span className="font-medium">{m.name}</span>
+                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                      <span className="truncate font-medium">{m.name}</span>
                       {m.subtitle && (
-                        <span className="ml-2 text-xs text-neutral-500">
+                        <span className="truncate text-xs text-neutral-500">
                           {m.subtitle}
                         </span>
                       )}
                     </span>
                     <span className="shrink-0 text-[11px] text-neutral-400">
-                      {m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "")}
+                      {ticker}
                     </span>
                   </button>
                 </li>
@@ -123,12 +126,11 @@ export function MarketPicker({
       </div>
 
       {selected && (
-        <div className="mt-2 rounded-lg bg-neutral-50 dark:bg-neutral-900/40 px-3 py-2 text-xs">
-          <span className="text-neutral-500">선택됨: </span>
-          <span className="font-medium">{selected.name}</span>
-          <span className="ml-2 text-neutral-400">
-            · {selected.kind === "crypto" ? "업비트" : "야후 파이낸스"} ·{" "}
-            {selected.currency}
+        <div className="mt-2 flex items-center gap-1 overflow-hidden rounded-lg bg-neutral-50 dark:bg-neutral-900/40 px-3 py-2 text-xs">
+          <span className="shrink-0 text-neutral-500">선택:</span>
+          <span className="truncate font-medium">{selected.name}</span>
+          <span className="ml-auto shrink-0 text-neutral-400">
+            {selected.kind === "crypto" ? "업비트" : "야후"} · {selected.currency}
           </span>
         </div>
       )}

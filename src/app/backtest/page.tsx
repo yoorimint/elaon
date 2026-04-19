@@ -948,38 +948,6 @@ export default function BacktestPage() {
 
       {result && priceCandles && (
         <section className="mt-8">
-          <div className="mb-4 flex flex-wrap gap-2 items-center">
-            <button
-              onClick={onShare}
-              disabled={sharing}
-              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
-            >
-              {sharing ? "처리 중…" : shareUrl ? "링크 복사 ✓" : "결과 공유"}
-            </button>
-            <button
-              onClick={onWritePost}
-              disabled={sharing}
-              className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
-            >
-              게시글 작성
-            </button>
-            <button
-              onClick={onPaperTrade}
-              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900"
-            >
-              모의투자 진행
-            </button>
-            {shareUrl && (
-              <a
-                href={shareUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full text-xs text-brand underline break-all"
-              >
-                {shareUrl}
-              </a>
-            )}
-          </div>
           <ResultView
             result={result}
             candles={priceCandles}
@@ -990,6 +958,47 @@ export default function BacktestPage() {
             customSell={runCustomSell ?? undefined}
             currency={currencyOf(market)}
           />
+
+          <div className="mt-8 rounded-2xl border-2 border-brand/40 bg-brand/5 p-5 sm:p-6">
+            <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              이 결과로 다음 단계
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              마음에 드는 전략이면 공유하고 커뮤니티에 토론을 열어보세요.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <button
+                onClick={onShare}
+                disabled={sharing}
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-3 text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
+              >
+                {sharing ? "처리 중…" : shareUrl ? "링크 복사 ✓" : "결과 공유하기"}
+              </button>
+              <button
+                onClick={onWritePost}
+                disabled={sharing}
+                className="rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60"
+              >
+                게시글 작성
+              </button>
+              <button
+                onClick={onPaperTrade}
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-3 text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              >
+                모의투자 진행
+              </button>
+            </div>
+            {shareUrl && (
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 block break-all text-xs text-brand underline"
+              >
+                {shareUrl}
+              </a>
+            )}
+          </div>
         </section>
       )}
     </main>

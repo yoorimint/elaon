@@ -1,7 +1,68 @@
 import type { Candle } from "./upbit";
 import type { Timeframe } from "./upbit";
+import type { MarketEntry, MarketKind, Currency } from "./market";
+// NOTE: market.ts imports fetchYahooCandles from this module at runtime.
+// We only use *type* imports from market.ts here, so the circular dep is
+// flattened by TS and doesn't produce a runtime cycle.
 
 const BASE = "/api/yahoo";
+
+type YahooSearchQuote = {
+  symbol: string;
+  shortname?: string;
+  longname?: string;
+  quoteType?: string; // EQUITY, ETF, CRYPTOCURRENCY, INDEX, CURRENCY, FUTURE, OPTION, MUTUALFUND
+  exchange?: string;
+  exchDisp?: string;
+};
+
+type YahooSearchResponse = {
+  quotes?: YahooSearchQuote[];
+};
+
+function classifySymbol(
+  symbol: string,
+): { kind: MarketKind; currency: Currency } | null {
+  if (symbol.endsWith(".KS") || symbol.endsWith(".KQ")) {
+    return { kind: "stock_kr", currency: "KRW" };
+  }
+  // Yahoo suffixes: .T (Tokyo), .HK, .L (London), .PA (Paris), .DE (Germany), etc.
+  // We only whitelist symbols without a non-US exchange suffix.
+  if (symbol.includes(".")) return null;
+  // BRK-B, BF-B 형식의 대시는 허용 (NYSE share class)
+  return { kind: "stock_us", currency: "USD" };
+}
+
+export async function searchYahoo(query: string): Promise<MarketEntry[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const url = `${BASE}/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=30&newsCount=0&enableFuzzyQuery=false&lang=en-US&region=US`;
+  let res: Response;
+  try {
+    res = await fetch(url, { cache: "no-store" });
+  } catch {
+    return [];
+  }
+  if (!res.ok) return [];
+  const json = (await res.json()) as YahooSearchResponse;
+  const quotes = json.quotes ?? [];
+  const out: MarketEntry[] = [];
+  for (const q of quotes) {
+    if (!q.symbol) continue;
+    if (q.quoteType !== "EQUITY" && q.quoteType !== "ETF") continue;
+    const meta = classifySymbol(q.symbol);
+    if (!meta) continue;
+    const name = q.longname || q.shortname || q.symbol;
+    out.push({
+      id: `yahoo:${q.symbol}`,
+      name,
+      subtitle: q.symbol,
+      kind: meta.kind,
+      currency: meta.currency,
+    });
+  }
+  return out;
+}
 
 // Yahoo supports: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo
 // Intraday intervals have short history windows (1m→7d, 5m→60d, etc.).

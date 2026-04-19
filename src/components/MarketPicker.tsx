@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { MarketEntry, MarketKind } from "@/lib/market";
 
 type RawEntry = { t: string; n: string };
@@ -16,13 +16,20 @@ async function loadFullList(
     const res = await fetch(url, { cache: "force-cache" });
     if (!res.ok) return [];
     const raw = (await res.json()) as RawEntry[];
-    const mapped: MarketEntry[] = raw.map((r) => ({
-      id: `yahoo:${r.t}`,
-      name: r.n,
-      subtitle: r.t,
-      kind,
-      currency: kind === "stock_us" ? "USD" : "KRW",
-    }));
+    // Defensive: dedup by ticker in case the JSON has duplicates.
+    const seen = new Set<string>();
+    const mapped: MarketEntry[] = [];
+    for (const r of raw) {
+      if (seen.has(r.t)) continue;
+      seen.add(r.t);
+      mapped.push({
+        id: `yahoo:${r.t}`,
+        name: r.n,
+        subtitle: r.t,
+        kind,
+        currency: kind === "stock_us" ? "USD" : "KRW",
+      });
+    }
     fullListCache.set(kind, mapped);
     return mapped;
   } catch {
@@ -56,6 +63,12 @@ export function MarketPicker({
   const [loadingFull, setLoadingFull] = useState(false);
   // 선택이 있으면 접힌 상태로 시작. 선택이 없으면 펼쳐서 고르게 함.
   const [expanded, setExpanded] = useState(!selected);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 탭/검색이 바뀌면 스크롤 위치 맨 위로
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [tab, query]);
 
   useEffect(() => {
     if (selected && selected.kind !== tab) setTab(selected.kind);
@@ -110,7 +123,15 @@ export function MarketPicker({
       m.name.toLowerCase().includes(q) ||
       (m.subtitle?.toLowerCase().includes(q) ?? false);
     const matched = q ? source.filter(filter) : source;
-    return { list: matched.slice(0, MAX_RESULTS), totalMatch: matched.length };
+    // Defensive dedup by id (in case raw data or merges produced collisions)
+    const seen = new Set<string>();
+    const deduped: MarketEntry[] = [];
+    for (const m of matched) {
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      deduped.push(m);
+    }
+    return { list: deduped.slice(0, MAX_RESULTS), totalMatch: deduped.length };
   }, [markets, tab, query, krFull, usFull]);
 
   function handlePick(id: string) {
@@ -206,7 +227,7 @@ export function MarketPicker({
       </div>
 
       <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
-        <div className="max-h-72 overflow-y-auto">
+        <div ref={scrollRef} className="h-72 overflow-y-auto">
           {list.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-neutral-500">
               {loadingFull ? "불러오는 중..." : "일치하는 종목이 없습니다"}

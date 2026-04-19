@@ -101,19 +101,25 @@ export async function getPost(slug: string): Promise<Post | null> {
   return { ...row, author_username: usernames.get(row.author_id) };
 }
 
+async function requireUserId(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user?.id;
+  if (!uid) throw new Error("로그인이 필요합니다");
+  return uid;
+}
+
 export async function createPost(input: {
   category: Category;
   title: string;
   body: string;
   backtest_slug?: string | null;
 }): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const uid = await requireUserId();
 
   const slug = randomSlug();
   const { error } = await supabase.from("posts").insert({
     slug,
-    author_id: userData.user.id,
+    author_id: uid,
     category: input.category,
     title: input.title.trim(),
     body: input.body,
@@ -148,12 +154,11 @@ export async function listComments(postId: string): Promise<Comment[]> {
 }
 
 export async function createComment(postId: string, body: string): Promise<Comment> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const uid = await requireUserId();
 
   const { data, error } = await supabase
     .from("comments")
-    .insert({ post_id: postId, author_id: userData.user.id, body })
+    .insert({ post_id: postId, author_id: uid, body })
     .select("*")
     .single();
   if (error) throw new Error(error.message);
@@ -179,22 +184,20 @@ export async function isLiked(postId: string, userId: string): Promise<boolean> 
 }
 
 export async function likePost(postId: string): Promise<void> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const uid = await requireUserId();
   const { error } = await supabase
     .from("post_likes")
-    .insert({ post_id: postId, user_id: userData.user.id });
+    .insert({ post_id: postId, user_id: uid });
   if (error && !error.message.includes("duplicate")) throw new Error(error.message);
 }
 
 export async function unlikePost(postId: string): Promise<void> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("로그인이 필요합니다");
+  const uid = await requireUserId();
   const { error } = await supabase
     .from("post_likes")
     .delete()
     .eq("post_id", postId)
-    .eq("user_id", userData.user.id);
+    .eq("user_id", uid);
   if (error) throw new Error(error.message);
 }
 

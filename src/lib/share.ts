@@ -30,7 +30,10 @@ export async function saveShare(p: SharePayload): Promise<string> {
     b: Math.round(e.benchmark),
   }));
 
-  const { data: userData } = await supabase.auth.getUser();
+  // getUser()는 매번 서버 재검증이라 네트워크 지연 때 null로 빠질 수 있어서
+  // 로컬 세션 캐시에서 바로 읽는 getSession() 사용.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authorId = sessionData.session?.user?.id ?? null;
 
   const { error } = await supabase.from("shared_backtests").insert({
     slug,
@@ -46,7 +49,7 @@ export async function saveShare(p: SharePayload): Promise<string> {
     win_rate: p.result.winRate,
     trade_count: p.result.tradeCount,
     equity_curve: equity,
-    author_id: userData.user?.id ?? null,
+    author_id: authorId,
   });
 
   if (error) throw new Error(error.message);

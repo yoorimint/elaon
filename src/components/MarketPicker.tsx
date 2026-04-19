@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { MarketEntry, MarketKind } from "@/lib/market";
+import { prettyUSName } from "@/lib/stocks-kr-names";
 
 type RawEntry = { t: string; n: string };
 
@@ -16,16 +17,19 @@ async function loadFullList(
     const res = await fetch(url, { cache: "force-cache" });
     if (!res.ok) return [];
     const raw = (await res.json()) as RawEntry[];
-    // Defensive: dedup by ticker in case the JSON has duplicates.
     const seen = new Set<string>();
     const mapped: MarketEntry[] = [];
     for (const r of raw) {
       if (seen.has(r.t)) continue;
       seen.add(r.t);
+      // US 종목은 토스처럼 한글 매핑이 있으면 그걸로 표시, 없으면 대문자 → 타이틀케이스로 정돈
+      const displayName =
+        kind === "stock_us" ? prettyUSName(r.t, r.n) : r.n;
       mapped.push({
         id: `yahoo:${r.t}`,
-        name: r.n,
-        subtitle: r.t,
+        name: displayName,
+        // 검색은 한글+영문+티커 셋 다로 가능하게 subtitle에 원본 영문명 유지
+        subtitle: kind === "stock_us" ? `${r.n} · ${r.t}` : r.t,
         kind,
         currency: kind === "stock_us" ? "USD" : "KRW",
       });

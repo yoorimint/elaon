@@ -226,6 +226,68 @@ export async function fetchCandlesForMarket(
   return fetchCandlesBetween(marketId, tf, startMs, endMs);
 }
 
+// Returns the practical max history (in days) we can fetch for this market kind
+// at the given timeframe. Sources differ — Yahoo intraday is especially short.
+export function maxDaysFor(kind: MarketKind, tf: Timeframe): number {
+  if (kind === "stock_kr" || kind === "stock_us") {
+    // Yahoo intraday history limits
+    switch (tf) {
+      case "1m":
+        return 7;
+      case "5m":
+      case "15m":
+      case "30m":
+        return 60;
+      case "1h":
+      case "4h":
+        return 730; // 4h falls back to 1h on Yahoo
+      case "1d":
+      case "1w":
+      case "1M":
+        return 10000;
+    }
+  }
+  if (kind === "crypto") {
+    // Upbit ~5000 candles per pagination loop
+    switch (tf) {
+      case "1m":
+        return 3;
+      case "5m":
+        return 17;
+      case "15m":
+        return 52;
+      case "30m":
+        return 104;
+      case "1h":
+        return 208;
+      case "4h":
+        return 833;
+      case "1d":
+        return 3650;
+      case "1w":
+      case "1M":
+        return 10000;
+    }
+  }
+  // crypto_fut (OKX) — history-candles backed by data retention
+  switch (tf) {
+    case "1m":
+      return 365;
+    case "5m":
+      return 1500;
+    case "15m":
+    case "30m":
+      return 3000;
+    case "1h":
+    case "4h":
+      return 5000;
+    case "1d":
+    case "1w":
+    case "1M":
+      return 10000;
+  }
+}
+
 // Formatting helpers.
 export function formatMoney(v: number, currency: Currency): string {
   if (!Number.isFinite(v)) return "-";

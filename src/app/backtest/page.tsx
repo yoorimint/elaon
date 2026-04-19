@@ -14,6 +14,8 @@ import {
   fetchCandlesForMarket,
   currencyOf,
   currencySymbol,
+  marketKind,
+  maxDaysFor,
   type MarketEntry,
 } from "@/lib/market";
 import {
@@ -136,6 +138,22 @@ export default function BacktestPage() {
   }, []);
 
   const currency = currencyOf(market);
+  const maxDays = useMemo(
+    () => maxDaysFor(marketKind(market), timeframe),
+    [market, timeframe],
+  );
+
+  // 시장/타임프레임 바뀌면 너무 옛날로 잡힌 dateFrom을 자동으로 끌어올림
+  useEffect(() => {
+    const minFromMs = Date.now() - maxDays * 86400000;
+    const fromMs = new Date(dateFrom).getTime();
+    if (fromMs < minFromMs) {
+      const clamped = todayYmd(-maxDays + 1);
+      setDateFrom(clamped);
+      setRangePreset("custom");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxDays]);
 
   const strategyConfig = useMemo(
     () => STRATEGIES.find((s) => s.id === strategy)!,
@@ -344,31 +362,50 @@ export default function BacktestPage() {
           <div className="block sm:col-span-2">
             <span className="text-sm font-medium">기간</span>
             <div className="mt-1 flex flex-wrap gap-1.5">
-              {RANGE_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setRangePreset(p.id);
-                    if (p.days !== null) {
-                      setDateFrom(todayYmd(-p.days));
-                      setDateTo(todayYmd(0));
-                    }
-                  }}
-                  className={`rounded-full px-3 py-1 text-sm border ${
-                    rangePreset === p.id
-                      ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
-                      : "border-neutral-300 dark:border-neutral-700"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
+              {RANGE_PRESETS.map((p) => {
+                const disabled = p.days !== null && p.days > maxDays;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      setRangePreset(p.id);
+                      if (p.days !== null) {
+                        setDateFrom(todayYmd(-p.days));
+                        setDateTo(todayYmd(0));
+                      }
+                    }}
+                    className={`rounded-full px-3 py-1 text-sm border ${
+                      rangePreset === p.id
+                        ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
+                        : disabled
+                          ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-700 cursor-not-allowed"
+                          : "border-neutral-300 dark:border-neutral-700"
+                    }`}
+                    title={disabled ? `이 종목·봉간격은 최대 ${maxDays}일까지 가능합니다` : undefined}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
+            <p className="mt-1 text-[11px] text-neutral-500">
+              현재 종목·봉간격 조합 최대 기간:{" "}
+              <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                {maxDays >= 10000
+                  ? "수십 년"
+                  : maxDays >= 365
+                    ? `약 ${Math.round(maxDays / 365)}년`
+                    : `${maxDays}일`}
+              </span>
+            </p>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <input
                 type="date"
                 value={dateFrom}
+                min={todayYmd(-maxDays + 1)}
+                max={todayYmd(0)}
                 onChange={(e) => {
                   setDateFrom(e.target.value);
                   setRangePreset("custom");

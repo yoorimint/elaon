@@ -5,11 +5,9 @@ import type { BacktestResult } from "@/lib/backtest";
 import type { Candle } from "@/lib/upbit";
 import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
 import type { Condition } from "@/lib/diy-strategy";
+import { formatMoney, formatMoneyShort, type Currency } from "@/lib/market";
 import { TVChart } from "./TVChart";
 
-function formatKRW(n: number) {
-  return new Intl.NumberFormat("ko-KR").format(Math.round(n));
-}
 
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
   const color =
@@ -34,6 +32,7 @@ export function ResultView({
   params,
   customBuy,
   customSell,
+  currency = "KRW",
 }: {
   result: BacktestResult;
   candles?: Candle[];
@@ -42,6 +41,7 @@ export function ResultView({
   params?: StrategyParams;
   customBuy?: Condition[];
   customSell?: Condition[];
+  currency?: Currency;
 }) {
   const data = result.equity.map((p) => ({
     date: new Date(p.timestamp).toISOString().slice(0, 10),
@@ -98,6 +98,7 @@ export function ResultView({
             params={params}
             customBuy={customBuy}
             customSell={customSell}
+            currency={currency}
           />
         </div>
       )}
@@ -110,13 +111,13 @@ export function ResultView({
           <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
             <XAxis dataKey="date" minTickGap={40} stroke="currentColor" opacity={0.4} />
             <YAxis
-              tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}만`}
+              tickFormatter={(v: number) => formatMoneyShort(v, currency)}
               stroke="currentColor"
               opacity={0.4}
-              width={60}
+              width={70}
             />
             <Tooltip
-              formatter={(v: number) => `₩${formatKRW(v)}`}
+              formatter={(v: number) => formatMoney(v, currency)}
               labelStyle={{ color: "#000" }}
             />
             <Legend />
@@ -145,9 +146,9 @@ export function ResultView({
                 {result.trades.map((t, i) => (
                   <tr key={i} className="border-t border-neutral-200 dark:border-neutral-800">
                     <td className="px-3 py-2">{i + 1}</td>
-                    <td className="px-3 py-2 text-right">₩{formatKRW(t.entryPrice)}</td>
+                    <td className="px-3 py-2 text-right">{formatMoney(t.entryPrice, currency)}</td>
                     <td className="px-3 py-2 text-right">
-                      {t.exitPrice ? `₩${formatKRW(t.exitPrice)}` : "-"}
+                      {t.exitPrice ? formatMoney(t.exitPrice, currency) : "-"}
                     </td>
                     <td
                       className={`px-3 py-2 text-right ${

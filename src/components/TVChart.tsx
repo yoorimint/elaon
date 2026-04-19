@@ -37,6 +37,7 @@ import {
   parabolicSAR,
 } from "@/lib/strategies";
 import type { Condition, IndicatorRef } from "@/lib/diy-strategy";
+import { formatMoneyShort, type Currency } from "@/lib/market";
 
 export type TVChartProps = {
   candles: Candle[];
@@ -45,6 +46,7 @@ export type TVChartProps = {
   params: StrategyParams;
   customBuy?: Condition[];
   customSell?: Condition[];
+  currency?: Currency;
 };
 
 function toTime(ms: number): UTCTimestamp {
@@ -97,16 +99,12 @@ function isDark(): boolean {
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 
-function koreanPriceFormatter(v: number): string {
-  if (!Number.isFinite(v)) return "-";
-  const abs = Math.abs(v);
-  if (abs >= 100_000_000) return `${(v / 100_000_000).toFixed(2)}억`;
-  if (abs >= 10_000) return `${(v / 10_000).toFixed(1)}만`;
-  if (abs >= 100) return v.toFixed(0);
-  return v.toFixed(2);
-}
-
-function baseChartOptions(dark: boolean, width: number, height: number) {
+function baseChartOptions(
+  dark: boolean,
+  width: number,
+  height: number,
+  currency: Currency,
+) {
   return {
     width,
     height,
@@ -127,7 +125,7 @@ function baseChartOptions(dark: boolean, width: number, height: number) {
     },
     crosshair: { mode: CrosshairMode.Normal },
     localization: {
-      priceFormatter: koreanPriceFormatter,
+      priceFormatter: (v: number) => formatMoneyShort(v, currency),
     },
   };
 }
@@ -298,6 +296,7 @@ export function TVChart({
   params,
   customBuy,
   customSell,
+  currency = "KRW",
 }: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
@@ -325,7 +324,7 @@ export function TVChart({
     const mainRect = mainBox.getBoundingClientRect();
     const mainW = Math.max(1, Math.floor(mainRect.width));
     const mainH = Math.max(1, Math.floor(mainRect.height));
-    const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH));
+    const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH, currency));
 
     const priceSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
       CandlestickSeries,
@@ -546,7 +545,7 @@ export function TVChart({
       const subRect = subBox.getBoundingClientRect();
       const subW = Math.max(1, Math.floor(subRect.width));
       const subH = Math.max(1, Math.floor(subRect.height));
-      subChart = createChart(subBox, baseChartOptions(dark, subW, subH));
+      subChart = createChart(subBox, baseChartOptions(dark, subW, subH, currency));
 
       if (strategy === "rsi") {
         const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };

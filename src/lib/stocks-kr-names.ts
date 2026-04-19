@@ -315,18 +315,32 @@ export const US_KR_NAMES: Record<string, string> = {
   GBTC: "그레이스케일 비트코인 ETF",
 };
 
+const MAX_LEN = 20;
+
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+    .replace(/\bInc\b/g, "Inc.")
+    .replace(/\bCorp\b/g, "Corp.")
+    .replace(/\bLtd\b/g, "Ltd.")
+    .replace(/\bCo\b/g, "Co.");
+}
+
+function cap(s: string, n = MAX_LEN): string {
+  if (s.length <= n) return s;
+  // 접미사 Inc./Corp./Ltd./Co. 제거로 공간 확보 시도
+  const stripped = s
+    .replace(/,?\s+(Inc\.?|Corp\.?|Ltd\.?|Co\.?|Limited|Company)\s*$/i, "")
+    .trim();
+  if (stripped.length <= n) return stripped;
+  return stripped.slice(0, n - 1).trim() + "…";
+}
+
 export function prettyUSName(ticker: string, original: string): string {
   const kr = US_KR_NAMES[ticker];
-  if (kr) return kr;
-  // SEC가 대문자로 주는 이름을 단어 앞글자만 대문자 처리해 덜 투박하게
-  if (original === original.toUpperCase()) {
-    return original
-      .toLowerCase()
-      .replace(/\b[a-z]/g, (c) => c.toUpperCase())
-      .replace(/\bInc\b/g, "Inc.")
-      .replace(/\bCorp\b/g, "Corp.")
-      .replace(/\bLtd\b/g, "Ltd.")
-      .replace(/\bCo\b/g, "Co.");
-  }
-  return original;
+  if (kr) return cap(kr);
+  const normalized =
+    original === original.toUpperCase() ? titleCase(original) : original;
+  return cap(normalized);
 }

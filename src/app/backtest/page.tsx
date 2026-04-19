@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   fetchMarkets,
   TIMEFRAMES,
@@ -69,6 +70,7 @@ const POPULAR_MARKETS = [
 ];
 
 export default function BacktestPage() {
+  const router = useRouter();
   const [markets, setMarkets] = useState<MarketEntry[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
@@ -236,53 +238,85 @@ export default function BacktestPage() {
     }
   }
 
+  async function ensureShared(): Promise<string | null> {
+    if (!result) return null;
+    if (shareUrl) {
+      const m = shareUrl.match(/\/r\/([a-z0-9]+)/);
+      if (m) return m[1];
+    }
+    const slug = await saveShare({
+      market,
+      strategy,
+      params: {
+        ma_cross: { short: shortMa, long: longMa },
+        rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+        bollinger: { period: bbPeriod, stddev: bbStddev, touch: bbTouch },
+        macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
+        breakout: { k: breakoutK },
+        stoch: {
+          period: stochPeriod,
+          smooth: stochSmooth,
+          oversold: stochLow,
+          overbought: stochHigh,
+        },
+        ichimoku: {
+          conversion: ichimokuConv,
+          base: ichimokuBase,
+          lagging: ichimokuLag,
+        },
+        dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
+        ma_dca: {
+          intervalDays: dcaInterval,
+          amountKRW: dcaAmount,
+          maPeriod: maDcaMaPeriod,
+        },
+        grid: { low: gridLow, high: gridHigh, grids: gridCount },
+      },
+      days,
+      initialCash,
+      feeBps,
+      result,
+    });
+    setShareUrl(`${window.location.origin}/r/${slug}`);
+    return slug;
+  }
+
   async function onShare() {
     if (!result) return;
     setSharing(true);
     try {
-      const slug = await saveShare({
-        market,
-        strategy,
-        params: {
-          ma_cross: { short: shortMa, long: longMa },
-          rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-          bollinger: { period: bbPeriod, stddev: bbStddev, touch: bbTouch },
-          macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
-          breakout: { k: breakoutK },
-          stoch: {
-            period: stochPeriod,
-            smooth: stochSmooth,
-            oversold: stochLow,
-            overbought: stochHigh,
-          },
-          ichimoku: {
-            conversion: ichimokuConv,
-            base: ichimokuBase,
-            lagging: ichimokuLag,
-          },
-          dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
-          ma_dca: {
-            intervalDays: dcaInterval,
-            amountKRW: dcaAmount,
-            maPeriod: maDcaMaPeriod,
-          },
-          grid: { low: gridLow, high: gridHigh, grids: gridCount },
-        },
-        days,
-        initialCash,
-        feeBps,
-        result,
-      });
-      const url = `${window.location.origin}/r/${slug}`;
-      setShareUrl(url);
-      try {
-        await navigator.clipboard.writeText(url);
-      } catch {}
+      const slug = await ensureShared();
+      if (slug) {
+        const url = `${window.location.origin}/r/${slug}`;
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {}
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "공유 실패");
     } finally {
       setSharing(false);
     }
+  }
+
+  async function onWritePost() {
+    if (!result) return;
+    setSharing(true);
+    setError(null);
+    try {
+      const slug = await ensureShared();
+      if (slug) router.push(`/community/new?backtest_slug=${slug}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "게시글 준비 실패");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  function onPaperTrade() {
+    alert(
+      "모의투자 기능은 곧 공개될 예정입니다.\n현재 백테스트 전략을 실시간 시세로 이어받아 자동 집계해드립니다.",
+    );
   }
 
   return (
@@ -914,20 +948,33 @@ export default function BacktestPage() {
 
       {result && priceCandles && (
         <section className="mt-8">
-          <div className="mb-4 flex flex-wrap gap-3 items-center">
+          <div className="mb-4 flex flex-wrap gap-2 items-center">
             <button
               onClick={onShare}
               disabled={sharing}
-              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
+              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
             >
-              {sharing ? "공유 링크 만드는 중…" : shareUrl ? "링크 복사됨 ✓" : "결과 공유하기"}
+              {sharing ? "처리 중…" : shareUrl ? "링크 복사 ✓" : "결과 공유"}
+            </button>
+            <button
+              onClick={onWritePost}
+              disabled={sharing}
+              className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
+            >
+              게시글 작성
+            </button>
+            <button
+              onClick={onPaperTrade}
+              className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-900"
+            >
+              모의투자 진행
             </button>
             {shareUrl && (
               <a
                 href={shareUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-brand underline break-all"
+                className="w-full text-xs text-brand underline break-all"
               >
                 {shareUrl}
               </a>

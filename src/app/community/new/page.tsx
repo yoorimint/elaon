@@ -2,17 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { CATEGORIES, createPost, type Category } from "@/lib/community";
 
 export default function NewPostPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const [category, setCategory] = useState<Category>("free");
+  const prefillSlug = searchParams.get("backtest_slug");
+  const [category, setCategory] = useState<Category>(
+    prefillSlug ? "strategy" : "free",
+  );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [backtestUrl, setBacktestUrl] = useState("");
+  const [backtestUrl, setBacktestUrl] = useState(
+    prefillSlug ? `${typeof window !== "undefined" ? window.location.origin : ""}/r/${prefillSlug}` : "",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

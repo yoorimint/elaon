@@ -132,6 +132,22 @@ export function runBacktest(
     trades.push(currentTrade);
   }
 
+  // Mark-to-market any unmatched open entries (DCA buys, leftover grid lots) so
+  // every recorded trade has a meaningful exit price + P&L. Without this DCA
+  // surfaces as "0회" with 72 null-exit rows in the trade table.
+  if (candles.length > 0) {
+    const finalIdx = candles.length - 1;
+    const finalPrice = candles[finalIdx].close;
+    for (const t of trades) {
+      if (t.exitIndex === null) {
+        t.exitIndex = finalIdx;
+        t.exitPrice = finalPrice;
+        t.pnlPct =
+          ((finalPrice * (1 - feeRate)) / (t.entryPrice * (1 + feeRate)) - 1) * 100;
+      }
+    }
+  }
+
   const finalEquity = equity[equity.length - 1]?.equity ?? initialCash;
   const benchmarkEquity = equity[equity.length - 1]?.benchmark ?? initialCash;
 

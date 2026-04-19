@@ -28,13 +28,23 @@ import {
   stddev,
   rsi as rsiCalc,
   stochK as stochKCalc,
+  mfi as mfiCalc,
+  williamsR as williamsRCalc,
+  vwap as vwapCalc,
+  ichimokuConvLine,
+  donchianHigh,
+  donchianLow,
+  parabolicSAR,
 } from "@/lib/strategies";
+import type { Condition, IndicatorRef } from "@/lib/diy-strategy";
 
 export type TVChartProps = {
   candles: Candle[];
   signals: Signal[];
   strategy: StrategyId;
   params: StrategyParams;
+  customBuy?: Condition[];
+  customSell?: Condition[];
 };
 
 function toTime(ms: number): UTCTimestamp {
@@ -145,10 +155,163 @@ function subtitleFor(strategy: StrategyId): string {
 
 const OSCILLATOR_STRATEGIES: readonly StrategyId[] = ["rsi", "macd", "stoch"];
 
-export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
+const PRICE_OVERLAY_KINDS = new Set<IndicatorRef["kind"]>([
+  "sma",
+  "ema",
+  "bb_upper",
+  "bb_middle",
+  "bb_lower",
+  "ichimoku_conv",
+  "ichimoku_base",
+  "vwap",
+  "donchian_upper",
+  "donchian_lower",
+  "sar",
+]);
+
+const ZERO_HUNDRED_KINDS = new Set<IndicatorRef["kind"]>([
+  "rsi",
+  "stoch_k",
+  "stoch_d",
+  "slow_stoch_k",
+  "slow_stoch_d",
+  "mfi",
+]);
+
+function dedupRefs(refs: IndicatorRef[]): IndicatorRef[] {
+  const seen = new Set<string>();
+  const out: IndicatorRef[] = [];
+  for (const r of refs) {
+    const key = JSON.stringify(r);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+function refsFromConditions(conds?: Condition[]): IndicatorRef[] {
+  if (!conds) return [];
+  const all: IndicatorRef[] = [];
+  for (const c of conds) {
+    all.push(c.left, c.right);
+  }
+  return all.filter((r) => r.kind !== "const");
+}
+
+function refLabel(r: IndicatorRef): string {
+  switch (r.kind) {
+    case "sma":
+      return `SMA(${r.period})`;
+    case "ema":
+      return `EMA(${r.period})`;
+    case "rsi":
+      return `RSI(${r.period})`;
+    case "bb_upper":
+      return `BB상단(${r.period},${r.stddev}σ)`;
+    case "bb_middle":
+      return `BB중심(${r.period})`;
+    case "bb_lower":
+      return `BB하단(${r.period},${r.stddev}σ)`;
+    case "ichimoku_conv":
+      return `전환선(${r.period})`;
+    case "ichimoku_base":
+      return `기준선(${r.period})`;
+    case "vwap":
+      return "VWAP";
+    case "donchian_upper":
+      return `돈치안 상단(${r.period})`;
+    case "donchian_lower":
+      return `돈치안 하단(${r.period})`;
+    case "sar":
+      return "SAR";
+    case "stoch_k":
+      return `%K(${r.period})`;
+    case "stoch_d":
+      return `%D(${r.period},${r.smooth})`;
+    case "slow_stoch_k":
+      return `슬로우%K(${r.period},${r.slowSmooth})`;
+    case "slow_stoch_d":
+      return `슬로우%D(${r.period})`;
+    case "mfi":
+      return `MFI(${r.period})`;
+    case "williams_r":
+      return `Williams%R(${r.period})`;
+    default:
+      return r.kind;
+  }
+}
+
+function computeRef(r: IndicatorRef, candles: Candle[]): (number | null)[] {
+  const closes = candles.map((c) => c.close);
+  switch (r.kind) {
+    case "sma":
+      return sma(closes, r.period);
+    case "ema":
+      return ema(closes, r.period);
+    case "rsi":
+      return rsiCalc(closes, r.period);
+    case "bb_upper": {
+      const mid = sma(closes, r.period);
+      const sd = stddev(closes, r.period);
+      return mid.map((m, i) =>
+        m != null && sd[i] != null ? m + r.stddev * (sd[i] as number) : null,
+      );
+    }
+    case "bb_middle":
+      return sma(closes, r.period);
+    case "bb_lower": {
+      const mid = sma(closes, r.period);
+      const sd = stddev(closes, r.period);
+      return mid.map((m, i) =>
+        m != null && sd[i] != null ? m - r.stddev * (sd[i] as number) : null,
+      );
+    }
+    case "ichimoku_conv":
+    case "ichimoku_base":
+      return ichimokuConvLine(candles, r.period);
+    case "vwap":
+      return vwapCalc(candles);
+    case "donchian_upper":
+      return donchianHigh(candles, r.period);
+    case "donchian_lower":
+      return donchianLow(candles, r.period);
+    case "sar":
+      return parabolicSAR(candles, r.step, r.max);
+    case "stoch_k":
+      return stochKCalc(candles, r.period);
+    case "mfi":
+      return mfiCalc(candles, r.period);
+    case "williams_r":
+      return williamsRCalc(candles, r.period);
+    default:
+      return new Array(candles.length).fill(null);
+  }
+}
+
+const OVERLAY_PALETTE = ["#3b82f6", "#ef4444", "#8b5cf6", "#10b981", "#f59e0b", "#06b6d4", "#ec4899"];
+
+export function TVChart({
+  candles,
+  signals,
+  strategy,
+  params,
+  customBuy,
+  customSell,
+}: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
-  const hasSubPanel = OSCILLATOR_STRATEGIES.includes(strategy);
+
+  const customRefs =
+    strategy === "custom"
+      ? dedupRefs(refsFromConditions(customBuy).concat(refsFromConditions(customSell)))
+      : [];
+  const customOverlayRefs = customRefs.filter((r) => PRICE_OVERLAY_KINDS.has(r.kind));
+  const customSubRefs = customRefs.filter((r) => ZERO_HUNDRED_KINDS.has(r.kind));
+
+  const hasSubPanel =
+    OSCILLATOR_STRATEGIES.includes(strategy) ||
+    (strategy === "custom" && customSubRefs.length > 0);
 
   useEffect(() => {
     const mainBox = mainBoxRef.current;
@@ -363,6 +526,20 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
       spanBLine.setData(toLineData(candles, spanB, keepIdx));
     }
 
+    if (strategy === "custom") {
+      customOverlayRefs.forEach((r, idx) => {
+        const color = OVERLAY_PALETTE[idx % OVERLAY_PALETTE.length];
+        const line = chart.addSeries(LineSeries, {
+          color,
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          title: "",
+        });
+        line.setData(toLineData(candles, computeRef(r, candles), keepIdx));
+      });
+    }
+
     let subChart: IChartApi | null = null;
     const subBox = subBoxRef.current;
     if (hasSubPanel && subBox) {
@@ -505,6 +682,51 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
         });
       }
 
+      if (strategy === "custom" && customSubRefs.length > 0) {
+        customSubRefs.forEach((r, idx) => {
+          const color = OVERLAY_PALETTE[idx % OVERLAY_PALETTE.length];
+          const line = subChart!.addSeries(LineSeries, {
+            color,
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title: "",
+          });
+          line.setData(toLineData(candles, computeRef(r, candles), keepIdx));
+        });
+        // Common 0-100 reference lines for at-a-glance reading.
+        const firstSeries = subChart.addSeries(LineSeries, {
+          color: "transparent",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          title: "",
+        });
+        firstSeries.setData([
+          { time: allTimes[keepIdx[0]], value: 50 },
+          {
+            time: allTimes[keepIdx[keepIdx.length - 1]],
+            value: 50,
+          },
+        ]);
+        firstSeries.createPriceLine({
+          price: 70,
+          color: "#ef4444",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "70",
+        });
+        firstSeries.createPriceLine({
+          price: 30,
+          color: "#10b981",
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "30",
+        });
+      }
+
       subChart.timeScale().fitContent();
     }
 
@@ -563,7 +785,17 @@ export function TVChart({ candles, signals, strategy, params }: TVChartProps) {
   }, [candles, signals, strategy, params, hasSubPanel]);
 
   const subtitle = subtitleFor(strategy);
-  const legendItems = legendFor(strategy, params);
+  const legendItems =
+    strategy === "custom"
+      ? customOverlayRefs
+          .map((r, i) => ({ label: refLabel(r), color: OVERLAY_PALETTE[i % OVERLAY_PALETTE.length] }))
+          .concat(
+            customSubRefs.map((r, i) => ({
+              label: refLabel(r),
+              color: OVERLAY_PALETTE[i % OVERLAY_PALETTE.length],
+            })),
+          )
+      : legendFor(strategy, params);
 
   return (
     <div>

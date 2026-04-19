@@ -109,6 +109,8 @@ export default function BacktestPage() {
   const [runSignals, setRunSignals] = useState<Signal[] | null>(null);
   const [runStrategy, setRunStrategy] = useState<StrategyId | null>(null);
   const [runParams, setRunParams] = useState<StrategyParams | null>(null);
+  const [runCustomBuy, setRunCustomBuy] = useState<Condition[] | null>(null);
+  const [runCustomSell, setRunCustomSell] = useState<Condition[] | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -136,6 +138,8 @@ export default function BacktestPage() {
     setRunSignals(null);
     setRunStrategy(null);
     setRunParams(null);
+    setRunCustomBuy(null);
+    setRunCustomSell(null);
     setShareUrl(null);
     try {
       const fromMs = new Date(dateFrom).getTime();
@@ -194,6 +198,8 @@ export default function BacktestPage() {
       setRunSignals(signals);
       setRunStrategy(strategy);
       setRunParams(paramsSnapshot);
+      setRunCustomBuy(strategy === "custom" ? customBuy : null);
+      setRunCustomSell(strategy === "custom" ? customSell : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {
@@ -883,6 +889,8 @@ export default function BacktestPage() {
             signals={runSignals ?? undefined}
             strategy={runStrategy ?? undefined}
             params={runParams ?? undefined}
+            customBuy={runCustomBuy ?? undefined}
+            customSell={runCustomSell ?? undefined}
           />
         </section>
       )}

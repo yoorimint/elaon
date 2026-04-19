@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } f
 import type { BacktestResult } from "@/lib/backtest";
 import type { Candle } from "@/lib/upbit";
 import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
+import type { Condition } from "@/lib/diy-strategy";
 import { TVChart } from "./TVChart";
 
 function formatKRW(n: number) {
@@ -31,12 +32,16 @@ export function ResultView({
   signals,
   strategy,
   params,
+  customBuy,
+  customSell,
 }: {
   result: BacktestResult;
   candles?: Candle[];
   signals?: Signal[];
   strategy?: StrategyId;
   params?: StrategyParams;
+  customBuy?: Condition[];
+  customSell?: Condition[];
 }) {
   const data = result.equity.map((p) => ({
     date: new Date(p.timestamp).toISOString().slice(0, 10),
@@ -91,6 +96,8 @@ export function ResultView({
             signals={signals}
             strategy={strategy}
             params={params}
+            customBuy={customBuy}
+            customSell={customSell}
           />
         </div>
       )}

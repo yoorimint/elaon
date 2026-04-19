@@ -24,7 +24,7 @@ export type Signal =
 export type StrategyParams = {
   ma_cross?: { short: number; long: number };
   rsi?: { period: number; oversold: number; overbought: number };
-  bollinger?: { period: number; stddev: number };
+  bollinger?: { period: number; stddev: number; touch?: "close" | "wick" };
   macd?: { fast: number; slow: number; signal: number };
   breakout?: { k: number };
   stoch?: { period: number; smooth: number; oversold: number; overbought: number };
@@ -84,7 +84,8 @@ export const STRATEGIES: StrategyConfig[] = [
   {
     id: "bollinger",
     name: "볼린저 밴드",
-    description: "하단 밴드 터치 매수, 상단 밴드 터치 매도. 변동성 기반 역추세.",
+    description:
+      "하단 밴드 이탈 매수, 상단 밴드 이탈 매도. 터치 기준을 종가/꼬리 중 선택. 변동성 기반 역추세.",
     group: "역추세",
   },
   {
@@ -658,7 +659,8 @@ export function computeSignals(
   }
 
   if (strategy === "bollinger") {
-    const p = params.bollinger ?? { period: 20, stddev: 2 };
+    const p = params.bollinger ?? { period: 20, stddev: 2, touch: "close" };
+    const touch = p.touch ?? "close";
     const mid = sma(closes, p.period);
     const sd = stddev(closes, p.period);
     let inPos = false;
@@ -668,11 +670,14 @@ export function computeSignals(
       if (m == null || s == null) continue;
       const upper = m + p.stddev * s;
       const lower = m - p.stddev * s;
-      const price = closes[i];
-      if (!inPos && price <= lower) {
+      // 종가 모드: 당일 종가가 밴드 안쪽/바깥인지 판단
+      // 꼬리 모드: 저가가 하단 이탈하거나 고가가 상단 돌파하면 트리거
+      const buyPrice = touch === "wick" ? candles[i].low : closes[i];
+      const sellPrice = touch === "wick" ? candles[i].high : closes[i];
+      if (!inPos && buyPrice <= lower) {
         signals[i] = "buy";
         inPos = true;
-      } else if (inPos && price >= upper) {
+      } else if (inPos && sellPrice >= upper) {
         signals[i] = "sell";
         inPos = false;
       }

@@ -154,6 +154,7 @@ const presetTests: [string, StrategyId, StrategyParams][] = [
   ["ma_cross 5/20", "ma_cross", { ma_cross: { short: 5, long: 20 } }],
   ["rsi default", "rsi", { rsi: { period: 14, oversold: 30, overbought: 70 } }],
   ["bollinger default", "bollinger", { bollinger: { period: 20, stddev: 2 } }],
+  ["bollinger wick", "bollinger", { bollinger: { period: 20, stddev: 2, touch: "wick" } }],
   ["macd default", "macd", { macd: { fast: 12, slow: 26, signal: 9 } }],
   ["breakout default", "breakout", { breakout: { k: 0.5 } }],
   ["stoch default", "stoch", { stoch: { period: 14, smooth: 3, oversold: 20, overbought: 80 } }],

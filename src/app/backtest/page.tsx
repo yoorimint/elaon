@@ -86,6 +86,7 @@ export default function BacktestPage() {
   const [rsiHigh, setRsiHigh] = useState(70);
   const [bbPeriod, setBbPeriod] = useState(20);
   const [bbStddev, setBbStddev] = useState(2);
+  const [bbTouch, setBbTouch] = useState<"close" | "wick">("close");
   const [macdFast, setMacdFast] = useState(12);
   const [macdSlow, setMacdSlow] = useState(26);
   const [macdSignal, setMacdSignal] = useState(9);
@@ -168,7 +169,7 @@ export default function BacktestPage() {
       const paramsSnapshot: StrategyParams = {
         ma_cross: { short: shortMa, long: longMa },
         rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-        bollinger: { period: bbPeriod, stddev: bbStddev },
+        bollinger: { period: bbPeriod, stddev: bbStddev, touch: bbTouch },
         macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
         breakout: { k: breakoutK },
         stoch: {
@@ -227,7 +228,7 @@ export default function BacktestPage() {
         params: {
           ma_cross: { short: shortMa, long: longMa },
           rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
-          bollinger: { period: bbPeriod, stddev: bbStddev },
+          bollinger: { period: bbPeriod, stddev: bbStddev, touch: bbTouch },
           macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
           breakout: { k: breakoutK },
           stoch: {
@@ -476,7 +477,7 @@ export default function BacktestPage() {
         )}
 
         {strategy === "bollinger" && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="text-sm font-medium">기간</span>
               <NumInput
@@ -495,6 +496,20 @@ export default function BacktestPage() {
                 step={0.1}
                 onChange={setBbStddev}
               />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">터치 기준</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={bbTouch}
+                onChange={(e) => setBbTouch(e.target.value as "close" | "wick")}
+              >
+                <option value="close">종가 (보수적)</option>
+                <option value="wick">꼬리 (저가/고가 포함)</option>
+              </select>
+              <span className="mt-1 block text-xs text-neutral-500">
+                종가: 종가가 밴드 이탈해야 진입. 꼬리: 저가가 하단만 찍어도 매수.
+              </span>
             </label>
           </div>
         )}

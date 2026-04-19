@@ -72,11 +72,16 @@ export default function LoginPage() {
         </button>
       </form>
 
-      <div className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
-        계정이 없으신가요?{" "}
-        <Link href="/signup" className="text-brand underline">
-          회원가입
+      <div className="mt-4 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
+        <Link href="/forgot-password" className="text-brand underline">
+          비밀번호 찾기
         </Link>
+        <span>
+          계정이 없으신가요?{" "}
+          <Link href="/signup" className="text-brand underline">
+            회원가입
+          </Link>
+        </span>
       </div>
     </main>
   );

@@ -366,54 +366,70 @@ export default function PaperTradeDetailPage() {
                 <tr>
                   <th className="px-3 py-2 text-left">시각</th>
                   <th className="px-3 py-2 text-left">방향</th>
-                  <th className="px-3 py-2 text-right">가격</th>
+                  <th className="px-3 py-2 text-right">체결가</th>
                   <th className="px-3 py-2 text-right">수량</th>
-                  <th className="px-3 py-2 text-right">현금 변동</th>
-                  <th className="px-3 py-2 text-right">손익(%)</th>
+                  <th className="px-3 py-2 text-right">손익</th>
                 </tr>
               </thead>
               <tbody>
-                {recentTrades.map((t: PaperTrade, i) => (
-                  <tr key={i} className="border-t border-neutral-200 dark:border-neutral-800">
-                    <td className="px-3 py-2 text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
-                      {fmtTime(t.timestamp)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className={
-                          t.side === "buy"
-                            ? "text-emerald-600 dark:text-emerald-400 font-semibold"
-                            : "text-red-600 dark:text-red-400 font-semibold"
-                        }
-                      >
-                        {t.side === "buy" ? "매수" : "매도"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right">{formatMoney(t.price, currency)}</td>
-                    <td className="px-3 py-2 text-right">
-                      {t.qty < 1 ? t.qty.toFixed(6) : t.qty.toFixed(4)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {(t.cashFlow >= 0 ? "+" : "") + formatMoney(t.cashFlow, currency)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      {t.pnlPct == null ? (
-                        "-"
-                      ) : (
+                {recentTrades.map((t: PaperTrade, i) => {
+                  // 매도 행: 절대 금액 손익을 pnlPct와 cashFlow로부터 역산.
+                  // proceeds = cashFlow, pnl% = (proceeds/cost - 1)*100 이므로
+                  // pnlAmount = proceeds * pnlPct / (100 + pnlPct)
+                  const pnlAmount =
+                    t.side === "sell" && t.pnlPct != null
+                      ? (t.cashFlow * t.pnlPct) / (100 + t.pnlPct)
+                      : null;
+                  return (
+                    <tr
+                      key={i}
+                      className="border-t border-neutral-200 dark:border-neutral-800"
+                    >
+                      <td className="px-3 py-2 text-neutral-700 dark:text-neutral-200 whitespace-nowrap">
+                        {fmtTime(t.timestamp)}
+                      </td>
+                      <td className="px-3 py-2">
                         <span
                           className={
-                            t.pnlPct >= 0
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-red-600 dark:text-red-400"
+                            t.side === "buy"
+                              ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                              : "text-red-600 dark:text-red-400 font-semibold"
                           }
                         >
-                          {t.pnlPct >= 0 ? "+" : ""}
-                          {t.pnlPct.toFixed(2)}%
+                          {t.side === "buy" ? "매수" : "매도"}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {formatMoney(t.price, currency)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {t.qty < 1 ? t.qty.toFixed(6) : t.qty.toFixed(4)}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {t.side === "buy" ? (
+                          <span className="text-neutral-400">—</span>
+                        ) : pnlAmount == null ? (
+                          "-"
+                        ) : (
+                          <span
+                            className={
+                              pnlAmount >= 0
+                                ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                                : "text-red-600 dark:text-red-400 font-semibold"
+                            }
+                          >
+                            {pnlAmount >= 0 ? "+" : ""}
+                            {formatMoney(pnlAmount, currency)}
+                            <span className="ml-1 text-xs font-normal opacity-70">
+                              ({t.pnlPct! >= 0 ? "+" : ""}
+                              {t.pnlPct!.toFixed(2)}%)
+                            </span>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             {session.trades.length > recentTrades.length && (

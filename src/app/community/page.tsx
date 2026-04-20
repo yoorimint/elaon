@@ -135,6 +135,12 @@ function CommunityList() {
                           <span className="text-red-500">♥ {p.like_count}</span>
                         </>
                       )}
+                      {p.dislike_count > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="text-neutral-500">▼ {p.dislike_count}</span>
+                        </>
+                      )}
                       {p.backtest_slug && (
                         <>
                           <span>·</span>

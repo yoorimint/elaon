@@ -24,6 +24,7 @@ export type Post = {
   view_count: number;
   comment_count: number;
   like_count: number;
+  dislike_count: number;
   created_at: string;
   author_username?: string;
 };
@@ -185,6 +186,12 @@ export async function isLiked(postId: string, userId: string): Promise<boolean> 
 
 export async function likePost(postId: string): Promise<void> {
   const uid = await requireUserId();
+  // 기존 싫어요가 있으면 먼저 해제 (상호 배타)
+  await supabase
+    .from("post_dislikes")
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", uid);
   const { error } = await supabase
     .from("post_likes")
     .insert({ post_id: postId, user_id: uid });
@@ -195,6 +202,45 @@ export async function unlikePost(postId: string): Promise<void> {
   const uid = await requireUserId();
   const { error } = await supabase
     .from("post_likes")
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", uid);
+  if (error) throw new Error(error.message);
+}
+
+// ===== 싫어요 =====
+// 한 유저가 동시에 좋아요+싫어요를 가질 수 없도록, insert 전 반대편 테이블의
+// row를 지운다. 클라이언트에서 한 번에 처리하되 서버 트리거가 count를 맞춰준다.
+
+export async function isDisliked(postId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("post_dislikes")
+    .select("post_id")
+    .eq("post_id", postId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) return false;
+  return !!data;
+}
+
+export async function dislikePost(postId: string): Promise<void> {
+  const uid = await requireUserId();
+  // 기존 좋아요가 있으면 먼저 해제 (상호 배타)
+  await supabase
+    .from("post_likes")
+    .delete()
+    .eq("post_id", postId)
+    .eq("user_id", uid);
+  const { error } = await supabase
+    .from("post_dislikes")
+    .insert({ post_id: postId, user_id: uid });
+  if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+}
+
+export async function undislikePost(postId: string): Promise<void> {
+  const uid = await requireUserId();
+  const { error } = await supabase
+    .from("post_dislikes")
     .delete()
     .eq("post_id", postId)
     .eq("user_id", uid);

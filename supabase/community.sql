@@ -117,3 +117,80 @@ select u.id, split_part(u.email, '@', 1)
 from auth.users u
 where not exists (select 1 from public.profiles p where p.user_id = u.id)
 on conflict do nothing;
+
+-- ===== 좋아요 / 싫어요 =====
+-- like_count / dislike_count 컬럼 (멱등)
+alter table public.posts add column if not exists like_count integer not null default 0;
+alter table public.posts add column if not exists dislike_count integer not null default 0;
+
+create table if not exists public.post_likes (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+create table if not exists public.post_dislikes (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+alter table public.post_likes enable row level security;
+alter table public.post_dislikes enable row level security;
+
+drop policy if exists post_likes_read on public.post_likes;
+create policy post_likes_read on public.post_likes for select using (true);
+drop policy if exists post_likes_insert_self on public.post_likes;
+create policy post_likes_insert_self on public.post_likes
+  for insert with check (auth.uid() = user_id);
+drop policy if exists post_likes_delete_self on public.post_likes;
+create policy post_likes_delete_self on public.post_likes
+  for delete using (auth.uid() = user_id);
+
+drop policy if exists post_dislikes_read on public.post_dislikes;
+create policy post_dislikes_read on public.post_dislikes for select using (true);
+drop policy if exists post_dislikes_insert_self on public.post_dislikes;
+create policy post_dislikes_insert_self on public.post_dislikes
+  for insert with check (auth.uid() = user_id);
+drop policy if exists post_dislikes_delete_self on public.post_dislikes;
+create policy post_dislikes_delete_self on public.post_dislikes
+  for delete using (auth.uid() = user_id);
+
+-- like_count / dislike_count 자동 유지 트리거. 같은 유저가 찬반을 서로 바꾸면
+-- 애플리케이션에서 반대편 테이블의 row를 지운 후 이쪽에 insert 하는 흐름이라,
+-- 트리거는 단순 +1 / -1 만 해도 정확하다.
+create or replace function public.bump_like_count()
+returns trigger language plpgsql security definer as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.posts set like_count = like_count + 1 where id = new.post_id;
+  elsif tg_op = 'DELETE' then
+    update public.posts set like_count = greatest(like_count - 1, 0) where id = old.post_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists post_likes_count_trigger on public.post_likes;
+create trigger post_likes_count_trigger
+  after insert or delete on public.post_likes
+  for each row execute function public.bump_like_count();
+
+create or replace function public.bump_dislike_count()
+returns trigger language plpgsql security definer as $$
+begin
+  if tg_op = 'INSERT' then
+    update public.posts set dislike_count = dislike_count + 1 where id = new.post_id;
+  elsif tg_op = 'DELETE' then
+    update public.posts set dislike_count = greatest(dislike_count - 1, 0) where id = old.post_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists post_dislikes_count_trigger on public.post_dislikes;
+create trigger post_dislikes_count_trigger
+  after insert or delete on public.post_dislikes
+  for each row execute function public.bump_dislike_count();

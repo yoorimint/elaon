@@ -10,12 +10,15 @@ import {
   createComment,
   deleteComment,
   deletePost,
+  dislikePost,
   getPost,
   incrementPostView,
+  isDisliked,
   isLiked,
   likePost,
   listComments,
   timeAgo,
+  undislikePost,
   unlikePost,
   type Comment,
   type Post,
@@ -35,7 +38,9 @@ export default function PostDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [disliked, setDisliked] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
+  const [dislikeBusy, setDislikeBusy] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -52,6 +57,7 @@ export default function PostDetailPage() {
         incrementPostView(slug).catch(() => {});
         if (user) {
           isLiked(p.id, user.id).then(setLiked);
+          isDisliked(p.id, user.id).then(setDisliked);
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"))
@@ -64,21 +70,77 @@ export default function PostDetailPage() {
       router.push("/login");
       return;
     }
-    if (likeBusy) return;
+    if (likeBusy || dislikeBusy) return;
     setLikeBusy(true);
-    const was = liked;
-    setLiked(!was);
-    setPost({ ...post, like_count: post.like_count + (was ? -1 : 1) });
+    const wasLiked = liked;
+    const wasDisliked = disliked;
+    // 낙관적 업데이트: 좋아요를 누르면 기존 싫어요가 있으면 해제되고, 있으면 토글.
+    setLiked(!wasLiked);
+    if (!wasLiked && wasDisliked) setDisliked(false);
+    setPost({
+      ...post,
+      like_count: post.like_count + (wasLiked ? -1 : 1),
+      dislike_count:
+        !wasLiked && wasDisliked ? post.dislike_count - 1 : post.dislike_count,
+    });
     try {
-      if (was) await unlikePost(post.id);
+      if (wasLiked) await unlikePost(post.id);
       else await likePost(post.id);
     } catch {
-      setLiked(was);
+      setLiked(wasLiked);
+      setDisliked(wasDisliked);
       setPost((prev) =>
-        prev ? { ...prev, like_count: prev.like_count + (was ? 1 : -1) } : prev,
+        prev
+          ? {
+              ...prev,
+              like_count: prev.like_count + (wasLiked ? 1 : -1),
+              dislike_count:
+                !wasLiked && wasDisliked ? prev.dislike_count + 1 : prev.dislike_count,
+            }
+          : prev,
       );
     } finally {
       setLikeBusy(false);
+    }
+  }
+
+  async function onToggleDislike() {
+    if (!post) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (likeBusy || dislikeBusy) return;
+    setDislikeBusy(true);
+    const wasLiked = liked;
+    const wasDisliked = disliked;
+    setDisliked(!wasDisliked);
+    if (!wasDisliked && wasLiked) setLiked(false);
+    setPost({
+      ...post,
+      dislike_count: post.dislike_count + (wasDisliked ? -1 : 1),
+      like_count:
+        !wasDisliked && wasLiked ? post.like_count - 1 : post.like_count,
+    });
+    try {
+      if (wasDisliked) await undislikePost(post.id);
+      else await dislikePost(post.id);
+    } catch {
+      setDisliked(wasDisliked);
+      setLiked(wasLiked);
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              dislike_count:
+                prev.dislike_count + (wasDisliked ? 1 : -1),
+              like_count:
+                !wasDisliked && wasLiked ? prev.like_count + 1 : prev.like_count,
+            }
+          : prev,
+      );
+    } finally {
+      setDislikeBusy(false);
     }
   }
 
@@ -180,11 +242,11 @@ export default function PostDetailPage() {
 
         {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex justify-center gap-3">
           <button
             onClick={onToggleLike}
-            disabled={likeBusy}
-            className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition ${
+            disabled={likeBusy || dislikeBusy}
+            className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition disabled:opacity-60 ${
               liked
                 ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
                 : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
@@ -192,6 +254,18 @@ export default function PostDetailPage() {
           >
             <span>{liked ? "♥" : "♡"}</span>
             <span>좋아요 {post.like_count}</span>
+          </button>
+          <button
+            onClick={onToggleDislike}
+            disabled={likeBusy || dislikeBusy}
+            className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition disabled:opacity-60 ${
+              disliked
+                ? "border-neutral-500 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+            }`}
+          >
+            <span>{disliked ? "▼" : "▽"}</span>
+            <span>싫어요 {post.dislike_count}</span>
           </button>
         </div>
       </article>

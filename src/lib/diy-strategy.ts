@@ -238,9 +238,18 @@ function computeIndicator(
       const macd = closes.map((_, i) => {
         const f = fast[i];
         const s = slow[i];
-        return f != null && s != null ? f - s : 0;
+        return f != null && s != null ? f - s : null;
       });
-      return ema(macd, ref.signal);
+      // 워밍업 구간 null을 0으로 메우면 signal line이 0에서 녹아들어오는 허위
+      // 시그널이 발생. 첫 유효 인덱스부터 EMA 돌리고 앞은 null로 둔다.
+      const firstValid = macd.findIndex((v) => v != null);
+      const out: (number | null)[] = new Array(macd.length).fill(null);
+      if (firstValid >= 0) {
+        const trimmed = macd.slice(firstValid).map((v) => v as number);
+        const sig = ema(trimmed, ref.signal);
+        for (let i = 0; i < sig.length; i++) out[firstValid + i] = sig[i];
+      }
+      return out;
     }
     case "stoch_k":
       return stochK(candles, ref.period);

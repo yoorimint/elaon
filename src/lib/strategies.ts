@@ -699,8 +699,18 @@ export function computeSignals(
       const s = slowEma[i];
       return f != null && s != null ? f - s : null;
     });
-    const validMacd = macdLine.map((v) => (v == null ? 0 : v));
-    const signalLine = ema(validMacd, p.signal);
+    // 워밍업 구간의 null을 0으로 채워서 EMA를 계산하면 signal line이 0에서
+    // 녹아 들어가는 허위 크로스가 초반에 발생한다. 첫 유효 인덱스부터 잘라서
+    // EMA를 돌리고, 앞부분은 null로 유지한다.
+    let firstValid = macdLine.findIndex((v) => v != null);
+    const signalLine: (number | null)[] = new Array(macdLine.length).fill(null);
+    if (firstValid >= 0) {
+      const trimmed = macdLine.slice(firstValid).map((v) => v as number);
+      const sig = ema(trimmed, p.signal);
+      for (let i = 0; i < sig.length; i++) {
+        signalLine[firstValid + i] = sig[i];
+      }
+    }
 
     for (let i = 1; i < candles.length; i++) {
       const m0 = macdLine[i - 1];
@@ -716,16 +726,22 @@ export function computeSignals(
 
   if (strategy === "breakout") {
     const p = params.breakout ?? { k: 0.5 };
+    // "1봉 보유 후 다음 봉에 청산". 연속 돌파일 경우에도 직전 매수분을
+    // 먼저 매도로 닫고 그 봉에서 재진입하지 않는다(한 봉당 신호 1개 한계).
+    let inPos = false;
     for (let i = 1; i < candles.length; i++) {
+      if (inPos) {
+        signals[i] = "sell";
+        inPos = false;
+        continue;
+      }
       const prev = candles[i - 1];
       const cur = candles[i];
       const range = prev.high - prev.low;
       const target = cur.open + p.k * range;
       if (cur.high >= target) {
         signals[i] = "buy";
-        if (i + 1 < candles.length) {
-          signals[i + 1] = "sell";
-        }
+        inPos = true;
       }
     }
     return signals;
@@ -743,8 +759,17 @@ export function computeSignals(
       const ll = rangeLow(candles, i, p.period);
       kVals.push(hh === ll ? 50 : ((candles[i].close - ll) / (hh - ll)) * 100);
     }
-    const kValid = kVals.map((v) => (v == null ? 50 : v));
-    const dVals = sma(kValid, p.smooth);
+    // MACD와 동일 이슈 — null을 50으로 패딩하면 초반 %D 값이 왜곡돼 허위
+    // 크로스가 나온다. 첫 유효 k부터 SMA 적용하고 앞은 null.
+    const firstK = kVals.findIndex((v) => v != null);
+    const dVals: (number | null)[] = new Array(kVals.length).fill(null);
+    if (firstK >= 0) {
+      const trimmed = kVals.slice(firstK).map((v) => v as number);
+      const sm = sma(trimmed, p.smooth);
+      for (let i = 0; i < sm.length; i++) {
+        dVals[firstK + i] = sm[i];
+      }
+    }
 
     let inPos = false;
     for (let i = 1; i < candles.length; i++) {

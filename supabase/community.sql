@@ -158,9 +158,9 @@ create trigger post_likes_count_trigger
   for each row execute function public.bump_like_count();
 
 -- ===== 이전 "싫어요" 제거 (신고하기 기능으로 대체) =====
--- 이미 적용돼 있으면 테이블과 컬럼을 조용히 지운다. 빈 테이블이라 안전.
-drop trigger if exists post_dislikes_count_trigger on public.post_dislikes;
-drop table if exists public.post_dislikes;
+-- 테이블 자체가 없을 수도 있으니 cascade 로 안전하게. 트리거/정책도
+-- 테이블과 함께 따라서 지워진다.
+drop table if exists public.post_dislikes cascade;
 drop function if exists public.bump_dislike_count();
 alter table public.posts drop column if exists dislike_count;
 

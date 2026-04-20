@@ -118,10 +118,9 @@ from auth.users u
 where not exists (select 1 from public.profiles p where p.user_id = u.id)
 on conflict do nothing;
 
--- ===== 좋아요 / 싫어요 =====
--- like_count / dislike_count 컬럼 (멱등)
+-- ===== 좋아요 =====
+-- like_count 컬럼 (멱등)
 alter table public.posts add column if not exists like_count integer not null default 0;
-alter table public.posts add column if not exists dislike_count integer not null default 0;
 
 create table if not exists public.post_likes (
   post_id uuid not null references public.posts(id) on delete cascade,
@@ -130,15 +129,7 @@ create table if not exists public.post_likes (
   primary key (post_id, user_id)
 );
 
-create table if not exists public.post_dislikes (
-  post_id uuid not null references public.posts(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  primary key (post_id, user_id)
-);
-
 alter table public.post_likes enable row level security;
-alter table public.post_dislikes enable row level security;
 
 drop policy if exists post_likes_read on public.post_likes;
 create policy post_likes_read on public.post_likes for select using (true);
@@ -149,18 +140,6 @@ drop policy if exists post_likes_delete_self on public.post_likes;
 create policy post_likes_delete_self on public.post_likes
   for delete using (auth.uid() = user_id);
 
-drop policy if exists post_dislikes_read on public.post_dislikes;
-create policy post_dislikes_read on public.post_dislikes for select using (true);
-drop policy if exists post_dislikes_insert_self on public.post_dislikes;
-create policy post_dislikes_insert_self on public.post_dislikes
-  for insert with check (auth.uid() = user_id);
-drop policy if exists post_dislikes_delete_self on public.post_dislikes;
-create policy post_dislikes_delete_self on public.post_dislikes
-  for delete using (auth.uid() = user_id);
-
--- like_count / dislike_count 자동 유지 트리거. 같은 유저가 찬반을 서로 바꾸면
--- 애플리케이션에서 반대편 테이블의 row를 지운 후 이쪽에 insert 하는 흐름이라,
--- 트리거는 단순 +1 / -1 만 해도 정확하다.
 create or replace function public.bump_like_count()
 returns trigger language plpgsql security definer as $$
 begin
@@ -178,19 +157,112 @@ create trigger post_likes_count_trigger
   after insert or delete on public.post_likes
   for each row execute function public.bump_like_count();
 
-create or replace function public.bump_dislike_count()
+-- ===== 이전 "싫어요" 제거 (신고하기 기능으로 대체) =====
+-- 이미 적용돼 있으면 테이블과 컬럼을 조용히 지운다. 빈 테이블이라 안전.
+drop trigger if exists post_dislikes_count_trigger on public.post_dislikes;
+drop table if exists public.post_dislikes;
+drop function if exists public.bump_dislike_count();
+alter table public.posts drop column if exists dislike_count;
+
+-- ===== 관리자 플래그 =====
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+
+create or replace function public.is_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select is_admin from public.profiles where user_id = auth.uid()), false);
+$$;
+grant execute on function public.is_admin() to authenticated;
+
+-- ===== 신고하기 =====
+-- 한 유저가 한 글을 여러 번 신고하지 못하도록 unique. 신고 10회 누적이면
+-- posts.blinded 를 true 로 세팅 (자동 블라인드).
+
+alter table public.posts add column if not exists report_count integer not null default 0;
+alter table public.posts add column if not exists blinded boolean not null default false;
+
+do $$ begin
+  if not exists (select 1 from pg_type where typname = 'report_reason') then
+    create type public.report_reason as enum ('ad','obscene','abuse','spam','other');
+  end if;
+end $$;
+
+create table if not exists public.post_reports (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  reporter_id uuid not null references auth.users(id) on delete cascade,
+  reason public.report_reason not null,
+  note text,
+  created_at timestamptz not null default now(),
+  primary key (post_id, reporter_id)
+);
+
+create index if not exists post_reports_post_idx on public.post_reports(post_id);
+
+alter table public.post_reports enable row level security;
+
+-- 신고 내역은 관리자만 조회 가능 (일반 유저는 자기 신고 여부만 확인 — 같은 policy로 처리)
+drop policy if exists post_reports_read on public.post_reports;
+create policy post_reports_read on public.post_reports
+  for select using (reporter_id = auth.uid() or public.is_admin());
+drop policy if exists post_reports_insert_self on public.post_reports;
+create policy post_reports_insert_self on public.post_reports
+  for insert with check (auth.uid() = reporter_id);
+-- 관리자는 신고 데이터 정리 가능 (복원 시 사용)
+drop policy if exists post_reports_delete_admin on public.post_reports;
+create policy post_reports_delete_admin on public.post_reports
+  for delete using (public.is_admin());
+
+-- 카운트 자동 증가 + 10회 누적 시 자동 블라인드
+create or replace function public.bump_report_count()
 returns trigger language plpgsql security definer as $$
+declare
+  new_count integer;
 begin
   if tg_op = 'INSERT' then
-    update public.posts set dislike_count = dislike_count + 1 where id = new.post_id;
+    update public.posts
+      set report_count = report_count + 1
+      where id = new.post_id
+      returning report_count into new_count;
+    if new_count >= 10 then
+      update public.posts set blinded = true where id = new.post_id;
+    end if;
   elsif tg_op = 'DELETE' then
-    update public.posts set dislike_count = greatest(dislike_count - 1, 0) where id = old.post_id;
+    update public.posts
+      set report_count = greatest(report_count - 1, 0)
+      where id = old.post_id;
   end if;
   return null;
 end;
 $$;
 
-drop trigger if exists post_dislikes_count_trigger on public.post_dislikes;
-create trigger post_dislikes_count_trigger
-  after insert or delete on public.post_dislikes
-  for each row execute function public.bump_dislike_count();
+drop trigger if exists post_reports_count_trigger on public.post_reports;
+create trigger post_reports_count_trigger
+  after insert or delete on public.post_reports
+  for each row execute function public.bump_report_count();
+
+-- ===== 관리자 RPC =====
+-- 블라인드 해제 + 기존 신고 데이터 초기화 (정상 글로 복원)
+create or replace function public.admin_unblind_post(p_post_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  delete from public.post_reports where post_id = p_post_id;
+  update public.posts
+    set blinded = false, report_count = 0
+    where id = p_post_id;
+end;
+$$;
+grant execute on function public.admin_unblind_post(uuid) to authenticated;
+
+-- 관리자 삭제 (author 정책 우회)
+create or replace function public.admin_delete_post(p_post_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then
+    raise exception 'not authorized';
+  end if;
+  delete from public.posts where id = p_post_id;
+end;
+$$;
+grant execute on function public.admin_delete_post(uuid) to authenticated;

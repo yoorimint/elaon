@@ -10,18 +10,20 @@ import {
   createComment,
   deleteComment,
   deletePost,
-  dislikePost,
   getPost,
+  hasReported,
   incrementPostView,
-  isDisliked,
+  isAdmin,
   isLiked,
   likePost,
   listComments,
+  REPORT_REASONS,
+  reportPost,
   timeAgo,
-  undislikePost,
   unlikePost,
   type Comment,
   type Post,
+  type ReportReason,
 } from "@/lib/community";
 
 export default function PostDetailPage() {
@@ -38,9 +40,16 @@ export default function PostDetailPage() {
   const [newComment, setNewComment] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [disliked, setDisliked] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
-  const [dislikeBusy, setDislikeBusy] = useState(false);
+  // 신고 관련 상태
+  const [alreadyReported, setAlreadyReported] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>("ad");
+  const [reportNote, setReportNote] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+  // 본인이 관리자면 블라인드된 본문도 볼 수 있게 토글
+  const [admin, setAdmin] = useState(false);
+  const [revealBlinded, setRevealBlinded] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -57,7 +66,8 @@ export default function PostDetailPage() {
         incrementPostView(slug).catch(() => {});
         if (user) {
           isLiked(p.id, user.id).then(setLiked);
-          isDisliked(p.id, user.id).then(setDisliked);
+          hasReported(p.id, user.id).then(setAlreadyReported);
+          isAdmin().then(setAdmin);
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : "불러오기 실패"))
@@ -70,77 +80,58 @@ export default function PostDetailPage() {
       router.push("/login");
       return;
     }
-    if (likeBusy || dislikeBusy) return;
+    if (likeBusy) return;
     setLikeBusy(true);
-    const wasLiked = liked;
-    const wasDisliked = disliked;
-    // 낙관적 업데이트: 좋아요를 누르면 기존 싫어요가 있으면 해제되고, 있으면 토글.
-    setLiked(!wasLiked);
-    if (!wasLiked && wasDisliked) setDisliked(false);
-    setPost({
-      ...post,
-      like_count: post.like_count + (wasLiked ? -1 : 1),
-      dislike_count:
-        !wasLiked && wasDisliked ? post.dislike_count - 1 : post.dislike_count,
-    });
+    const was = liked;
+    setLiked(!was);
+    setPost({ ...post, like_count: post.like_count + (was ? -1 : 1) });
     try {
-      if (wasLiked) await unlikePost(post.id);
+      if (was) await unlikePost(post.id);
       else await likePost(post.id);
     } catch {
-      setLiked(wasLiked);
-      setDisliked(wasDisliked);
+      setLiked(was);
       setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              like_count: prev.like_count + (wasLiked ? 1 : -1),
-              dislike_count:
-                !wasLiked && wasDisliked ? prev.dislike_count + 1 : prev.dislike_count,
-            }
-          : prev,
+        prev ? { ...prev, like_count: prev.like_count + (was ? 1 : -1) } : prev,
       );
     } finally {
       setLikeBusy(false);
     }
   }
 
-  async function onToggleDislike() {
-    if (!post) return;
+  function onOpenReport() {
     if (!user) {
       router.push("/login");
       return;
     }
-    if (likeBusy || dislikeBusy) return;
-    setDislikeBusy(true);
-    const wasLiked = liked;
-    const wasDisliked = disliked;
-    setDisliked(!wasDisliked);
-    if (!wasDisliked && wasLiked) setLiked(false);
-    setPost({
-      ...post,
-      dislike_count: post.dislike_count + (wasDisliked ? -1 : 1),
-      like_count:
-        !wasDisliked && wasLiked ? post.like_count - 1 : post.like_count,
-    });
+    if (alreadyReported) {
+      alert("이미 신고한 게시글입니다.");
+      return;
+    }
+    setReportReason("ad");
+    setReportNote("");
+    setReportOpen(true);
+  }
+
+  async function onSubmitReport() {
+    if (!post) return;
+    if (reportBusy) return;
+    setReportBusy(true);
     try {
-      if (wasDisliked) await undislikePost(post.id);
-      else await dislikePost(post.id);
-    } catch {
-      setDisliked(wasDisliked);
-      setLiked(wasLiked);
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              dislike_count:
-                prev.dislike_count + (wasDisliked ? 1 : -1),
-              like_count:
-                !wasDisliked && wasLiked ? prev.like_count + 1 : prev.like_count,
-            }
-          : prev,
-      );
+      await reportPost(post.id, reportReason, reportNote);
+      setAlreadyReported(true);
+      // 카운터 낙관적 업데이트. 10회 달성 시 서버 트리거가 blinded=true 세팅,
+      // 다음 조회 때 반영된다.
+      setPost({
+        ...post,
+        report_count: post.report_count + 1,
+        blinded: post.report_count + 1 >= 10 ? true : post.blinded,
+      });
+      setReportOpen(false);
+      alert("신고가 접수되었습니다. 검토 후 처리됩니다.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "신고 실패");
     } finally {
-      setDislikeBusy(false);
+      setReportBusy(false);
     }
   }
 
@@ -236,16 +227,35 @@ export default function PostDetailPage() {
           )}
         </div>
 
-        <div className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed">
-          {post.body}
-        </div>
-
-        {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
+        {post.blinded && !revealBlinded ? (
+          <div className="mt-6 rounded-xl border border-amber-300 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 p-5 text-sm text-amber-800 dark:text-amber-200">
+            <div className="font-semibold">신고 누적으로 블라인드 처리된 글입니다</div>
+            <p className="mt-1 text-xs opacity-80">
+              검토 후 삭제되거나 복원됩니다. 누적 신고 {post.report_count}회.
+            </p>
+            {admin && (
+              <button
+                type="button"
+                onClick={() => setRevealBlinded(true)}
+                className="mt-3 rounded-full border border-amber-400 bg-white/60 dark:bg-neutral-900/60 px-3 py-1.5 text-xs font-semibold hover:bg-white"
+              >
+                관리자 권한으로 본문 보기
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed">
+              {post.body}
+            </div>
+            {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
+          </>
+        )}
 
         <div className="mt-6 flex justify-center gap-3">
           <button
             onClick={onToggleLike}
-            disabled={likeBusy || dislikeBusy}
+            disabled={likeBusy}
             className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition disabled:opacity-60 ${
               liked
                 ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-950/40"
@@ -256,19 +266,88 @@ export default function PostDetailPage() {
             <span>좋아요 {post.like_count}</span>
           </button>
           <button
-            onClick={onToggleDislike}
-            disabled={likeBusy || dislikeBusy}
+            onClick={onOpenReport}
+            disabled={alreadyReported}
             className={`flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium transition disabled:opacity-60 ${
-              disliked
-                ? "border-neutral-500 bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+              alreadyReported
+                ? "border-neutral-300 dark:border-neutral-700 text-neutral-400"
                 : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
             }`}
           >
-            <span>{disliked ? "▼" : "▽"}</span>
-            <span>싫어요 {post.dislike_count}</span>
+            <span>⚑</span>
+            <span>{alreadyReported ? "신고됨" : "신고하기"}</span>
+            {post.report_count > 0 && (
+              <span className="text-xs text-neutral-500">({post.report_count})</span>
+            )}
           </button>
         </div>
       </article>
+
+      {reportOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !reportBusy && setReportOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold">신고 사유 선택</h3>
+            <p className="mt-1 text-xs text-neutral-500">
+              신고는 1회만 가능하며 10회 누적되면 자동 블라인드 처리됩니다.
+            </p>
+            <div className="mt-4 space-y-2">
+              {REPORT_REASONS.map((r) => (
+                <label
+                  key={r.id}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer text-sm ${
+                    reportReason === r.id
+                      ? "border-brand bg-brand/5"
+                      : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="report_reason"
+                    value={r.id}
+                    checked={reportReason === r.id}
+                    onChange={() => setReportReason(r.id)}
+                  />
+                  <span>{r.label}</span>
+                </label>
+              ))}
+            </div>
+            <label className="mt-4 block text-sm">
+              <span className="text-xs text-neutral-500">추가 설명 (선택)</span>
+              <textarea
+                rows={2}
+                value={reportNote}
+                onChange={(e) => setReportNote(e.target.value.slice(0, 500))}
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
+                placeholder="어떤 점이 문제인지 간단히 적어주세요."
+              />
+            </label>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={reportBusy}
+                onClick={() => setReportOpen(false)}
+                className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={reportBusy}
+                onClick={onSubmitReport}
+                className="rounded-full bg-red-600 text-white px-4 py-2 text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+              >
+                {reportBusy ? "접수 중…" : "신고 제출"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold mb-3">댓글 {comments.length}</h2>

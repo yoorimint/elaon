@@ -118,9 +118,19 @@ function CommunityList() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">
-                      {p.title}
-                      {p.comment_count > 0 && (
-                        <span className="ml-2 text-brand text-sm">[{p.comment_count}]</span>
+                      {p.blinded ? (
+                        <span className="text-neutral-400 italic">
+                          ⚑ 신고 누적으로 블라인드 처리된 글
+                        </span>
+                      ) : (
+                        <>
+                          {p.title}
+                          {p.comment_count > 0 && (
+                            <span className="ml-2 text-brand text-sm">
+                              [{p.comment_count}]
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="mt-1 text-xs text-neutral-500 flex gap-2 flex-wrap">
@@ -133,12 +143,6 @@ function CommunityList() {
                         <>
                           <span>·</span>
                           <span className="text-red-500">♥ {p.like_count}</span>
-                        </>
-                      )}
-                      {p.dislike_count > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-neutral-500">▼ {p.dislike_count}</span>
                         </>
                       )}
                       {p.backtest_slug && (

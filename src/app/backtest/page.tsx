@@ -940,7 +940,7 @@ export default function BacktestPage() {
             disabled={loading}
             className="inline-flex items-center rounded-full bg-brand px-6 py-3 text-white font-semibold hover:bg-brand-dark disabled:opacity-60"
           >
-            {loading ? "계산 중…" : "백테스트 실행"}
+            {loading ? "계산 중…" : result ? "완료 ✓ 다시 실행" : "백테스트 실행"}
           </button>
           {error && <span className="ml-4 text-sm text-red-600">{error}</span>}
         </div>

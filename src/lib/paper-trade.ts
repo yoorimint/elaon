@@ -400,6 +400,7 @@ function applySignal(
 export type TickResult = {
   newTrades: PaperTrade[];
   candlesProcessed: number;
+  candles: Candle[];
 };
 
 export async function tick(session: PaperSession): Promise<TickResult> {
@@ -418,7 +419,7 @@ export async function tick(session: PaperSession): Promise<TickResult> {
     endMs,
   );
   if (candles.length === 0) {
-    return { newTrades: [], candlesProcessed: 0 };
+    return { newTrades: [], candlesProcessed: 0, candles: [] };
   }
 
   // DIY는 별도 함수로 시그널 생성.
@@ -537,7 +538,31 @@ export async function tick(session: PaperSession): Promise<TickResult> {
 
   session.lastTickAt = Date.now();
   saveSession(session);
-  return { newTrades, candlesProcessed: processed };
+  return { newTrades, candlesProcessed: processed, candles };
+}
+
+// ===== 차트용 헬퍼 =====
+// 세션의 실제 거래 내역을 캔들 배열과 정렬해 signals[] 형태로 변환.
+// TVChart는 signals[i]가 buy/sell일 때 해당 봉에 매수/매도 화살표를 찍는다.
+export function signalsFromTrades(
+  candles: Candle[],
+  trades: PaperTrade[],
+): Signal[] {
+  const signals: Signal[] = new Array(candles.length).fill("hold");
+  const tradeByTs = new Map<number, "buy" | "sell">();
+  for (const t of trades) {
+    // 같은 봉에 매수+매도가 있으면 매도가 더 최근. 매도 우선(시각화 목적).
+    const existing = tradeByTs.get(t.timestamp);
+    if (!existing || t.side === "sell") {
+      tradeByTs.set(t.timestamp, t.side);
+    }
+  }
+  for (let i = 0; i < candles.length; i++) {
+    const side = tradeByTs.get(candles[i].timestamp);
+    if (side === "buy") signals[i] = "buy";
+    else if (side === "sell") signals[i] = "sell";
+  }
+  return signals;
 }
 
 // ===== 통계 =====

@@ -16,14 +16,16 @@ import {
   computeStats,
   deleteSession,
   loadSession,
+  signalsFromTrades,
   tick,
   type PaperSession,
   type PaperStats,
   type PaperTrade,
 } from "@/lib/paper-trade";
 import { STRATEGIES } from "@/lib/strategies";
-import { TIMEFRAMES } from "@/lib/upbit";
+import { TIMEFRAMES, type Candle } from "@/lib/upbit";
 import { currencyOf, formatMoney } from "@/lib/market";
+import { TVChart } from "@/components/TVChart";
 
 // 타임프레임별 폴링 간격 (ms). 분봉은 자주, 일봉은 거의 폴링 안함.
 function pollIntervalFor(tf: string): number {
@@ -92,6 +94,7 @@ export default function PaperTradeDetailPage() {
   const router = useRouter();
 
   const [session, setSession] = useState<PaperSession | null>(null);
+  const [candles, setCandles] = useState<Candle[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +121,7 @@ export default function PaperTradeDetailPage() {
     try {
       const result = await tick(current);
       setSession({ ...current });
+      if (result.candles.length > 0) setCandles(result.candles);
       if (result.candlesProcessed === 0) {
         setLastTickMsg("새 봉 없음 (현재가만 갱신)");
       } else {
@@ -293,6 +297,31 @@ export default function PaperTradeDetailPage() {
           />
         </section>
       )}
+
+      <section className="mt-8">
+        <h2 className="text-lg font-bold">가격 차트</h2>
+        <p className="mt-1 text-xs text-neutral-500">
+          캔들 위 <span className="text-emerald-600 font-semibold">▲ 매수</span>,{" "}
+          <span className="text-red-600 font-semibold">▼ 매도</span> 화살표가 세션의 실제 체결 시점입니다.
+        </p>
+        <div className="mt-3">
+          {candles.length === 0 ? (
+            <div className="h-64 rounded-xl border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-sm text-neutral-500">
+              차트 데이터 불러오는 중…
+            </div>
+          ) : (
+            <TVChart
+              candles={candles}
+              signals={signalsFromTrades(candles, session.trades)}
+              strategy={session.strategy}
+              params={session.params}
+              customBuy={session.customBuy}
+              customSell={session.customSell}
+              currency={currency}
+            />
+          )}
+        </div>
+      </section>
 
       <section className="mt-8">
         <h2 className="text-lg font-bold">자본 곡선</h2>

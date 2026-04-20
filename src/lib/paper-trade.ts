@@ -427,9 +427,13 @@ export function computeStats(session: PaperSession): PaperStats {
       : session.initialCash;
   const closed = session.trades.filter((t) => t.side === "sell" && t.pnlPct != null);
   const wins = closed.filter((t) => (t.pnlPct ?? 0) > 0).length;
-  const realized = session.trades.reduce((sum, t) => sum + t.cashFlow, 0)
-    + session.position * session.lastPrice
-    - session.initialCash;
+  // 실현 손익 = 총 손익 - 미실현 손익. 보유 중인 포지션의 평가차익은 제외한다.
+  // (기존처럼 cashFlow 합 + 평가 - 초기자금으로 계산하면 초기 상태에서 거래가
+  //  하나도 없을 때 -초기자금이 되는 버그가 있었다.)
+  const totalPnl = equity - session.initialCash;
+  const unrealizedPnl =
+    session.position > 0 ? session.position * (session.lastPrice - session.avgCost) : 0;
+  const realized = totalPnl - unrealizedPnl;
   const unrealized =
     session.position > 0 && session.openEntryPrice
       ? (session.lastPrice / session.openEntryPrice - 1) * 100

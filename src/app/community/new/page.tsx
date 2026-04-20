@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { CATEGORIES, createPost, type Category } from "@/lib/community";
 
 export default function NewPostPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-2xl px-5 py-12 text-neutral-500">
+          불러오는 중…
+        </main>
+      }
+    >
+      <NewPostInner />
+    </Suspense>
+  );
+}
+
+function NewPostInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();

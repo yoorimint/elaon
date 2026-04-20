@@ -19,7 +19,7 @@ export type Signal =
   | "sell"
   | "hold"
   | { buy_krw: number }
-  | { sell_qty_frac: number };
+  | { sell_qty_frac: number; entry_price?: number };
 
 export type StrategyParams = {
   ma_cross?: { short: number; long: number };
@@ -816,21 +816,32 @@ export function computeSignals(
     const initialCash = opts.initialCash ?? 1_000_000;
     const slotKRW = initialCash / p.grids;
     const step = (p.high - p.low) / p.grids;
-    const bought = new Array(p.grids).fill(false);
+    // 각 grid 레벨에서 매수한 수량을 기억해 매도 시 그 수량만 정확히 청산.
+    const boughtQty: (number | null)[] = new Array(p.grids).fill(null);
+    const boughtAt: number[] = new Array(p.grids).fill(0);
 
     for (let i = 0; i < candles.length; i++) {
       const price = candles[i].close;
       for (let g = 0; g < p.grids; g++) {
         const buyPrice = p.low + step * g;
         const sellPrice = p.low + step * (g + 1);
-        if (!bought[g] && price <= buyPrice) {
+        if (boughtQty[g] === null && price <= buyPrice) {
           signals[i] = { buy_krw: slotKRW };
-          bought[g] = true;
+          boughtQty[g] = slotKRW / price;
+          boughtAt[g] = price;
           break;
         }
-        if (bought[g] && price >= sellPrice) {
-          signals[i] = { sell_qty_frac: 1 / p.grids };
-          bought[g] = false;
+        if (boughtQty[g] !== null && price >= sellPrice) {
+          const totalQty = boughtQty.reduce<number>(
+            (s, q) => s + (q ?? 0),
+            0,
+          );
+          const frac = totalQty > 0 ? (boughtQty[g] as number) / totalQty : 0;
+          signals[i] = {
+            sell_qty_frac: Math.min(Math.max(frac, 0), 1),
+            entry_price: boughtAt[g],
+          };
+          boughtQty[g] = null;
           break;
         }
       }

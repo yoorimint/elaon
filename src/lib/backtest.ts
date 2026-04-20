@@ -99,14 +99,20 @@ export function runBacktest(
       const frac = Math.min(Math.max(signal.sell_qty_frac, 0), 1);
       const qty = position * frac;
       if (qty > 0) {
+        // 진입가는 signal에 명시됐으면 그걸 쓰고(grid 레벨별 정확), 없으면
+        // 직전 open trade의 entryPrice, 그것도 없으면 현재 avgCost를 사용.
+        // 반드시 position/avgCost 변경 전에 캡처해야 한다.
+        const last = trades[trades.length - 1];
+        const entryPrice =
+          signal.entry_price ??
+          (last && last.exitIndex === null ? last.entryPrice : avgCost);
+
         cash += qty * price * (1 - feeRate);
         position -= qty;
         if (position < 1e-12) {
           position = 0;
           avgCost = 0;
         }
-        const last = trades[trades.length - 1];
-        const entryPrice = last && last.exitIndex === null ? last.entryPrice : avgCost;
         trades.push({
           entryIndex: i,
           entryPrice,

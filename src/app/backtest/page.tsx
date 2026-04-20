@@ -29,6 +29,7 @@ import {
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
+import { setHandoff } from "@/lib/paper-trade";
 import { NumInput } from "@/components/NumInput";
 import { MarketPicker } from "@/components/MarketPicker";
 import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
@@ -315,9 +316,20 @@ export default function BacktestPage() {
   }
 
   function onPaperTrade() {
-    alert(
-      "모의투자 기능은 곧 공개될 예정입니다.\n현재 백테스트 전략을 실시간 시세로 이어받아 자동 집계해드립니다.",
-    );
+    if (!result || !runStrategy || !runParams) return;
+    setHandoff({
+      market,
+      timeframe,
+      strategy: runStrategy,
+      params: runParams,
+      customBuy: runCustomBuy ?? undefined,
+      customSell: runCustomSell ?? undefined,
+      stopLossPct: stopLoss > 0 ? stopLoss : undefined,
+      takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+      initialCash,
+      feeBps,
+    });
+    router.push("/paper-trade/new");
   }
 
   return (

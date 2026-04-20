@@ -266,3 +266,177 @@ begin
 end;
 $$;
 grant execute on function public.admin_delete_post(uuid) to authenticated;
+
+-- ===== 계정 제재 (ban) =====
+alter table public.profiles add column if not exists banned boolean not null default false;
+alter table public.profiles add column if not exists banned_at timestamptz;
+alter table public.profiles add column if not exists banned_reason text;
+
+create or replace function public.is_banned()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select banned from public.profiles where user_id = auth.uid()), false);
+$$;
+grant execute on function public.is_banned() to authenticated;
+
+-- 제재된 유저는 글/댓글/좋아요/신고 insert 차단 (기존 정책 덮어쓰기)
+drop policy if exists posts_insert on public.posts;
+create policy posts_insert on public.posts for insert
+  with check (auth.uid() = author_id and not public.is_banned());
+
+drop policy if exists comments_insert on public.comments;
+create policy comments_insert on public.comments for insert
+  with check (auth.uid() = author_id and not public.is_banned());
+
+drop policy if exists post_likes_insert_self on public.post_likes;
+create policy post_likes_insert_self on public.post_likes
+  for insert with check (auth.uid() = user_id and not public.is_banned());
+
+drop policy if exists post_reports_insert_self on public.post_reports;
+create policy post_reports_insert_self on public.post_reports
+  for insert with check (auth.uid() = reporter_id and not public.is_banned());
+
+create or replace function public.admin_ban_user(p_user_id uuid, p_reason text default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  update public.profiles
+    set banned = true, banned_at = now(), banned_reason = p_reason
+    where user_id = p_user_id;
+end;
+$$;
+grant execute on function public.admin_ban_user(uuid, text) to authenticated;
+
+create or replace function public.admin_unban_user(p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  update public.profiles
+    set banned = false, banned_at = null, banned_reason = null
+    where user_id = p_user_id;
+end;
+$$;
+grant execute on function public.admin_unban_user(uuid) to authenticated;
+
+-- ===== 방문 기록 (일별 집계) =====
+-- 비로그인 유저는 localStorage 에 저장한 client_id 로 구분하고, 로그인 유저는
+-- user_id 도 함께 기록. 같은 클라이언트가 하루에 여러 번 들어와도 하나로 묶어
+-- visit_count 만 증가.
+create table if not exists public.site_visits (
+  visited_date date not null,
+  client_id text not null,
+  user_id uuid references auth.users(id) on delete set null,
+  first_seen_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  visit_count integer not null default 1,
+  primary key (visited_date, client_id)
+);
+
+create index if not exists site_visits_date_idx on public.site_visits(visited_date desc);
+
+alter table public.site_visits enable row level security;
+-- 클라이언트에서 직접 읽거나 쓰지 못하게. log_visit RPC 와 통계 RPC 만 사용.
+drop policy if exists site_visits_no_access on public.site_visits;
+create policy site_visits_no_access on public.site_visits for select using (public.is_admin());
+
+create or replace function public.log_visit(p_client_id text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_client_id is null or length(p_client_id) = 0 then
+    return;
+  end if;
+  insert into public.site_visits (visited_date, client_id, user_id)
+  values (current_date, p_client_id, auth.uid())
+  on conflict (visited_date, client_id)
+  do update set
+    visit_count = public.site_visits.visit_count + 1,
+    last_seen_at = now(),
+    user_id = coalesce(public.site_visits.user_id, excluded.user_id);
+end;
+$$;
+grant execute on function public.log_visit(text) to anon, authenticated;
+
+-- ===== 어드민 통계 =====
+create or replace function public.admin_site_stats()
+returns table (
+  today_visits bigint,
+  today_uniques bigint,
+  yesterday_uniques bigint,
+  week_uniques bigint,
+  today_signups bigint,
+  today_posts bigint,
+  today_comments bigint,
+  today_reports bigint,
+  total_users bigint,
+  banned_users bigint,
+  blinded_posts bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query select
+    (select coalesce(sum(visit_count), 0)::bigint from public.site_visits where visited_date = current_date),
+    (select count(*)::bigint from public.site_visits where visited_date = current_date),
+    (select count(*)::bigint from public.site_visits where visited_date = current_date - 1),
+    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= current_date - 6),
+    (select count(*)::bigint from auth.users where created_at::date = current_date),
+    (select count(*)::bigint from public.posts where created_at::date = current_date),
+    (select count(*)::bigint from public.comments where created_at::date = current_date),
+    (select count(*)::bigint from public.post_reports where created_at::date = current_date),
+    (select count(*)::bigint from auth.users),
+    (select count(*)::bigint from public.profiles where banned = true),
+    (select count(*)::bigint from public.posts where blinded = true);
+end;
+$$;
+grant execute on function public.admin_site_stats() to authenticated;
+
+-- 최근 7일 일별 방문 유니크
+create or replace function public.admin_visits_trend()
+returns table (visited_date date, uniques bigint, views bigint)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+    select v.visited_date,
+           count(*)::bigint as uniques,
+           coalesce(sum(v.visit_count), 0)::bigint as views
+    from public.site_visits v
+    where v.visited_date >= current_date - 13
+    group by v.visited_date
+    order by v.visited_date;
+end;
+$$;
+grant execute on function public.admin_visits_trend() to authenticated;
+
+-- ===== 어드민 회원 목록 =====
+create or replace function public.admin_list_users(p_limit int default 200)
+returns table (
+  user_id uuid,
+  email text,
+  username text,
+  created_at timestamptz,
+  is_admin boolean,
+  banned boolean,
+  banned_reason text,
+  banned_at timestamptz,
+  post_count bigint,
+  comment_count bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+    select u.id as user_id,
+           u.email::text,
+           p.username,
+           u.created_at,
+           coalesce(p.is_admin, false) as is_admin,
+           coalesce(p.banned, false) as banned,
+           p.banned_reason,
+           p.banned_at,
+           (select count(*) from public.posts po where po.author_id = u.id)::bigint as post_count,
+           (select count(*) from public.comments c where c.author_id = u.id)::bigint as comment_count
+    from auth.users u
+    left join public.profiles p on p.user_id = u.id
+    order by u.created_at desc
+    limit p_limit;
+end;
+$$;
+grant execute on function public.admin_list_users(int) to authenticated;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
+import { VisitLogger } from "@/components/VisitLogger";
 
 export const metadata: Metadata = {
   title: "eloan 코인 백테스트",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body className="min-h-screen antialiased">
         <AuthProvider>
+          <VisitLogger />
           <Header />
           {children}
         </AuthProvider>

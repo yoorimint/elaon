@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { AdminNav } from "@/components/AdminNav";
 import {
   adminDeletePost,
   adminUnblindPost,
@@ -103,19 +104,14 @@ export default function AdminReportsPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-8 sm:py-12">
-      <div className="mb-6">
-        <Link
-          href="/"
-          className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-        >
-          ← 홈으로
-        </Link>
-        <h1 className="mt-2 text-2xl sm:text-3xl font-bold">신고 관리</h1>
-        <p className="mt-2 text-sm text-neutral-500">
+      <div className="mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold">신고 관리</h1>
+        <p className="mt-1 text-sm text-neutral-500">
           신고가 접수된 게시글 목록입니다. 10회 누적 시 자동 블라인드 처리됩니다.
           복원하면 신고 내역이 초기화됩니다.
         </p>
       </div>
+      <AdminNav />
 
       <div className="mb-4 flex justify-between items-center">
         <button

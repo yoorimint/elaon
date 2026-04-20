@@ -316,3 +316,108 @@ export function timeAgo(iso: string): string {
   if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
   return d.toLocaleDateString("ko-KR");
 }
+
+// ===== 어드민: 통계 =====
+
+export type SiteStats = {
+  today_visits: number;
+  today_uniques: number;
+  yesterday_uniques: number;
+  week_uniques: number;
+  today_signups: number;
+  today_posts: number;
+  today_comments: number;
+  today_reports: number;
+  total_users: number;
+  banned_users: number;
+  blinded_posts: number;
+};
+
+export async function getSiteStats(): Promise<SiteStats | null> {
+  const { data, error } = await supabase.rpc("admin_site_stats");
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  // Postgres 가 bigint 를 string 으로 줄 수도 있어서 숫자 변환.
+  const num = (v: unknown) => (v == null ? 0 : Number(v));
+  return {
+    today_visits: num(row.today_visits),
+    today_uniques: num(row.today_uniques),
+    yesterday_uniques: num(row.yesterday_uniques),
+    week_uniques: num(row.week_uniques),
+    today_signups: num(row.today_signups),
+    today_posts: num(row.today_posts),
+    today_comments: num(row.today_comments),
+    today_reports: num(row.today_reports),
+    total_users: num(row.total_users),
+    banned_users: num(row.banned_users),
+    blinded_posts: num(row.blinded_posts),
+  };
+}
+
+export type VisitTrendRow = {
+  date: string;
+  uniques: number;
+  views: number;
+};
+
+export async function getVisitsTrend(): Promise<VisitTrendRow[]> {
+  const { data, error } = await supabase.rpc("admin_visits_trend");
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<{
+    visited_date: string;
+    uniques: number | string;
+    views: number | string;
+  }>;
+  return rows.map((r) => ({
+    date: r.visited_date,
+    uniques: Number(r.uniques),
+    views: Number(r.views),
+  }));
+}
+
+// ===== 어드민: 회원 목록 + 제재 =====
+
+export type AdminUser = {
+  user_id: string;
+  email: string;
+  username: string | null;
+  created_at: string;
+  is_admin: boolean;
+  banned: boolean;
+  banned_reason: string | null;
+  banned_at: string | null;
+  post_count: number;
+  comment_count: number;
+};
+
+export async function listAllUsers(limit = 200): Promise<AdminUser[]> {
+  const { data, error } = await supabase.rpc("admin_list_users", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  return rows.map((r) => ({
+    user_id: String(r.user_id),
+    email: String(r.email ?? ""),
+    username: (r.username as string) ?? null,
+    created_at: String(r.created_at),
+    is_admin: Boolean(r.is_admin),
+    banned: Boolean(r.banned),
+    banned_reason: (r.banned_reason as string) ?? null,
+    banned_at: (r.banned_at as string) ?? null,
+    post_count: Number(r.post_count ?? 0),
+    comment_count: Number(r.comment_count ?? 0),
+  }));
+}
+
+export async function banUser(userId: string, reason?: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_ban_user", {
+    p_user_id: userId,
+    p_reason: reason?.trim() || null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function unbanUser(userId: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_unban_user", { p_user_id: userId });
+  if (error) throw new Error(error.message);
+}

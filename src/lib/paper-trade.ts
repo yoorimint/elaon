@@ -8,6 +8,7 @@ import { TIMEFRAMES } from "./upbit";
 import { fetchCandlesForMarket } from "./market";
 import {
   computeSignals,
+  sma,
   type Signal,
   type StrategyId,
   type StrategyParams,
@@ -157,8 +158,9 @@ function newId(): string {
 // 너무 짧으면 시그널 워밍업이 안 되니 충분히 받아둔다.
 export async function createSession(input: CreateSessionInput): Promise<PaperSession> {
   const tfSec = TIMEFRAMES.find((t) => t.id === input.timeframe)?.seconds ?? 86400;
-  // 약 200봉치 과거를 가져와 워밍업으로 사용. 단, 1d 이상은 200일이면 충분.
-  const lookbackBars = Math.min(400, Math.max(120, 200));
+  // 지표 워밍업을 위해 약 400봉치 과거를 가져온다. (MA cross 장기 60, ichimoku
+  // 52+26 등 대부분의 전략이 200봉 이내에 안정되지만 여유있게 400봉.)
+  const lookbackBars = 400;
   const endMs = Date.now();
   const startMs = endMs - tfSec * 1000 * lookbackBars;
   const candles = await fetchCandlesForMarket(
@@ -356,14 +358,62 @@ export async function tick(session: PaperSession): Promise<TickResult> {
     });
   }
 
-  // 마지막 처리 시점 이후의 새 캔들만 적용
+  // 마지막 처리 시점 이후의 새 캔들만 적용. 단, 아직 닫히지 않은 진행 중 봉
+  // (시작+봉길이 > 현재시각)은 종가가 확정되지 않아 시그널이 바뀔 수 있으므로
+  // 거래로 발동시키지 않는다. 백테스트와 동일하게 "닫힌 봉" 기준.
+  const now = Date.now();
+  const tfMs = tfSec * 1000;
+  // DCA/ma_dca는 "computeSignals 내부 인덱스 % intervalDays"로 신호를 내는데,
+  // 매 tick마다 fetch 윈도우가 이동하므로 세션 시작 이후 균일한 주기가 깨진다.
+  // 세션 기준 봉 카운터(= 처리된 봉 수)로 신호를 다시 만들어 쓴다.
+  const maForDca: (number | null)[] | null =
+    session.strategy === "ma_dca"
+      ? sma(
+          candles.map((c) => c.close),
+          session.params.ma_dca?.maPeriod ?? 60,
+        )
+      : null;
   const newTrades: PaperTrade[] = [];
   let processed = 0;
   for (let i = 0; i < candles.length; i++) {
     const c = candles[i];
     if (c.timestamp <= session.lastProcessedTs) continue;
+    if (c.timestamp + tfMs > now) continue; // 아직 닫히지 않은 봉
     processed += 1;
-    const t = applySignal(session, c, i, signals[i]);
+    let effectiveSignal: Signal = signals[i];
+    // buy_hold은 signals[0]에만 "buy"가 찍혀 paper trade에서는 발동하지 않는다.
+    // 세션 시작 이후 첫 닫힌 봉에 한 번 매수.
+    if (
+      session.strategy === "buy_hold" &&
+      session.position === 0 &&
+      session.trades.length === 0
+    ) {
+      effectiveSignal = "buy";
+    }
+    // DCA/ma_dca는 세션 기준 봉 카운터로 신호를 재구성.
+    // barCount=0 은 세션 시작 후 첫 처리 봉.
+    if (session.strategy === "dca" || session.strategy === "ma_dca") {
+      const barCount = session.equity.length - 1;
+      if (session.strategy === "dca") {
+        const p = session.params.dca ?? { intervalDays: 7, amountKRW: 100000 };
+        effectiveSignal =
+          barCount % p.intervalDays === 0 ? { buy_krw: p.amountKRW } : "hold";
+      } else {
+        const p = session.params.ma_dca ?? {
+          intervalDays: 7,
+          amountKRW: 100000,
+          maPeriod: 60,
+        };
+        if (barCount % p.intervalDays === 0 && maForDca) {
+          const m = maForDca[i];
+          effectiveSignal =
+            m != null && c.close < m ? { buy_krw: p.amountKRW } : "hold";
+        } else {
+          effectiveSignal = "hold";
+        }
+      }
+    }
+    const t = applySignal(session, c, i, effectiveSignal);
     if (t) {
       session.trades.push(t);
       newTrades.push(t);
@@ -391,14 +441,10 @@ export async function tick(session: PaperSession): Promise<TickResult> {
     const bm = (session.initialCash / session.startPrice) * c.close;
     session.equity.push({ timestamp: c.timestamp, equity: eq, benchmark: bm });
     session.lastProcessedTs = c.timestamp;
-    session.lastPrice = c.close;
   }
 
-  // 새 캔들이 없어도 마지막 가격 갱신 (현재가 표시 + benchmark 갱신용)
-  if (processed === 0) {
-    const last = candles[candles.length - 1];
-    session.lastPrice = last.close;
-  }
+  // 현재가는 항상 최신 봉(진행 중 봉 포함) 종가로 갱신해서 UI에 반영한다.
+  session.lastPrice = candles[candles.length - 1].close;
 
   session.lastTickAt = Date.now();
   saveSession(session);

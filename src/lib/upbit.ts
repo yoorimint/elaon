@@ -145,6 +145,7 @@ async function fetchCandlesPage(
   if (to) params.set("to", to);
   const res = await fetchWithRetry(`${BASE}/${endpoint}?${params.toString()}`);
   const raw = (await res.json()) as Array<{
+    candle_date_time_utc: string;
     timestamp: number;
     opening_price: number;
     high_price: number;
@@ -152,9 +153,12 @@ async function fetchCandlesPage(
     trade_price: number;
     candle_acc_trade_volume: number;
   }>;
+  // Upbit의 `timestamp` 필드는 "봉 안에서 마지막 체결 시각"이라 아직 닫히지 않은
+  // 봉은 매 체결마다 값이 바뀐다. 모의투자의 중복 처리 방지가 깨지므로, 불변인
+  // 봉 시작 시각(`candle_date_time_utc`)을 파싱해서 timestamp로 사용한다.
   return raw
     .map((c) => ({
-      timestamp: c.timestamp,
+      timestamp: Date.parse(c.candle_date_time_utc + "Z"),
       open: c.opening_price,
       high: c.high_price,
       low: c.low_price,

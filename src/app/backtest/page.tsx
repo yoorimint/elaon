@@ -108,6 +108,7 @@ export default function BacktestPage() {
   const [gridLow, setGridLow] = useState(0);
   const [gridHigh, setGridHigh] = useState(0);
   const [gridCount, setGridCount] = useState(10);
+  const [gridMode, setGridMode] = useState<"arith" | "geom">("geom");
   const [customBuy, setCustomBuy] = useState<Condition[]>([defaultCondition()]);
   const [customSell, setCustomSell] = useState<Condition[]>([]);
   const [stopLoss, setStopLoss] = useState(0);
@@ -209,7 +210,7 @@ export default function BacktestPage() {
           amountKRW: dcaAmount,
           maPeriod: maDcaMaPeriod,
         },
-        grid: { low: gLow, high: gHigh, grids: gridCount },
+        grid: { low: gLow, high: gHigh, grids: gridCount, mode: gridMode },
       };
       let signals;
       if (strategy === "custom") {
@@ -785,8 +786,40 @@ export default function BacktestPage() {
                 onChange={setGridCount}
               />
             </label>
+            <label className="block sm:col-span-3">
+              <span className="text-sm font-medium">분할 방식</span>
+              <div className="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGridMode("geom")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    gridMode === "geom"
+                      ? "border-brand bg-brand/10 text-brand-dark dark:text-brand font-medium"
+                      : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  등비 (퍼센트) · 추천
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGridMode("arith")}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                    gridMode === "arith"
+                      ? "border-brand bg-brand/10 text-brand-dark dark:text-brand font-medium"
+                      : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  등차 (균등 가격)
+                </button>
+              </div>
+              <span className="mt-1 block text-xs text-neutral-500">
+                {gridMode === "geom"
+                  ? `각 구간 간격이 고정 퍼센트 (${gridLow > 0 && gridHigh > gridLow && gridCount >= 2 ? `${((Math.pow(gridHigh / gridLow, 1 / gridCount) - 1) * 100).toFixed(2)}%` : "—"}). 가격대가 넓은 코인/주식에 적합.`
+                  : `각 구간 간격이 고정 금액 (${gridLow > 0 && gridHigh > gridLow && gridCount >= 2 ? `${currencySymbol(currency)} ${((gridHigh - gridLow) / gridCount).toLocaleString()}` : "—"}). 박스권이 좁을 때 적합.`}
+              </span>
+            </label>
             <div className="sm:col-span-3 text-xs text-neutral-500">
-              0으로 두시면 기간 내 최저/최고가로 자동 설정됩니다.
+              가격을 0으로 두면 기간 내 최저/최고가로 자동 설정됩니다.
             </div>
           </div>
         )}

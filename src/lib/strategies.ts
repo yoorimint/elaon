@@ -31,7 +31,12 @@ export type StrategyParams = {
   ichimoku?: { conversion: number; base: number; lagging: number };
   dca?: { intervalDays: number; amountKRW: number };
   ma_dca?: { intervalDays: number; amountKRW: number; maPeriod: number };
-  grid?: { low: number; high: number; grids: number };
+  grid?: {
+    low: number;
+    high: number;
+    grids: number;
+    mode?: "arith" | "geom"; // arith=등차(균등), geom=등비(퍼센트, 기본)
+  };
 };
 
 export type StrategyConfig = {
@@ -811,20 +816,26 @@ export function computeSignals(
   }
 
   if (strategy === "grid") {
-    const p = params.grid ?? { low: 0, high: 0, grids: 10 };
-    if (p.grids < 2 || p.high <= p.low) return signals;
+    const p = params.grid ?? { low: 0, high: 0, grids: 10, mode: "geom" };
+    if (p.grids < 2 || p.high <= p.low || p.low <= 0) return signals;
     const initialCash = opts.initialCash ?? 1_000_000;
     const slotKRW = initialCash / p.grids;
-    const step = (p.high - p.low) / p.grids;
-    // 각 grid 레벨에서 매수한 수량을 기억해 매도 시 그 수량만 정확히 청산.
+    const mode = p.mode ?? "geom";
+    // 등비(geom)면 공비 r = (high/low)^(1/N), level[g] = low * r^g → 퍼센트 등간격
+    // 등차(arith)면 기존대로 (high-low)/N 간격
+    const ratio =
+      mode === "geom" ? Math.pow(p.high / p.low, 1 / p.grids) : 1;
+    const step = mode === "arith" ? (p.high - p.low) / p.grids : 0;
+    const levelAt = (g: number): number =>
+      mode === "geom" ? p.low * Math.pow(ratio, g) : p.low + step * g;
     const boughtQty: (number | null)[] = new Array(p.grids).fill(null);
     const boughtAt: number[] = new Array(p.grids).fill(0);
 
     for (let i = 0; i < candles.length; i++) {
       const price = candles[i].close;
       for (let g = 0; g < p.grids; g++) {
-        const buyPrice = p.low + step * g;
-        const sellPrice = p.low + step * (g + 1);
+        const buyPrice = levelAt(g);
+        const sellPrice = levelAt(g + 1);
         if (boughtQty[g] === null && price <= buyPrice) {
           signals[i] = { buy_krw: slotKRW };
           boughtQty[g] = slotKRW / price;

@@ -68,6 +68,9 @@ export type PaperSession = PaperSessionMeta & {
   lastTickAt: number;
   // 마지막 본 가격 (UI 표시용)
   lastPrice: number;
+  // 그리드 전략용 레벨별 매수 상태 (컴퓨트 윈도우에 의존하지 않도록 세션에 저장)
+  gridBoughtQty?: (number | null)[];
+  gridBoughtAt?: number[];
 };
 
 // ===== localStorage 헬퍼 =====
@@ -207,8 +210,87 @@ export async function createSession(input: CreateSessionInput): Promise<PaperSes
     lastTickAt: Date.now(),
     lastPrice: startPrice,
   };
+  // 그리드: 세션 생성 시점에 레벨별 상태 초기화
+  if (input.strategy === "grid") {
+    const g = input.params.grid;
+    if (g && g.grids >= 2 && g.high > g.low && g.low > 0) {
+      session.gridBoughtQty = new Array(g.grids).fill(null);
+      session.gridBoughtAt = new Array(g.grids).fill(0);
+    }
+  }
+  // buy_hold: 세션 생성 즉시 시작가로 전액 매수해 백테스트와 동일하게 맞춘다.
+  // (signals[0]에만 "buy"가 찍혀 paper trade에서는 영원히 발동 못 하므로)
+  if (input.strategy === "buy_hold") {
+    const feeRate = input.feeBps / 10000;
+    const spend = input.initialCash * (1 - feeRate);
+    const qty = spend / startPrice;
+    session.position = qty;
+    session.avgCost = startPrice;
+    session.cash = 0;
+    session.openEntryPrice = startPrice;
+    session.trades.push({
+      index: 0,
+      timestamp: last.timestamp,
+      side: "buy",
+      price: startPrice,
+      qty,
+      cashFlow: -input.initialCash,
+      pnlPct: null,
+    });
+  }
   saveSession(session);
   return session;
+}
+
+// ===== 그리드: 세션 상태 기반 시그널 =====
+// 기본 grid 전략은 computeSignals의 closure에서 레벨별 매수 상태를 기록하는데,
+// paper-trade는 매 tick마다 컴퓨트 윈도우가 이동해 그 state를 잃어버린다.
+// 세션에 gridBoughtQty/gridBoughtAt을 두고 현재 봉 종가 하나로 판단한다.
+function computeGridSignalForSession(
+  session: PaperSession,
+  price: number,
+): Signal {
+  const p = session.params.grid;
+  if (!p || p.grids < 2 || p.high <= p.low || p.low <= 0) return "hold";
+  if (!session.gridBoughtQty || !session.gridBoughtAt) {
+    session.gridBoughtQty = new Array(p.grids).fill(null);
+    session.gridBoughtAt = new Array(p.grids).fill(0);
+  }
+  const mode = p.mode ?? "geom";
+  const ratio = mode === "geom" ? Math.pow(p.high / p.low, 1 / p.grids) : 1;
+  const step = mode === "arith" ? (p.high - p.low) / p.grids : 0;
+  const levelAt = (g: number): number =>
+    mode === "geom" ? p.low * Math.pow(ratio, g) : p.low + step * g;
+  const slotKRW = session.initialCash / p.grids;
+
+  for (let g = 0; g < p.grids; g++) {
+    const buyPrice = levelAt(g);
+    const sellPrice = levelAt(g + 1);
+    if (session.gridBoughtQty[g] === null && price <= buyPrice) {
+      // 주문 크기는 전략대로 initialCash/grids. cash 부족하면 applySignal에서
+      // 가능한 만큼만 체결되지만, 세션 state는 "이 레벨 샀다"로 기록해야 한다.
+      const qty = slotKRW / price;
+      session.gridBoughtQty[g] = qty;
+      session.gridBoughtAt[g] = price;
+      return { buy_krw: slotKRW };
+    }
+    if (session.gridBoughtQty[g] !== null && price >= sellPrice) {
+      const totalQty = session.gridBoughtQty.reduce<number>(
+        (s, q) => s + (q ?? 0),
+        0,
+      );
+      const qtyG = session.gridBoughtQty[g] as number;
+      const frac = totalQty > 0 ? qtyG / totalQty : 0;
+      const entry = session.gridBoughtAt[g];
+      session.gridBoughtQty[g] = null;
+      session.gridBoughtAt[g] = 0;
+      return {
+        sell_qty_frac: Math.min(Math.max(frac, 0), 1),
+        entry_price: entry,
+      };
+    }
+  }
+  return "hold";
 }
 
 // ===== 시그널 → 포트폴리오 적용 =====
@@ -339,7 +421,10 @@ export async function tick(session: PaperSession): Promise<TickResult> {
     return { newTrades: [], candlesProcessed: 0 };
   }
 
-  // DIY는 별도 함수로 시그널 생성
+  // DIY는 별도 함수로 시그널 생성.
+  // 현재 보유 상태를 시그널 계산 윈도우에도 전달해야, 세션 시작 전 과거
+  // 윈도우를 기준으로 inPos 상태가 뒤집혀 매도 신호가 유실되는 일이 없다.
+  const inPosNow = session.position > 0;
   let signals: Signal[];
   if (session.strategy === "custom") {
     if (!session.customBuy || session.customBuy.length === 0) {
@@ -350,11 +435,14 @@ export async function tick(session: PaperSession): Promise<TickResult> {
         sell: session.customSell ?? [],
         stopLossPct: session.stopLossPct,
         takeProfitPct: session.takeProfitPct,
+        initialInPos: inPosNow,
+        initialEntryPrice: session.openEntryPrice ?? undefined,
       });
     }
   } else {
     signals = computeSignals(candles, session.strategy, session.params, {
       initialCash: session.initialCash,
+      initialInPos: inPosNow,
     });
   }
 
@@ -381,14 +469,15 @@ export async function tick(session: PaperSession): Promise<TickResult> {
     if (c.timestamp + tfMs > now) continue; // 아직 닫히지 않은 봉
     processed += 1;
     let effectiveSignal: Signal = signals[i];
-    // buy_hold은 signals[0]에만 "buy"가 찍혀 paper trade에서는 발동하지 않는다.
-    // 세션 시작 이후 첫 닫힌 봉에 한 번 매수.
-    if (
-      session.strategy === "buy_hold" &&
-      session.position === 0 &&
-      session.trades.length === 0
-    ) {
-      effectiveSignal = "buy";
+    // 브레이크아웃은 "매수 다음 봉 무조건 매도"가 핵심인데 컴퓨트 윈도우가
+    // 이동하면서 inPos 상태가 유실될 수 있다. 세션이 포지션을 가지고 있으면
+    // 다음 닫힌 봉에서 강제 매도한다.
+    if (session.strategy === "breakout" && session.position > 0) {
+      effectiveSignal = "sell";
+    }
+    // 그리드: computeSignals의 결과를 쓰지 않고 세션의 레벨별 상태로 직접 판단.
+    if (session.strategy === "grid") {
+      effectiveSignal = computeGridSignalForSession(session, c.close);
     }
     // DCA/ma_dca는 세션 기준 봉 카운터로 신호를 재구성.
     // barCount=0 은 세션 시작 후 첫 처리 봉.

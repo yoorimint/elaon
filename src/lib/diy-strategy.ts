@@ -78,6 +78,11 @@ export type DIYStrategy = {
   sell: Condition[]; // OR
   stopLossPct?: number;
   takeProfitPct?: number;
+  // 모의투자 등 과거 윈도우만 재계산할 때, 세션이 이미 보유 상태면
+  // inPos=true + 진입가를 주입해 손절/익절과 매도 조건이 올바르게 동작.
+  // 백테스트(전체 처음부터 도는 경우)엔 생략.
+  initialInPos?: boolean;
+  initialEntryPrice?: number;
 };
 
 export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
@@ -365,8 +370,8 @@ export function computeDIYSignals(
   if (strategy.buy.length === 0) return signals;
 
   const cache = buildCache([...strategy.buy, ...strategy.sell], candles);
-  let inPos = false;
-  let entryPrice = 0;
+  let inPos = strategy.initialInPos ?? false;
+  let entryPrice = strategy.initialEntryPrice ?? 0;
 
   for (let i = 1; i < candles.length; i++) {
     if (!inPos) {

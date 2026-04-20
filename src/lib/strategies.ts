@@ -621,10 +621,14 @@ export function computeSignals(
   candles: Candle[],
   strategy: StrategyId,
   params: StrategyParams,
-  opts: { initialCash?: number } = {},
+  opts: { initialCash?: number; initialInPos?: boolean } = {},
 ): Signal[] {
   const closes = candles.map((c) => c.close);
   const signals: Signal[] = new Array(candles.length).fill("hold");
+  // 모의투자처럼 과거 일부 구간만 윈도우로 재계산할 때, 세션이 이미 보유
+  // 상태라면 inPos=true로 시작해야 RSI/볼린저/스토캐스틱/일목 같은 state 기반
+  // 전략에서 매도 신호가 정상적으로 나온다. 기본은 false(백테스트 전체 도는 경우).
+  const initInPos = opts.initialInPos ?? false;
 
   if (strategy === "buy_hold") {
     signals[0] = "buy";
@@ -648,7 +652,7 @@ export function computeSignals(
   if (strategy === "rsi") {
     const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };
     const r = rsi(closes, p.period);
-    let inPos = false;
+    let inPos = initInPos;
     for (let i = 1; i < candles.length; i++) {
       const v = r[i];
       if (v == null) continue;
@@ -668,7 +672,7 @@ export function computeSignals(
     const touch = p.touch ?? "close";
     const mid = sma(closes, p.period);
     const sd = stddev(closes, p.period);
-    let inPos = false;
+    let inPos = initInPos;
     for (let i = 1; i < candles.length; i++) {
       const m = mid[i];
       const s = sd[i];
@@ -771,7 +775,7 @@ export function computeSignals(
       }
     }
 
-    let inPos = false;
+    let inPos = initInPos;
     for (let i = 1; i < candles.length; i++) {
       const k0 = kVals[i - 1];
       const k1 = kVals[i];
@@ -791,7 +795,7 @@ export function computeSignals(
 
   if (strategy === "ichimoku") {
     const p = params.ichimoku ?? { conversion: 9, base: 26, lagging: 52 };
-    let inPos = false;
+    let inPos = initInPos;
     for (let i = 0; i < candles.length; i++) {
       if (i < p.lagging + p.base) continue;
       const conv =

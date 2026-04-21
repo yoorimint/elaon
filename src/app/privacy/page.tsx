@@ -133,7 +133,7 @@ export default function PrivacyPage() {
         <h2 className="text-lg font-bold mt-6">9. 개인정보 보호책임자</h2>
         <ul className="list-disc pl-5 space-y-1">
           <li>이름: 운영자</li>
-          <li>연락처: admin@eloan.kr</li>
+          <li>연락처: cldud0070@naver.com</li>
         </ul>
 
         <h2 className="text-lg font-bold mt-6">10. 방침의 변경</h2>

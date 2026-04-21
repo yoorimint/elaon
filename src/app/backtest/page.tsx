@@ -709,7 +709,7 @@ export default function BacktestPage() {
               onChange={setPositionSizePct}
             />
             <span className="mt-1 block text-xs text-neutral-500">
-              매수 신호 1회에 쓸 잔여 현금 비율. 100 = 전액, 50 = 절반씩 분할 진입.
+              매수 1회에 쓸 금액 = 시드의 X%. 100 = 전액(한 번에), 3 = 시드의 3%씩 여러 번 분할.
             </span>
           </label>
 

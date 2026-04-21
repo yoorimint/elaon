@@ -70,26 +70,26 @@ export function runBacktest(
   const { initialCash, feeRate } = opts;
   const slip = (opts.slippageBps ?? 0) / 10000;
   const posSizePct = Math.max(1, Math.min(100, opts.positionSizePct ?? 100));
-  const basePosFrac = posSizePct / 100;
+  // 매수 1회에 사용할 고정 금액 = 초기 시드 × posSizePct%.
+  // 잔여 현금이 부족하면 그만큼만 사용. 평균단가 낮추는 분할 매수 자연스럽게 지원.
+  const baseBuyAmount = initialCash * (posSizePct / 100);
   const martingale = Math.max(1, Math.min(5, opts.martingaleFactor ?? 1));
-  // 연속 손실 카운트. 이 값이 커질수록 다음 buy 비중이 커진다 (마틴게일).
   let consecLosses = 0;
   const buyPx = (p: number) => p * (1 + slip);
   const sellPx = (p: number) => p * (1 - slip);
   let cash = initialCash;
   let position = 0;
   let avgCost = 0;
-  // 현재 싸이클의 평균 진입가(마틴 효과 평가용). all-in 모드에선 currentTrade.entryPrice.
   const trades: Trade[] = [];
   const equity: EquityPoint[] = [];
 
   const firstPrice = candles[0]?.close ?? 1;
   let currentTrade: Trade | null = null;
 
-  // buy 시 사용할 현금 비율 계산 (마틴게일 반영, 100% 상한).
-  function effectiveBuyFrac(): number {
+  function effectiveBuyAmount(): number {
     const boost = Math.pow(martingale, consecLosses);
-    return Math.min(1, basePosFrac * boost);
+    const want = baseBuyAmount * boost;
+    return Math.min(cash, want);
   }
 
   for (let i = 0; i < candles.length; i++) {
@@ -97,45 +97,49 @@ export function runBacktest(
     const signal = signals[i];
 
     if (signal === "buy" && cash > 0) {
+      // 전액 모드(posSizePct=100, martingale=1): 포지션 있으면 무시. 그 외엔 누적.
       const allInMode = posSizePct >= 100 && martingale <= 1;
       if (allInMode && position > 0) {
-        // 전액 + 마틴 off: 포지션 있으면 무시
+        // 기존 전액 모드 유지
       } else {
-        const execPx = buyPx(price);
-        const cashIn = cash * effectiveBuyFrac();
-        const spend = cashIn * (1 - feeRate);
-        const qty = spend / execPx;
-        const newAvg =
-          position === 0
-            ? execPx
-            : (avgCost * position + execPx * qty) / (position + qty);
-        position += qty;
-        avgCost = newAvg;
-        cash -= cashIn;
-        if (allInMode) {
-          currentTrade = {
-            entryIndex: i,
-            entryPrice: execPx,
-            exitIndex: null,
-            exitPrice: null,
-            pnlPct: null,
-          };
-        } else {
-          trades.push({
-            entryIndex: i,
-            entryPrice: execPx,
-            exitIndex: null,
-            exitPrice: null,
-            pnlPct: null,
-          });
+        const cashIn = effectiveBuyAmount();
+        if (cashIn > 0) {
+          const execPx = buyPx(price);
+          const spend = cashIn * (1 - feeRate);
+          const qty = spend / execPx;
+          const newAvg =
+            position === 0
+              ? execPx
+              : (avgCost * position + execPx * qty) / (position + qty);
+          position += qty;
+          avgCost = newAvg;
+          cash -= cashIn;
+          if (allInMode) {
+            currentTrade = {
+              entryIndex: i,
+              entryPrice: execPx,
+              exitIndex: null,
+              exitPrice: null,
+              pnlPct: null,
+            };
+          } else {
+            trades.push({
+              entryIndex: i,
+              entryPrice: execPx,
+              exitIndex: null,
+              exitPrice: null,
+              pnlPct: null,
+            });
+          }
         }
       }
     } else if (signal === "sell" && position > 0) {
       const execPx = sellPx(price);
       cash += position * execPx * (1 - feeRate);
-      // 이번 사이클의 총 P&L 판정을 위해 평균단가 기반 계산
       const cyclePnlPct =
-        ((execPx * (1 - feeRate)) / (avgCost * (1 + feeRate)) - 1) * 100;
+        avgCost > 0
+          ? ((execPx * (1 - feeRate)) / (avgCost * (1 + feeRate)) - 1) * 100
+          : 0;
       if (currentTrade) {
         currentTrade.exitIndex = i;
         currentTrade.exitPrice = execPx;
@@ -153,7 +157,6 @@ export function runBacktest(
           }
         }
       }
-      // 마틴게일 상태 업데이트: 사이클 P&L 기준
       if (cyclePnlPct > 0) consecLosses = 0;
       else consecLosses += 1;
       position = 0;

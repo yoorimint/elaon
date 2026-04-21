@@ -102,7 +102,9 @@ export function runBacktest(
       if (allInMode && position > 0) {
         // 기존 전액 모드 유지
       } else {
-        const cashIn = effectiveBuyAmount();
+        // 전액 모드에선 잔여 현금 전부 (이전 사이클 수익도 재투자).
+        // 분할 모드에선 시드의 X% 고정 금액 (마틴 배수 적용).
+        const cashIn = allInMode ? cash : effectiveBuyAmount();
         if (cashIn > 0) {
           const execPx = buyPx(price);
           const spend = cashIn * (1 - feeRate);

@@ -59,6 +59,8 @@ export async function updateBotPost(
 }
 
 export async function deleteBotPost(id: string): Promise<void> {
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  // posts DELETE RLS 는 author_id = auth.uid() 만 허용이라 관리자가 직접
+  // delete 하면 막힌다. 이미 구현된 admin_delete_post RPC 를 재활용한다.
+  const { error } = await supabase.rpc("admin_delete_post", { p_post_id: id });
   if (error) throw new Error(error.message);
 }

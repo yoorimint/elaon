@@ -581,3 +581,10 @@ create policy bot_config_update on public.bot_config
 
 -- 관리자용 설정 업데이트 RPC (본인 row는 update policy 로 되지만, counter 증가는
 -- service role 을 이미 쓰는 bot 스크립트에서만 호출하므로 별도 안 만듦)
+
+-- ===== 봇 포스트 관리자 수정 허용 =====
+-- posts UPDATE 는 본인만 허용이었지만 관리자가 봇 글 내용을 수정할 수 있도록
+-- 관리자도 포함. RLS 는 최근 정책으로 덮어쓰기.
+drop policy if exists posts_update_own on public.posts;
+create policy posts_update_own on public.posts for update
+  using (auth.uid() = author_id or public.is_admin());

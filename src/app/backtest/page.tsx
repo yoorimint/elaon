@@ -31,6 +31,11 @@ import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { setHandoff } from "@/lib/paper-trade";
 import { useAuth } from "@/components/AuthProvider";
+import {
+  loadBacktestSnapshot,
+  saveBacktestSnapshot,
+  type BacktestSnapshot,
+} from "@/lib/backtest-snapshot";
 import { NumInput } from "@/components/NumInput";
 import { MarketPicker } from "@/components/MarketPicker";
 import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
@@ -143,6 +148,69 @@ export default function BacktestPage() {
       .catch(() => setMarkets(STOCK_MARKETS));
   }, []);
 
+  // 뒤로가기 등으로 재마운트 시, 직전 백테스트 결과가 있으면 폼 + 결과 전부
+  // 복원해서 사용자가 다시 실행하지 않아도 결과를 볼 수 있게 한다.
+  useEffect(() => {
+    const snap: BacktestSnapshot | null = loadBacktestSnapshot();
+    if (!snap) return;
+    setMarket(snap.market);
+    setTimeframe(snap.timeframe);
+    setStrategy(snap.strategy);
+    setRangePreset(snap.rangePreset);
+    setDateFrom(snap.dateFrom);
+    setDateTo(snap.dateTo);
+    setShortMa(snap.shortMa);
+    setLongMa(snap.longMa);
+    setRsiPeriod(snap.rsiPeriod);
+    setRsiLow(snap.rsiLow);
+    setRsiHigh(snap.rsiHigh);
+    setBbPeriod(snap.bbPeriod);
+    setBbStddev(snap.bbStddev);
+    setBbTouch(snap.bbTouch);
+    setMacdFast(snap.macdFast);
+    setMacdSlow(snap.macdSlow);
+    setMacdSignal(snap.macdSignal);
+    setBreakoutK(snap.breakoutK);
+    setStochPeriod(snap.stochPeriod);
+    setStochSmooth(snap.stochSmooth);
+    setStochLow(snap.stochLow);
+    setStochHigh(snap.stochHigh);
+    setIchimokuConv(snap.ichimokuConv);
+    setIchimokuBase(snap.ichimokuBase);
+    setIchimokuLag(snap.ichimokuLag);
+    setDcaInterval(snap.dcaInterval);
+    setDcaAmount(snap.dcaAmount);
+    setMaDcaMaPeriod(snap.maDcaMaPeriod);
+    setGridLow(snap.gridLow);
+    setGridHigh(snap.gridHigh);
+    setGridCount(snap.gridCount);
+    setGridMode(snap.gridMode);
+    setCustomBuy(snap.customBuy);
+    setCustomSell(snap.customSell);
+    setStopLoss(snap.stopLoss);
+    setTakeProfit(snap.takeProfit);
+    setInitialCash(snap.initialCash);
+    setFeeBps(snap.feeBps);
+    setResult(snap.result);
+    setPriceCandles(snap.priceCandles);
+    setRunSignals(snap.runSignals);
+    setRunStrategy(snap.runStrategy);
+    setRunParams(snap.runParams);
+    setRunCustomBuy(snap.runCustomBuy);
+    setRunCustomSell(snap.runCustomSell);
+    setShareUrl(snap.shareUrl);
+  }, []);
+
+  // shareUrl 갱신 시 스냅샷의 shareUrl 도 같이 업데이트 (결과 전체는
+  // 그대로 두고 한 필드만).
+  useEffect(() => {
+    if (!result) return;
+    const snap = loadBacktestSnapshot();
+    if (!snap) return;
+    if (snap.shareUrl === shareUrl) return;
+    saveBacktestSnapshot({ ...snap, shareUrl });
+  }, [shareUrl, result]);
+
   const currency = currencyOf(market);
   const maxDays = useMemo(
     () => maxDaysFor(marketKind(market), timeframe),
@@ -233,8 +301,32 @@ export default function BacktestPage() {
       setRunSignals(signals);
       setRunStrategy(strategy);
       setRunParams(paramsSnapshot);
-      setRunCustomBuy(strategy === "custom" ? customBuy : null);
-      setRunCustomSell(strategy === "custom" ? customSell : null);
+      const savedBuy = strategy === "custom" ? customBuy : null;
+      const savedSell = strategy === "custom" ? customSell : null;
+      setRunCustomBuy(savedBuy);
+      setRunCustomSell(savedSell);
+      // 공유/게시글/모의투자로 이동했다가 뒤로가기로 돌아와도 결과가 그대로
+      // 남아있도록 sessionStorage 에 스냅샷. 탭 닫으면 사라짐.
+      saveBacktestSnapshot({
+        market, timeframe, strategy, rangePreset, dateFrom, dateTo,
+        shortMa, longMa, rsiPeriod, rsiLow, rsiHigh,
+        bbPeriod, bbStddev, bbTouch,
+        macdFast, macdSlow, macdSignal, breakoutK,
+        stochPeriod, stochSmooth, stochLow, stochHigh,
+        ichimokuConv, ichimokuBase, ichimokuLag,
+        dcaInterval, dcaAmount, maDcaMaPeriod,
+        gridLow: gLow, gridHigh: gHigh, gridCount, gridMode,
+        customBuy, customSell, stopLoss, takeProfit,
+        initialCash, feeBps,
+        result: r,
+        priceCandles: data,
+        runSignals: signals,
+        runStrategy: strategy,
+        runParams: paramsSnapshot,
+        runCustomBuy: savedBuy,
+        runCustomSell: savedSell,
+        shareUrl: null,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
     } finally {

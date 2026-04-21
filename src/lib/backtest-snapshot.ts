@@ -49,6 +49,13 @@ export type BacktestSnapshot = {
   takeProfit: number;
   initialCash: number;
   feeBps: number;
+  // 사이징/리스크 옵션
+  positionSizePct?: number;
+  martingaleFactor?: number;
+  slippageBps?: number;
+  walkForward?: boolean;
+  rebalanceTP?: number;
+  rebalanceDrop?: number;
   // 실행 결과
   result: BacktestResult;
   priceCandles: Candle[];

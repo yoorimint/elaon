@@ -123,6 +123,13 @@ function strategyParamLines(
         { label: "분할 방식", value: mode },
       ];
     }
+    case "rebalance": {
+      const v = p.rebalance ?? {};
+      return [
+        { label: "익절 기준", value: `+${fmt(v.takeProfitPct)}%` },
+        { label: "재매수 하락", value: `-${fmt(v.rebuyDropPct)}%` },
+      ];
+    }
     case "custom":
       return [
         { label: "전략", value: "사용자 정의 조건 (DIY)" },

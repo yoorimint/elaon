@@ -117,6 +117,10 @@ export default function BacktestPage() {
   const [gridHigh, setGridHigh] = useState(0);
   const [gridCount, setGridCount] = useState(10);
   const [gridMode, setGridMode] = useState<"arith" | "geom">("geom");
+  const [rebalanceTP, setRebalanceTP] = useState(10);
+  const [rebalanceDrop, setRebalanceDrop] = useState(5);
+  const [positionSizePct, setPositionSizePct] = useState(100);
+  const [martingaleFactor, setMartingaleFactor] = useState(1);
   const [customBuy, setCustomBuy] = useState<Condition[]>([defaultCondition()]);
   const [customSell, setCustomSell] = useState<Condition[]>([]);
   const [stopLoss, setStopLoss] = useState(0);
@@ -198,6 +202,12 @@ export default function BacktestPage() {
     setTakeProfit(snap.takeProfit);
     setInitialCash(snap.initialCash);
     setFeeBps(snap.feeBps);
+    if (snap.positionSizePct !== undefined) setPositionSizePct(snap.positionSizePct);
+    if (snap.martingaleFactor !== undefined) setMartingaleFactor(snap.martingaleFactor);
+    if (snap.slippageBps !== undefined) setSlippageBps(snap.slippageBps);
+    if (snap.walkForward !== undefined) setWalkForward(snap.walkForward);
+    if (snap.rebalanceTP !== undefined) setRebalanceTP(snap.rebalanceTP);
+    if (snap.rebalanceDrop !== undefined) setRebalanceDrop(snap.rebalanceDrop);
     setResult(snap.result);
     setPriceCandles(snap.priceCandles);
     setRunSignals(snap.runSignals);
@@ -292,6 +302,7 @@ export default function BacktestPage() {
           maPeriod: maDcaMaPeriod,
         },
         grid: { low: gLow, high: gHigh, grids: gridCount, mode: gridMode },
+        rebalance: { takeProfitPct: rebalanceTP, rebuyDropPct: rebalanceDrop },
       };
       let signals;
       if (strategy === "custom") {
@@ -309,6 +320,8 @@ export default function BacktestPage() {
         initialCash,
         feeRate: feeBps / 10000,
         slippageBps,
+        positionSizePct,
+        martingaleFactor,
       };
       const r = runBacktest(data, signals, btOpts);
       setResult(r);
@@ -349,6 +362,8 @@ export default function BacktestPage() {
         gridLow: gLow, gridHigh: gHigh, gridCount, gridMode,
         customBuy, customSell, stopLoss, takeProfit,
         initialCash, feeBps,
+        positionSizePct, martingaleFactor, slippageBps, walkForward,
+        rebalanceTP, rebalanceDrop,
         result: r,
         priceCandles: data,
         runSignals: signals,
@@ -411,6 +426,7 @@ export default function BacktestPage() {
           maPeriod: maDcaMaPeriod,
         },
         grid: { low: gridLow, high: gridHigh, grids: gridCount },
+        rebalance: { takeProfitPct: rebalanceTP, rebuyDropPct: rebalanceDrop },
       },
       days,
       initialCash,
@@ -680,6 +696,35 @@ export default function BacktestPage() {
             />
             <span className="mt-1 block text-xs text-neutral-500">
               실전 체결가 오차 (0 = 이상적). 매수가 +bps, 매도가 -bps
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium">포지션 비중 (%)</span>
+            <NumInput
+              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              value={positionSizePct}
+              min={1}
+              max={100}
+              onChange={setPositionSizePct}
+            />
+            <span className="mt-1 block text-xs text-neutral-500">
+              매수 신호 1회에 쓸 잔여 현금 비율. 100 = 전액, 50 = 절반씩 분할 진입.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium">마틴게일 배수</span>
+            <NumInput
+              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              value={martingaleFactor}
+              min={1}
+              max={5}
+              step={0.5}
+              onChange={setMartingaleFactor}
+            />
+            <span className="mt-1 block text-xs text-neutral-500">
+              연속 손실 시 다음 매수 사이즈에 이 배수 적용 (최대 전액). 1 = 끔.
             </span>
           </label>
 
@@ -965,6 +1010,39 @@ export default function BacktestPage() {
                 />
               </label>
             )}
+          </div>
+        )}
+
+        {strategy === "rebalance" && (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">익절 기준 (+%)</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={rebalanceTP}
+                min={1}
+                max={100}
+                step={0.5}
+                onChange={setRebalanceTP}
+              />
+              <span className="mt-1 block text-xs text-neutral-500">
+                진입가 대비 +X% 도달 시 전량 매도. 예: 10 → 10% 수익에서 익절.
+              </span>
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">재매수 하락 (-%)</span>
+              <NumInput
+                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                value={rebalanceDrop}
+                min={1}
+                max={100}
+                step={0.5}
+                onChange={setRebalanceDrop}
+              />
+              <span className="mt-1 block text-xs text-neutral-500">
+                매도가 대비 -Y% 떨어지면 재매수. 예: 5 → 매도가의 95%에서 다시 진입.
+              </span>
+            </label>
           </div>
         )}
 

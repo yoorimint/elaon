@@ -12,6 +12,7 @@ export type StrategyId =
   | "dca"
   | "ma_dca"
   | "grid"
+  | "rebalance"
   | "custom";
 
 export type Signal =
@@ -36,6 +37,11 @@ export type StrategyParams = {
     high: number;
     grids: number;
     mode?: "arith" | "geom"; // arith=등차(균등), geom=등비(퍼센트, 기본)
+  };
+  // 리밸런싱: 보유 중 일정 수익 나면 팔고, 그 가격에서 일정 비율 떨어지면 재매수.
+  rebalance?: {
+    takeProfitPct: number; // 진입가 대비 +X% 도달 시 익절 (예: 10)
+    rebuyDropPct: number; // 마지막 매도가 대비 -Y% 도달 시 재매수 (예: 5)
   };
 };
 
@@ -119,6 +125,13 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "그리드 매매",
     description:
       "가격 범위를 N구간으로 나눠 구간 하단 닿으면 1/N씩 매수, 상단 닿으면 1/N씩 매도. 박스권 최강.",
+    group: "적립",
+  },
+  {
+    id: "rebalance",
+    name: "리밸런싱 (익절 + 하락 재매수)",
+    description:
+      "일정 수익(+X%) 도달 시 전량 매도해 현금화, 그 가격에서 일정 비율(-Y%) 떨어지면 재매수. 박스권·변동성 장에서 유리.",
     group: "적립",
   },
   {
@@ -883,6 +896,47 @@ export function computeSignals(
           };
           boughtQty[g] = null;
           break;
+        }
+      }
+    }
+    return signals;
+  }
+
+  if (strategy === "rebalance") {
+    const p = params.rebalance ?? { takeProfitPct: 10, rebuyDropPct: 5 };
+    if (p.takeProfitPct <= 0 || p.rebuyDropPct <= 0) return signals;
+    // 시작 시 첫 봉에 매수. 이후 진입가 대비 +takeProfit% 도달하면 매도 → 현금 대기.
+    // 대기 중엔 마지막 매도가 대비 -rebuyDrop% 도달하면 재매수. 반복.
+    // 윈도우 재계산(모의투자) 지원: initialInPos 로 "현재 보유 중"인지 판단.
+    // 단 마지막 매수/매도 가격은 시세 자체로부터 재추론하기 어려워 단순히
+    // 첫 봉 기준으로 시작. 실시간 운영은 session 상태로 별도 트랙해야 정확.
+    let inPos = initInPos;
+    let entryPrice = inPos ? candles[0].close : 0;
+    let lastSellPrice = 0;
+    for (let i = 0; i < candles.length; i++) {
+      const px = candles[i].close;
+      if (!inPos) {
+        if (entryPrice === 0 && lastSellPrice === 0) {
+          // 최초 진입
+          signals[i] = "buy";
+          inPos = true;
+          entryPrice = px;
+          continue;
+        }
+        // 대기 중: 매도가 대비 하락 시 재매수
+        if (lastSellPrice > 0 && px <= lastSellPrice * (1 - p.rebuyDropPct / 100)) {
+          signals[i] = "buy";
+          inPos = true;
+          entryPrice = px;
+          lastSellPrice = 0;
+        }
+      } else {
+        // 보유 중: 익절 라인 도달 시 매도
+        if (px >= entryPrice * (1 + p.takeProfitPct / 100)) {
+          signals[i] = "sell";
+          inPos = false;
+          lastSellPrice = px;
+          entryPrice = 0;
         }
       }
     }

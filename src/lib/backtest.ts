@@ -53,6 +53,13 @@ export type BacktestOptions = {
   feeRate: number;
   // 실전 슬리피지. 매수 시 price * (1+slip), 매도 시 price * (1-slip). bps 단위.
   slippageBps?: number;
+  // buy 신호 1회에 쓸 잔여 현금 비율(%). 100 = 전액 (기본). 25 = 잔여 현금의 25%.
+  // 100 미만이면 연속 buy 신호가 있으면 분할 매수로 평균 단가 낮아지는 효과.
+  // { buy_krw } 같은 명시 금액 신호(DCA/grid)에는 적용되지 않음 — 이미 금액 고정.
+  positionSizePct?: number;
+  // 마틴게일 배수. 연속 손실 사이클마다 다음 buy 사이즈에 이 배수 적용.
+  // 1 = 끔(기본). 2 = 1패 후 2배, 2패 후 4배 ... (100% 상한). 이익 사이클이면 초기화.
+  martingaleFactor?: number;
 };
 
 export function runBacktest(
@@ -62,38 +69,73 @@ export function runBacktest(
 ): BacktestResult {
   const { initialCash, feeRate } = opts;
   const slip = (opts.slippageBps ?? 0) / 10000;
-  // 실전 체결가: 매수는 가산, 매도는 차감. feeRate 과 독립적으로 적용.
+  const posSizePct = Math.max(1, Math.min(100, opts.positionSizePct ?? 100));
+  const basePosFrac = posSizePct / 100;
+  const martingale = Math.max(1, Math.min(5, opts.martingaleFactor ?? 1));
+  // 연속 손실 카운트. 이 값이 커질수록 다음 buy 비중이 커진다 (마틴게일).
+  let consecLosses = 0;
   const buyPx = (p: number) => p * (1 + slip);
   const sellPx = (p: number) => p * (1 - slip);
   let cash = initialCash;
   let position = 0;
   let avgCost = 0;
+  // 현재 싸이클의 평균 진입가(마틴 효과 평가용). all-in 모드에선 currentTrade.entryPrice.
   const trades: Trade[] = [];
   const equity: EquityPoint[] = [];
 
   const firstPrice = candles[0]?.close ?? 1;
   let currentTrade: Trade | null = null;
 
+  // buy 시 사용할 현금 비율 계산 (마틴게일 반영, 100% 상한).
+  function effectiveBuyFrac(): number {
+    const boost = Math.pow(martingale, consecLosses);
+    return Math.min(1, basePosFrac * boost);
+  }
+
   for (let i = 0; i < candles.length; i++) {
     const price = candles[i].close;
     const signal = signals[i];
 
-    if (signal === "buy" && position === 0 && cash > 0) {
-      const execPx = buyPx(price);
-      const spend = cash * (1 - feeRate);
-      position = spend / execPx;
-      avgCost = execPx;
-      cash = 0;
-      currentTrade = {
-        entryIndex: i,
-        entryPrice: execPx,
-        exitIndex: null,
-        exitPrice: null,
-        pnlPct: null,
-      };
+    if (signal === "buy" && cash > 0) {
+      const allInMode = posSizePct >= 100 && martingale <= 1;
+      if (allInMode && position > 0) {
+        // 전액 + 마틴 off: 포지션 있으면 무시
+      } else {
+        const execPx = buyPx(price);
+        const cashIn = cash * effectiveBuyFrac();
+        const spend = cashIn * (1 - feeRate);
+        const qty = spend / execPx;
+        const newAvg =
+          position === 0
+            ? execPx
+            : (avgCost * position + execPx * qty) / (position + qty);
+        position += qty;
+        avgCost = newAvg;
+        cash -= cashIn;
+        if (allInMode) {
+          currentTrade = {
+            entryIndex: i,
+            entryPrice: execPx,
+            exitIndex: null,
+            exitPrice: null,
+            pnlPct: null,
+          };
+        } else {
+          trades.push({
+            entryIndex: i,
+            entryPrice: execPx,
+            exitIndex: null,
+            exitPrice: null,
+            pnlPct: null,
+          });
+        }
+      }
     } else if (signal === "sell" && position > 0) {
       const execPx = sellPx(price);
-      cash = position * execPx * (1 - feeRate);
+      cash += position * execPx * (1 - feeRate);
+      // 이번 사이클의 총 P&L 판정을 위해 평균단가 기반 계산
+      const cyclePnlPct =
+        ((execPx * (1 - feeRate)) / (avgCost * (1 + feeRate)) - 1) * 100;
       if (currentTrade) {
         currentTrade.exitIndex = i;
         currentTrade.exitPrice = execPx;
@@ -101,7 +143,19 @@ export function runBacktest(
           ((execPx * (1 - feeRate)) / (currentTrade.entryPrice * (1 + feeRate)) - 1) * 100;
         trades.push(currentTrade);
         currentTrade = null;
+      } else {
+        for (const t of trades) {
+          if (t.exitIndex === null) {
+            t.exitIndex = i;
+            t.exitPrice = execPx;
+            t.pnlPct =
+              ((execPx * (1 - feeRate)) / (t.entryPrice * (1 + feeRate)) - 1) * 100;
+          }
+        }
       }
+      // 마틴게일 상태 업데이트: 사이클 P&L 기준
+      if (cyclePnlPct > 0) consecLosses = 0;
+      else consecLosses += 1;
       position = 0;
       avgCost = 0;
     } else if (typeof signal === "object" && "buy_krw" in signal) {

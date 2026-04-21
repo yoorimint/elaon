@@ -10,6 +10,7 @@ import { SharedChart } from "@/components/SharedChart";
 import { SharedPriceChart } from "@/components/SharedPriceChart";
 import { SharedDIYDetails } from "@/components/SharedDIYDetails";
 import { SharedExtendedStats } from "@/components/SharedExtendedStats";
+import { SharedTradeTable } from "@/components/SharedTradeTable";
 import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
@@ -308,6 +309,10 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         <h2 className="text-lg font-bold mb-3">자본 곡선</h2>
         <SharedChart equity={data.equity_curve} />
       </div>
+
+      {data.trades && data.trades.length > 0 && (
+        <SharedTradeTable trades={data.trades} currency={currencyOf(data.market)} />
+      )}
 
       <div className="mt-8">
         <Link

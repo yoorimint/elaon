@@ -128,6 +128,7 @@ export async function saveShare(p: SharePayload): Promise<string> {
     stop_loss_pct: p.stopLossPct ?? null,
     take_profit_pct: p.takeProfitPct ?? null,
     extended_metrics: extended,
+    trades: p.result.trades,
   });
 
   if (error) throw new Error(error.message);

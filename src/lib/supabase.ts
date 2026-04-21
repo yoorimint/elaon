@@ -46,6 +46,14 @@ export type SharedBacktest = {
   custom_sell: unknown[] | null;
   stop_loss_pct: number | null;
   take_profit_pct: number | null;
+  // 거래 내역 (공유 상세 페이지에서 표로 보여주려고 저장). 옛 공유는 null.
+  trades: Array<{
+    entryIndex: number;
+    entryPrice: number;
+    exitIndex: number | null;
+    exitPrice: number | null;
+    pnlPct: number | null;
+  }> | null;
   // 확장 지표 묶음 (Sharpe, Sortino, Calmar, Profit Factor, 거래 상세, 월별 수익률)
   extended_metrics: {
     sharpe_ratio?: number | null;

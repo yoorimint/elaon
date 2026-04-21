@@ -541,6 +541,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
       max_drawdown_duration_bars: r.maxDrawdownDurationBars,
       monthly: r.monthly ?? [],
     },
+    trades: r.trades,
   });
   if (shareErr) throw new Error(`share insert: ${shareErr.message}`);
 

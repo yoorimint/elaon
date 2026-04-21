@@ -217,8 +217,18 @@ export default async function HomePage() {
         </ul>
       </section>
 
-      <footer className="mt-12 pb-8 text-xs text-neutral-500">
-        * 투자 판단은 본인 책임입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
+      <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-2">
+        <div>
+          * 투자 판단은 본인 책임입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
+        </div>
+        <div className="flex gap-4">
+          <Link href="/terms" className="hover:text-neutral-900 dark:hover:text-white">
+            이용약관
+          </Link>
+          <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white font-semibold">
+            개인정보처리방침
+          </Link>
+        </div>
       </footer>
     </main>
   );

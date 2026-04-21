@@ -10,13 +10,26 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const allAgreed = agreeTerms && agreePrivacy;
+
+  function toggleAll(v: boolean) {
+    setAgreeTerms(v);
+    setAgreePrivacy(v);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
+    if (!allAgreed) {
+      setError("필수 약관에 모두 동의해야 가입할 수 있습니다");
+      return;
+    }
     if (password.length < 6) {
       setError("비밀번호는 6자 이상이어야 합니다");
       return;
@@ -83,12 +96,61 @@ export default function SignupPage() {
           />
         </label>
 
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 space-y-2">
+          <label className="flex items-center gap-2 font-semibold text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allAgreed}
+              onChange={(e) => toggleAll(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span>전체 동의</span>
+          </label>
+          <div className="border-t border-neutral-200 dark:border-neutral-800" />
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="flex-1">
+              <b className="text-red-600 dark:text-red-400">[필수]</b> 서비스 이용약관 동의
+            </span>
+            <Link
+              href="/terms"
+              target="_blank"
+              className="text-xs text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white"
+            >
+              보기
+            </Link>
+          </label>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreePrivacy}
+              onChange={(e) => setAgreePrivacy(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="flex-1">
+              <b className="text-red-600 dark:text-red-400">[필수]</b> 개인정보 수집·이용 동의
+            </span>
+            <Link
+              href="/privacy"
+              target="_blank"
+              className="text-xs text-neutral-500 underline hover:text-neutral-900 dark:hover:text-white"
+            >
+              보기
+            </Link>
+          </label>
+        </div>
+
         {error && <div className="text-sm text-red-600">{error}</div>}
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full rounded-full bg-brand px-5 py-3 text-white font-semibold hover:bg-brand-dark disabled:opacity-60"
+          disabled={loading || !allAgreed}
+          className="w-full rounded-full bg-brand px-5 py-3 text-white font-semibold hover:bg-brand-dark disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? "가입 중…" : "가입하기"}
         </button>

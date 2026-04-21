@@ -29,8 +29,9 @@ export function VisitorBadge() {
   if (!counters) return null;
 
   return (
-    <span className="hidden sm:inline text-xs text-neutral-500 whitespace-nowrap">
-      오늘 <b className="text-neutral-800 dark:text-neutral-100">
+    <span className="text-[11px] sm:text-xs text-neutral-500 whitespace-nowrap min-w-0 truncate">
+      오늘{" "}
+      <b className="text-neutral-800 dark:text-neutral-100">
         {counters.today.toLocaleString()}
       </b>{" "}
       · 누적{" "}

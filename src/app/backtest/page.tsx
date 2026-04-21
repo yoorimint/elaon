@@ -519,6 +519,54 @@ export default function BacktestPage() {
     router.push("/paper-trade/new");
   }
 
+  // 백테스트 없이 현재 폼 값 그대로 모의투자 바로 시작
+  function onPaperTradeDirect() {
+    // 현재 폼 값으로 paramsSnapshot 구성 (onRun 과 동일한 구조)
+    const paramsSnapshot: StrategyParams = {
+      ma_cross: { short: shortMa, long: longMa },
+      rsi: { period: rsiPeriod, oversold: rsiLow, overbought: rsiHigh },
+      bollinger: { period: bbPeriod, stddev: bbStddev, touch: bbTouch },
+      macd: { fast: macdFast, slow: macdSlow, signal: macdSignal },
+      breakout: { k: breakoutK },
+      stoch: {
+        period: stochPeriod,
+        smooth: stochSmooth,
+        oversold: stochLow,
+        overbought: stochHigh,
+      },
+      ichimoku: {
+        conversion: ichimokuConv,
+        base: ichimokuBase,
+        lagging: ichimokuLag,
+      },
+      dca: { intervalDays: dcaInterval, amountKRW: dcaAmount },
+      ma_dca: {
+        intervalDays: dcaInterval,
+        amountKRW: dcaAmount,
+        maPeriod: maDcaMaPeriod,
+      },
+      grid: { low: gridLow, high: gridHigh, grids: gridCount, mode: gridMode },
+      rebalance: { takeProfitPct: rebalanceTP, rebuyDropPct: rebalanceDrop },
+    };
+    setHandoff({
+      market,
+      timeframe,
+      strategy,
+      params: paramsSnapshot,
+      customBuy: strategy === "custom" ? customBuy : undefined,
+      customSell: strategy === "custom" ? customSell : undefined,
+      stopLossPct: stopLoss > 0 ? stopLoss : undefined,
+      takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+      initialCash,
+      feeBps,
+    });
+    if (!currentUser) {
+      router.push("/login?redirect=/paper-trade/new");
+      return;
+    }
+    router.push("/paper-trade/new");
+  }
+
   return (
     <main className="mx-auto max-w-4xl px-5 py-8 sm:py-12">
       <div className="mb-6">
@@ -1257,7 +1305,7 @@ export default function BacktestPage() {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             onClick={onRun}
             disabled={loading}
@@ -1265,7 +1313,15 @@ export default function BacktestPage() {
           >
             {loading ? "계산 중…" : result ? "완료 ✓ 다시 실행" : "백테스트 실행"}
           </button>
-          {error && <span className="ml-4 text-sm text-red-600">{error}</span>}
+          <button
+            onClick={onPaperTradeDirect}
+            disabled={loading}
+            className="inline-flex items-center rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-3 text-sm font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
+            title="백테스트 결과 없이 지금 폼 설정 그대로 모의투자를 시작합니다"
+          >
+            바로 모의투자 시작 →
+          </button>
+          {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </section>
 

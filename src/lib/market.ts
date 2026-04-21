@@ -291,10 +291,12 @@ export function maxDaysFor(kind: MarketKind, tf: Timeframe): number {
 // Formatting helpers.
 export function formatMoney(v: number, currency: Currency): string {
   if (!Number.isFinite(v)) return "-";
+  const abs = Math.abs(v);
+  const maximumFractionDigits = abs >= 1000 ? (currency === "USD" ? 2 : 0) : abs >= 1 ? 2 : 4;
   if (currency === "USD") {
-    return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(v)}`;
+    return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(v)}`;
   }
-  return `₩${new Intl.NumberFormat("ko-KR").format(Math.round(v))}`;
+  return `₩${new Intl.NumberFormat("ko-KR", { maximumFractionDigits }).format(v)}`;
 }
 
 export function formatMoneyShort(v: number, currency: Currency): string {

@@ -546,3 +546,38 @@ begin
 end;
 $$;
 grant execute on function public.admin_site_stats() to authenticated;
+
+-- ===== 봇 (자동 전략 추천) =====
+-- posts.category 에 'bot' 추가. CHECK 제약은 alter table 로 drop/add.
+alter table public.posts drop constraint if exists posts_category_check;
+alter table public.posts add constraint posts_category_check
+  check (category in ('free','strategy','question','bot'));
+
+-- 봇 계정 식별용 플래그
+alter table public.profiles add column if not exists is_bot boolean not null default false;
+
+-- 봇 설정 (싱글톤). id=1 한 행만 존재.
+create table if not exists public.bot_config (
+  id int primary key default 1,
+  enabled boolean not null default true,
+  daily_count int not null default 2 check (daily_count between 0 and 20),
+  window_start_hour int not null default 9 check (window_start_hour between 0 and 23),
+  window_end_hour int not null default 22 check (window_end_hour between 0 and 23),
+  bot_user_id uuid references auth.users(id) on delete set null,
+  post_counter int not null default 0,
+  updated_at timestamptz not null default now(),
+  constraint bot_config_single_row check (id = 1)
+);
+
+insert into public.bot_config (id) values (1) on conflict (id) do nothing;
+
+alter table public.bot_config enable row level security;
+drop policy if exists bot_config_read on public.bot_config;
+create policy bot_config_read on public.bot_config
+  for select using (public.is_admin());
+drop policy if exists bot_config_update on public.bot_config;
+create policy bot_config_update on public.bot_config
+  for update using (public.is_admin());
+
+-- 관리자용 설정 업데이트 RPC (본인 row는 update policy 로 되지만, counter 증가는
+-- service role 을 이미 쓰는 bot 스크립트에서만 호출하므로 별도 안 만듦)

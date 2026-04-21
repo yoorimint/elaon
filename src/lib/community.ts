@@ -1,16 +1,25 @@
 import { supabase } from "./supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type Category = "free" | "strategy" | "question";
+export type Category = "free" | "strategy" | "question" | "bot";
 
+// 유저가 글쓰기 폼에서 선택 가능한 카테고리 (bot 제외)
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: "free", label: "자유" },
   { id: "strategy", label: "전략공유" },
   { id: "question", label: "질문" },
 ];
 
+// 표시용 라벨 — bot 포함 전체
+const CATEGORY_LABELS: Record<Category, string> = {
+  free: "자유",
+  strategy: "전략공유",
+  question: "질문",
+  bot: "봇추천전략",
+};
+
 export function categoryLabel(id: string) {
-  return CATEGORIES.find((c) => c.id === id)?.label ?? id;
+  return CATEGORY_LABELS[id as Category] ?? id;
 }
 
 export type Post = {

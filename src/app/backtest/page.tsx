@@ -263,7 +263,11 @@ export default function BacktestPage() {
     setRunParams(null);
     setRunCustomBuy(null);
     setRunCustomSell(null);
+    // 새 백테스트라 이전 공유 상태 다 리셋
     setShareUrl(null);
+    setSavedPrivate(null);
+    setOutSampleResult(null);
+    setSaveMessage(null);
     try {
       const fromMs = new Date(dateFrom).getTime();
       const toMs = new Date(dateTo).getTime();
@@ -468,13 +472,25 @@ export default function BacktestPage() {
   async function onShare() {
     if (!result) return;
     setSharing(true);
+    setSaveMessage(null);
     try {
       const slug = await ensureShared({ isPrivate: false });
       if (slug) {
         const url = `${window.location.origin}/r/${slug}`;
+        // clipboard API 는 HTTPS + 사용자 제스처 유지 필요. await 중 제스처가
+        // 끊기면 실패할 수 있어 try/catch 로 감싸고 결과별 메시지 표시.
+        let copied = false;
         try {
           await navigator.clipboard.writeText(url);
-        } catch {}
+          copied = true;
+        } catch {
+          copied = false;
+        }
+        setSaveMessage(
+          copied
+            ? `링크 복사됨: ${url}`
+            : `복사 실패 — 아래 링크를 수동으로 복사하세요: ${url}`,
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "공유 실패");

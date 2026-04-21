@@ -14,7 +14,8 @@ import { createClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/upbit";
 import { computeSignals } from "@/lib/strategies";
 import { runBacktest } from "@/lib/backtest";
-import { BOT_SYMBOLS, BOT_STRATEGIES, pickRotationPair } from "@/lib/bot-symbols";
+import { BOT_SYMBOLS, BOT_STRATEGIES, BOT_NARRATIVE_ANGLES, pickRotationPair } from "@/lib/bot-symbols";
+import { computeDIYSignals } from "@/lib/diy-strategy";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -182,24 +183,27 @@ function symbolLabel(symbol: string): string {
 }
 
 // ---------- Gemini call ----------
-async function callGemini(factBlock: string): Promise<string | null> {
+async function callGemini(factBlock: string, narrativeInstruction: string): Promise<string | null> {
   if (!GEMINI_KEY) return null;
   const prompt = `너는 투자 커뮤니티 사이트의 자동 전략 분석 봇이야. 아래 팩트 데이터만 근거로
-한국어 블로그 본문을 작성해줘. 투자자가 실제로 궁금해하는 항목을 순서대로 다룬다.
+한국어 블로그 본문을 작성해줘.
 
-구성 (각 섹션은 소제목 없이 자연스러운 문단으로 이어써):
-1. 도입 (1~2문장): 어떤 종목 × 전략 × 기간을 돌렸는지, 핵심 결과 한 줄
-2. 성과 요약: 전략 수익률 vs 단순 보유, 알파(초과 수익), 최대 낙폭(MDD)
-3. 거래 행태: 총 거래 횟수, 승률, 평균 보유 기간, 평균 손익 규모
-4. 실전 가능성 평가: 거래 빈도가 개인이 감당할 수준인지, 수수료·세금 영향 간단히 언급
-5. 주의사항: 과거 결과의 한계, 시장 환경 차이
-6. 면책 한 줄로 마무리: "과거 결과로 미래 수익을 보장하지 않습니다."
+[이번 글의 특별 지시] ${narrativeInstruction}
+
+반드시 다루어야 할 정보:
+- 종목, 전략, 기간
+- 전략 수익률 vs 단순 보유 차이
+- 최대 낙폭(MDD)
+- 거래 횟수, 승률, 평균 이익/손실 규모
+- 실전 가능성 간략 평가
+- 마지막에 "과거 결과로 미래 수익을 보장하지 않습니다" 면책 한 줄
 
 규칙:
-- 본문 총 600~900자 (한글 기준). 너무 짧지 않게.
-- 팩트에 없는 숫자나 단정적 해석 꾸며내지 말 것 ("반드시 수익난다" 같은 표현 금지)
-- 마크다운, 이모지, 글머리 기호 쓰지 말 것. 그냥 문단 서술.
-- 독자 존댓말, 차분한 톤.
+- 본문 총 600~900자 (한글 기준).
+- 위 "특별 지시" 의 관점/톤에 맞춰 글을 작성. 매번 구성 순서와 문체가 다르게 나와야 함.
+- 팩트에 없는 숫자나 단정적 해석은 절대 만들지 말 것 ("반드시 수익난다" 금지).
+- 마크다운, 이모지, 글머리 기호 쓰지 말 것. 자연스러운 문단 서술.
+- 존댓말, 차분한 톤.
 
 === 팩트 ===
 ${factBlock}
@@ -376,12 +380,14 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     return;
   }
 
-  const { symbol, preset } = pickRotationPair(cfg.post_counter);
-  console.log(`Pick: symbol=${symbol} strategy=${preset.name} (counter=${cfg.post_counter})`);
+  const { symbol, preset, period, narrative } = pickRotationPair(cfg.post_counter);
+  console.log(
+    `Pick: symbol=${symbol} strategy=${preset.name} period=${period.label} narrative=${narrative.id} (counter=${cfg.post_counter})`,
+  );
 
   const candles = await fetchCandles(symbol);
-  // 최근 2년 (730봉) 이상. 부족하면 있는 만큼.
-  const target = Math.min(730, candles.length);
+  // 로테이션으로 지정된 기간만큼 slice. 데이터 부족하면 있는 만큼.
+  const target = Math.min(period.days, candles.length);
   const slice = candles.slice(-target);
   if (slice.length < 100) {
     console.log(`캔들 ${slice.length}개 뿐 — 스킵`);
@@ -389,19 +395,55 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     return;
   }
 
-  const signals = computeSignals(
-    slice,
-    preset.strategy as Parameters<typeof computeSignals>[1],
-    preset.params as Parameters<typeof computeSignals>[2],
-    { initialCash: 1_000_000 },
-  );
   const feeBps = 5;
   const initialCash = 1_000_000;
+
+  // DIY(custom) 은 computeDIYSignals, 나머지는 computeSignals
+  let signals;
+  if (preset.strategy === "custom") {
+    signals = computeDIYSignals(slice, {
+      buy: (preset.customBuy ?? []) as Parameters<typeof computeDIYSignals>[1]["buy"],
+      sell: (preset.customSell ?? []) as Parameters<typeof computeDIYSignals>[1]["sell"],
+      stopLossPct: preset.stopLossPct,
+      takeProfitPct: preset.takeProfitPct,
+    });
+  } else {
+    signals = computeSignals(
+      slice,
+      preset.strategy as Parameters<typeof computeSignals>[1],
+      preset.params as Parameters<typeof computeSignals>[2],
+      { initialCash },
+    );
+  }
   const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
 
   const label = symbolLabel(symbol);
   const days = Math.round((slice[slice.length - 1].timestamp - slice[0].timestamp) / 86400000);
   const beat = r.returnPct > r.benchmarkReturnPct;
+
+  // 시장 국면 분석 (누적 수익 + 변동성)
+  const firstClose = slice[0].close;
+  const lastClose = slice[slice.length - 1].close;
+  const marketChange = (lastClose / firstClose - 1) * 100;
+  // 일간 수익률 표준편차
+  let sumSq = 0;
+  let sumLog = 0;
+  const logRets: number[] = [];
+  for (let i = 1; i < slice.length; i++) {
+    const lr = Math.log(slice[i].close / slice[i - 1].close);
+    logRets.push(lr);
+    sumLog += lr;
+  }
+  const mean = sumLog / logRets.length;
+  for (const lr of logRets) sumSq += (lr - mean) * (lr - mean);
+  const dailyStd = Math.sqrt(sumSq / logRets.length);
+  const annualVol = dailyStd * Math.sqrt(365) * 100;
+  let marketPhase: string;
+  if (marketChange > 25) marketPhase = "강한 상승장";
+  else if (marketChange > 5) marketPhase = "약한 상승장";
+  else if (marketChange < -25) marketPhase = "강한 하락장";
+  else if (marketChange < -5) marketPhase = "약한 하락장";
+  else marketPhase = "횡보장";
 
   // ---------- share 행 insert ----------
   const slug = randomSlug();
@@ -426,7 +468,11 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     author_id: cfg.bot_user_id,
     is_private: false,
     candles: slice,
-    signals: compactSignals(signals),
+    signals: compactSignals(signals as unknown[]),
+    custom_buy: preset.customBuy ?? null,
+    custom_sell: preset.customSell ?? null,
+    stop_loss_pct: preset.stopLossPct ?? null,
+    take_profit_pct: preset.takeProfitPct ?? null,
   });
   if (shareErr) throw new Error(`share insert: ${shareErr.message}`);
 
@@ -441,6 +487,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     `종목: ${label}`,
     `전략: ${preset.name}`,
     `기간: ${days}일 (최근 약 ${yearsLabel})`,
+    `시장 국면 (해당 기간): ${marketPhase} (누적 ${marketChange.toFixed(1)}%, 연환산 변동성 ${annualVol.toFixed(1)}%)`,
     `초기자금: ${initialCash.toLocaleString()}원, 수수료(편도): ${feeBps}bp`,
     `전략 누적 수익률: ${r.returnPct.toFixed(2)}%`,
     `단순 보유 누적 수익률: ${r.benchmarkReturnPct.toFixed(2)}%`,
@@ -455,7 +502,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     `거래 빈도 성격: ${stats.feasibilityNote}`,
   ].join("\n");
 
-  let body = await callGemini(fact);
+  let body = await callGemini(fact, narrative.instruction);
   if (!body) {
     // Gemini 없거나 실패 — 풍부한 폴백 템플릿
     body = buildFallbackBody({
@@ -475,7 +522,16 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     });
   }
 
-  const title = `${label} · ${preset.name} · ${Math.round(days / 365 * 10) / 10}년 백테스트 (${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%)`;
+  // 제목도 counter 에 따라 다른 포맷 사용해서 반복 느낌 줄이기
+  const titleFormats: ((...args: never[]) => string)[] = [
+    () => `${label} · ${preset.name} · ${yearsLabel} 백테스트 (${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%)`,
+    () => `${yearsLabel} ${marketPhase}에서 ${preset.name}을 ${label}에 돌려봤습니다`,
+    () => `[${label}] ${preset.name} ${yearsLabel} 결과 ${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}% (단순 보유 ${r.benchmarkReturnPct >= 0 ? "+" : ""}${r.benchmarkReturnPct.toFixed(1)}%)`,
+    () => `${preset.name} — ${label} ${yearsLabel} 테스트 (승률 ${r.winRate.toFixed(0)}%, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
+    () => `${label} ${yearsLabel} — ${preset.name} 이 ${beat ? "통한" : "통하지 않은"} 이유`,
+    () => `${marketPhase}의 ${label}, ${preset.name}으로 돌리면 어떻게 될까`,
+  ];
+  const title = titleFormats[cfg.post_counter % titleFormats.length]();
   const postSlug = randomSlug();
 
   const { error: postErr } = await sb.from("posts").insert({

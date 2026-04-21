@@ -3,14 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import { consumeHandoff, createSession } from "@/lib/paper-trade";
 
 export default function PaperTradeNewPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace("/login?redirect=/paper-trade/new");
+      return;
+    }
     // React StrictMode + 페이지 재렌더 방어. 한 번만 실행한다.
     if (startedRef.current) return;
     startedRef.current = true;
@@ -27,7 +34,7 @@ export default function PaperTradeNewPage() {
       .catch((e) => {
         setError(e instanceof Error ? e.message : "모의투자 세션 생성 실패");
       });
-  }, [router]);
+  }, [user, authLoading, router]);
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-12 text-center">

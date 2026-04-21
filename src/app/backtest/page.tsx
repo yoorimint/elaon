@@ -30,6 +30,7 @@ import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
 import { saveShare } from "@/lib/share";
 import { setHandoff } from "@/lib/paper-trade";
+import { useAuth } from "@/components/AuthProvider";
 import { NumInput } from "@/components/NumInput";
 import { MarketPicker } from "@/components/MarketPicker";
 import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
@@ -72,6 +73,7 @@ const POPULAR_MARKETS = [
 
 export default function BacktestPage() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [markets, setMarkets] = useState<MarketEntry[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
   const [timeframe, setTimeframe] = useState<Timeframe>("1d");
@@ -317,6 +319,7 @@ export default function BacktestPage() {
 
   function onPaperTrade() {
     if (!result || !runStrategy || !runParams) return;
+    // 핸드오프는 sessionStorage라 로그인 후 같은 탭으로 돌아오면 그대로 유지됨.
     setHandoff({
       market,
       timeframe,
@@ -329,6 +332,10 @@ export default function BacktestPage() {
       initialCash,
       feeBps,
     });
+    if (!currentUser) {
+      router.push("/login?redirect=/paper-trade/new");
+      return;
+    }
     router.push("/paper-trade/new");
   }
 

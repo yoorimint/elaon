@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +30,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    // 외부 URL 주입 방지: 반드시 /로 시작하는 경로여야 함.
+    const safeRedirect = redirect.startsWith("/") ? redirect : "/";
+    router.push(safeRedirect);
     router.refresh();
   }
 
@@ -84,5 +88,13 @@ export default function LoginPage() {
         </span>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-md px-5 py-12">로딩 중…</main>}>
+      <LoginForm />
+    </Suspense>
   );
 }

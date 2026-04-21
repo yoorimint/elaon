@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 import {
   listSessions,
   loadSession,
@@ -23,8 +25,16 @@ type Row = PaperSessionMeta & {
 };
 
 export default function PaperTradeListPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?redirect=/paper-trade");
+    }
+  }, [authLoading, user, router]);
 
   function refresh() {
     const metas = listSessions();
@@ -46,8 +56,16 @@ export default function PaperTradeListPage() {
   }
 
   useEffect(() => {
-    refresh();
-  }, []);
+    if (user) refresh();
+  }, [user]);
+
+  if (authLoading || !user) {
+    return (
+      <main className="mx-auto max-w-4xl px-5 py-12 text-center text-sm text-neutral-500">
+        {authLoading ? "확인 중…" : "로그인 페이지로 이동 중…"}
+      </main>
+    );
+  }
 
   function onDelete(id: string, name: string) {
     if (!confirm(`"${name}" 모의투자 세션을 삭제할까요?`)) return;

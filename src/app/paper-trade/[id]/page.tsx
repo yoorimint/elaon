@@ -26,6 +26,7 @@ import { STRATEGIES } from "@/lib/strategies";
 import { TIMEFRAMES, type Candle } from "@/lib/upbit";
 import { currencyOf, formatMoney } from "@/lib/market";
 import { TVChart } from "@/components/TVChart";
+import { useAuth } from "@/components/AuthProvider";
 
 // 타임프레임별 폴링 간격 (ms). 분봉은 자주, 일봉은 거의 폴링 안함.
 function pollIntervalFor(tf: string): number {
@@ -92,6 +93,7 @@ export default function PaperTradeDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
 
   const [session, setSession] = useState<PaperSession | null>(null);
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -102,9 +104,16 @@ export default function PaperTradeDetailPage() {
   const [lastTickMsg, setLastTickMsg] = useState<string | null>(null);
   const refreshingRef = useRef(false);
 
+  // 로그인 가드
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace(`/login?redirect=/paper-trade/${id}`);
+    }
+  }, [authLoading, user, router, id]);
+
   // 최초 로드
   useEffect(() => {
-    if (!id) return;
+    if (!id || !user) return;
     const s = loadSession(id);
     setSession(s);
     setLoaded(true);

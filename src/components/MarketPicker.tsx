@@ -99,17 +99,47 @@ export function MarketPicker({
 
   useEffect(() => {
     if (!open) return;
+
+    // 휴대폰 뒤로가기로 모달만 닫히도록 history entry 추가
+    window.history.pushState({ marketPicker: true }, "");
+    let closedByBack = false;
+    const onPop = () => {
+      closedByBack = true;
+      setOpen(false);
+      setQuery("");
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") setOpen(false);
     };
+    window.addEventListener("popstate", onPop);
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+
+    // iOS Safari 에서도 배경이 스크롤되지 않도록 body 를 고정.
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      document.removeEventListener("keydown", onKey);
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+      if (!closedByBack && window.history.state?.marketPicker) {
+        window.history.back();
+      }
+    };
   }, [open]);
 
   // 주식 티커를 비동기로 불러온 뒤에도 선택된 종목 라벨을 맞춰 보여주기 위한 resolve.
@@ -266,12 +296,11 @@ export function MarketPicker({
               )}
             </div>
 
-            <div className="mt-2 flex-1 min-h-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
-              <div
-                ref={scrollRef}
-                className="h-full w-full overflow-x-hidden overflow-y-auto"
-              >
-                {list.length === 0 ? (
+            <div
+              ref={scrollRef}
+              className="mt-2 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain rounded-lg border border-neutral-200 dark:border-neutral-800"
+            >
+              {list.length === 0 ? (
                   <div className="px-3 py-6 text-center text-sm text-neutral-500">
                     {loadingFull ? "불러오는 중..." : "일치하는 종목이 없습니다"}
                   </div>
@@ -308,7 +337,6 @@ export function MarketPicker({
                     })}
                   </ul>
                 )}
-              </div>
             </div>
 
             {totalMatch > list.length && (

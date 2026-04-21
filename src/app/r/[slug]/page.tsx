@@ -11,6 +11,7 @@ import { SharedPriceChart } from "@/components/SharedPriceChart";
 import { SharedDIYDetails } from "@/components/SharedDIYDetails";
 import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { SharedTradeTable } from "@/components/SharedTradeTable";
+import { SharedActions } from "@/components/SharedActions";
 import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
@@ -133,9 +134,9 @@ function strategyParamLines(
       ];
     }
     case "custom":
-      return [
-        { label: "전략", value: "사용자 정의 조건 (DIY)" },
-      ];
+      // 실제 조건은 아래 SharedDIYDetails 카드에서 매수/매도 조건을 풀어서
+      // 보여주므로 여기선 따로 줄 안 채움.
+      return [];
     default:
       return [];
   }
@@ -244,6 +245,15 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         )}
       </section>
 
+      {/* DIY 전략이면 매수/매도 조건을 상단에서 바로 보여준다. 예전엔 차트 아래에
+          있어서 "상세 전략이 안 나온다"는 피드백이 있었다. */}
+      <SharedDIYDetails
+        customBuy={data.custom_buy as Condition[] | null}
+        customSell={data.custom_sell as Condition[] | null}
+        stopLossPct={data.stop_loss_pct}
+        takeProfitPct={data.take_profit_pct}
+      />
+
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="전략 수익률"
@@ -293,13 +303,6 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         </div>
       ) : null}
 
-      <SharedDIYDetails
-        customBuy={data.custom_buy as Condition[] | null}
-        customSell={data.custom_sell as Condition[] | null}
-        stopLossPct={data.stop_loss_pct}
-        takeProfitPct={data.take_profit_pct}
-      />
-
       <SharedExtendedStats
         metrics={data.extended_metrics}
         tradeCount={data.trade_count}
@@ -314,12 +317,26 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         <SharedTradeTable trades={data.trades} currency={currencyOf(data.market)} />
       )}
 
-      <div className="mt-8">
+      <SharedActions
+        slug={data.slug}
+        market={data.market}
+        timeframe={data.timeframe}
+        strategy={data.strategy}
+        params={data.params as Record<string, unknown>}
+        customBuy={data.custom_buy as Condition[] | null}
+        customSell={data.custom_sell as Condition[] | null}
+        stopLossPct={data.stop_loss_pct}
+        takeProfitPct={data.take_profit_pct}
+        initialCash={data.initial_cash}
+        feeBps={data.fee_bps}
+      />
+
+      <div className="mt-4">
         <Link
           href="/backtest"
-          className="inline-flex items-center rounded-full bg-brand px-6 py-3 text-white font-semibold hover:bg-brand-dark"
+          className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white underline"
         >
-          내 전략도 돌려보기
+          내 전략 직접 만들러 가기 →
         </Link>
       </div>
     </main>

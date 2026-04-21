@@ -5,12 +5,7 @@ on:
   # KST = UTC+9. 스크립트 안에서도 한 번 더 시간/확률 체크한다.
   schedule:
     - cron: "0 0-14 * * *"
-  workflow_dispatch: # 수동 실행 버튼
-    inputs:
-      force:
-        description: "스케줄 무시하고 1회 강제 실행"
-        type: boolean
-        default: false
+  workflow_dispatch: # 수동 실행 버튼 — 클릭만으로 무조건 강제 발행 (체크박스 불필요)
 
 permissions:
   contents: read
@@ -34,5 +29,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          BOT_FORCE: ${{ inputs.force && '1' || '' }}
+          BOT_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
         run: npx tsx --tsconfig tsconfig.json scripts/bot-post.ts

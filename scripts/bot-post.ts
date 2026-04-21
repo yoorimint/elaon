@@ -455,31 +455,45 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     }
   }
 
-  // 종목은 랜덤으로 하나, 그 종목에 대해 (전략 × 기간) 조합을 섞어가며 돌려
-  // 처음으로 "수익 + 실제 거래 발생" 조합을 찾으면 채택. 전부 손실이면 이번 회차는 스킵.
-  // — 같은 전략도 1년은 손실이지만 2년은 수익일 수 있음. 운좋게 수익난 걸 자랑하는 봇.
-  const symbol = pick(BOT_SYMBOLS);
+  // 종목 × (전략 × 기간) 전체 카테시안을 섞어 "수익 + 거래 발생" 첫 조합을
+  // 찾으면 그대로 채택. 기존에는 한 종목만 뽑고 실패하면 조용히 스킵했는데
+  // 그 종목이 하필 하락장이면 189조합 다 손실 → "글이 발행 안 됨" 상태가 되어서
+  // 종목도 같이 스캔한다. 캔들은 종목당 한 번만 가져와 메모.
   const narrative = pick(BOT_NARRATIVE_ANGLES);
-  console.log(`Symbol=${symbol} narrative=${narrative.id} — searching profitable combo`);
-
-  const candles = await fetchCandles(symbol);
-  if (candles.length < 100) {
-    console.log(`캔들 ${candles.length}개 뿐 — 스킵 (counter 유지)`);
-    return;
-  }
-
   const feeBps = 5;
   const initialCash = 1_000_000;
 
-  // (전략 × 기간) 전체 카테시안을 섞어 처음부터 끝까지 돌리며 "수익 + 거래 발생"
-  // 조합을 찾으면 즉시 채택. 63전략 × 3기간 = 189조합이라 최악 케이스에도
-  // 런타임 수초 안쪽.
-  const combos: { preset: BotPreset; period: { label: string; days: number } }[] = [];
-  for (const p of BOT_STRATEGIES) for (const per of BOT_PERIODS) combos.push({ preset: p, period: per });
+  type Combo = { symbol: string; preset: BotPreset; period: { label: string; days: number } };
+  const combos: Combo[] = [];
+  for (const s of BOT_SYMBOLS) for (const p of BOT_STRATEGIES) for (const per of BOT_PERIODS) {
+    combos.push({ symbol: s, preset: p, period: per });
+  }
   const tries = shuffled(combos);
-  console.log(`조합 ${tries.length}개 시도 시작`);
+  console.log(
+    `narrative=${narrative.id} — 종목 ${BOT_SYMBOLS.length} × 전략 ${BOT_STRATEGIES.length} × 기간 ${BOT_PERIODS.length} = ${tries.length} 조합 스캔 시작`,
+  );
+
+  const candleCache = new Map<string, Candle[] | null>();
+  async function loadCandles(sym: string): Promise<Candle[] | null> {
+    if (candleCache.has(sym)) return candleCache.get(sym) ?? null;
+    try {
+      const c = await fetchCandles(sym);
+      if (c.length < 100) {
+        console.log(`  ${sym}: 캔들 ${c.length}개 뿐 — 건너뜀`);
+        candleCache.set(sym, null);
+        return null;
+      }
+      candleCache.set(sym, c);
+      return c;
+    } catch (e) {
+      console.warn(`  ${sym}: 캔들 가져오기 실패 → ${(e as Error).message}`);
+      candleCache.set(sym, null);
+      return null;
+    }
+  }
 
   let chosen: {
+    symbol: string;
     preset: BotPreset;
     period: { label: string; days: number };
     slice: Candle[];
@@ -490,8 +504,10 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
   let scanned = 0;
   let losers = 0;
   let noTrade = 0;
-  for (const { preset, period } of tries) {
+  for (const { symbol: sym, preset, period } of tries) {
     scanned++;
+    const candles = await loadCandles(sym);
+    if (!candles) continue;
     const target = Math.min(period.days, candles.length);
     const slice = candles.slice(-target);
     if (slice.length < 100) continue;
@@ -517,21 +533,21 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
     if (r.tradeCount === 0) { noTrade++; continue; }
     if (r.returnPct <= 0) { losers++; continue; }
-    chosen = { preset, period, slice, signals, r };
+    chosen = { symbol: sym, preset, period, slice, signals, r };
     console.log(
-      `Hit (${scanned}/${tries.length}): ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
+      `Hit (${scanned}/${tries.length}): ${sym} / ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
     );
     break;
   }
 
   if (!chosen) {
     console.log(
-      `${symbol}: ${tries.length}개 조합 스캔 완료, 수익 조합 없음 — 이번 회차 스킵 (손실 ${losers} · 무거래 ${noTrade})`,
+      `스캔 ${scanned}개 중 수익 조합 없음 — 이번 회차 스킵 (손실 ${losers} · 무거래 ${noTrade})`,
     );
     return;
   }
 
-  const { preset, slice, signals, r } = chosen;
+  const { symbol, preset, slice, signals, r } = chosen;
 
   const label = symbolPrettyLabel(symbol);
   const days = Math.round((slice[slice.length - 1].timestamp - slice[0].timestamp) / 86400000);

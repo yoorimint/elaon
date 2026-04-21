@@ -245,10 +245,10 @@ export default function PostDetailPage() {
           </div>
         ) : (
           <>
+            {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
             <div className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed">
               {post.body}
             </div>
-            {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
           </>
         )}
 

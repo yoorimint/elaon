@@ -475,6 +475,14 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
   }
   const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
 
+  // 거래가 한 번도 발생하지 않은 전략/종목 조합은 분석할 게 없어 스킵.
+  // (수익률 0%, 승률 0%, PF 0 으로 채워진 무의미한 글이 올라가는 걸 방지)
+  if (r.tradeCount === 0) {
+    console.log(`거래 0회 — 분석 불가로 스킵 (${symbol} / ${preset.name})`);
+    await bumpCounter(cfg.post_counter);
+    return;
+  }
+
   const label = symbolPrettyLabel(symbol);
   const days = Math.round((slice[slice.length - 1].timestamp - slice[0].timestamp) / 86400000);
   const beat = r.returnPct > r.benchmarkReturnPct;
@@ -620,7 +628,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     () => `${retStr} · ${label} ${preset.name} ${yearsLabel}`,
     () => `${retStr} — ${label} ${preset.name} (${yearsLabel}, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
     () => `${retStr} vs 보유 ${bhStr} · ${label} ${preset.name} ${yearsLabel}`,
-    () => `[${label}] ${preset.name} ${yearsLabel} → ${retStr}`,
+    () => `${retStr} · [${label}] ${preset.name} (${yearsLabel})`,
     () => `${retStr} 기록한 ${label} ${preset.name} 전략 (${yearsLabel})`,
     () => `${retStr} · ${marketPhase}의 ${label}을 ${preset.name}으로`,
   ];

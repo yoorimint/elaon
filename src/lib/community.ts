@@ -14,7 +14,7 @@ export const CATEGORIES: { id: Category; label: string }[] = [
 // 봇 글만 모아볼 수 있게 한다.
 export const FILTER_CATEGORIES: { id: Category; label: string }[] = [
   ...CATEGORIES,
-  { id: "bot", label: "봇추천전략" },
+  { id: "bot", label: "봇 분석" },
 ];
 
 // 표시용 라벨 — bot 포함 전체
@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   free: "자유",
   strategy: "전략공유",
   question: "질문",
-  bot: "봇추천전략",
+  bot: "봇 분석",
 };
 
 export function categoryLabel(id: string) {

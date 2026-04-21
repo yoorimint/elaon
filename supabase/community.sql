@@ -518,8 +518,10 @@ end;
 $$;
 grant execute on function public.admin_reply_suggestion(uuid, text) to authenticated;
 
--- admin_site_stats 에 미답변 건의 수 추가
-create or replace function public.admin_site_stats()
+-- admin_site_stats 에 미답변 건의 수 추가.
+-- 반환 타입이 바뀌므로 반드시 먼저 drop (create or replace 로는 변경 불가)
+drop function if exists public.admin_site_stats();
+create function public.admin_site_stats()
 returns table (
   today_visits bigint, today_uniques bigint, yesterday_uniques bigint, week_uniques bigint,
   today_signups bigint, today_posts bigint, today_comments bigint, today_reports bigint,

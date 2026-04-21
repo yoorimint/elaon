@@ -464,19 +464,20 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
 
   const candles = await fetchCandles(symbol);
   if (candles.length < 100) {
-    console.log(`캔들 ${candles.length}개 뿐 — 스킵`);
-    await bumpCounter(cfg.post_counter);
+    console.log(`캔들 ${candles.length}개 뿐 — 스킵 (counter 유지)`);
     return;
   }
 
   const feeBps = 5;
   const initialCash = 1_000_000;
 
-  // (전략 × 기간) 전체 카테시안을 섞은 뒤 앞에서부터 최대 MAX_TRIES 번 시도.
+  // (전략 × 기간) 전체 카테시안을 섞어 처음부터 끝까지 돌리며 "수익 + 거래 발생"
+  // 조합을 찾으면 즉시 채택. 63전략 × 3기간 = 189조합이라 최악 케이스에도
+  // 런타임 수초 안쪽.
   const combos: { preset: BotPreset; period: { label: string; days: number } }[] = [];
   for (const p of BOT_STRATEGIES) for (const per of BOT_PERIODS) combos.push({ preset: p, period: per });
-  const MAX_TRIES = 40;
-  const tries = shuffled(combos).slice(0, MAX_TRIES);
+  const tries = shuffled(combos);
+  console.log(`조합 ${tries.length}개 시도 시작`);
 
   let chosen: {
     preset: BotPreset;
@@ -486,7 +487,11 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     r: ReturnType<typeof runBacktest>;
   } | null = null;
 
+  let scanned = 0;
+  let losers = 0;
+  let noTrade = 0;
   for (const { preset, period } of tries) {
+    scanned++;
     const target = Math.min(period.days, candles.length);
     const slice = candles.slice(-target);
     if (slice.length < 100) continue;
@@ -510,18 +515,19 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
       );
     }
     const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
-    if (r.tradeCount > 0 && r.returnPct > 0) {
-      chosen = { preset, period, slice, signals, r };
-      console.log(
-        `Hit: ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
-      );
-      break;
-    }
+    if (r.tradeCount === 0) { noTrade++; continue; }
+    if (r.returnPct <= 0) { losers++; continue; }
+    chosen = { preset, period, slice, signals, r };
+    console.log(
+      `Hit (${scanned}/${tries.length}): ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
+    );
+    break;
   }
 
   if (!chosen) {
-    console.log(`${symbol}: ${MAX_TRIES}개 조합 모두 손실/무거래 — 이번 회차 스킵`);
-    await bumpCounter(cfg.post_counter);
+    console.log(
+      `${symbol}: ${tries.length}개 조합 스캔 완료, 수익 조합 없음 — 이번 회차 스킵 (손실 ${losers} · 무거래 ${noTrade})`,
+    );
     return;
   }
 

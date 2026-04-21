@@ -68,10 +68,10 @@ function CommunityList() {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setCategory(null)}
-            className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
+            className={`rounded-full px-3 py-1 text-xs sm:text-sm border whitespace-nowrap ${
               category === null
                 ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
                 : "border-neutral-300 dark:border-neutral-700"
@@ -83,7 +83,7 @@ function CommunityList() {
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}
-              className={`rounded-full px-4 py-1.5 text-sm border whitespace-nowrap ${
+              className={`rounded-full px-3 py-1 text-xs sm:text-sm border whitespace-nowrap ${
                 category === c.id
                   ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 border-transparent"
                   : "border-neutral-300 dark:border-neutral-700"

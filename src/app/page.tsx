@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
 import { categoryLabel, timeAgo, fetchUsernameMap, type Category } from "@/lib/community";
+import { BEGINNER_PRESETS } from "@/lib/beginner-presets";
 
 export const revalidate = 30;
 
@@ -105,6 +106,34 @@ export default async function HomePage() {
             커뮤니티 보기
           </Link>
         </div>
+      </section>
+
+      <section className="mb-12">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg sm:text-xl font-bold">처음이신가요? 이대로 눌러보세요</h2>
+          <span className="text-sm text-neutral-500">클릭하면 전략이 자동 세팅됩니다</span>
+        </div>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {BEGINNER_PRESETS.map((p) => (
+            <li key={p.id}>
+              <Link
+                href={`/backtest?preset=${p.id}`}
+                className="block h-full rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand/50 hover:bg-brand/5 transition"
+              >
+                <div className="text-[11px] font-semibold text-brand tracking-wide">
+                  {p.badge}
+                </div>
+                <div className="mt-1 font-semibold">{p.title}</div>
+                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  {p.blurb}
+                </p>
+                <div className="mt-3 text-xs text-brand font-semibold">
+                  이 전략으로 백테스트 →
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mb-12">

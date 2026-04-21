@@ -720,5 +720,73 @@ drop policy if exists "own strategies delete" on public.user_strategies;
 create policy "own strategies delete" on public.user_strategies
   for delete using (auth.uid() = user_id);
 
+-- ===================================================================
+-- 관심 종목 워치리스트
+-- 각 행은 (내 계정, 종목) 짝. 선택적으로 내 저장 전략 하나를 붙여서
+-- "이 종목을 이 전략으로 보면 오늘 뭐라고 말하는지" 를 뱃지로 본다.
+-- ===================================================================
+create table if not exists public.user_watchlist (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  market text not null,
+  -- 전략 삭제되면 연결만 풀리고 워치리스트 행은 남음.
+  strategy_id uuid references public.user_strategies(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists user_watchlist_user_market_uq
+  on public.user_watchlist(user_id, market);
+create index if not exists user_watchlist_user_created_idx
+  on public.user_watchlist(user_id, created_at desc);
+
+alter table public.user_watchlist enable row level security;
+
+drop policy if exists "own watchlist read" on public.user_watchlist;
+create policy "own watchlist read" on public.user_watchlist
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "own watchlist insert" on public.user_watchlist;
+create policy "own watchlist insert" on public.user_watchlist
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "own watchlist update" on public.user_watchlist;
+create policy "own watchlist update" on public.user_watchlist
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own watchlist delete" on public.user_watchlist;
+create policy "own watchlist delete" on public.user_watchlist
+  for delete using (auth.uid() = user_id);
+
+-- ===================================================================
+-- 1d 캔들 캐시 — 외부 API(Upbit/Yahoo/OKX) 호출 폭증 방지
+-- 유저 수 무관, (market) 하나당 하루 1번 외부 fetch 로 고정된다.
+-- 1d 이외 타임프레임은 캐시하지 않는다 (워치리스트는 1d 전략만 허용).
+-- ===================================================================
+create table if not exists public.candle_cache (
+  market text primary key,
+  candles jsonb not null,
+  refreshed_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists candle_cache_expires_idx
+  on public.candle_cache(expires_at);
+
+alter table public.candle_cache enable row level security;
+
+-- 로그인한 사용자 전체가 읽기 가능. 쓰기는 서버 route 에서 anon 키로 수행하되
+-- 경합 방지를 위해 upsert 만 허용 (전 유저가 동일 행을 공유).
+drop policy if exists "candle cache read" on public.candle_cache;
+create policy "candle cache read" on public.candle_cache
+  for select using (true);
+
+drop policy if exists "candle cache insert" on public.candle_cache;
+create policy "candle cache insert" on public.candle_cache
+  for insert with check (true);
+
+drop policy if exists "candle cache update" on public.candle_cache;
+create policy "candle cache update" on public.candle_cache
+  for update using (true) with check (true);
+
 -- PostgREST 스키마 캐시 리로드
 notify pgrst, 'reload schema';

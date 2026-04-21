@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { MarketEntry, MarketKind } from "@/lib/market";
 import { prettyUSName } from "@/lib/stocks-kr-names";
+import { WatchStar } from "./WatchStar";
 
 type RawEntry = { t: string; n: string };
 
@@ -311,16 +312,19 @@ export function MarketPicker({
                       const ticker =
                         m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
                       return (
-                        <li key={m.id} className="block w-full min-w-0">
+                        <li
+                          key={m.id}
+                          className={`flex items-center min-w-0 ${
+                            active
+                              ? "bg-brand/10 text-brand-dark dark:text-brand"
+                              : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                          }`}
+                        >
                           <button
                             type="button"
                             onClick={() => handlePick(m.id)}
-                            style={{ width: "100%", maxWidth: "100%" }}
-                            className={`flex min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
-                              active
-                                ? "bg-brand/10 text-brand-dark dark:text-brand"
-                                : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                            }`}
+                            style={{ maxWidth: "100%" }}
+                            className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm transition"
                           >
                             <span
                               className="min-w-0 flex-1 overflow-hidden whitespace-nowrap font-medium"
@@ -332,6 +336,9 @@ export function MarketPicker({
                               {ticker}
                             </span>
                           </button>
+                          <div className="pr-2 shrink-0">
+                            <WatchStar market={m.id} />
+                          </div>
                         </li>
                       );
                     })}

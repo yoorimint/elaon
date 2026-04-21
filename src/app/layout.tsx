@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | eloan 백테스트",
   },
   description:
-    "비트코인·알트코인·한국주식·미국주식을 실제 과거 데이터로 백테스트하고 모의투자로 이어 검증하세요. 이동평균·RSI·볼린저·MACD·그리드 등 12종 전략 + DIY 조건 빌더 제공. 회원가입·결제 없이 바로 실행.",
+    "코인·주식 투자 전략을 과거 시세로 백테스트하고 모의투자로 검증하는 무료 도구. 12종 전략 제공.",
   keywords: [
     "백테스트",
     "코인 백테스트",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     url: "https://www.eloan.kr",
     title: "eloan 백테스트 — 코인·주식 전략을 3분 안에 검증",
     description:
-      "이동평균·RSI·볼린저·MACD·그리드 등 12종 전략을 실제 시세로 백테스트. 모의투자로 이어서 검증하고 커뮤니티에 결과 공유까지.",
+      "코인·주식 투자 전략을 과거 시세로 백테스트하고 모의투자로 검증하는 무료 도구.",
   },
   twitter: {
     card: "summary_large_image",

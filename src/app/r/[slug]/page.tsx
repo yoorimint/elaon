@@ -9,6 +9,7 @@ import type { Condition } from "@/lib/diy-strategy";
 import { SharedChart } from "@/components/SharedChart";
 import { SharedPriceChart } from "@/components/SharedPriceChart";
 import { SharedDIYDetails } from "@/components/SharedDIYDetails";
+import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
@@ -296,6 +297,11 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         customSell={data.custom_sell as Condition[] | null}
         stopLossPct={data.stop_loss_pct}
         takeProfitPct={data.take_profit_pct}
+      />
+
+      <SharedExtendedStats
+        metrics={data.extended_metrics}
+        tradeCount={data.trade_count}
       />
 
       <div className="mt-8">

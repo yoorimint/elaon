@@ -46,4 +46,21 @@ export type SharedBacktest = {
   custom_sell: unknown[] | null;
   stop_loss_pct: number | null;
   take_profit_pct: number | null;
+  // 확장 지표 묶음 (Sharpe, Sortino, Calmar, Profit Factor, 거래 상세, 월별 수익률)
+  extended_metrics: {
+    sharpe_ratio?: number | null;
+    sortino_ratio?: number | null;
+    calmar_ratio?: number | null;
+    profit_factor?: number | null;
+    expectancy_pct?: number | null;
+    avg_win_pct?: number | null;
+    avg_loss_pct?: number | null;
+    best_trade_pct?: number | null;
+    worst_trade_pct?: number | null;
+    max_consec_wins?: number | null;
+    max_consec_losses?: number | null;
+    avg_hold_bars?: number | null;
+    max_drawdown_duration_bars?: number | null;
+    monthly?: Array<{ year: number; month: number; returnPct: number }> | null;
+  } | null;
 };

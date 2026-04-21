@@ -525,6 +525,22 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     custom_sell: preset.customSell ?? null,
     stop_loss_pct: preset.stopLossPct ?? null,
     take_profit_pct: preset.takeProfitPct ?? null,
+    extended_metrics: {
+      sharpe_ratio: Number.isFinite(r.sharpeRatio) ? r.sharpeRatio : null,
+      sortino_ratio: Number.isFinite(r.sortinoRatio) ? r.sortinoRatio : null,
+      calmar_ratio: Number.isFinite(r.calmarRatio) ? r.calmarRatio : null,
+      profit_factor: Number.isFinite(r.profitFactor) ? r.profitFactor : null,
+      expectancy_pct: Number.isFinite(r.expectancyPct) ? r.expectancyPct : null,
+      avg_win_pct: Number.isFinite(r.avgWinPct) ? r.avgWinPct : null,
+      avg_loss_pct: Number.isFinite(r.avgLossPct) ? r.avgLossPct : null,
+      best_trade_pct: Number.isFinite(r.bestTradePct) ? r.bestTradePct : null,
+      worst_trade_pct: Number.isFinite(r.worstTradePct) ? r.worstTradePct : null,
+      max_consec_wins: r.maxConsecWins,
+      max_consec_losses: r.maxConsecLosses,
+      avg_hold_bars: Number.isFinite(r.avgHoldBars) ? r.avgHoldBars : null,
+      max_drawdown_duration_bars: r.maxDrawdownDurationBars,
+      monthly: r.monthly ?? [],
+    },
   });
   if (shareErr) throw new Error(`share insert: ${shareErr.message}`);
 

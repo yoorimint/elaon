@@ -84,6 +84,26 @@ export async function saveShare(p: SharePayload): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const authorId = sessionData.session?.user?.id ?? null;
 
+  // JSON은 Infinity / NaN 표현 못 하므로 null 로 치환
+  const safe = (v: number): number | null =>
+    Number.isFinite(v) ? v : null;
+  const extended = {
+    sharpe_ratio: safe(p.result.sharpeRatio),
+    sortino_ratio: safe(p.result.sortinoRatio),
+    calmar_ratio: safe(p.result.calmarRatio),
+    profit_factor: safe(p.result.profitFactor),
+    expectancy_pct: safe(p.result.expectancyPct),
+    avg_win_pct: safe(p.result.avgWinPct),
+    avg_loss_pct: safe(p.result.avgLossPct),
+    best_trade_pct: safe(p.result.bestTradePct),
+    worst_trade_pct: safe(p.result.worstTradePct),
+    max_consec_wins: p.result.maxConsecWins,
+    max_consec_losses: p.result.maxConsecLosses,
+    avg_hold_bars: safe(p.result.avgHoldBars),
+    max_drawdown_duration_bars: p.result.maxDrawdownDurationBars,
+    monthly: p.result.monthly ?? [],
+  };
+
   const { error } = await supabase.from("shared_backtests").insert({
     slug,
     market: p.market,
@@ -107,6 +127,7 @@ export async function saveShare(p: SharePayload): Promise<string> {
     custom_sell: (p.customSell ?? null) as unknown as Record<string, unknown> | null,
     stop_loss_pct: p.stopLossPct ?? null,
     take_profit_pct: p.takeProfitPct ?? null,
+    extended_metrics: extended,
   });
 
   if (error) throw new Error(error.message);

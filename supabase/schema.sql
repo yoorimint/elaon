@@ -104,3 +104,7 @@ alter table public.shared_backtests add column if not exists custom_buy jsonb;
 alter table public.shared_backtests add column if not exists custom_sell jsonb;
 alter table public.shared_backtests add column if not exists stop_loss_pct numeric;
 alter table public.shared_backtests add column if not exists take_profit_pct numeric;
+
+-- ===== 확장 지표 (Sharpe/Sortino/Calmar/Profit Factor + 거래 상세 + 월별 수익률) =====
+-- 모든 새 필드를 jsonb 한 칼럼에 담아 스키마 churn 방지. 옛 공유에는 null 이라 호환.
+alter table public.shared_backtests add column if not exists extended_metrics jsonb;

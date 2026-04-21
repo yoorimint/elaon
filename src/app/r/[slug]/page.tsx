@@ -26,6 +26,105 @@ function strategyName(id: string) {
   return STRATEGIES.find((s) => s.id === id)?.name ?? id;
 }
 
+// 전략별 파라미터를 "라벨: 값" 리스트로 변환. 화면에 상세 설정을 띄우기 위함.
+type ParamLine = { label: string; value: string };
+
+function strategyParamLines(
+  strategyId: string,
+  params: Record<string, unknown>,
+): ParamLine[] {
+  const p = params as Record<string, Record<string, unknown>>;
+  const fmt = (n: unknown) =>
+    typeof n === "number" ? n.toLocaleString("ko-KR") : String(n ?? "-");
+  switch (strategyId) {
+    case "buy_hold":
+      return [{ label: "방식", value: "시작일에 전액 매수 후 끝까지 보유" }];
+    case "ma_cross": {
+      const v = p.ma_cross ?? {};
+      return [
+        { label: "단기 이평", value: `${fmt(v.short)}일` },
+        { label: "장기 이평", value: `${fmt(v.long)}일` },
+      ];
+    }
+    case "rsi": {
+      const v = p.rsi ?? {};
+      return [
+        { label: "RSI 기간", value: `${fmt(v.period)}` },
+        { label: "과매도", value: `${fmt(v.oversold)}` },
+        { label: "과매수", value: `${fmt(v.overbought)}` },
+      ];
+    }
+    case "bollinger": {
+      const v = p.bollinger ?? {};
+      return [
+        { label: "기간", value: `${fmt(v.period)}` },
+        { label: "표준편차", value: `${fmt(v.stddev)}` },
+        { label: "터치 기준", value: v.touch === "wick" ? "꼬리" : "종가" },
+      ];
+    }
+    case "macd": {
+      const v = p.macd ?? {};
+      return [
+        { label: "빠른선", value: `${fmt(v.fast)}` },
+        { label: "느린선", value: `${fmt(v.slow)}` },
+        { label: "시그널", value: `${fmt(v.signal)}` },
+      ];
+    }
+    case "breakout": {
+      const v = p.breakout ?? {};
+      return [{ label: "계수 k", value: `${fmt(v.k)}` }];
+    }
+    case "stoch": {
+      const v = p.stoch ?? {};
+      return [
+        { label: "기간", value: `${fmt(v.period)}` },
+        { label: "스무딩", value: `${fmt(v.smooth)}` },
+        { label: "과매도", value: `${fmt(v.oversold)}` },
+        { label: "과매수", value: `${fmt(v.overbought)}` },
+      ];
+    }
+    case "ichimoku": {
+      const v = p.ichimoku ?? {};
+      return [
+        { label: "전환선", value: `${fmt(v.conversion)}` },
+        { label: "기준선", value: `${fmt(v.base)}` },
+        { label: "후행스팬", value: `${fmt(v.lagging)}` },
+      ];
+    }
+    case "dca": {
+      const v = p.dca ?? {};
+      return [
+        { label: "주기", value: `${fmt(v.intervalDays)}일마다` },
+        { label: "매수 금액", value: `₩${fmt(v.amountKRW)}` },
+      ];
+    }
+    case "ma_dca": {
+      const v = p.ma_dca ?? {};
+      return [
+        { label: "주기", value: `${fmt(v.intervalDays)}일마다` },
+        { label: "매수 금액", value: `₩${fmt(v.amountKRW)}` },
+        { label: "이평 기간", value: `${fmt(v.maPeriod)}일 (이 아래일 때만 매수)` },
+      ];
+    }
+    case "grid": {
+      const v = p.grid ?? {};
+      const mode = v.mode === "arith" ? "등차(균등)" : "등비(퍼센트)";
+      return [
+        { label: "하단", value: `₩${fmt(v.low)}` },
+        { label: "상단", value: `₩${fmt(v.high)}` },
+        { label: "구간 수", value: `${fmt(v.grids)}` },
+        { label: "분할 방식", value: mode },
+      ];
+    }
+    case "custom":
+      return [
+        { label: "전략", value: "사용자 정의 조건 (DIY)" },
+      ];
+    default:
+      return [];
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -73,6 +172,7 @@ export default async function SharedPage({ params }: { params: { slug: string } 
 
   const beat = data.return_pct > data.benchmark_return_pct;
   const sName = strategyName(data.strategy);
+  const paramLines = strategyParamLines(data.strategy, data.params);
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-8 sm:py-12">
@@ -110,6 +210,22 @@ export default async function SharedPage({ params }: { params: { slug: string } 
           })}{" "}
           · 조회 {data.view_count + 1}
         </div>
+
+        {paramLines.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+            <div className="text-sm font-semibold mb-2">상세 전략 설정</div>
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-sm">
+              {paramLines.map((p, i) => (
+                <div key={i} className="flex justify-between gap-2">
+                  <dt className="text-neutral-500">{p.label}</dt>
+                  <dd className="font-medium text-neutral-800 dark:text-neutral-100 text-right">
+                    {p.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
       </section>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

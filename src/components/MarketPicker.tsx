@@ -60,13 +60,12 @@ export function MarketPicker({
   onChange: (id: string) => void;
 }) {
   const selected = markets.find((m) => m.id === value);
+  const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<MarketKind>(selected?.kind ?? "crypto");
   const [query, setQuery] = useState("");
   const [krFull, setKrFull] = useState<MarketEntry[]>([]);
   const [usFull, setUsFull] = useState<MarketEntry[]>([]);
   const [loadingFull, setLoadingFull] = useState(false);
-  // 선택이 있으면 접힌 상태로 시작. 선택이 없으면 펼쳐서 고르게 함.
-  const [expanded, setExpanded] = useState(!selected);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // 탭/검색이 바뀌면 스크롤 위치 맨 위로
@@ -79,8 +78,9 @@ export function MarketPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
+  // 모달 열릴 때만 주식 전체 목록 로드. ESC 로 닫기 + body 스크롤 잠금.
   useEffect(() => {
-    if (!expanded) return;
+    if (!open) return;
     if (tab === "stock_kr" && krFull.length === 0) {
       setLoadingFull(true);
       loadFullList("stock_kr").then((list) => {
@@ -95,10 +95,24 @@ export function MarketPicker({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, expanded]);
+  }, [tab, open]);
 
-  // If a known stock ticker lookup resolves after mount, materialize into the
-  // full list for the selected-item label.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // 주식 티커를 비동기로 불러온 뒤에도 선택된 종목 라벨을 맞춰 보여주기 위한 resolve.
   const resolvedSelected = useMemo(() => {
     if (selected) return selected;
     if (!value) return undefined;
@@ -138,28 +152,32 @@ export function MarketPicker({
     return { list: deduped.slice(0, MAX_RESULTS), totalMatch: deduped.length };
   }, [markets, tab, query, krFull, usFull]);
 
-  function handlePick(id: string) {
-    onChange(id);
+  function handleClose() {
+    setOpen(false);
     setQuery("");
-    setExpanded(false);
   }
 
-  // === COLLAPSED VIEW ===
-  if (!expanded) {
-    const kindLabel =
-      resolvedSelected?.kind === "crypto"
-        ? "업비트"
-        : resolvedSelected?.kind === "crypto_fut"
-          ? "OKX 선물"
-          : resolvedSelected?.kind === "stock_kr"
-            ? "국내 주식"
-            : resolvedSelected?.kind === "stock_us"
-              ? "해외 주식"
-              : "종목";
-    return (
+  function handlePick(id: string) {
+    onChange(id);
+    handleClose();
+  }
+
+  const kindLabel =
+    resolvedSelected?.kind === "crypto"
+      ? "업비트"
+      : resolvedSelected?.kind === "crypto_fut"
+        ? "OKX 선물"
+        : resolvedSelected?.kind === "stock_kr"
+          ? "국내 주식"
+          : resolvedSelected?.kind === "stock_us"
+            ? "해외 주식"
+            : "종목";
+
+  return (
+    <>
       <button
         type="button"
-        onClick={() => setExpanded(true)}
+        onClick={() => setOpen(true)}
         className="flex w-full items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-900"
       >
         <span className="min-w-0 flex-1">
@@ -174,123 +192,134 @@ export function MarketPicker({
         </span>
         <span className="shrink-0 text-xs text-brand">변경 ▾</span>
       </button>
-    );
-  }
 
-  // === EXPANDED VIEW ===
-  return (
-    <div className="w-full max-w-full min-w-0">
-      <div className="flex gap-1 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1">
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                setTab(t.id);
-                setQuery("");
-              }}
-              className={`flex-1 min-w-0 rounded-md px-1 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
-                active
-                  ? "bg-white dark:bg-neutral-800 shadow-sm text-neutral-900 dark:text-white"
-                  : "text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-1 text-right text-[11px] text-neutral-400">
-        {fullSize[tab].toLocaleString()}개 종목
-      </div>
-
-      <div className="relative mt-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            tab === "crypto"
-              ? "검색 (예: 비트코인, BTC, XRP)"
-              : tab === "crypto_fut"
-                ? "검색 (예: 비트코인, BTC, ETH)"
-                : tab === "stock_kr"
-                  ? "검색 (예: 삼성, Samsung, 005930)"
-                  : "검색 (예: Apple, AAPL, TQQQ)"
-          }
-          autoFocus
-          className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
-        />
-        {loadingFull && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400">
-            불러오는 중...
-          </span>
-        )}
-      </div>
-
-      <div className="mt-2 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+      {open && (
         <div
-          ref={scrollRef}
-          className="h-72 w-full overflow-x-hidden overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40"
+          onClick={handleClose}
+          role="dialog"
+          aria-modal="true"
         >
-          {list.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-neutral-500">
-              {loadingFull ? "불러오는 중..." : "일치하는 종목이 없습니다"}
+          <div
+            className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-950 border-t sm:border border-neutral-200 dark:border-neutral-800 p-4 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold">종목 선택</h2>
+              <button
+                type="button"
+                onClick={handleClose}
+                aria-label="닫기"
+                className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                ✕
+              </button>
             </div>
-          ) : (
-            <ul className="w-full divide-y divide-neutral-100 dark:divide-neutral-800">
-              {list.map((m) => {
-                const active = m.id === value;
-                const ticker =
-                  m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
+
+            <div className="flex gap-1 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1">
+              {TABS.map((t) => {
+                const active = tab === t.id;
                 return (
-                  <li key={m.id} className="block w-full min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => handlePick(m.id)}
-                      style={{ width: "100%", maxWidth: "100%" }}
-                      className={`flex min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
-                        active
-                          ? "bg-brand/10 text-brand-dark dark:text-brand"
-                          : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                      }`}
-                    >
-                      <span
-                        className="min-w-0 flex-1 overflow-hidden whitespace-nowrap font-medium"
-                        style={{ textOverflow: "ellipsis" }}
-                      >
-                        {m.name}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-neutral-400">
-                        {ticker}
-                      </span>
-                    </button>
-                  </li>
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setTab(t.id);
+                      setQuery("");
+                    }}
+                    className={`flex-1 min-w-0 rounded-md px-1 py-1.5 text-[13px] font-medium whitespace-nowrap transition ${
+                      active
+                        ? "bg-white dark:bg-neutral-800 shadow-sm text-neutral-900 dark:text-white"
+                        : "text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
                 );
               })}
-            </ul>
-          )}
+            </div>
+            <div className="mt-1 text-right text-[11px] text-neutral-400">
+              {fullSize[tab].toLocaleString()}개 종목
+            </div>
+
+            <div className="relative mt-2">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={
+                  tab === "crypto"
+                    ? "검색 (예: 비트코인, BTC, XRP)"
+                    : tab === "crypto_fut"
+                      ? "검색 (예: 비트코인, BTC, ETH)"
+                      : tab === "stock_kr"
+                        ? "검색 (예: 삼성, Samsung, 005930)"
+                        : "검색 (예: Apple, AAPL, TQQQ)"
+                }
+                autoFocus
+                className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
+              />
+              {loadingFull && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400">
+                  불러오는 중...
+                </span>
+              )}
+            </div>
+
+            <div className="mt-2 flex-1 min-h-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+              <div
+                ref={scrollRef}
+                className="h-full w-full overflow-x-hidden overflow-y-auto"
+              >
+                {list.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-sm text-neutral-500">
+                    {loadingFull ? "불러오는 중..." : "일치하는 종목이 없습니다"}
+                  </div>
+                ) : (
+                  <ul className="w-full divide-y divide-neutral-100 dark:divide-neutral-800">
+                    {list.map((m) => {
+                      const active = m.id === value;
+                      const ticker =
+                        m.kind === "crypto" ? m.id : m.id.replace("yahoo:", "");
+                      return (
+                        <li key={m.id} className="block w-full min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => handlePick(m.id)}
+                            style={{ width: "100%", maxWidth: "100%" }}
+                            className={`flex min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition ${
+                              active
+                                ? "bg-brand/10 text-brand-dark dark:text-brand"
+                                : "hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                            }`}
+                          >
+                            <span
+                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap font-medium"
+                              style={{ textOverflow: "ellipsis" }}
+                            >
+                              {m.name}
+                            </span>
+                            <span className="shrink-0 text-[11px] text-neutral-400">
+                              {ticker}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {totalMatch > list.length && (
+              <p className="mt-2 text-[11px] text-neutral-500">
+                총 {totalMatch.toLocaleString()}건 중 상위 {list.length.toLocaleString()}건
+                표시 · 더 좁혀 검색하세요
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-
-      {totalMatch > list.length && (
-        <p className="mt-1 text-[11px] text-neutral-500">
-          총 {totalMatch.toLocaleString()}건 중 상위 {list.length.toLocaleString()}건
-          표시 · 더 좁혀 검색하세요
-        </p>
       )}
-
-      {selected && (
-        <button
-          type="button"
-          onClick={() => setExpanded(false)}
-          className="mt-2 w-full rounded-lg bg-neutral-100 dark:bg-neutral-900 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-        >
-          취소 (현재: {selected.name})
-        </button>
-      )}
-    </div>
+    </>
   );
 }

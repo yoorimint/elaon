@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   LineSeries,
@@ -97,6 +97,19 @@ function rangeLow(candles: Candle[], i: number, n: number): number {
 function isDark(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+}
+
+// lightweight-charts 는 내부 캔버스에 touch-action: none 을 걸어 모든 제스처를
+// 차트가 소비한다. 잠금 상태에서는 세로 스크롤만 브라우저에 양보하도록 덮어씀.
+function applyCanvasTouchAction(
+  box: HTMLDivElement | null,
+  locked: boolean,
+): void {
+  if (!box) return;
+  const value = locked ? "pan-y" : "none";
+  box.querySelectorAll("canvas").forEach((c) => {
+    (c as HTMLCanvasElement).style.touchAction = value;
+  });
 }
 
 function baseChartOptions(
@@ -300,6 +313,11 @@ export function TVChart({
 }: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
+  const mainChartRef = useRef<IChartApi | null>(null);
+  const subChartRef = useRef<IChartApi | null>(null);
+  // 페이지 스크롤 중 실수로 차트가 팬/줌되지 않도록 기본은 잠금.
+  const [locked, setLocked] = useState(true);
+  const lockedRef = useRef(locked);
 
   const customRefs =
     strategy === "custom"
@@ -325,6 +343,7 @@ export function TVChart({
     const mainW = Math.max(1, Math.floor(mainRect.width));
     const mainH = Math.max(1, Math.floor(mainRect.height));
     const chart = createChart(mainBox, baseChartOptions(dark, mainW, mainH, currency));
+    mainChartRef.current = chart;
 
     const priceSeries: ISeriesApi<"Candlestick"> = chart.addSeries(
       CandlestickSeries,
@@ -546,6 +565,7 @@ export function TVChart({
       const subW = Math.max(1, Math.floor(subRect.width));
       const subH = Math.max(1, Math.floor(subRect.height));
       subChart = createChart(subBox, baseChartOptions(dark, subW, subH, currency));
+      subChartRef.current = subChart;
 
       if (strategy === "rsi") {
         const p = params.rsi ?? { period: 14, oversold: 30, overbought: 70 };
@@ -739,6 +759,17 @@ export function TVChart({
 
     chart.timeScale().fitContent();
 
+    // 차트가 재생성될 때도 현재 잠금 상태가 유지되도록 옵션 + 캔버스 touch-action 적용.
+    const locked0 = lockedRef.current;
+    const interactionOpts = {
+      handleScroll: !locked0,
+      handleScale: !locked0,
+    };
+    chart.applyOptions(interactionOpts);
+    subChart?.applyOptions(interactionOpts);
+    applyCanvasTouchAction(mainBox, locked0);
+    applyCanvasTouchAction(subBox, locked0);
+
     // Resize on actual size changes only.
     let lastMainW = mainW;
     let lastMainH = mainH;
@@ -780,8 +811,19 @@ export function TVChart({
       subObserver?.disconnect();
       subChart?.remove();
       chart.remove();
+      mainChartRef.current = null;
+      subChartRef.current = null;
     };
   }, [candles, signals, strategy, params, hasSubPanel]);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+    const opts = { handleScroll: !locked, handleScale: !locked };
+    mainChartRef.current?.applyOptions(opts);
+    subChartRef.current?.applyOptions(opts);
+    applyCanvasTouchAction(mainBoxRef.current, locked);
+    applyCanvasTouchAction(subBoxRef.current, locked);
+  }, [locked]);
 
   const subtitle = subtitleFor(strategy);
   const legendItems =
@@ -798,12 +840,32 @@ export function TVChart({
 
   return (
     <div>
-      {subtitle && (
-        <div className="mb-2 text-xs text-neutral-500">{subtitle}</div>
-      )}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0 truncate text-xs text-neutral-500">
+          {subtitle ?? ""}
+        </div>
+        <button
+          type="button"
+          onClick={() => setLocked((v) => !v)}
+          aria-pressed={!locked}
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
+            locked
+              ? "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              : "border-brand bg-brand/10 text-brand-dark dark:text-brand"
+          }`}
+          title={locked ? "클릭하면 차트를 팬/줌할 수 있어요" : "클릭하면 차트 조작을 막고 페이지 스크롤을 원활하게 해요"}
+        >
+          {locked ? "🔒 차트 잠김 · 조작하기" : "🔓 조작 중 · 고정하기"}
+        </button>
+      </div>
       <div
         ref={mainBoxRef}
-        style={{ width: "100%", height: "360px", position: "relative" }}
+        style={{
+          width: "100%",
+          height: "360px",
+          position: "relative",
+          touchAction: locked ? "pan-y" : "none",
+        }}
         className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
       />
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-600 dark:text-neutral-300">
@@ -818,7 +880,12 @@ export function TVChart({
       {hasSubPanel && (
         <div
           ref={subBoxRef}
-          style={{ width: "100%", height: "200px", position: "relative" }}
+          style={{
+            width: "100%",
+            height: "200px",
+            position: "relative",
+            touchAction: locked ? "pan-y" : "none",
+          }}
           className="mt-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
         />
       )}

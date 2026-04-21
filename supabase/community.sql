@@ -588,3 +588,99 @@ create policy bot_config_update on public.bot_config
 drop policy if exists posts_update_own on public.posts;
 create policy posts_update_own on public.posts for update
   using (auth.uid() = author_id or public.is_admin());
+
+-- ===== 유입 경로(referrer) 기록 =====
+-- site_visits 는 (visited_date, client_id) 가 PK 라 하루 1행. referrer/landing_path
+-- 는 첫 유입만 기록(on conflict 시 덮어쓰지 않음). 유저가 하루 내 외부 사이트에서
+-- 재진입해도 처음 발견 경로가 남는다.
+alter table public.site_visits add column if not exists referrer text;
+alter table public.site_visits add column if not exists landing_path text;
+
+-- log_visit 시그니처 확장. default 추가만으로는 이전 호출도 그대로 동작하지만
+-- PostgREST 의 RPC 호출 시그니처 매칭상 기존 (text) 과 새 (text,text,text) 가
+-- 모호하지 않도록 이전 것을 drop 한다.
+drop function if exists public.log_visit(text);
+create or replace function public.log_visit(
+  p_client_id text,
+  p_referrer text default null,
+  p_landing_path text default null
+)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_client_id is null or length(p_client_id) = 0 then
+    return;
+  end if;
+  insert into public.site_visits (visited_date, client_id, user_id, referrer, landing_path)
+  values (current_date, p_client_id, auth.uid(), p_referrer, p_landing_path)
+  on conflict (visited_date, client_id)
+  do update set
+    visit_count = public.site_visits.visit_count + 1,
+    last_seen_at = now(),
+    user_id = coalesce(public.site_visits.user_id, excluded.user_id);
+    -- referrer / landing_path 는 의도적으로 업데이트 제외(= 첫 유입 보존).
+end;
+$$;
+grant execute on function public.log_visit(text, text, text) to anon, authenticated;
+
+-- ===== 어드민: 유입 경로 TOP =====
+-- 최근 30일, referrer URL 에서 호스트만 뽑아 집계. 자기 도메인(eloan.kr) 내부
+-- 이동은 제외. referrer null/빈값은 "(직접 방문)" 으로 묶어서 표시.
+create or replace function public.admin_referrer_stats()
+returns table (
+  referrer_domain text,
+  visits bigint,
+  uniques bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+  select
+    sub.domain as referrer_domain,
+    sum(sub.visit_count)::bigint as visits,
+    count(distinct sub.client_id)::bigint as uniques
+  from (
+    select
+      v.client_id,
+      v.visit_count,
+      coalesce(
+        nullif(substring(v.referrer from '^https?://([^/]+)'), ''),
+        '(직접 방문)'
+      ) as domain
+    from public.site_visits v
+    where v.visited_date >= current_date - 29
+  ) sub
+  where sub.domain = '(직접 방문)'
+     or (sub.domain <> 'eloan.kr' and sub.domain not like '%.eloan.kr')
+  group by sub.domain
+  order by visits desc
+  limit 20;
+end;
+$$;
+grant execute on function public.admin_referrer_stats() to authenticated;
+
+-- ===== 어드민: 랜딩 페이지 TOP (외부 유입만) =====
+-- 어느 글/페이지가 외부 검색·링크로 유입이 많은지. 내부 이동 제외.
+create or replace function public.admin_landing_stats()
+returns table (
+  landing_path text,
+  visits bigint,
+  uniques bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+  select
+    coalesce(v.landing_path, '(알 수 없음)') as landing_path,
+    sum(v.visit_count)::bigint as visits,
+    count(distinct v.client_id)::bigint as uniques
+  from public.site_visits v
+  where v.visited_date >= current_date - 29
+    and v.referrer is not null
+    and substring(v.referrer from '^https?://([^/]+)') <> 'eloan.kr'
+    and substring(v.referrer from '^https?://([^/]+)') not like '%.eloan.kr'
+  group by v.landing_path
+  order by visits desc
+  limit 20;
+end;
+$$;
+grant execute on function public.admin_landing_stats() to authenticated;

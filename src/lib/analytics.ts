@@ -33,7 +33,13 @@ export async function logVisit(): Promise<void> {
   try {
     const last = Number(window.sessionStorage.getItem(LAST_LOGGED_KEY) ?? 0);
     if (Date.now() - last < 6 * 60 * 60 * 1000) return;
-    await supabase.rpc("log_visit", { p_client_id: clientId });
+    // referrer 는 브라우저가 주는 전체 URL. 검색엔진은 키워드를 제거해서 도메인만
+    // 오는 경우가 대부분. 빈 문자열이면 null 로 보내 서버에서 "(직접 방문)" 처리.
+    await supabase.rpc("log_visit", {
+      p_client_id: clientId,
+      p_referrer: document.referrer || null,
+      p_landing_path: window.location.pathname || null,
+    });
     window.sessionStorage.setItem(LAST_LOGGED_KEY, String(Date.now()));
   } catch {
     // 실패해도 사용자에게 보이지 않게 무시

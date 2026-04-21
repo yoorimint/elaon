@@ -16,9 +16,13 @@ import {
 import { useAuth } from "@/components/AuthProvider";
 import { AdminNav } from "@/components/AdminNav";
 import {
+  getLandingStats,
+  getReferrerStats,
   getSiteStats,
   getVisitsTrend,
   isAdmin,
+  type LandingRow,
+  type ReferrerRow,
   type SiteStats,
   type VisitTrendRow,
 } from "@/lib/community";
@@ -58,6 +62,8 @@ export default function AdminDashboardPage() {
   const [authorized, setAuthorized] = useState(false);
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [trend, setTrend] = useState<VisitTrendRow[]>([]);
+  const [referrers, setReferrers] = useState<ReferrerRow[]>([]);
+  const [landings, setLandings] = useState<LandingRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -65,9 +71,16 @@ export default function AdminDashboardPage() {
     setRefreshing(true);
     setError(null);
     try {
-      const [s, t] = await Promise.all([getSiteStats(), getVisitsTrend()]);
+      const [s, t, r, l] = await Promise.all([
+        getSiteStats(),
+        getVisitsTrend(),
+        getReferrerStats(),
+        getLandingStats(),
+      ]);
       setStats(s);
       setTrend(t);
+      setReferrers(r);
+      setLandings(l);
     } catch (e) {
       setError(e instanceof Error ? e.message : "불러오기 실패");
     } finally {
@@ -234,8 +247,100 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
+
+          <div className="grid gap-6 mt-8 sm:grid-cols-2">
+            <RankTable
+              title="유입 사이트 TOP (최근 30일)"
+              emptyHint="외부에서 유입되면 집계됩니다."
+              headLabel="도메인"
+              rows={referrers.map((r) => ({
+                key: r.domain,
+                label: r.domain,
+                visits: r.visits,
+                uniques: r.uniques,
+              }))}
+            />
+            <RankTable
+              title="외부 유입 랜딩 페이지 TOP (최근 30일)"
+              emptyHint="외부에서 들어온 경로가 쌓이면 표시됩니다."
+              headLabel="페이지"
+              rows={landings.map((r) => ({
+                key: r.path,
+                label: r.path,
+                visits: r.visits,
+                uniques: r.uniques,
+              }))}
+            />
+          </div>
+          <p className="mt-3 text-[11px] text-neutral-500">
+            검색 키워드는 구글·네이버가 referrer 에 실어주지 않아 여기선 보이지 않습니다.
+            키워드는 Google Search Console / 네이버 서치어드바이저에서 확인하세요.
+          </p>
         </>
       )}
     </main>
+  );
+}
+
+function RankTable({
+  title,
+  headLabel,
+  emptyHint,
+  rows,
+}: {
+  title: string;
+  headLabel: string;
+  emptyHint: string;
+  rows: Array<{ key: string; label: string; visits: number; uniques: number }>;
+}) {
+  const max = rows.reduce((m, r) => Math.max(m, r.visits), 0);
+  return (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900 text-sm font-semibold">
+        {title}
+      </div>
+      {rows.length === 0 ? (
+        <div className="px-4 py-8 text-center text-xs text-neutral-500">
+          {emptyHint}
+        </div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="text-xs text-neutral-500">
+            <tr className="border-b border-neutral-200 dark:border-neutral-800">
+              <th className="px-3 py-2 text-left font-normal">{headLabel}</th>
+              <th className="px-3 py-2 text-right font-normal w-20">방문</th>
+              <th className="px-3 py-2 text-right font-normal w-20">유니크</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const pct = max > 0 ? (r.visits / max) * 100 : 0;
+              return (
+                <tr
+                  key={r.key}
+                  className="border-t border-neutral-200 dark:border-neutral-800"
+                >
+                  <td className="px-3 py-2 relative">
+                    <div
+                      className="absolute inset-y-0 left-0 bg-blue-500/10"
+                      style={{ width: `${pct}%` }}
+                    />
+                    <span className="relative truncate block max-w-[220px]">
+                      {r.label}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.visits.toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums text-neutral-500">
+                    {r.uniques.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }

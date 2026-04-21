@@ -198,18 +198,25 @@ export const BOT_NARRATIVE_ANGLES: {
 ];
 
 // Counter 로부터 (symbol, strategy, period, narrative) 쌍을 결정.
-// 각 축을 서로 다른 주기로 돌려 조합 반복이 쉽게 나오지 않게.
+// 각 축마다 소수(prime) 배수를 다르게 써서 인접 counter 값이 같은 그룹으로
+// 몰리지 않게 분산. 예전엔 전략 배열에 MA 4개가 연속으로 있어서 첫 4 포스트가
+// 전부 이동평균으로 나왔음.
+// 단, gcd(multiplier, length) == 1 이어야 전체 주기가 length 로 유지됨.
+// BOT_STRATEGIES.length(=20) 와 서로소인 7 사용 — 20개 조합 전부 한 번씩 순회.
+// BOT_SYMBOLS.length(=100) 와 서로소인 13 사용.
+// BOT_NARRATIVE_ANGLES.length(=12) 와 서로소인 5 사용.
+// BOT_PERIODS.length(=3) 는 단순 counter%3.
 export function pickRotationPair(counter: number): {
   symbol: string;
   preset: BotPreset;
   period: { label: string; days: number };
   narrative: { id: string; instruction: string };
 } {
-  const symbol = BOT_SYMBOLS[counter % BOT_SYMBOLS.length];
-  const preset = BOT_STRATEGIES[counter % BOT_STRATEGIES.length];
-  const period = BOT_PERIODS[Math.floor(counter / 3) % BOT_PERIODS.length];
+  const symbol = BOT_SYMBOLS[(counter * 13) % BOT_SYMBOLS.length];
+  const preset = BOT_STRATEGIES[(counter * 7) % BOT_STRATEGIES.length];
+  const period = BOT_PERIODS[counter % BOT_PERIODS.length];
   const narrative =
-    BOT_NARRATIVE_ANGLES[Math.floor(counter / 5) % BOT_NARRATIVE_ANGLES.length];
+    BOT_NARRATIVE_ANGLES[(counter * 5) % BOT_NARRATIVE_ANGLES.length];
   return { symbol, preset, period, narrative };
 }
 

@@ -473,23 +473,35 @@ export default function BacktestPage() {
     if (!result) return;
     setSharing(true);
     setSaveMessage(null);
+    setError(null);
     try {
-      const slug = await ensureShared({ isPrivate: false });
+      // supabase insert 자체가 걸려서 무한 대기하는 경우 방어: 20초 타임아웃
+      const slug = await Promise.race<string | null>([
+        ensureShared({ isPrivate: false }),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error("공유 저장이 너무 오래 걸립니다 (20초 초과)")), 20000),
+        ),
+      ]);
       if (slug) {
         const url = `${window.location.origin}/r/${slug}`;
-        // clipboard API 는 HTTPS + 사용자 제스처 유지 필요. await 중 제스처가
-        // 끊기면 실패할 수 있어 try/catch 로 감싸고 결과별 메시지 표시.
+        // 일부 모바일 브라우저에서 navigator.clipboard 가 resolve 안 하고
+        // 영원히 매달리는 버그가 있어 2초 타임아웃으로 race.
         let copied = false;
         try {
-          await navigator.clipboard.writeText(url);
+          await Promise.race([
+            navigator.clipboard.writeText(url),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("clipboard timeout")), 2000),
+            ),
+          ]);
           copied = true;
         } catch {
           copied = false;
         }
         setSaveMessage(
           copied
-            ? `링크 복사됨: ${url}`
-            : `복사 실패 — 아래 링크를 수동으로 복사하세요: ${url}`,
+            ? `✓ 링크 복사됨: ${url}`
+            : `공유 완료 — 아래 링크를 수동으로 복사하세요: ${url}`,
         );
       }
     } catch (e) {

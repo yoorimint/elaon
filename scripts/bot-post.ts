@@ -191,11 +191,12 @@ async function callGemini(factBlock: string, narrativeInstruction: string): Prom
 [이번 글의 특별 지시] ${narrativeInstruction}
 
 반드시 다루어야 할 정보:
-- 종목, 전략, 기간
-- 전략 수익률 vs 단순 보유 차이
-- 최대 낙폭(MDD)
-- 거래 횟수, 승률, 평균 이익/손실 규모
-- 실전 가능성 간략 평가
+- 종목, 전략, 기간, 시장 국면
+- 전략 수익률 vs 단순 보유 차이 (초과 수익)
+- 최대 낙폭(MDD)과 회복까지 걸린 기간
+- 거래 횟수, 승률, 평균 이익/손실, 최고/최악 거래, 최대 연승·연패
+- 리스크 조정 지표 중 2개 이상 해석하여 언급 (Sharpe / Sortino / Calmar / Profit Factor — 무엇이 의미 있는지 수치로 판단하고 풀어쓰기)
+- 실전 가능성 간략 평가 (거래 빈도, 수수료 영향)
 - 마지막에 "과거 결과로 미래 수익을 보장하지 않습니다" 면책 한 줄
 
 규칙:
@@ -294,28 +295,64 @@ function buildFallbackBody(params: {
   winRate: number;
   tradeCount: number;
   stats: TradeStats;
+  sharpe: number;
+  calmar: number;
+  profitFactor: number;
+  expectancy: number;
+  bestTrade: number;
+  worstTrade: number;
+  maxConsecWins: number;
+  maxConsecLosses: number;
+  mddDurationBars: number;
 }): string {
   const {
     label, presetName, yearsLabel, days, initialCash, feeBps,
     ret, bh, excess, mdd, winRate, tradeCount, stats,
+    sharpe, calmar, profitFactor, expectancy,
+    bestTrade, worstTrade, maxConsecWins, maxConsecLosses, mddDurationBars,
   } = params;
   const beat = excess > 0;
   const alphaMsg = beat
     ? `단순 보유(${bh.toFixed(2)}%) 대비 ${excess.toFixed(2)}%p 초과 수익을 낸 셈이라 전략이 시장을 이긴 구간으로 볼 수 있습니다`
     : `단순 보유(${bh.toFixed(2)}%)가 오히려 ${Math.abs(excess).toFixed(2)}%p 앞섰기 때문에 해당 기간에는 매매하지 않고 들고 있는 편이 나았습니다`;
   const riskMsg = mdd >= 30
-    ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}%로 계좌가 한 번에 3분의 1 가까이 쪼그라드는 구간을 견뎌야 했다는 뜻입니다`
+    ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}%로 계좌가 한 번에 3분의 1 가까이 쪼그라드는 구간을 견뎌야 했다는 뜻이고, 회복까지 약 ${mddDurationBars}봉이 걸렸습니다`
     : mdd >= 15
-      ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}% 수준이라 중간에 적지 않은 평가 손실 구간을 통과했습니다`
+      ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}% 수준이라 중간에 적지 않은 평가 손실 구간을 통과했고, 회복까지 약 ${mddDurationBars}봉이 소요됐습니다`
       : `최대 낙폭(MDD)은 ${mdd.toFixed(1)}%로 비교적 안정적으로 유지됐습니다`;
   const feeImpact = (tradeCount * (feeBps / 10000) * 2 * 100).toFixed(2);
+
+  const sharpeNote = Number.isFinite(sharpe)
+    ? sharpe >= 1
+      ? `Sharpe Ratio 는 ${sharpe.toFixed(2)}로 1을 넘어 변동성 대비 수익이 괜찮았다고 볼 수 있고`
+      : sharpe >= 0
+        ? `Sharpe Ratio 는 ${sharpe.toFixed(2)}로 수익은 났지만 변동성이 상당히 컸다는 신호이고`
+        : `Sharpe Ratio 는 ${sharpe.toFixed(2)}로 사실상 마이너스 구간이며`
+    : `변동성이 매우 작아 Sharpe 가 의미 있게 계산되지는 않았고`;
+  const calmarNote = Number.isFinite(calmar)
+    ? calmar >= 1
+      ? `Calmar Ratio 는 ${calmar.toFixed(2)}로 낙폭 대비 연환산 수익이 양호합니다`
+      : calmar >= 0
+        ? `Calmar Ratio 는 ${calmar.toFixed(2)} 수준이라 낙폭을 감안한 연환산 수익은 평범한 편입니다`
+        : `Calmar Ratio 는 음수(${calmar.toFixed(2)})로 낙폭 이상의 손실을 기록했다는 의미입니다`
+    : `Calmar 는 낙폭이 너무 작거나 수익이 미미해 의미 있는 수치가 나오지 않습니다`;
+  const pfNote = Number.isFinite(profitFactor)
+    ? profitFactor >= 1.5
+      ? `Profit Factor 는 ${profitFactor.toFixed(2)}로 총이익이 총손실의 1.5배를 넘어 건강한 손익 구조입니다`
+      : profitFactor >= 1
+        ? `Profit Factor 는 ${profitFactor.toFixed(2)} 로 간신히 1을 넘어 손익이 균형에 가까웠습니다`
+        : `Profit Factor 가 ${profitFactor.toFixed(2)}(1 미만)이라 총손실이 총이익보다 컸던 전략입니다`
+    : `손실 거래가 없어 Profit Factor 는 계산 불가`;
 
   return (
     `${label} 종목을 ${presetName} 전략으로 최근 ${yearsLabel}(${days}일) 동안 백테스트한 결과입니다. ` +
     `초기자금 ${initialCash.toLocaleString()}원, 수수료 편도 ${feeBps}bp 기준으로 전략 수익률은 ${ret >= 0 ? "+" : ""}${ret.toFixed(2)}%가 나왔습니다.\n\n` +
     `${alphaMsg}. ${riskMsg}.\n\n` +
+    `리스크 조정 관점에서 ${sharpeNote}, ${calmarNote}. ${pfNote}. ` +
+    `거래당 기대값은 ${expectancy >= 0 ? "+" : ""}${expectancy.toFixed(2)}% 수준이라, 한 번 거래를 실행할 때마다 평균적으로 이 정도를 기대할 수 있다는 의미입니다.\n\n` +
     `총 ${tradeCount}회 거래에서 승률 ${winRate.toFixed(1)}%(이익 ${stats.wins}회, 손실 ${stats.losses}회)를 기록했고, ` +
-    `평균적으로 이익 거래는 ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}% · 손실 거래는 ${stats.avgLossPct.toFixed(2)}%였습니다. ` +
+    `평균 이익 거래는 ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}% · 평균 손실 거래는 ${stats.avgLossPct.toFixed(2)}%였습니다. ` +
+    `최고 거래는 ${bestTrade >= 0 ? "+" : ""}${bestTrade.toFixed(2)}%, 최악 거래는 ${worstTrade.toFixed(2)}%였고, 최장 연승은 ${maxConsecWins}회, 최장 연패는 ${maxConsecLosses}회를 기록했습니다. ` +
     `한 포지션을 평균 ${Math.round(stats.avgHoldBars)}봉 정도 들고 있었으며, 누적 수수료만으로 약 ${feeImpact}% 정도의 수익률이 소실된다는 점도 감안해야 합니다.\n\n` +
     `실전 관점에서 보면 ${stats.feasibilityNote}. 또한 과거 데이터에 최적화된 파라미터라 앞으로 동일한 성과가 재현되리라 단정할 수 없고, 거래소 수수료·슬리피지·세금이 실제로는 더해지니 실제 운용 수익률은 위 숫자보다 낮아질 가능성이 큽니다.\n\n` +
     `차트와 매수/매도 시점, 개별 거래 내역은 아래 첨부된 공유 링크에서 직접 확인할 수 있습니다.\n\n` +
@@ -507,12 +544,18 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     `전략 누적 수익률: ${r.returnPct.toFixed(2)}%`,
     `단순 보유 누적 수익률: ${r.benchmarkReturnPct.toFixed(2)}%`,
     `단순 보유 대비 초과 수익: ${excess.toFixed(2)}%p (${beat ? "전략 우세" : "단순 보유 우세"})`,
-    `최대 낙폭(MDD): ${r.maxDrawdownPct.toFixed(2)}%`,
+    `최대 낙폭(MDD): ${r.maxDrawdownPct.toFixed(2)}% (회복까지 최대 ${r.maxDrawdownDurationBars}봉)`,
     `총 거래: ${r.tradeCount}회`,
     `승률: ${r.winRate.toFixed(1)}% (이익 ${stats.wins}회 / 손실 ${stats.losses}회)`,
-    `평균 이익 거래: ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}%`,
-    `평균 손실 거래: ${stats.avgLossPct.toFixed(2)}%`,
+    `평균 이익 거래: ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}% / 평균 손실 거래: ${stats.avgLossPct.toFixed(2)}%`,
+    `최고 거래: ${r.bestTradePct >= 0 ? "+" : ""}${r.bestTradePct.toFixed(2)}% / 최악 거래: ${r.worstTradePct.toFixed(2)}%`,
+    `최대 연승: ${r.maxConsecWins}회 / 최대 연패: ${r.maxConsecLosses}회`,
     `평균 보유 봉 수: ${Math.round(stats.avgHoldBars)}봉 (일봉 기준 일수와 동일)`,
+    `Sharpe Ratio: ${Number.isFinite(r.sharpeRatio) ? r.sharpeRatio.toFixed(2) : "계산 불가"} (연환산 수익/변동성, 1 이상이면 양호)`,
+    `Sortino Ratio: ${Number.isFinite(r.sortinoRatio) ? r.sortinoRatio.toFixed(2) : "계산 불가"} (하방 변동성만 감점)`,
+    `Calmar Ratio: ${Number.isFinite(r.calmarRatio) ? r.calmarRatio.toFixed(2) : "계산 불가"} (연환산 수익 ÷ MDD)`,
+    `Profit Factor: ${Number.isFinite(r.profitFactor) ? r.profitFactor.toFixed(2) : "계산 불가"} (총이익 ÷ 총손실, 1.5 이상 좋음)`,
+    `거래당 기대값: ${r.expectancyPct >= 0 ? "+" : ""}${r.expectancyPct.toFixed(2)}%`,
     `누적 왕복 수수료 영향: 약 ${feeImpact}%p 소실`,
     `거래 빈도 성격: ${stats.feasibilityNote}`,
   ].join("\n");
@@ -534,6 +577,15 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
       winRate: r.winRate,
       tradeCount: r.tradeCount,
       stats,
+      sharpe: r.sharpeRatio,
+      calmar: r.calmarRatio,
+      profitFactor: r.profitFactor,
+      expectancy: r.expectancyPct,
+      bestTrade: r.bestTradePct,
+      worstTrade: r.worstTradePct,
+      maxConsecWins: r.maxConsecWins,
+      maxConsecLosses: r.maxConsecLosses,
+      mddDurationBars: r.maxDrawdownDurationBars,
     });
   }
 

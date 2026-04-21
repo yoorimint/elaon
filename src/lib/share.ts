@@ -14,12 +14,14 @@ function randomSlug(len = 8) {
 
 export type SharePayload = {
   market: string;
+  timeframe?: string;
   strategy: StrategyId;
   params: StrategyParams;
   days: number;
   initialCash: number;
   feeBps: number;
   result: BacktestResult;
+  isPrivate?: boolean; // true = 본인만, false = 전체 공개 (기본)
 };
 
 export async function saveShare(p: SharePayload): Promise<string> {
@@ -30,14 +32,13 @@ export async function saveShare(p: SharePayload): Promise<string> {
     b: Math.round(e.benchmark),
   }));
 
-  // getUser()는 매번 서버 재검증이라 네트워크 지연 때 null로 빠질 수 있어서
-  // 로컬 세션 캐시에서 바로 읽는 getSession() 사용.
   const { data: sessionData } = await supabase.auth.getSession();
   const authorId = sessionData.session?.user?.id ?? null;
 
   const { error } = await supabase.from("shared_backtests").insert({
     slug,
     market: p.market,
+    timeframe: p.timeframe ?? null,
     strategy: p.strategy,
     params: p.params as unknown as Record<string, unknown>,
     days: p.days,
@@ -50,10 +51,28 @@ export async function saveShare(p: SharePayload): Promise<string> {
     trade_count: p.result.tradeCount,
     equity_curve: equity,
     author_id: authorId,
+    is_private: p.isPrivate ?? false,
   });
 
   if (error) throw new Error(error.message);
   return slug;
+}
+
+// 비공개 저장을 공개로 전환. RLS update_own 으로 본인만 호출 가능.
+export async function publishShare(slug: string): Promise<void> {
+  const { error } = await supabase
+    .from("shared_backtests")
+    .update({ is_private: false })
+    .eq("slug", slug);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteShare(slug: string): Promise<void> {
+  const { error } = await supabase
+    .from("shared_backtests")
+    .delete()
+    .eq("slug", slug);
+  if (error) throw new Error(error.message);
 }
 
 export async function loadShare(slug: string): Promise<SharedBacktest | null> {

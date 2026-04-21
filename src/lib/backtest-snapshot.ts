@@ -58,6 +58,7 @@ export type BacktestSnapshot = {
   runCustomBuy: Condition[] | null;
   runCustomSell: Condition[] | null;
   shareUrl: string | null;
+  savedPrivate: boolean | null;
 };
 
 export function saveBacktestSnapshot(snap: BacktestSnapshot): void {

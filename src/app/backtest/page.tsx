@@ -28,7 +28,7 @@ import {
 } from "@/lib/strategies";
 import { runBacktest, type BacktestResult } from "@/lib/backtest";
 import { ResultView } from "@/components/ResultView";
-import { saveShare } from "@/lib/share";
+import { saveShare, publishShare } from "@/lib/share";
 import { setHandoff } from "@/lib/paper-trade";
 import { useAuth } from "@/components/AuthProvider";
 import {
@@ -133,7 +133,11 @@ export default function BacktestPage() {
   const [runCustomBuy, setRunCustomBuy] = useState<Condition[] | null>(null);
   const [runCustomSell, setRunCustomSell] = useState<Condition[] | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // null = 아직 저장 안 함, true = 비공개 저장, false = 공개 저장
+  const [savedPrivate, setSavedPrivate] = useState<boolean | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMarkets()
@@ -199,6 +203,7 @@ export default function BacktestPage() {
     setRunCustomBuy(snap.runCustomBuy);
     setRunCustomSell(snap.runCustomSell);
     setShareUrl(snap.shareUrl);
+    setSavedPrivate(snap.savedPrivate ?? null);
   }, []);
 
   // shareUrl 갱신 시 스냅샷의 shareUrl 도 같이 업데이트 (결과 전체는
@@ -208,8 +213,10 @@ export default function BacktestPage() {
     const snap = loadBacktestSnapshot();
     if (!snap) return;
     if (snap.shareUrl === shareUrl) return;
-    saveBacktestSnapshot({ ...snap, shareUrl });
-  }, [shareUrl, result]);
+    if (snap.shareUrl !== shareUrl || snap.savedPrivate !== savedPrivate) {
+      saveBacktestSnapshot({ ...snap, shareUrl, savedPrivate });
+    }
+  }, [shareUrl, savedPrivate, result]);
 
   const currency = currencyOf(market);
   const maxDays = useMemo(
@@ -326,6 +333,7 @@ export default function BacktestPage() {
         runCustomBuy: savedBuy,
         runCustomSell: savedSell,
         shareUrl: null,
+        savedPrivate: null,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "백테스트 실패");
@@ -334,14 +342,26 @@ export default function BacktestPage() {
     }
   }
 
-  async function ensureShared(): Promise<string | null> {
+  // isPrivate=true 면 비공개 저장, false 면 공개 저장. 이미 저장된 상태에서
+  // makePublic 호출하면 비공개 → 공개로 전환한다 (publishShare).
+  async function ensureShared(options: { isPrivate: boolean }): Promise<string | null> {
     if (!result) return null;
+    // 이미 저장돼 있으면 상태만 맞춰서 재활용
     if (shareUrl) {
       const m = shareUrl.match(/\/r\/([a-z0-9]+)/);
-      if (m) return m[1];
+      const existingSlug = m ? m[1] : null;
+      if (existingSlug) {
+        // 공개로 업그레이드 요청인데 현재 비공개면 publish
+        if (!options.isPrivate && savedPrivate === true) {
+          await publishShare(existingSlug);
+          setSavedPrivate(false);
+        }
+        return existingSlug;
+      }
     }
     const slug = await saveShare({
       market,
+      timeframe,
       strategy,
       params: {
         ma_cross: { short: shortMa, long: longMa },
@@ -372,16 +392,36 @@ export default function BacktestPage() {
       initialCash,
       feeBps,
       result,
+      isPrivate: options.isPrivate,
     });
     setShareUrl(`${window.location.origin}/r/${slug}`);
+    setSavedPrivate(options.isPrivate);
     return slug;
+  }
+
+  async function onSave() {
+    if (!result) return;
+    if (!currentUser) {
+      router.push("/login?redirect=/backtest");
+      return;
+    }
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      await ensureShared({ isPrivate: true });
+      setSaveMessage("내정보에 저장됐습니다");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function onShare() {
     if (!result) return;
     setSharing(true);
     try {
-      const slug = await ensureShared();
+      const slug = await ensureShared({ isPrivate: false });
       if (slug) {
         const url = `${window.location.origin}/r/${slug}`;
         try {
@@ -400,7 +440,7 @@ export default function BacktestPage() {
     setSharing(true);
     setError(null);
     try {
-      const slug = await ensureShared();
+      const slug = await ensureShared({ isPrivate: false });
       if (slug) router.push(`/community/new?backtest_slug=${slug}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "게시글 준비 실패");
@@ -1110,17 +1150,34 @@ export default function BacktestPage() {
             <p className="mt-1 text-xs text-neutral-500">
               마음에 드는 전략이면 공유하고 커뮤니티에 토론을 열어보세요.
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <button
-                onClick={onShare}
-                disabled={sharing}
+                onClick={onSave}
+                disabled={saving || sharing}
                 className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-3 text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
               >
-                {sharing ? "처리 중…" : shareUrl ? "링크 복사 ✓" : "결과 공유하기"}
+                {saving
+                  ? "저장 중…"
+                  : savedPrivate === true
+                    ? "저장됨 ✓"
+                    : savedPrivate === false
+                      ? "공유됨 (내정보에도 저장)"
+                      : "내정보에 저장"}
+              </button>
+              <button
+                onClick={onShare}
+                disabled={sharing || saving}
+                className="rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-3 text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
+              >
+                {sharing
+                  ? "처리 중…"
+                  : savedPrivate === false
+                    ? "링크 복사 ✓"
+                    : "결과 공유하기"}
               </button>
               <button
                 onClick={onWritePost}
-                disabled={sharing}
+                disabled={sharing || saving}
                 className="rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60"
               >
                 게시글 작성
@@ -1132,6 +1189,11 @@ export default function BacktestPage() {
                 모의투자 진행
               </button>
             </div>
+            {saveMessage && (
+              <div className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
+                {saveMessage}
+              </div>
+            )}
             {shareUrl && (
               <a
                 href={shareUrl}

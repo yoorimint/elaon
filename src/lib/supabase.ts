@@ -28,4 +28,7 @@ export type SharedBacktest = {
   equity_curve: Array<{ t: number; e: number; b: number }>;
   created_at: string;
   view_count: number;
+  author_id: string | null;
+  is_private: boolean;
+  timeframe: string | null;
 };

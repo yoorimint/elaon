@@ -7,6 +7,10 @@ import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
 import { STRATEGIES } from "@/lib/strategies";
 import { categoryLabel, timeAgo, type Category } from "@/lib/community";
+import { publishShare, deleteShare } from "@/lib/share";
+import { setHandoff } from "@/lib/paper-trade";
+import type { Timeframe } from "@/lib/upbit";
+import type { StrategyId, StrategyParams } from "@/lib/strategies";
 
 type Profile = { user_id: string; username: string };
 
@@ -26,6 +30,11 @@ type MyShare = {
   return_pct: number;
   benchmark_return_pct: number;
   created_at: string;
+  is_private: boolean;
+  timeframe: string | null;
+  params: Record<string, unknown>;
+  initial_cash: number;
+  fee_bps: number;
 };
 
 function strategyName(id: string) {
@@ -70,10 +79,12 @@ export default function MyPage() {
           .limit(30),
         supabase
           .from("shared_backtests")
-          .select("slug,market,strategy,days,return_pct,benchmark_return_pct,created_at")
+          .select(
+            "slug,market,strategy,days,return_pct,benchmark_return_pct,created_at,is_private,timeframe,params,initial_cash,fee_bps",
+          )
           .eq("author_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(30),
+          .limit(50),
       ]);
       if (prof.data) {
         setProfile(prof.data as Profile);
@@ -84,6 +95,75 @@ export default function MyPage() {
       setLoading(false);
     })();
   }, [user]);
+
+  const [shareBusy, setShareBusy] = useState<string | null>(null);
+
+  function buildHandoffFromShare(s: MyShare) {
+    return {
+      market: s.market,
+      timeframe: (s.timeframe ?? "1d") as Timeframe,
+      strategy: s.strategy as StrategyId,
+      params: s.params as StrategyParams,
+      initialCash: s.initial_cash,
+      feeBps: s.fee_bps,
+    };
+  }
+
+  async function onShareMy(s: MyShare) {
+    setShareBusy(s.slug);
+    try {
+      if (s.is_private) {
+        await publishShare(s.slug);
+        setMyShares((prev) =>
+          prev.map((x) => (x.slug === s.slug ? { ...x, is_private: false } : x)),
+        );
+      }
+      const url = `${window.location.origin}/r/${s.slug}`;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {}
+      alert(s.is_private ? "공개로 전환됐고 링크가 복사됐습니다." : "링크를 복사했습니다.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "실패");
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  function onPaperTradeMy(s: MyShare) {
+    setHandoff(buildHandoffFromShare(s));
+    router.push("/paper-trade/new");
+  }
+
+  async function onWritePostMy(s: MyShare) {
+    setShareBusy(s.slug);
+    try {
+      if (s.is_private) {
+        await publishShare(s.slug);
+        setMyShares((prev) =>
+          prev.map((x) => (x.slug === s.slug ? { ...x, is_private: false } : x)),
+        );
+      }
+      router.push(`/community/new?backtest_slug=${s.slug}`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "실패");
+    } finally {
+      setShareBusy(null);
+    }
+  }
+
+  async function onDeleteMy(s: MyShare) {
+    if (!confirm(`"${strategyName(s.strategy)}" 결과를 영구 삭제할까요?`)) return;
+    setShareBusy(s.slug);
+    try {
+      await deleteShare(s.slug);
+      setMyShares((prev) => prev.filter((x) => x.slug !== s.slug));
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "삭제 실패");
+    } finally {
+      setShareBusy(null);
+    }
+  }
 
   async function onSaveUsername(e: React.FormEvent) {
     e.preventDefault();
@@ -262,12 +342,21 @@ export default function MyPage() {
         ) : (
           <ul className="mt-3 grid gap-3 sm:grid-cols-2">
             {myShares.map((s) => (
-              <li key={s.slug}>
-                <Link
-                  href={`/r/${s.slug}`}
-                  className="block rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand/50"
-                >
+              <li
+                key={s.slug}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand/50"
+              >
+                <Link href={`/r/${s.slug}`} className="block">
                   <div className="flex flex-wrap gap-1.5 text-xs text-neutral-500">
+                    {s.is_private ? (
+                      <span className="rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 px-2 py-0.5 font-semibold">
+                        🔒 비공개
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 font-semibold">
+                        공개
+                      </span>
+                    )}
                     <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
                       {s.market}
                     </span>
@@ -296,6 +385,39 @@ export default function MyPage() {
                     </span>
                   </div>
                 </Link>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => onShareMy(s)}
+                    disabled={shareBusy === s.slug}
+                    className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-60"
+                  >
+                    {shareBusy === s.slug
+                      ? "…"
+                      : s.is_private
+                        ? "공유하기"
+                        : "링크 복사"}
+                  </button>
+                  <button
+                    onClick={() => onPaperTradeMy(s)}
+                    className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    모의투자
+                  </button>
+                  <button
+                    onClick={() => onWritePostMy(s)}
+                    disabled={shareBusy === s.slug}
+                    className="rounded-full bg-brand text-white px-3 py-1 text-xs font-semibold hover:bg-brand-dark disabled:opacity-60"
+                  >
+                    게시글 작성
+                  </button>
+                  <button
+                    onClick={() => onDeleteMy(s)}
+                    disabled={shareBusy === s.slug}
+                    className="ml-auto text-xs text-neutral-400 hover:text-red-600"
+                  >
+                    삭제
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

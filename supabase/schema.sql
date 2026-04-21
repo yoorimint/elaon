@@ -62,3 +62,34 @@ grant execute on function public.increment_view(text) to anon, authenticated;
 -- 이번 마일스톤에서는 아직 안 씁니다. 필요할 때 주석 해제.
 -- create table if not exists public.posts (...);
 -- create table if not exists public.comments (...);
+
+-- ===== 저장하기(비공개) / 공유하기(공개) 분리 =====
+-- is_private=true 면 본인+관리자만 조회 가능. false(기본)는 누구나 조회.
+alter table public.shared_backtests add column if not exists is_private boolean not null default false;
+-- 모의투자 인계를 위해 timeframe 도 함께 저장 (기존 row 는 null 허용).
+alter table public.shared_backtests add column if not exists timeframe text;
+
+-- SELECT 정책 갱신: 본인 비공개 + 관리자는 전체 가능
+drop policy if exists "shared_backtests_read" on public.shared_backtests;
+create policy "shared_backtests_read"
+  on public.shared_backtests for select
+  using (
+    is_private = false
+    or author_id = auth.uid()
+    or public.is_admin()
+  );
+
+-- 본인 소유 행 UPDATE 허용 (비공개 → 공개 전환용)
+drop policy if exists "shared_backtests_update_own" on public.shared_backtests;
+create policy "shared_backtests_update_own"
+  on public.shared_backtests for update
+  using (author_id = auth.uid());
+
+-- 본인 + 관리자 삭제 가능
+drop policy if exists "shared_backtests_delete_own" on public.shared_backtests;
+create policy "shared_backtests_delete_own"
+  on public.shared_backtests for delete
+  using (author_id = auth.uid() or public.is_admin());
+
+create index if not exists shared_backtests_author_private_idx
+  on public.shared_backtests(author_id, is_private, created_at desc);

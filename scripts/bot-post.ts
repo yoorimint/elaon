@@ -191,8 +191,7 @@ function symbolLabel(symbol: string): string {
 // ---------- Gemini call ----------
 async function callGemini(factBlock: string, narrativeInstruction: string): Promise<string | null> {
   if (!GEMINI_KEY) return null;
-  const prompt = `너는 투자 커뮤니티에 자기 백테스트 결과를 공유하는 익명 유저야.
-토스피드(toss.im) 말투로 글을 써줘. 아래 팩트만 근거로 쓰고 수치는 받은 그대로.
+  const prompt = `너는 토스피드(toss.im)의 금융 전문가야. 토스피드 말투(해요체, 짧은 문장, 전문용어는 처음 나올 때 괄호로 풀이)로 백테스트 결과 글을 써줘.
 
 이번 글의 관점: ${narrativeInstruction}
 
@@ -201,27 +200,15 @@ async function callGemini(factBlock: string, narrativeInstruction: string): Prom
 - 전략 수익률 vs 단순 보유 차이 (초과 수익)
 - 최대 낙폭(MDD)과 회복까지 걸린 기간
 - 거래 횟수, 승률, 평균 이익/손실, 최고/최악 거래, 최대 연승·연패
-- 리스크 조정 지표 중 2개 이상 해석 (Sharpe / Sortino / Calmar / Profit Factor — 수치로 판단해 풀어쓰기)
+- 리스크 조정 지표 중 2개 이상 해석 (Sharpe / Sortino / Calmar / Profit Factor)
 - 실전 가능성 간략 평가 (거래 빈도, 수수료 영향)
 - 마지막 줄에 "과거 결과로 미래 수익을 보장하지 않습니다" 한 줄
 
-말투·문체 (토스피드 스타일):
-1. 해요체만. "-했어요", "-이에요", "-네요", "-거든요", "-더라고요". "~다/~습니다" 금지.
-2. 문장 짧게. 한 문장 한 뜻. 평균 25자 내외. 길면 쪼갤 것.
-3. 첫 문단 첫 문장에 핵심 숫자 하나를 던지기. 예: "이번엔 -8.3% 손해로 끝났어요."
-4. 전문용어는 처음 나올 때 괄호로 뜻 풀기. 예: "MDD(최대낙폭, 계좌가 가장 크게 줄어든 구간)".
-5. 가끔 독자에게 말 걸기. "이런 경험 있으시죠?", "~이 궁금하실 텐데요" — 한두 번만.
-6. 감정 살짝 허용: 아쉬워요 / 놀랍게도 / 생각보다 / 의외로. 과장 금지.
-7. 문단당 1~3문장. 빈 줄 한 줄로 문단 분리.
-8. 생활 비유 OK. 예: "계좌가 반토막 났어요", "한 달 월급 날린 셈이에요".
-
-금지:
-- 팩트에 없는 숫자·사건 지어내기 금지. 수치 반올림·수정 금지.
-- 단정적 예측 금지 ("반드시 수익난다" 같은 말).
+규칙:
+- 본문 600~900자.
+- 팩트에 없는 숫자·사건 지어내기 금지. 수치는 받은 그대로.
+- "~다/~습니다" 보고체 금지. 해요체만.
 - 마크다운, 이모지, 글머리 기호 금지.
-- "~다"로 끝나는 문장·딱딱한 보고체 금지.
-
-분량: 본문 총 600~900자 (한글 기준).
 
 === 팩트 ===
 ${factBlock}
@@ -233,7 +220,12 @@ ${factBlock}
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        // Gemini 2.5 Flash 는 기본 thinking 켜져 있어 출력 예산을 잠식함 → 끄기.
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
   if (!res.ok) {
@@ -641,7 +633,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     () => `${retStr} vs 보유 ${bhStr} · ${label} ${preset.name} ${yearsLabel}`,
     () => `${retStr} · [${label}] ${preset.name} (${yearsLabel})`,
     () => `${retStr} 기록한 ${label} ${preset.name} 전략 (${yearsLabel})`,
-    () => `${retStr} · ${marketPhase}의 ${label}을 ${preset.name}으로`,
+    () => `${retStr} · ${marketPhase} · ${label} ${preset.name}`,
   ];
   const title = titleFormats[cfg.post_counter % titleFormats.length]();
   const postSlug = randomSlug();

@@ -393,6 +393,14 @@ export default function BacktestPage() {
       feeBps,
       result,
       isPrivate: options.isPrivate,
+      // 상세 복원용 원본 데이터. DIY 경우 conditions/stop/take 도 저장해야
+      // 공유 링크에서 똑같이 재현 가능.
+      candles: priceCandles ?? undefined,
+      signals: runSignals ?? undefined,
+      customBuy: runCustomBuy ?? undefined,
+      customSell: runCustomSell ?? undefined,
+      stopLossPct: stopLoss > 0 ? stopLoss : undefined,
+      takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
     });
     setShareUrl(`${window.location.origin}/r/${slug}`);
     setSavedPrivate(options.isPrivate);

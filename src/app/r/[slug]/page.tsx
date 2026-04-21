@@ -3,7 +3,13 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
+import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
+import type { Candle } from "@/lib/upbit";
+import type { Condition } from "@/lib/diy-strategy";
 import { SharedChart } from "@/components/SharedChart";
+import { SharedPriceChart } from "@/components/SharedPriceChart";
+import { SharedDIYDetails } from "@/components/SharedDIYDetails";
+import { currencyOf } from "@/lib/market";
 import type { SharedBacktest } from "@/lib/supabase";
 
 export const revalidate = 60;
@@ -258,7 +264,36 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         )}
       </div>
 
-      <SharedChart equity={data.equity_curve} />
+      {data.candles && data.signals ? (
+        <div className="mt-8">
+          <h2 className="text-lg font-bold mb-2">가격 차트</h2>
+          <p className="text-xs text-neutral-500 mb-3">
+            <span className="text-emerald-600 font-semibold">▲ 매수</span>,{" "}
+            <span className="text-red-600 font-semibold">▼ 매도</span> 화살표는 이 전략이 실제로 체결한 시점입니다.
+          </p>
+          <SharedPriceChart
+            candles={data.candles as Candle[]}
+            signals={data.signals as Signal[]}
+            strategy={data.strategy as StrategyId}
+            params={data.params as StrategyParams}
+            customBuy={(data.custom_buy ?? undefined) as Condition[] | undefined}
+            customSell={(data.custom_sell ?? undefined) as Condition[] | undefined}
+            currency={currencyOf(data.market)}
+          />
+        </div>
+      ) : null}
+
+      <SharedDIYDetails
+        customBuy={data.custom_buy as Condition[] | null}
+        customSell={data.custom_sell as Condition[] | null}
+        stopLossPct={data.stop_loss_pct}
+        takeProfitPct={data.take_profit_pct}
+      />
+
+      <div className="mt-8">
+        <h2 className="text-lg font-bold mb-3">자본 곡선</h2>
+        <SharedChart equity={data.equity_curve} />
+      </div>
 
       <div className="mt-8">
         <Link

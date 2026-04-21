@@ -11,6 +11,7 @@ import { publishShare, deleteShare } from "@/lib/share";
 import { setHandoff } from "@/lib/paper-trade";
 import type { Timeframe } from "@/lib/upbit";
 import type { StrategyId, StrategyParams } from "@/lib/strategies";
+import type { Condition } from "@/lib/diy-strategy";
 
 type Profile = { user_id: string; username: string };
 
@@ -35,6 +36,10 @@ type MyShare = {
   params: Record<string, unknown>;
   initial_cash: number;
   fee_bps: number;
+  custom_buy: unknown[] | null;
+  custom_sell: unknown[] | null;
+  stop_loss_pct: number | null;
+  take_profit_pct: number | null;
 };
 
 function strategyName(id: string) {
@@ -80,7 +85,7 @@ export default function MyPage() {
         supabase
           .from("shared_backtests")
           .select(
-            "slug,market,strategy,days,return_pct,benchmark_return_pct,created_at,is_private,timeframe,params,initial_cash,fee_bps",
+            "slug,market,strategy,days,return_pct,benchmark_return_pct,created_at,is_private,timeframe,params,initial_cash,fee_bps,custom_buy,custom_sell,stop_loss_pct,take_profit_pct",
           )
           .eq("author_id", user.id)
           .order("created_at", { ascending: false })
@@ -104,6 +109,10 @@ export default function MyPage() {
       timeframe: (s.timeframe ?? "1d") as Timeframe,
       strategy: s.strategy as StrategyId,
       params: s.params as StrategyParams,
+      customBuy: (s.custom_buy ?? undefined) as Condition[] | undefined,
+      customSell: (s.custom_sell ?? undefined) as Condition[] | undefined,
+      stopLossPct: s.stop_loss_pct ?? undefined,
+      takeProfitPct: s.take_profit_pct ?? undefined,
       initialCash: s.initial_cash,
       feeBps: s.fee_bps,
     };

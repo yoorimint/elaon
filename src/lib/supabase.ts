@@ -31,4 +31,18 @@ export type SharedBacktest = {
   author_id: string | null;
   is_private: boolean;
   timeframe: string | null;
+  // 아래는 새로 공유되는 항목에만 채워짐 (옛 공유는 null)
+  candles: Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }> | null;
+  signals: unknown[] | null;
+  custom_buy: unknown[] | null;
+  custom_sell: unknown[] | null;
+  stop_loss_pct: number | null;
+  take_profit_pct: number | null;
 };

@@ -1,6 +1,8 @@
 import { supabase, type SharedBacktest } from "./supabase";
 import type { BacktestResult } from "./backtest";
-import type { StrategyId, StrategyParams } from "./strategies";
+import type { Candle } from "./upbit";
+import type { Signal, StrategyId, StrategyParams } from "./strategies";
+import type { Condition } from "./diy-strategy";
 
 const SLUG_CHARS = "abcdefghijkmnpqrstuvwxyz23456789";
 
@@ -22,6 +24,13 @@ export type SharePayload = {
   feeBps: number;
   result: BacktestResult;
   isPrivate?: boolean; // true = 본인만, false = 전체 공개 (기본)
+  // 아래는 공유 상세 페이지에서 TVChart + DIY 조건 복원용. 없으면 자본 곡선만 보여짐.
+  candles?: Candle[];
+  signals?: Signal[];
+  customBuy?: Condition[];
+  customSell?: Condition[];
+  stopLossPct?: number;
+  takeProfitPct?: number;
 };
 
 export async function saveShare(p: SharePayload): Promise<string> {
@@ -52,6 +61,12 @@ export async function saveShare(p: SharePayload): Promise<string> {
     equity_curve: equity,
     author_id: authorId,
     is_private: p.isPrivate ?? false,
+    candles: p.candles ?? null,
+    signals: (p.signals ?? null) as unknown as Record<string, unknown> | null,
+    custom_buy: (p.customBuy ?? null) as unknown as Record<string, unknown> | null,
+    custom_sell: (p.customSell ?? null) as unknown as Record<string, unknown> | null,
+    stop_loss_pct: p.stopLossPct ?? null,
+    take_profit_pct: p.takeProfitPct ?? null,
   });
 
   if (error) throw new Error(error.message);

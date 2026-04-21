@@ -93,3 +93,14 @@ create policy "shared_backtests_delete_own"
 
 create index if not exists shared_backtests_author_private_idx
   on public.shared_backtests(author_id, is_private, created_at desc);
+
+-- ===== 상세 복원을 위한 원본 데이터 저장 =====
+-- 공유 링크에서 TVChart(캔들 + 매수/매도 마커)와 DIY 조건 텍스트를 보여주려면
+-- 원본 캔들 / 시그널 / 커스텀 조건을 함께 저장해야 한다. 기존 행은 NULL 로
+-- 남아 있고 옛 공유는 차트 없이 자본 곡선만 보인다 (하위 호환).
+alter table public.shared_backtests add column if not exists candles jsonb;
+alter table public.shared_backtests add column if not exists signals jsonb;
+alter table public.shared_backtests add column if not exists custom_buy jsonb;
+alter table public.shared_backtests add column if not exists custom_sell jsonb;
+alter table public.shared_backtests add column if not exists stop_loss_pct numeric;
+alter table public.shared_backtests add column if not exists take_profit_pct numeric;

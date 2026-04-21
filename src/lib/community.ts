@@ -421,3 +421,21 @@ export async function unbanUser(userId: string): Promise<void> {
   const { error } = await supabase.rpc("admin_unban_user", { p_user_id: userId });
   if (error) throw new Error(error.message);
 }
+
+// ===== 공개 방문자 카운터 =====
+// anon 권한으로 호출 가능. 오늘 유니크 + 누적 유니크만 반환한다.
+
+export type VisitCounters = {
+  today: number;
+  total: number;
+};
+
+export async function getVisitCounters(): Promise<VisitCounters> {
+  const { data, error } = await supabase.rpc("get_visit_counters");
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    today: Number(row?.today_uniques ?? 0),
+    total: Number(row?.total_uniques ?? 0),
+  };
+}

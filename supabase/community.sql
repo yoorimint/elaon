@@ -452,3 +452,15 @@ begin
 end;
 $$;
 grant execute on function public.admin_list_users(int) to authenticated;
+
+-- ===== 공개 방문자 카운터 (헤더에 표시) =====
+-- 로그인 여부 상관없이 누구나 읽을 수 있는 집계 함수.
+-- 개별 행은 노출하지 않고 오늘/누적 유니크 숫자만 반환한다.
+create or replace function public.get_visit_counters()
+returns table (today_uniques bigint, total_uniques bigint)
+language sql stable security definer set search_path = public as $$
+  select
+    (select count(*)::bigint from public.site_visits where visited_date = current_date) as today_uniques,
+    (select count(distinct client_id)::bigint from public.site_visits) as total_uniques;
+$$;
+grant execute on function public.get_visit_counters() to anon, authenticated;

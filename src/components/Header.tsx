@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
+import { VisitorBadge } from "./VisitorBadge";
 
 const NAV_ITEMS = [
   { href: "/backtest", label: "백테스트" },
@@ -35,6 +36,8 @@ export function Header() {
           <span className="text-brand">eloan</span>
           <span className="hidden sm:inline"> 백테스트</span>
         </Link>
+
+        <VisitorBadge />
 
         <div className="flex items-center gap-2 shrink-0">
           {loading ? null : user ? (

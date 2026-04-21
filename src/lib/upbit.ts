@@ -13,7 +13,9 @@ export type UpbitMarket = {
   english_name: string;
 };
 
-const BASE = "/api/upbit";
+// 브라우저 → /api/upbit 프록시, 서버 → Upbit 직통
+const BASE =
+  typeof window === "undefined" ? "https://api.upbit.com/v1" : "/api/upbit";
 
 class UpbitError extends Error {
   constructor(

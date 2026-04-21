@@ -79,6 +79,9 @@ export type BotPreset = {
   // custom(DIY) 전용
   customBuy?: unknown[];
   customSell?: unknown[];
+  // 매수·매도 조건 결합 방식. 생략 시 매수 AND / 매도 OR (DIY 엔진 기본값).
+  buyLogic?: "and" | "or";
+  sellLogic?: "and" | "or";
   stopLossPct?: number;
   takeProfitPct?: number;
 };
@@ -361,6 +364,331 @@ export const BOT_STRATEGIES: BotPreset[] = [
     ],
     customSell: [
       { id: "s1", left: { kind: "ichimoku_conv", period: 9 }, op: "cross_down", right: { kind: "ichimoku_base", period: 26 } },
+    ],
+  },
+
+  // ---- DIY 추가 세트 (v2) ----
+  {
+    id: "diy_rsi_50_cross",
+    name: "DIY: RSI 50선 돌파 (모멘텀 전환)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "cross_up", right: { kind: "const", value: 50 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "cross_down", right: { kind: "const", value: 50 } },
+    ],
+  },
+  {
+    id: "diy_rsi_bounce",
+    name: "DIY: RSI 30 반등 매수 / 70 이탈 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "cross_up", right: { kind: "const", value: 30 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "cross_down", right: { kind: "const", value: 70 } },
+    ],
+  },
+  {
+    id: "diy_rsi_fast",
+    name: "DIY: RSI 단기 7 (25/75, 스캘핑)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 7 }, op: "lt", right: { kind: "const", value: 25 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 7 }, op: "gt", right: { kind: "const", value: 75 } },
+    ],
+  },
+  {
+    id: "diy_rsi_slow",
+    name: "DIY: RSI 장기 21 (35/65)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 21 }, op: "lt", right: { kind: "const", value: 35 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 21 }, op: "gt", right: { kind: "const", value: 65 } },
+    ],
+  },
+  {
+    id: "diy_triple_ma",
+    name: "DIY: 삼중 이평 정배열 (SMA 5>20 + 종가>60)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "sma", period: 5 }, op: "gt", right: { kind: "sma", period: 20 } },
+      { id: "b2", left: { kind: "close" }, op: "gt", right: { kind: "sma", period: 60 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "sma", period: 5 }, op: "cross_down", right: { kind: "sma", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_ema_20_50",
+    name: "DIY: EMA 20/50 크로스",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ema", period: 20 }, op: "cross_up", right: { kind: "ema", period: 50 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ema", period: 20 }, op: "cross_down", right: { kind: "ema", period: 50 } },
+    ],
+  },
+  {
+    id: "diy_ema_fast",
+    name: "DIY: EMA 5/13 빠른 크로스",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ema", period: 5 }, op: "cross_up", right: { kind: "ema", period: 13 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ema", period: 5 }, op: "cross_down", right: { kind: "ema", period: 13 } },
+    ],
+  },
+  {
+    id: "diy_sma_200",
+    name: "DIY: 200일선 장기 추세 추종",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "sma", period: 200 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "sma", period: 200 } },
+    ],
+  },
+  {
+    id: "diy_bb_touch_bounce",
+    name: "DIY: 볼린저 하단 터치 매수 → 중앙선 복귀 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "lt", right: { kind: "bb_lower", period: 20, stddev: 2 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "gt", right: { kind: "bb_middle", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_bb_tight",
+    name: "DIY: 타이트 볼린저 20/1.5 역추세",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "bb_lower", period: 20, stddev: 1.5 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "bb_upper", period: 20, stddev: 1.5 } },
+    ],
+  },
+  {
+    id: "diy_macd_zero",
+    name: "DIY: MACD 0선 돌파 (추세 전환)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "macd", fast: 12, slow: 26 }, op: "cross_up", right: { kind: "const", value: 0 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "macd", fast: 12, slow: 26 }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+  },
+  {
+    id: "diy_macd_fast",
+    name: "DIY: 빠른 MACD 5/13/5",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "macd", fast: 5, slow: 13 }, op: "cross_up", right: { kind: "macd_signal", fast: 5, slow: 13, signal: 5 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "macd", fast: 5, slow: 13 }, op: "cross_down", right: { kind: "macd_signal", fast: 5, slow: 13, signal: 5 } },
+    ],
+  },
+  {
+    id: "diy_stoch_20_80",
+    name: "DIY: 스토캐스틱 20 상향 / 80 하향 (과매도·과매수 탈출)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "stoch_k", period: 14 }, op: "cross_up", right: { kind: "const", value: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "stoch_k", period: 14 }, op: "cross_down", right: { kind: "const", value: 80 } },
+    ],
+  },
+  {
+    id: "diy_slow_stoch",
+    name: "DIY: Slow 스토캐스틱 (5,3,3) 크로스",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "slow_stoch_k", period: 5, slowSmooth: 3 }, op: "cross_up", right: { kind: "slow_stoch_d", period: 5, slowSmooth: 3, dSmooth: 3 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "slow_stoch_k", period: 5, slowSmooth: 3 }, op: "cross_down", right: { kind: "slow_stoch_d", period: 5, slowSmooth: 3, dSmooth: 3 } },
+    ],
+  },
+  {
+    id: "diy_ichimoku_base",
+    name: "DIY: 일목 기준선 돌파 (종가 기준)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "ichimoku_base", period: 26 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "ichimoku_base", period: 26 } },
+    ],
+  },
+  {
+    id: "diy_ichimoku_long",
+    name: "DIY: 일목 장기 (전환 26 / 기준 52)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ichimoku_conv", period: 26 }, op: "cross_up", right: { kind: "ichimoku_base", period: 52 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ichimoku_conv", period: 26 }, op: "cross_down", right: { kind: "ichimoku_base", period: 52 } },
+    ],
+  },
+  {
+    id: "diy_donchian_turtle",
+    name: "DIY: Donchian 55일 돌파 (터틀 변형)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "donchian_upper", period: 55 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "donchian_lower", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_donchian_short",
+    name: "DIY: Donchian 10일 단기 돌파",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "donchian_upper", period: 10 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "donchian_lower", period: 10 } },
+    ],
+  },
+  {
+    id: "diy_mfi_extreme",
+    name: "DIY: MFI 극단값 (10/90)",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "mfi", period: 14 }, op: "lt", right: { kind: "const", value: 10 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "mfi", period: 14 }, op: "gt", right: { kind: "const", value: 90 } },
+    ],
+  },
+  {
+    id: "diy_williams_50",
+    name: "DIY: Williams %R 중앙(-50) 크로스",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "williams_r", period: 14 }, op: "cross_up", right: { kind: "const", value: -50 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "williams_r", period: 14 }, op: "cross_down", right: { kind: "const", value: -50 } },
+    ],
+  },
+  {
+    id: "diy_cci_zero",
+    name: "DIY: CCI 0선 추세 추종",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "cci", period: 20 }, op: "cross_up", right: { kind: "const", value: 0 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "cci", period: 20 }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+  },
+  {
+    id: "diy_roc_sma_filter",
+    name: "DIY: ROC 양전 + 종가>SMA20 추세 필터",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "roc", period: 10 }, op: "gt", right: { kind: "const", value: 0 } },
+      { id: "b2", left: { kind: "close" }, op: "gt", right: { kind: "sma", period: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "roc", period: 10 }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+  },
+  {
+    id: "diy_ao_sma",
+    name: "DIY: AO 0선 돌파 + 종가>SMA50",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ao" }, op: "cross_up", right: { kind: "const", value: 0 } },
+      { id: "b2", left: { kind: "close" }, op: "gt", right: { kind: "sma", period: 50 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ao" }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+  },
+  {
+    id: "diy_ha_rsi",
+    name: "DIY: 하이킨아시 양전 매수 / RSI 70 익절",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ha_close" }, op: "cross_up", right: { kind: "ha_open" } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 70 } },
+    ],
+  },
+  {
+    id: "diy_bb_rsi_combo",
+    name: "DIY: 볼린저 하단 + RSI<35 매수 / 상단 or RSI>65 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "lt", right: { kind: "bb_lower", period: 20, stddev: 2 } },
+      { id: "b2", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 35 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "gt", right: { kind: "bb_upper", period: 20, stddev: 2 } },
+      { id: "s2", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 65 } },
+    ],
+  },
+
+  // ---- sellLogic: "and" 활용 (확인 매도) ----
+  // 기본값(OR) 은 한 신호라도 뜨면 팔아 수익 덜먹고 나가기 쉬움.
+  // AND 로 묶으면 여러 지표가 동시에 과열/붕괴 확인될 때만 청산 → 수익 질주 허용.
+  {
+    id: "diy_rsi_bb_and_sell",
+    name: "DIY: RSI 과매도 매수 / (RSI>70 AND 볼린저 상단) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 30 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 70 } },
+      { id: "s2", left: { kind: "close" }, op: "gt", right: { kind: "bb_upper", period: 20, stddev: 2 } },
+    ],
+  },
+  {
+    id: "diy_trend_and_sell",
+    name: "DIY: EMA 정배열 매수 / (데드크로스 AND 종가<SMA200) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ema", period: 20 }, op: "cross_up", right: { kind: "ema", period: 50 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "ema", period: 20 }, op: "lt", right: { kind: "ema", period: 50 } },
+      { id: "s2", left: { kind: "close" }, op: "lt", right: { kind: "sma", period: 200 } },
+    ],
+  },
+  {
+    id: "diy_macd_confirm_and_sell",
+    name: "DIY: MACD 골든크로스 매수 / (데드크로스 AND RSI<50) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "macd", fast: 12, slow: 26 }, op: "cross_up", right: { kind: "macd_signal", fast: 12, slow: 26, signal: 9 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "macd", fast: 12, slow: 26 }, op: "lt", right: { kind: "macd_signal", fast: 12, slow: 26, signal: 9 } },
+      { id: "s2", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 50 } },
     ],
   },
 ];

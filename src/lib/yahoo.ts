@@ -5,7 +5,23 @@ import type { MarketEntry, MarketKind, Currency } from "./market";
 // We only use *type* imports from market.ts here, so the circular dep is
 // flattened by TS and doesn't produce a runtime cycle.
 
-const BASE = "/api/yahoo";
+// 브라우저에서는 CORS 우회용 /api/yahoo 프록시로, 서버에서는 야후를 직접 친다.
+// 서버에선 프록시를 통한 추가 홉이 불필요하고, 일부 런타임(Node)에서 상대 경로
+// fetch 가 안 돼서 절대 URL 이 필요하기도 하다.
+const BASE =
+  typeof window === "undefined"
+    ? "https://query1.finance.yahoo.com"
+    : "/api/yahoo";
+
+// 서버에서 직접 야후를 칠 때는 프록시가 넣던 헤더(UA 포함) 를 우리가 넣어야 한다.
+const SERVER_FETCH_HEADERS: Record<string, string> | undefined =
+  typeof window === "undefined"
+    ? {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json",
+      }
+    : undefined;
 
 type YahooSearchQuote = {
   symbol: string;
@@ -39,7 +55,7 @@ export async function searchYahoo(query: string): Promise<MarketEntry[]> {
   const url = `${BASE}/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=30&newsCount=0&enableFuzzyQuery=false&lang=en-US&region=US`;
   let res: Response;
   try {
-    res = await fetch(url, { cache: "no-store" });
+    res = await fetch(url, { cache: "no-store", headers: SERVER_FETCH_HEADERS });
   } catch {
     return [];
   }
@@ -117,7 +133,7 @@ export async function fetchYahooCandles(
   const p1 = Math.floor(startMs / 1000);
   const p2 = Math.floor(endMs / 1000);
   const url = `${BASE}/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${p1}&period2=${p2}&interval=${yahooInterval(tf)}&events=history`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { cache: "no-store", headers: SERVER_FETCH_HEADERS });
   if (!res.ok) throw new Error(`야후 응답 오류 (${res.status})`);
   const json = (await res.json()) as YahooChartResponse;
   const err = json.chart?.error?.description;

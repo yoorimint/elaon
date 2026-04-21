@@ -588,3 +588,205 @@ create policy bot_config_update on public.bot_config
 drop policy if exists posts_update_own on public.posts;
 create policy posts_update_own on public.posts for update
   using (auth.uid() = author_id or public.is_admin());
+
+-- ===== 유입 경로(referrer) 기록 =====
+-- site_visits 는 (visited_date, client_id) 가 PK 라 하루 1행. referrer/landing_path
+-- 는 첫 유입만 기록(on conflict 시 덮어쓰지 않음). 유저가 하루 내 외부 사이트에서
+-- 재진입해도 처음 발견 경로가 남는다.
+alter table public.site_visits add column if not exists referrer text;
+alter table public.site_visits add column if not exists landing_path text;
+
+-- log_visit 시그니처 확장. default 추가만으로는 이전 호출도 그대로 동작하지만
+-- PostgREST 의 RPC 호출 시그니처 매칭상 기존 (text) 과 새 (text,text,text) 가
+-- 모호하지 않도록 이전 것을 drop 한다.
+drop function if exists public.log_visit(text);
+create or replace function public.log_visit(
+  p_client_id text,
+  p_referrer text default null,
+  p_landing_path text default null
+)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_client_id is null or length(p_client_id) = 0 then
+    return;
+  end if;
+  insert into public.site_visits (visited_date, client_id, user_id, referrer, landing_path)
+  values (current_date, p_client_id, auth.uid(), p_referrer, p_landing_path)
+  on conflict (visited_date, client_id)
+  do update set
+    visit_count = public.site_visits.visit_count + 1,
+    last_seen_at = now(),
+    user_id = coalesce(public.site_visits.user_id, excluded.user_id);
+    -- referrer / landing_path 는 의도적으로 업데이트 제외(= 첫 유입 보존).
+end;
+$$;
+grant execute on function public.log_visit(text, text, text) to anon, authenticated;
+
+-- ===== 어드민: 유입 경로 TOP =====
+-- 최근 30일, referrer URL 에서 호스트만 뽑아 집계. 자기 도메인(eloan.kr) 내부
+-- 이동은 제외. referrer null/빈값은 "(직접 방문)" 으로 묶어서 표시.
+create or replace function public.admin_referrer_stats()
+returns table (
+  referrer_domain text,
+  visits bigint,
+  uniques bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+  select
+    sub.domain as referrer_domain,
+    sum(sub.visit_count)::bigint as visits,
+    count(distinct sub.client_id)::bigint as uniques
+  from (
+    select
+      v.client_id,
+      v.visit_count,
+      coalesce(
+        nullif(substring(v.referrer from '^https?://([^/]+)'), ''),
+        '(직접 방문)'
+      ) as domain
+    from public.site_visits v
+    where v.visited_date >= current_date - 29
+  ) sub
+  where sub.domain = '(직접 방문)'
+     or (sub.domain <> 'eloan.kr' and sub.domain not like '%.eloan.kr')
+  group by sub.domain
+  order by visits desc
+  limit 20;
+end;
+$$;
+grant execute on function public.admin_referrer_stats() to authenticated;
+
+-- ===== 어드민: 랜딩 페이지 TOP (외부 유입만) =====
+-- 어느 글/페이지가 외부 검색·링크로 유입이 많은지. 내부 이동 제외.
+create or replace function public.admin_landing_stats()
+returns table (
+  landing_path text,
+  visits bigint,
+  uniques bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query
+  select
+    coalesce(v.landing_path, '(알 수 없음)') as landing_path,
+    sum(v.visit_count)::bigint as visits,
+    count(distinct v.client_id)::bigint as uniques
+  from public.site_visits v
+  where v.visited_date >= current_date - 29
+    and v.referrer is not null
+    and substring(v.referrer from '^https?://([^/]+)') <> 'eloan.kr'
+    and substring(v.referrer from '^https?://([^/]+)') not like '%.eloan.kr'
+  group by v.landing_path
+  order by visits desc
+  limit 20;
+end;
+$$;
+grant execute on function public.admin_landing_stats() to authenticated;
+
+-- ===================================================================
+-- 사용자별 백테스트 설정 저장 (내 전략 프리셋)
+-- ===================================================================
+create table if not exists public.user_strategies (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 40),
+  config jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists user_strategies_user_updated_idx
+  on public.user_strategies(user_id, updated_at desc);
+create unique index if not exists user_strategies_user_name_uq
+  on public.user_strategies(user_id, name);
+
+alter table public.user_strategies enable row level security;
+
+drop policy if exists "own strategies read" on public.user_strategies;
+create policy "own strategies read" on public.user_strategies
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "own strategies insert" on public.user_strategies;
+create policy "own strategies insert" on public.user_strategies
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "own strategies update" on public.user_strategies;
+create policy "own strategies update" on public.user_strategies
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own strategies delete" on public.user_strategies;
+create policy "own strategies delete" on public.user_strategies
+  for delete using (auth.uid() = user_id);
+
+-- ===================================================================
+-- 관심 종목 워치리스트
+-- 각 행은 (내 계정, 종목) 짝. 선택적으로 내 저장 전략 하나를 붙여서
+-- "이 종목을 이 전략으로 보면 오늘 뭐라고 말하는지" 를 뱃지로 본다.
+-- ===================================================================
+create table if not exists public.user_watchlist (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  market text not null,
+  -- 전략 삭제되면 연결만 풀리고 워치리스트 행은 남음.
+  strategy_id uuid references public.user_strategies(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists user_watchlist_user_market_uq
+  on public.user_watchlist(user_id, market);
+create index if not exists user_watchlist_user_created_idx
+  on public.user_watchlist(user_id, created_at desc);
+
+alter table public.user_watchlist enable row level security;
+
+drop policy if exists "own watchlist read" on public.user_watchlist;
+create policy "own watchlist read" on public.user_watchlist
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "own watchlist insert" on public.user_watchlist;
+create policy "own watchlist insert" on public.user_watchlist
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "own watchlist update" on public.user_watchlist;
+create policy "own watchlist update" on public.user_watchlist
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "own watchlist delete" on public.user_watchlist;
+create policy "own watchlist delete" on public.user_watchlist
+  for delete using (auth.uid() = user_id);
+
+-- ===================================================================
+-- 1d 캔들 캐시 — 외부 API(Upbit/Yahoo/OKX) 호출 폭증 방지
+-- 유저 수 무관, (market) 하나당 하루 1번 외부 fetch 로 고정된다.
+-- 1d 이외 타임프레임은 캐시하지 않는다 (워치리스트는 1d 전략만 허용).
+-- ===================================================================
+create table if not exists public.candle_cache (
+  market text primary key,
+  candles jsonb not null,
+  refreshed_at timestamptz not null default now(),
+  expires_at timestamptz not null
+);
+
+create index if not exists candle_cache_expires_idx
+  on public.candle_cache(expires_at);
+
+alter table public.candle_cache enable row level security;
+
+-- 로그인한 사용자 전체가 읽기 가능. 쓰기는 서버 route 에서 anon 키로 수행하되
+-- 경합 방지를 위해 upsert 만 허용 (전 유저가 동일 행을 공유).
+drop policy if exists "candle cache read" on public.candle_cache;
+create policy "candle cache read" on public.candle_cache
+  for select using (true);
+
+drop policy if exists "candle cache insert" on public.candle_cache;
+create policy "candle cache insert" on public.candle_cache
+  for insert with check (true);
+
+drop policy if exists "candle cache update" on public.candle_cache;
+create policy "candle cache update" on public.candle_cache
+  for update using (true) with check (true);
+
+-- PostgREST 스키마 캐시 리로드
+notify pgrst, 'reload schema';

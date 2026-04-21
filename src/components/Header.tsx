@@ -9,6 +9,7 @@ import { VisitorBadge } from "./VisitorBadge";
 const NAV_ITEMS = [
   { href: "/backtest", label: "백테스트" },
   { href: "/paper-trade", label: "모의투자" },
+  { href: "/watchlist", label: "관심" },
   { href: "/ranking", label: "랭킹" },
   { href: "/community", label: "커뮤니티" },
 ];

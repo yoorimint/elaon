@@ -395,6 +395,48 @@ export async function getVisitsTrend(): Promise<VisitTrendRow[]> {
   }));
 }
 
+export type ReferrerRow = {
+  domain: string;
+  visits: number;
+  uniques: number;
+};
+
+export async function getReferrerStats(): Promise<ReferrerRow[]> {
+  const { data, error } = await supabase.rpc("admin_referrer_stats");
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<{
+    referrer_domain: string | null;
+    visits: number | string;
+    uniques: number | string;
+  }>;
+  return rows.map((r) => ({
+    domain: r.referrer_domain ?? "(알 수 없음)",
+    visits: Number(r.visits),
+    uniques: Number(r.uniques),
+  }));
+}
+
+export type LandingRow = {
+  path: string;
+  visits: number;
+  uniques: number;
+};
+
+export async function getLandingStats(): Promise<LandingRow[]> {
+  const { data, error } = await supabase.rpc("admin_landing_stats");
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<{
+    landing_path: string | null;
+    visits: number | string;
+    uniques: number | string;
+  }>;
+  return rows.map((r) => ({
+    path: r.landing_path ?? "(알 수 없음)",
+    visits: Number(r.visits),
+    uniques: Number(r.uniques),
+  }));
+}
+
 // ===== 어드민: 회원 목록 + 제재 =====
 
 export type AdminUser = {

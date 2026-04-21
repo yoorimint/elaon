@@ -17,9 +17,10 @@ import { runBacktest } from "@/lib/backtest";
 import {
   BOT_SYMBOLS,
   BOT_STRATEGIES,
+  BOT_PERIODS,
   BOT_NARRATIVE_ANGLES,
-  pickRotationPair,
   symbolPrettyLabel,
+  type BotPreset,
 } from "@/lib/bot-symbols";
 import { computeDIYSignals } from "@/lib/diy-strategy";
 
@@ -191,26 +192,24 @@ function symbolLabel(symbol: string): string {
 // ---------- Gemini call ----------
 async function callGemini(factBlock: string, narrativeInstruction: string): Promise<string | null> {
   if (!GEMINI_KEY) return null;
-  const prompt = `너는 투자 커뮤니티 사이트의 자동 전략 분석 봇이야. 아래 팩트 데이터만 근거로
-한국어 블로그 본문을 작성해줘.
+  const prompt = `너는 토스피드(toss.im)의 금융 전문가야. 토스피드 말투(해요체, 짧은 문장, 전문용어는 처음 나올 때 괄호로 풀이)로 백테스트 결과 글을 써줘.
 
-[이번 글의 특별 지시] ${narrativeInstruction}
+이번 글의 관점: ${narrativeInstruction}
 
 반드시 다루어야 할 정보:
 - 종목, 전략, 기간, 시장 국면
 - 전략 수익률 vs 단순 보유 차이 (초과 수익)
 - 최대 낙폭(MDD)과 회복까지 걸린 기간
 - 거래 횟수, 승률, 평균 이익/손실, 최고/최악 거래, 최대 연승·연패
-- 리스크 조정 지표 중 2개 이상 해석하여 언급 (Sharpe / Sortino / Calmar / Profit Factor — 무엇이 의미 있는지 수치로 판단하고 풀어쓰기)
+- 리스크 조정 지표 중 2개 이상 해석 (Sharpe / Sortino / Calmar / Profit Factor)
 - 실전 가능성 간략 평가 (거래 빈도, 수수료 영향)
-- 마지막에 "과거 결과로 미래 수익을 보장하지 않습니다" 면책 한 줄
+- 마지막 줄에 "과거 결과로 미래 수익을 보장하지 않습니다" 한 줄
 
 규칙:
-- 본문 총 600~900자 (한글 기준).
-- 위 "특별 지시" 의 관점/톤에 맞춰 글을 작성. 매번 구성 순서와 문체가 다르게 나와야 함.
-- 팩트에 없는 숫자나 단정적 해석은 절대 만들지 말 것 ("반드시 수익난다" 금지).
-- 마크다운, 이모지, 글머리 기호 쓰지 말 것. 자연스러운 문단 서술.
-- 존댓말, 차분한 톤.
+- 본문 600~900자.
+- 팩트에 없는 숫자·사건 지어내기 금지. 수치는 받은 그대로.
+- "~다/~습니다" 보고체 금지. 해요체만.
+- 마크다운, 이모지, 글머리 기호 금지.
 
 === 팩트 ===
 ${factBlock}
@@ -222,7 +221,12 @@ ${factBlock}
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 4096,
+        // Gemini 2.5 Flash 는 기본 thinking 켜져 있어 출력 예산을 잠식함 → 끄기.
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
   if (!res.ok) {
@@ -374,6 +378,19 @@ function randomSlug(len = 8) {
   return out;
 }
 
+// ---------- array helpers ----------
+function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function shuffled<T>(arr: readonly T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ---------- sparse signals helper (matches src/lib/share.ts) ----------
 function compactSignals(signals: unknown[]): Array<{ i: number; s: unknown }> {
   const out: Array<{ i: number; s: unknown }> = [];
@@ -438,42 +455,77 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     }
   }
 
-  const { symbol, preset, period, narrative } = pickRotationPair(cfg.post_counter);
-  console.log(
-    `Pick: symbol=${symbol} strategy=${preset.name} period=${period.label} narrative=${narrative.id} (counter=${cfg.post_counter})`,
-  );
+  // 종목은 랜덤으로 하나, 그 종목에 대해 (전략 × 기간) 조합을 섞어가며 돌려
+  // 처음으로 "수익 + 실제 거래 발생" 조합을 찾으면 채택. 전부 손실이면 이번 회차는 스킵.
+  // — 같은 전략도 1년은 손실이지만 2년은 수익일 수 있음. 운좋게 수익난 걸 자랑하는 봇.
+  const symbol = pick(BOT_SYMBOLS);
+  const narrative = pick(BOT_NARRATIVE_ANGLES);
+  console.log(`Symbol=${symbol} narrative=${narrative.id} — searching profitable combo`);
 
   const candles = await fetchCandles(symbol);
-  // 로테이션으로 지정된 기간만큼 slice. 데이터 부족하면 있는 만큼.
-  const target = Math.min(period.days, candles.length);
-  const slice = candles.slice(-target);
-  if (slice.length < 100) {
-    console.log(`캔들 ${slice.length}개 뿐 — 스킵`);
-    await bumpCounter(cfg.post_counter); // 다음 조합으로 넘어감
+  if (candles.length < 100) {
+    console.log(`캔들 ${candles.length}개 뿐 — 스킵`);
+    await bumpCounter(cfg.post_counter);
     return;
   }
 
   const feeBps = 5;
   const initialCash = 1_000_000;
 
-  // DIY(custom) 은 computeDIYSignals, 나머지는 computeSignals
-  let signals;
-  if (preset.strategy === "custom") {
-    signals = computeDIYSignals(slice, {
-      buy: (preset.customBuy ?? []) as Parameters<typeof computeDIYSignals>[1]["buy"],
-      sell: (preset.customSell ?? []) as Parameters<typeof computeDIYSignals>[1]["sell"],
-      stopLossPct: preset.stopLossPct,
-      takeProfitPct: preset.takeProfitPct,
-    });
-  } else {
-    signals = computeSignals(
-      slice,
-      preset.strategy as Parameters<typeof computeSignals>[1],
-      preset.params as Parameters<typeof computeSignals>[2],
-      { initialCash },
-    );
+  // (전략 × 기간) 전체 카테시안을 섞은 뒤 앞에서부터 최대 MAX_TRIES 번 시도.
+  const combos: { preset: BotPreset; period: { label: string; days: number } }[] = [];
+  for (const p of BOT_STRATEGIES) for (const per of BOT_PERIODS) combos.push({ preset: p, period: per });
+  const MAX_TRIES = 40;
+  const tries = shuffled(combos).slice(0, MAX_TRIES);
+
+  let chosen: {
+    preset: BotPreset;
+    period: { label: string; days: number };
+    slice: Candle[];
+    signals: ReturnType<typeof computeSignals> | ReturnType<typeof computeDIYSignals>;
+    r: ReturnType<typeof runBacktest>;
+  } | null = null;
+
+  for (const { preset, period } of tries) {
+    const target = Math.min(period.days, candles.length);
+    const slice = candles.slice(-target);
+    if (slice.length < 100) continue;
+
+    let signals: ReturnType<typeof computeSignals> | ReturnType<typeof computeDIYSignals>;
+    if (preset.strategy === "custom") {
+      signals = computeDIYSignals(slice, {
+        buy: (preset.customBuy ?? []) as Parameters<typeof computeDIYSignals>[1]["buy"],
+        sell: (preset.customSell ?? []) as Parameters<typeof computeDIYSignals>[1]["sell"],
+        buyLogic: preset.buyLogic,
+        sellLogic: preset.sellLogic,
+        stopLossPct: preset.stopLossPct,
+        takeProfitPct: preset.takeProfitPct,
+      });
+    } else {
+      signals = computeSignals(
+        slice,
+        preset.strategy as Parameters<typeof computeSignals>[1],
+        preset.params as Parameters<typeof computeSignals>[2],
+        { initialCash },
+      );
+    }
+    const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
+    if (r.tradeCount > 0 && r.returnPct > 0) {
+      chosen = { preset, period, slice, signals, r };
+      console.log(
+        `Hit: ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
+      );
+      break;
+    }
   }
-  const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
+
+  if (!chosen) {
+    console.log(`${symbol}: ${MAX_TRIES}개 조합 모두 손실/무거래 — 이번 회차 스킵`);
+    await bumpCounter(cfg.post_counter);
+    return;
+  }
+
+  const { preset, slice, signals, r } = chosen;
 
   const label = symbolPrettyLabel(symbol);
   const days = Math.round((slice[slice.length - 1].timestamp - slice[0].timestamp) / 86400000);
@@ -620,9 +672,9 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     () => `${retStr} · ${label} ${preset.name} ${yearsLabel}`,
     () => `${retStr} — ${label} ${preset.name} (${yearsLabel}, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
     () => `${retStr} vs 보유 ${bhStr} · ${label} ${preset.name} ${yearsLabel}`,
-    () => `[${label}] ${preset.name} ${yearsLabel} → ${retStr}`,
+    () => `${retStr} · [${label}] ${preset.name} (${yearsLabel})`,
     () => `${retStr} 기록한 ${label} ${preset.name} 전략 (${yearsLabel})`,
-    () => `${retStr} · ${marketPhase}의 ${label}을 ${preset.name}으로`,
+    () => `${retStr} · ${marketPhase} · ${label} ${preset.name}`,
   ];
   const title = titleFormats[cfg.post_counter % titleFormats.length]();
   const postSlug = randomSlug();

@@ -36,6 +36,16 @@ import {
   saveBacktestSnapshot,
   type BacktestSnapshot,
 } from "@/lib/backtest-snapshot";
+import {
+  deleteStrategy,
+  listMyStrategies,
+  loadLastConfig,
+  MAX_SAVED,
+  saveLastConfig,
+  saveStrategy,
+  type BacktestConfig,
+  type SavedStrategy,
+} from "@/lib/user-strategies";
 import { NumInput } from "@/components/NumInput";
 import { MarketPicker } from "@/components/MarketPicker";
 import { ConditionRow, conditionToText } from "@/components/ConditionEditor";
@@ -146,6 +156,79 @@ export default function BacktestPage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // 내 전략 프리셋 (로그인 사용자용 DB 저장)
+  const [savedStrategies, setSavedStrategies] = useState<SavedStrategy[]>([]);
+  const [savedLoaded, setSavedLoaded] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [presetError, setPresetError] = useState<string | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
+
+  function buildCurrentConfig(): BacktestConfig {
+    return {
+      market, timeframe, strategy, rangePreset, dateFrom, dateTo,
+      shortMa, longMa, rsiPeriod, rsiLow, rsiHigh,
+      bbPeriod, bbStddev, bbTouch,
+      macdFast, macdSlow, macdSignal, breakoutK,
+      stochPeriod, stochSmooth, stochLow, stochHigh,
+      ichimokuConv, ichimokuBase, ichimokuLag,
+      dcaInterval, dcaAmount, maDcaMaPeriod,
+      gridLow, gridHigh, gridCount, gridMode,
+      customBuy, customSell, stopLoss, takeProfit,
+      initialCash, feeBps,
+      positionSizePct, martingaleFactor, slippageBps, walkForward,
+      rebalanceTP, rebalanceDrop,
+    };
+  }
+
+  function applyConfig(cfg: BacktestConfig) {
+    setMarket(cfg.market);
+    setTimeframe(cfg.timeframe);
+    setStrategy(cfg.strategy);
+    setRangePreset(cfg.rangePreset);
+    setDateFrom(cfg.dateFrom);
+    setDateTo(cfg.dateTo);
+    setShortMa(cfg.shortMa);
+    setLongMa(cfg.longMa);
+    setRsiPeriod(cfg.rsiPeriod);
+    setRsiLow(cfg.rsiLow);
+    setRsiHigh(cfg.rsiHigh);
+    setBbPeriod(cfg.bbPeriod);
+    setBbStddev(cfg.bbStddev);
+    setBbTouch(cfg.bbTouch);
+    setMacdFast(cfg.macdFast);
+    setMacdSlow(cfg.macdSlow);
+    setMacdSignal(cfg.macdSignal);
+    setBreakoutK(cfg.breakoutK);
+    setStochPeriod(cfg.stochPeriod);
+    setStochSmooth(cfg.stochSmooth);
+    setStochLow(cfg.stochLow);
+    setStochHigh(cfg.stochHigh);
+    setIchimokuConv(cfg.ichimokuConv);
+    setIchimokuBase(cfg.ichimokuBase);
+    setIchimokuLag(cfg.ichimokuLag);
+    setDcaInterval(cfg.dcaInterval);
+    setDcaAmount(cfg.dcaAmount);
+    setMaDcaMaPeriod(cfg.maDcaMaPeriod);
+    setGridLow(cfg.gridLow);
+    setGridHigh(cfg.gridHigh);
+    setGridCount(cfg.gridCount);
+    setGridMode(cfg.gridMode);
+    setCustomBuy(cfg.customBuy);
+    setCustomSell(cfg.customSell);
+    setStopLoss(cfg.stopLoss);
+    setTakeProfit(cfg.takeProfit);
+    setInitialCash(cfg.initialCash);
+    setFeeBps(cfg.feeBps);
+    if (cfg.positionSizePct !== undefined) setPositionSizePct(cfg.positionSizePct);
+    if (cfg.martingaleFactor !== undefined) setMartingaleFactor(cfg.martingaleFactor);
+    if (cfg.slippageBps !== undefined) setSlippageBps(cfg.slippageBps);
+    if (cfg.walkForward !== undefined) setWalkForward(cfg.walkForward);
+    if (cfg.rebalanceTP !== undefined) setRebalanceTP(cfg.rebalanceTP);
+    if (cfg.rebalanceDrop !== undefined) setRebalanceDrop(cfg.rebalanceDrop);
+  }
+
   useEffect(() => {
     fetchMarkets()
       .then((all) => {
@@ -160,64 +243,99 @@ export default function BacktestPage() {
   }, []);
 
   // 뒤로가기 등으로 재마운트 시, 직전 백테스트 결과가 있으면 폼 + 결과 전부
-  // 복원해서 사용자가 다시 실행하지 않아도 결과를 볼 수 있게 한다.
+  // 복원해서 사용자가 다시 실행하지 않아도 결과를 볼 수 있게 한다. 스냅샷이
+  // 없으면 localStorage 에 저장된 "마지막 설정"(폼 값만) 으로 폴백.
   useEffect(() => {
     const snap: BacktestSnapshot | null = loadBacktestSnapshot();
-    if (!snap) return;
-    setMarket(snap.market);
-    setTimeframe(snap.timeframe);
-    setStrategy(snap.strategy);
-    setRangePreset(snap.rangePreset);
-    setDateFrom(snap.dateFrom);
-    setDateTo(snap.dateTo);
-    setShortMa(snap.shortMa);
-    setLongMa(snap.longMa);
-    setRsiPeriod(snap.rsiPeriod);
-    setRsiLow(snap.rsiLow);
-    setRsiHigh(snap.rsiHigh);
-    setBbPeriod(snap.bbPeriod);
-    setBbStddev(snap.bbStddev);
-    setBbTouch(snap.bbTouch);
-    setMacdFast(snap.macdFast);
-    setMacdSlow(snap.macdSlow);
-    setMacdSignal(snap.macdSignal);
-    setBreakoutK(snap.breakoutK);
-    setStochPeriod(snap.stochPeriod);
-    setStochSmooth(snap.stochSmooth);
-    setStochLow(snap.stochLow);
-    setStochHigh(snap.stochHigh);
-    setIchimokuConv(snap.ichimokuConv);
-    setIchimokuBase(snap.ichimokuBase);
-    setIchimokuLag(snap.ichimokuLag);
-    setDcaInterval(snap.dcaInterval);
-    setDcaAmount(snap.dcaAmount);
-    setMaDcaMaPeriod(snap.maDcaMaPeriod);
-    setGridLow(snap.gridLow);
-    setGridHigh(snap.gridHigh);
-    setGridCount(snap.gridCount);
-    setGridMode(snap.gridMode);
-    setCustomBuy(snap.customBuy);
-    setCustomSell(snap.customSell);
-    setStopLoss(snap.stopLoss);
-    setTakeProfit(snap.takeProfit);
-    setInitialCash(snap.initialCash);
-    setFeeBps(snap.feeBps);
-    if (snap.positionSizePct !== undefined) setPositionSizePct(snap.positionSizePct);
-    if (snap.martingaleFactor !== undefined) setMartingaleFactor(snap.martingaleFactor);
-    if (snap.slippageBps !== undefined) setSlippageBps(snap.slippageBps);
-    if (snap.walkForward !== undefined) setWalkForward(snap.walkForward);
-    if (snap.rebalanceTP !== undefined) setRebalanceTP(snap.rebalanceTP);
-    if (snap.rebalanceDrop !== undefined) setRebalanceDrop(snap.rebalanceDrop);
-    setResult(snap.result);
-    setPriceCandles(snap.priceCandles);
-    setRunSignals(snap.runSignals);
-    setRunStrategy(snap.runStrategy);
-    setRunParams(snap.runParams);
-    setRunCustomBuy(snap.runCustomBuy);
-    setRunCustomSell(snap.runCustomSell);
-    setShareUrl(snap.shareUrl);
-    setSavedPrivate(snap.savedPrivate ?? null);
+    if (snap) {
+      applyConfig(snap);
+      setResult(snap.result);
+      setPriceCandles(snap.priceCandles);
+      setRunSignals(snap.runSignals);
+      setRunStrategy(snap.runStrategy);
+      setRunParams(snap.runParams);
+      setRunCustomBuy(snap.runCustomBuy);
+      setRunCustomSell(snap.runCustomSell);
+      setShareUrl(snap.shareUrl);
+      setSavedPrivate(snap.savedPrivate ?? null);
+      return;
+    }
+    const last = loadLastConfig();
+    if (last) applyConfig(last);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 폼 값이 바뀔 때마다 localStorage 에 저장 → 다음 방문 때 자동 복원.
+  // 입력 스로틀 겸 과도한 직렬화 방지로 400ms 디바운스.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      saveLastConfig(buildCurrentConfig());
+    }, 400);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    market, timeframe, strategy, rangePreset, dateFrom, dateTo,
+    shortMa, longMa, rsiPeriod, rsiLow, rsiHigh,
+    bbPeriod, bbStddev, bbTouch,
+    macdFast, macdSlow, macdSignal, breakoutK,
+    stochPeriod, stochSmooth, stochLow, stochHigh,
+    ichimokuConv, ichimokuBase, ichimokuLag,
+    dcaInterval, dcaAmount, maDcaMaPeriod,
+    gridLow, gridHigh, gridCount, gridMode,
+    customBuy, customSell, stopLoss, takeProfit,
+    initialCash, feeBps,
+    positionSizePct, martingaleFactor, slippageBps, walkForward,
+    rebalanceTP, rebalanceDrop,
+  ]);
+
+  // 로그인 사용자는 DB 에 저장된 내 프리셋 목록을 당겨옴.
+  useEffect(() => {
+    if (!currentUser) {
+      setSavedStrategies([]);
+      setSavedLoaded(false);
+      return;
+    }
+    listMyStrategies()
+      .then(setSavedStrategies)
+      .catch(() => {})
+      .finally(() => setSavedLoaded(true));
+  }, [currentUser]);
+
+  async function handleSavePreset() {
+    if (presetBusy) return;
+    setPresetBusy(true);
+    setPresetError(null);
+    try {
+      const saved = await saveStrategy(presetName, buildCurrentConfig());
+      setSavedStrategies((prev) => {
+        const without = prev.filter((s) => s.id !== saved.id);
+        return [saved, ...without];
+      });
+      setActivePresetId(saved.id);
+      setShowSaveModal(false);
+      setPresetName("");
+    } catch (e) {
+      setPresetError(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setPresetBusy(false);
+    }
+  }
+
+  async function handleDeletePreset(preset: SavedStrategy) {
+    if (!confirm(`"${preset.name}" 프리셋을 삭제할까요?`)) return;
+    try {
+      await deleteStrategy(preset.id);
+      setSavedStrategies((prev) => prev.filter((s) => s.id !== preset.id));
+      if (activePresetId === preset.id) setActivePresetId(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "삭제 실패");
+    }
+  }
+
+  function handleLoadPreset(preset: SavedStrategy) {
+    applyConfig(preset.config);
+    setActivePresetId(preset.id);
+  }
 
   // shareUrl 갱신 시 스냅샷의 shareUrl 도 같이 업데이트 (결과 전체는
   // 그대로 두고 한 필드만).
@@ -605,6 +723,77 @@ export default function BacktestPage() {
       </div>
 
       <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 sm:p-6">
+        {/* 내 전략 프리셋 — 로그인 사용자만 저장 가능, 모두에게 마지막 설정 자동 복원 */}
+        <div className="mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">내 전략</span>
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPresetError(null);
+                  setPresetName("");
+                  setShowSaveModal(true);
+                }}
+                className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              >
+                + 현재 설정 저장
+              </button>
+            ) : (
+              <Link
+                href="/login?redirect=/backtest"
+                className="text-xs font-semibold text-brand hover:underline"
+              >
+                로그인하고 저장하기 →
+              </Link>
+            )}
+          </div>
+          {currentUser ? (
+            savedLoaded && savedStrategies.length === 0 ? (
+              <p className="mt-2 text-xs text-neutral-500">
+                아직 저장된 전략이 없어요. 종목·전략·기간을 맞춰놓고 저장해두면 한 번에 불러올 수 있어요.
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {savedStrategies.map((s) => {
+                  const active = activePresetId === s.id;
+                  return (
+                    <span
+                      key={s.id}
+                      className={`inline-flex items-center gap-1 rounded-full border px-1 py-0.5 text-xs ${
+                        active
+                          ? "border-brand bg-brand/10 text-brand-dark dark:text-brand"
+                          : "border-neutral-300 dark:border-neutral-700"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleLoadPreset(s)}
+                        className="max-w-[12rem] truncate rounded-full px-2 py-0.5 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+                        title={s.name}
+                      >
+                        {s.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePreset(s)}
+                        aria-label={`${s.name} 삭제`}
+                        className="mr-1 rounded-full px-1 text-[10px] text-neutral-400 hover:text-red-500"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            <p className="mt-2 text-xs text-neutral-500">
+              로그인하면 자주 쓰는 종목·전략 조합을 이름 붙여 저장하고 한 번에 불러올 수 있어요. 지금 입력한 값은 다음 방문 때 이 브라우저에 자동 복원돼요.
+            </p>
+          )}
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="block sm:col-span-2">
             <span className="text-sm font-medium">종목</span>
@@ -1495,6 +1684,58 @@ export default function BacktestPage() {
             )}
           </div>
         </section>
+      )}
+
+      {showSaveModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => !presetBusy && setShowSaveModal(false)}
+        >
+          <div
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white dark:bg-neutral-950 border-t sm:border border-neutral-200 dark:border-neutral-800 p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-base font-bold">현재 설정 저장</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              같은 이름으로 저장하면 덮어써져요. 최대 {MAX_SAVED}개까지.
+            </p>
+            <input
+              type="text"
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              placeholder="예: BTC 4시간 RSI"
+              maxLength={40}
+              autoFocus
+              className="mt-3 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSavePreset();
+              }}
+            />
+            {presetError && (
+              <p className="mt-2 text-xs text-red-500">{presetError}</p>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSaveModal(false)}
+                disabled={presetBusy}
+                className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-1.5 text-xs"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePreset}
+                disabled={presetBusy || !presetName.trim()}
+                className="rounded-full bg-brand text-white px-4 py-1.5 text-xs font-semibold hover:bg-brand-dark disabled:opacity-60"
+              >
+                {presetBusy ? "저장 중…" : "저장"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

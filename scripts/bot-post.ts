@@ -496,6 +496,8 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
       signals = computeDIYSignals(slice, {
         buy: (preset.customBuy ?? []) as Parameters<typeof computeDIYSignals>[1]["buy"],
         sell: (preset.customSell ?? []) as Parameters<typeof computeDIYSignals>[1]["sell"],
+        buyLogic: preset.buyLogic,
+        sellLogic: preset.sellLogic,
         stopLossPct: preset.stopLossPct,
         takeProfitPct: preset.takeProfitPct,
       });

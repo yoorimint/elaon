@@ -79,6 +79,9 @@ export type BotPreset = {
   // custom(DIY) 전용
   customBuy?: unknown[];
   customSell?: unknown[];
+  // 매수·매도 조건 결합 방식. 생략 시 매수 AND / 매도 OR (DIY 엔진 기본값).
+  buyLogic?: "and" | "or";
+  sellLogic?: "and" | "or";
   stopLossPct?: number;
   takeProfitPct?: number;
 };
@@ -643,6 +646,49 @@ export const BOT_STRATEGIES: BotPreset[] = [
     customSell: [
       { id: "s1", left: { kind: "close" }, op: "gt", right: { kind: "bb_upper", period: 20, stddev: 2 } },
       { id: "s2", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 65 } },
+    ],
+  },
+
+  // ---- sellLogic: "and" 활용 (확인 매도) ----
+  // 기본값(OR) 은 한 신호라도 뜨면 팔아 수익 덜먹고 나가기 쉬움.
+  // AND 로 묶으면 여러 지표가 동시에 과열/붕괴 확인될 때만 청산 → 수익 질주 허용.
+  {
+    id: "diy_rsi_bb_and_sell",
+    name: "DIY: RSI 과매도 매수 / (RSI>70 AND 볼린저 상단) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 30 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 70 } },
+      { id: "s2", left: { kind: "close" }, op: "gt", right: { kind: "bb_upper", period: 20, stddev: 2 } },
+    ],
+  },
+  {
+    id: "diy_trend_and_sell",
+    name: "DIY: EMA 정배열 매수 / (데드크로스 AND 종가<SMA200) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ema", period: 20 }, op: "cross_up", right: { kind: "ema", period: 50 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "ema", period: 20 }, op: "lt", right: { kind: "ema", period: 50 } },
+      { id: "s2", left: { kind: "close" }, op: "lt", right: { kind: "sma", period: 200 } },
+    ],
+  },
+  {
+    id: "diy_macd_confirm_and_sell",
+    name: "DIY: MACD 골든크로스 매수 / (데드크로스 AND RSI<50) 매도",
+    strategy: "custom", params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "macd", fast: 12, slow: 26 }, op: "cross_up", right: { kind: "macd_signal", fast: 12, slow: 26, signal: 9 } },
+    ],
+    sellLogic: "and",
+    customSell: [
+      { id: "s1", left: { kind: "macd", fast: 12, slow: 26 }, op: "lt", right: { kind: "macd_signal", fast: 12, slow: 26, signal: 9 } },
+      { id: "s2", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 50 } },
     ],
   },
 ];

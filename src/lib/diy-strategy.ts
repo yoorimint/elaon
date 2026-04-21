@@ -73,9 +73,14 @@ export type Condition = {
   right: IndicatorRef;
 };
 
+export type ConditionLogic = "and" | "or";
+
 export type DIYStrategy = {
-  buy: Condition[]; // AND
-  sell: Condition[]; // OR
+  buy: Condition[]; // 기본 AND (모든 조건 만족해야 매수)
+  sell: Condition[]; // 기본 OR (하나라도 맞으면 매도)
+  // 위 기본을 뒤집고 싶을 때 명시. 생략 시 buy=AND, sell=OR.
+  buyLogic?: ConditionLogic;
+  sellLogic?: ConditionLogic;
   stopLossPct?: number;
   takeProfitPct?: number;
   // 모의투자 등 과거 윈도우만 재계산할 때, 세션이 이미 보유 상태면
@@ -370,13 +375,17 @@ export function computeDIYSignals(
   if (strategy.buy.length === 0) return signals;
 
   const cache = buildCache([...strategy.buy, ...strategy.sell], candles);
+  const buyLogic = strategy.buyLogic ?? "and";
+  const sellLogic = strategy.sellLogic ?? "or";
   let inPos = strategy.initialInPos ?? false;
   let entryPrice = strategy.initialEntryPrice ?? 0;
 
   for (let i = 1; i < candles.length; i++) {
     if (!inPos) {
-      const allBuy = strategy.buy.every((c) => evalCondition(c, cache, i));
-      if (allBuy) {
+      const buyFired = buyLogic === "and"
+        ? strategy.buy.every((c) => evalCondition(c, cache, i))
+        : strategy.buy.some((c) => evalCondition(c, cache, i));
+      if (buyFired) {
         signals[i] = "buy";
         inPos = true;
         entryPrice = candles[i].close;
@@ -398,10 +407,12 @@ export function computeDIYSignals(
         continue;
       }
 
-      const anySell =
+      const sellFired =
         strategy.sell.length > 0 &&
-        strategy.sell.some((c) => evalCondition(c, cache, i));
-      if (anySell) {
+        (sellLogic === "and"
+          ? strategy.sell.every((c) => evalCondition(c, cache, i))
+          : strategy.sell.some((c) => evalCondition(c, cache, i)));
+      if (sellFired) {
         signals[i] = "sell";
         inPos = false;
         entryPrice = 0;

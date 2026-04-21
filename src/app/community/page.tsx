@@ -3,7 +3,14 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CATEGORIES, categoryLabel, listPosts, timeAgo, type Category, type Post } from "@/lib/community";
+import {
+  FILTER_CATEGORIES,
+  categoryLabel,
+  listPosts,
+  timeAgo,
+  type Category,
+  type Post,
+} from "@/lib/community";
 import { useAuth } from "@/components/AuthProvider";
 
 function CommunityList() {
@@ -72,7 +79,7 @@ function CommunityList() {
           >
             전체
           </button>
-          {CATEGORIES.map((c) => (
+          {FILTER_CATEGORIES.map((c) => (
             <button
               key={c.id}
               onClick={() => setCategory(c.id)}

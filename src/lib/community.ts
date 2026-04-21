@@ -10,6 +10,13 @@ export const CATEGORIES: { id: Category; label: string }[] = [
   { id: "question", label: "질문" },
 ];
 
+// 커뮤니티 목록 페이지의 필터 버튼용 — bot 카테고리도 노출해서 유저가
+// 봇 글만 모아볼 수 있게 한다.
+export const FILTER_CATEGORIES: { id: Category; label: string }[] = [
+  ...CATEGORIES,
+  { id: "bot", label: "봇추천전략" },
+];
+
 // 표시용 라벨 — bot 포함 전체
 const CATEGORY_LABELS: Record<Category, string> = {
   free: "자유",

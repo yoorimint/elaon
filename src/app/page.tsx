@@ -1,9 +1,23 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
 import { categoryLabel, timeAgo, fetchUsernameMap, type Category } from "@/lib/community";
 
 export const revalidate = 30;
+
+export const metadata: Metadata = {
+  title: "코인·주식 전략 백테스트 & 모의투자 무료 도구",
+  description:
+    "비트코인, 이더리움, 삼성전자, 애플 등 실제 과거 시세로 투자 전략을 백테스트하세요. 이동평균·RSI·볼린저·MACD·그리드 등 12종 전략 제공. 3분 안에 결과 확인하고 모의투자로 이어서 검증.",
+  alternates: { canonical: "https://www.eloan.kr" },
+  openGraph: {
+    title: "eloan — 코인·주식 백테스트 무료 도구",
+    description:
+      "실제 데이터로 전략을 3분 만에 검증. 업비트·Yahoo Finance 기반 백테스트 + 모의투자.",
+    url: "https://www.eloan.kr",
+  },
+};
 
 type SharedRow = {
   slug: string;

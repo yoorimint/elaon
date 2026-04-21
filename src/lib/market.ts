@@ -289,30 +289,42 @@ export function maxDaysFor(kind: MarketKind, tf: Timeframe): number {
 }
 
 // Formatting helpers.
+// 가격이 매우 작은 자산(PEPE ~$0.0000073, SHIB ~$0.0000140 등)은 고정 소수점으로 찍으면
+// 전부 $0.0000 으로 뭉개진다. 1 미만 구간에서는 유효숫자 기준으로 바꿔서 의미 있는
+// 자릿수가 남도록 한다.
 export function formatMoney(v: number, currency: Currency): string {
   if (!Number.isFinite(v)) return "-";
   const abs = Math.abs(v);
-  const maximumFractionDigits = abs >= 1000 ? (currency === "USD" ? 2 : 0) : abs >= 1 ? 2 : 4;
-  if (currency === "USD") {
-    return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(v)}`;
+  const symbol = currency === "USD" ? "$" : "₩";
+  const locale = currency === "USD" ? "en-US" : "ko-KR";
+  if (abs === 0) return `${symbol}0`;
+  if (abs >= 1000) {
+    const digits = currency === "USD" ? 2 : 0;
+    return `${symbol}${new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(v)}`;
   }
-  return `₩${new Intl.NumberFormat("ko-KR", { maximumFractionDigits }).format(v)}`;
+  if (abs >= 1) {
+    return `${symbol}${new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(v)}`;
+  }
+  return `${symbol}${new Intl.NumberFormat(locale, { maximumSignificantDigits: 4 }).format(v)}`;
 }
 
 export function formatMoneyShort(v: number, currency: Currency): string {
   if (!Number.isFinite(v)) return "-";
+  const abs = Math.abs(v);
   if (currency === "USD") {
-    const abs = Math.abs(v);
     if (abs >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
     if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
     if (abs >= 1_000) return `$${(v / 1_000).toFixed(2)}K`;
-    return `$${v.toFixed(2)}`;
+    if (abs >= 1) return `$${v.toFixed(2)}`;
+    if (abs === 0) return "$0";
+    return `$${new Intl.NumberFormat("en-US", { maximumSignificantDigits: 4 }).format(v)}`;
   }
-  const abs = Math.abs(v);
   if (abs >= 100_000_000) return `${(v / 100_000_000).toFixed(2)}억`;
   if (abs >= 10_000) return `${(v / 10_000).toFixed(1)}만`;
   if (abs >= 100) return v.toFixed(0);
-  return v.toFixed(2);
+  if (abs >= 1) return v.toFixed(2);
+  if (abs === 0) return "0";
+  return new Intl.NumberFormat("ko-KR", { maximumSignificantDigits: 4 }).format(v);
 }
 
 export function currencySymbol(currency: Currency): string {

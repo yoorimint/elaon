@@ -168,6 +168,201 @@ export const BOT_STRATEGIES: BotPreset[] = [
       { id: "s1", left: { kind: "stoch_k", period: 14 }, op: "cross_down", right: { kind: "stoch_d", period: 14, smooth: 3 } },
     ],
   },
+  {
+    id: "diy_rsi_strong",
+    name: "DIY: 강한 RSI 역추세 (RSI<20 / RSI>80)",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 80 } },
+    ],
+  },
+  {
+    id: "diy_williams",
+    name: "DIY: Williams %R 극단값",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "williams_r", period: 14 }, op: "lt", right: { kind: "const", value: -90 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "williams_r", period: 14 }, op: "gt", right: { kind: "const", value: -10 } },
+    ],
+  },
+  {
+    id: "diy_cci",
+    name: "DIY: CCI 매수/매도",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "cci", period: 20 }, op: "lt", right: { kind: "const", value: -100 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "cci", period: 20 }, op: "gt", right: { kind: "const", value: 100 } },
+    ],
+  },
+  {
+    id: "diy_mfi",
+    name: "DIY: MFI(자금흐름) 과매도/과매수",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "mfi", period: 14 }, op: "lt", right: { kind: "const", value: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "mfi", period: 14 }, op: "gt", right: { kind: "const", value: 80 } },
+    ],
+  },
+  {
+    id: "diy_donchian_breakout",
+    name: "DIY: Donchian 채널 돌파 (20일 신고가/신저가)",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "donchian_upper", period: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "donchian_lower", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_sar",
+    name: "DIY: 파라볼릭 SAR 반전",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "sar", step: 0.02, max: 0.2 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "sar", step: 0.02, max: 0.2 } },
+    ],
+  },
+  {
+    id: "diy_vwap",
+    name: "DIY: VWAP 크로스",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "vwap" } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "vwap" } },
+    ],
+  },
+  {
+    id: "diy_rsi_macd",
+    name: "DIY: RSI 과매도 + MACD 골든크로스 동시",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "rsi", period: 14 }, op: "lt", right: { kind: "const", value: 40 } },
+      { id: "b2", left: { kind: "macd", fast: 12, slow: 26 }, op: "cross_up", right: { kind: "macd_signal", fast: 12, slow: 26, signal: 9 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "rsi", period: 14 }, op: "gt", right: { kind: "const", value: 70 } },
+    ],
+  },
+  {
+    id: "diy_ao_zero",
+    name: "DIY: 어썸 오실레이터 0선 돌파",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ao" }, op: "cross_up", right: { kind: "const", value: 0 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ao" }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+  },
+  {
+    id: "diy_ema_cross",
+    name: "DIY: EMA 9/21 크로스",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ema", period: 9 }, op: "cross_up", right: { kind: "ema", period: 21 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ema", period: 9 }, op: "cross_down", right: { kind: "ema", period: 21 } },
+    ],
+  },
+  {
+    id: "diy_heikin",
+    name: "DIY: 하이킨아시 종가가 시가 돌파",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ha_close" }, op: "cross_up", right: { kind: "ha_open" } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ha_close" }, op: "cross_down", right: { kind: "ha_open" } },
+    ],
+  },
+  {
+    id: "diy_adx_trend",
+    name: "DIY: ADX 25 이상 + 종가가 SMA20 위 (추세 추종)",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "adx", period: 14 }, op: "gt", right: { kind: "const", value: 25 } },
+      { id: "b2", left: { kind: "close" }, op: "gt", right: { kind: "sma", period: 20 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "sma", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_bb_squeeze",
+    name: "DIY: 볼린저 상단 돌파 매수 / 중앙선 이탈 매도",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "close" }, op: "cross_up", right: { kind: "bb_upper", period: 20, stddev: 2 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "close" }, op: "cross_down", right: { kind: "bb_middle", period: 20 } },
+    ],
+  },
+  {
+    id: "diy_momentum_sl",
+    name: "DIY: 모멘텀 양전 + 손절 7%",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "momentum", period: 10 }, op: "cross_up", right: { kind: "const", value: 0 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "momentum", period: 10 }, op: "cross_down", right: { kind: "const", value: 0 } },
+    ],
+    stopLossPct: 7,
+  },
+  {
+    id: "diy_roc",
+    name: "DIY: ROC 모멘텀 추종",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "roc", period: 12 }, op: "cross_up", right: { kind: "const", value: 5 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "roc", period: 12 }, op: "cross_down", right: { kind: "const", value: -3 } },
+    ],
+  },
+  {
+    id: "diy_ichimoku_pure",
+    name: "DIY: 일목 전환선이 기준선 돌파",
+    strategy: "custom",
+    params: {},
+    customBuy: [
+      { id: "b1", left: { kind: "ichimoku_conv", period: 9 }, op: "cross_up", right: { kind: "ichimoku_base", period: 26 } },
+    ],
+    customSell: [
+      { id: "s1", left: { kind: "ichimoku_conv", period: 9 }, op: "cross_down", right: { kind: "ichimoku_base", period: 26 } },
+    ],
+  },
 ];
 
 // 백테스트 기간 로테이션 (일 단위). Counter 에 따라 골라서 다양성 확보.
@@ -197,31 +392,12 @@ export const BOT_NARRATIVE_ANGLES: {
   { id: "headline", instruction: "기사 리드 스타일. 첫 문장에서 가장 충격적인 숫자를 던지고 그 뒤로 배경·상세·경고 순." },
 ];
 
-// Counter 로부터 (symbol, strategy, period, narrative) 쌍을 결정.
-// 각 축마다 소수(prime) 배수를 다르게 써서 인접 counter 값이 같은 그룹으로
-// 몰리지 않게 분산. 예전엔 전략 배열에 MA 4개가 연속으로 있어서 첫 4 포스트가
-// 전부 이동평균으로 나왔음.
-// 단, gcd(multiplier, length) == 1 이어야 전체 주기가 length 로 유지됨.
-// BOT_STRATEGIES.length(=20) 와 서로소인 7 사용 — 20개 조합 전부 한 번씩 순회.
-// BOT_SYMBOLS.length(=100) 와 서로소인 13 사용.
-// BOT_NARRATIVE_ANGLES.length(=12) 와 서로소인 5 사용.
-// BOT_PERIODS.length(=3) 는 단순 counter%3.
-export function pickRotationPair(counter: number): {
-  symbol: string;
-  preset: BotPreset;
-  period: { label: string; days: number };
-  narrative: { id: string; instruction: string };
-} {
-  const symbol = BOT_SYMBOLS[(counter * 13) % BOT_SYMBOLS.length];
-  const preset = BOT_STRATEGIES[(counter * 7) % BOT_STRATEGIES.length];
-  const period = BOT_PERIODS[counter % BOT_PERIODS.length];
-  const narrative =
-    BOT_NARRATIVE_ANGLES[(counter * 5) % BOT_NARRATIVE_ANGLES.length];
-  return { symbol, preset, period, narrative };
-}
-
 // ===== 한글 라벨 매핑 =====
 // 봇 게시글 제목·본문에 KRW-XRP 대신 "리플" 처럼 친숙한 이름을 노출.
+// 주식·선물은 src/lib/market.ts 의 STOCK_MARKETS 를 그대로 재활용 (단일 소스).
+// 코인은 BOT_SYMBOLS 에 등장하는 50종 전부 매핑.
+
+import { STOCK_MARKETS } from "./market";
 
 const CRYPTO_KO: Record<string, string> = {
   BTC: "비트코인", ETH: "이더리움", XRP: "리플", SOL: "솔라나", DOGE: "도지코인",
@@ -239,40 +415,49 @@ const CRYPTO_KO: Record<string, string> = {
   MATIC: "폴리곤",
 };
 
-const KR_STOCK_KO: Record<string, string> = {
-  "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "373220.KS": "LG에너지솔루션",
-  "207940.KS": "삼성바이오로직스", "005380.KS": "현대차", "000270.KS": "기아",
-  "035420.KS": "NAVER", "068270.KS": "셀트리온", "005490.KS": "POSCO홀딩스",
-  "051910.KS": "LG화학", "006400.KS": "삼성SDI", "105560.KS": "KB금융",
-  "055550.KS": "신한지주", "012330.KS": "현대모비스", "028260.KS": "삼성물산",
-  "066570.KS": "LG전자", "003550.KS": "LG", "017670.KS": "SK텔레콤",
-  "030200.KS": "KT", "015760.KS": "한국전력", "259960.KS": "크래프톤",
-  "293490.KQ": "카카오게임즈", "247540.KQ": "에코프로비엠", "086520.KQ": "에코프로",
-  "352820.KQ": "하이브",
-};
+// STOCK_MARKETS 에서 id → name 매핑 한 번 빌드
+const STOCK_NAME_MAP: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const s of STOCK_MARKETS) m.set(s.id, s.name);
+  return m;
+})();
 
-const US_STOCK_KO: Record<string, string> = {
-  AAPL: "애플", MSFT: "마이크로소프트", NVDA: "엔비디아", GOOGL: "알파벳(구글)",
-  AMZN: "아마존", META: "메타", TSLA: "테슬라", AVGO: "브로드컴",
-  JPM: "JP모건", V: "비자", UNH: "유나이티드헬스", COST: "코스트코",
-  NFLX: "넷플릭스", AMD: "AMD", ADBE: "어도비",
-};
-
-// 종목 심볼(KRW-BTC / yahoo:005930.KS / okx_fut:BTC-USDT-SWAP 등)을
-// 사용자 친숙한 한글 이름으로 변환. 매핑 없는 건 심볼 그대로.
 export function symbolPrettyLabel(symbol: string): string {
   if (symbol.startsWith("KRW-")) {
     const t = symbol.slice(4);
     return CRYPTO_KO[t] ?? t;
   }
   if (symbol.startsWith("yahoo:")) {
-    const t = symbol.slice("yahoo:".length);
-    return KR_STOCK_KO[t] ?? US_STOCK_KO[t] ?? t;
+    // STOCK_MARKETS 에 등록된 종목이면 그 이름(한글), 아니면 티커 그대로
+    return STOCK_NAME_MAP.get(symbol) ?? symbol.slice("yahoo:".length);
   }
   if (symbol.startsWith("okx_fut:")) {
+    // STOCK_MARKETS 에 등록된 OKX 종목이면 "비트코인 (선물)" 식 이름 그대로
+    const fromMarket = STOCK_NAME_MAP.get(symbol);
+    if (fromMarket) return fromMarket;
     const t = symbol.slice("okx_fut:".length).replace("-USDT-SWAP", "");
     const ko = CRYPTO_KO[t];
     return ko ? `${ko} 선물` : `${t} 선물`;
   }
   return symbol;
+}
+
+// Counter 는 단순 식별/카운트 용. 실제 (symbol, strategy, period, narrative)
+// 는 매번 진짜 랜덤으로 뽑는다 — 봇 글이 패턴화되지 않게.
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+export function pickRotationPair(_counter: number): {
+  symbol: string;
+  preset: BotPreset;
+  period: { label: string; days: number };
+  narrative: { id: string; instruction: string };
+} {
+  return {
+    symbol: pick(BOT_SYMBOLS),
+    preset: pick(BOT_STRATEGIES),
+    period: pick(BOT_PERIODS),
+    narrative: pick(BOT_NARRATIVE_ANGLES),
+  };
 }

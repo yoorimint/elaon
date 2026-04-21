@@ -55,6 +55,7 @@ export const metadata: Metadata = {
   },
   // 검색엔진 사이트 소유 확인
   verification: {
+    google: "HY8SW6xhz4-x1raJXYN7SEWE7PA5r2DyWFgLt4rYyjA",
     other: {
       "naver-site-verification": "4cb9fef10cd84e338345bdd5799db0881e0bbe83",
     },

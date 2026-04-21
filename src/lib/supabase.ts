@@ -40,7 +40,8 @@ export type SharedBacktest = {
     close: number;
     volume: number;
   }> | null;
-  signals: unknown[] | null;
+  // DB 저장 시 sparse 로 들어가므로 unknown. expandSignals 로 복원해 사용.
+  signals: unknown | null;
   custom_buy: unknown[] | null;
   custom_sell: unknown[] | null;
   stop_loss_pct: number | null;

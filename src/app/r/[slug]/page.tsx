@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
-import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
+import type { StrategyId, StrategyParams } from "@/lib/strategies";
 import type { Candle } from "@/lib/upbit";
 import type { Condition } from "@/lib/diy-strategy";
 import { SharedChart } from "@/components/SharedChart";
 import { SharedPriceChart } from "@/components/SharedPriceChart";
 import { SharedDIYDetails } from "@/components/SharedDIYDetails";
 import { currencyOf } from "@/lib/market";
+import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
 
 export const revalidate = 60;
@@ -273,7 +274,7 @@ export default async function SharedPage({ params }: { params: { slug: string } 
           </p>
           <SharedPriceChart
             candles={data.candles as Candle[]}
-            signals={data.signals as Signal[]}
+            signals={expandSignals(data.signals, (data.candles as Candle[]).length)}
             strategy={data.strategy as StrategyId}
             params={data.params as StrategyParams}
             customBuy={(data.custom_buy ?? undefined) as Condition[] | undefined}

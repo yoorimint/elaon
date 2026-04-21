@@ -4,6 +4,46 @@ import type { Candle } from "./upbit";
 import type { Signal, StrategyId, StrategyParams } from "./strategies";
 import type { Condition } from "./diy-strategy";
 
+// 시그널 희소 저장 — 대부분 "hold" 인 배열을 실제 거래 이벤트만 담은 sparse
+// 배열로 변환해 DB 용량을 ~95% 줄인다. 조회 시 expandSignals 로 원래 길이 배열
+// 복원. Postgres JSONB 에서 다음 두 포맷 모두 허용:
+//   • dense (예전 포맷): ["hold","hold","buy",...]
+//   • sparse (새 포맷):   [{ i: 3, s: "buy" }, { i: 10, s: "sell" }]
+
+type SparseSignalEntry = { i: number; s: Exclude<Signal, "hold"> };
+
+export function compactSignals(signals: Signal[]): SparseSignalEntry[] {
+  const out: SparseSignalEntry[] = [];
+  for (let i = 0; i < signals.length; i++) {
+    const s = signals[i];
+    if (s !== "hold") out.push({ i, s });
+  }
+  return out;
+}
+
+export function expandSignals(
+  stored: unknown,
+  length: number,
+): Signal[] {
+  const arr: Signal[] = new Array(length).fill("hold");
+  if (!Array.isArray(stored)) return arr;
+  // 예전 dense 포맷 호환: 첫 원소가 문자열이거나 "hold" 포함 객체면 그대로
+  if (stored.length > 0 && (typeof stored[0] === "string" || stored[0] === "hold")) {
+    // dense. 길이가 length 와 다를 수 있으니 잘라서 쓴다.
+    for (let i = 0; i < Math.min(length, stored.length); i++) {
+      arr[i] = stored[i] as Signal;
+    }
+    return arr;
+  }
+  // sparse
+  for (const entry of stored as Array<{ i?: number; s?: unknown }>) {
+    if (typeof entry?.i === "number" && entry.s !== undefined) {
+      arr[entry.i] = entry.s as Signal;
+    }
+  }
+  return arr;
+}
+
 const SLUG_CHARS = "abcdefghijkmnpqrstuvwxyz23456789";
 
 function randomSlug(len = 8) {
@@ -62,7 +102,7 @@ export async function saveShare(p: SharePayload): Promise<string> {
     author_id: authorId,
     is_private: p.isPrivate ?? false,
     candles: p.candles ?? null,
-    signals: (p.signals ?? null) as unknown as Record<string, unknown> | null,
+    signals: p.signals ? compactSignals(p.signals) : null,
     custom_buy: (p.customBuy ?? null) as unknown as Record<string, unknown> | null,
     custom_sell: (p.customSell ?? null) as unknown as Record<string, unknown> | null,
     stop_loss_pct: p.stopLossPct ?? null,

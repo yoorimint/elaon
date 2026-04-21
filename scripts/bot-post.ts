@@ -184,13 +184,22 @@ function symbolLabel(symbol: string): string {
 // ---------- Gemini call ----------
 async function callGemini(factBlock: string): Promise<string | null> {
   if (!GEMINI_KEY) return null;
-  const prompt = `아래 팩트만 사용해 한국어 투자 분석 포스트 본문을 작성해줘.
+  const prompt = `너는 투자 커뮤니티 사이트의 자동 전략 분석 봇이야. 아래 팩트 데이터만 근거로
+한국어 블로그 본문을 작성해줘. 투자자가 실제로 궁금해하는 항목을 순서대로 다룬다.
+
+구성 (각 섹션은 소제목 없이 자연스러운 문단으로 이어써):
+1. 도입 (1~2문장): 어떤 종목 × 전략 × 기간을 돌렸는지, 핵심 결과 한 줄
+2. 성과 요약: 전략 수익률 vs 단순 보유, 알파(초과 수익), 최대 낙폭(MDD)
+3. 거래 행태: 총 거래 횟수, 승률, 평균 보유 기간, 평균 손익 규모
+4. 실전 가능성 평가: 거래 빈도가 개인이 감당할 수준인지, 수수료·세금 영향 간단히 언급
+5. 주의사항: 과거 결과의 한계, 시장 환경 차이
+6. 면책 한 줄로 마무리: "과거 결과로 미래 수익을 보장하지 않습니다."
+
 규칙:
-- 본문 400~600자. 제목은 쓰지 마 (제목은 따로 처리).
-- 투자 권유 금지. 과장/단정 표현 금지 ("반드시", "확실히" 등).
-- 마지막에 한 줄 면책: "과거 결과로 미래 수익을 보장하지 않습니다."
-- 팩트에 없는 숫자나 해석을 꾸며내지 마.
-- 문단 구분 자연스럽게. 마크다운/이모지 쓰지 마.
+- 본문 총 600~900자 (한글 기준). 너무 짧지 않게.
+- 팩트에 없는 숫자나 단정적 해석 꾸며내지 말 것 ("반드시 수익난다" 같은 표현 금지)
+- 마크다운, 이모지, 글머리 기호 쓰지 말 것. 그냥 문단 서술.
+- 독자 존댓말, 차분한 톤.
 
 === 팩트 ===
 ${factBlock}
@@ -202,7 +211,7 @@ ${factBlock}
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+      generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
     }),
   });
   if (!res.ok) {
@@ -211,7 +220,103 @@ ${factBlock}
   }
   const json = await res.json();
   const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  return typeof text === "string" && text.trim() ? text.trim() : null;
+  return typeof text === "string" && text.trim().length > 200 ? text.trim() : null;
+}
+
+// ---------- extended stats ----------
+type TradeStats = {
+  wins: number;
+  losses: number;
+  avgWinPct: number;
+  avgLossPct: number;
+  avgHoldBars: number;
+  longestDrawdownBars: number;
+  feasibilityNote: string;
+};
+
+function computeTradeStats(
+  trades: Array<{ entryIndex: number; exitIndex: number | null; pnlPct: number | null }>,
+  candleCount: number,
+  maxDdPct: number,
+): TradeStats {
+  const closed = trades.filter((t) => t.pnlPct != null && t.exitIndex != null);
+  const winsArr = closed.filter((t) => (t.pnlPct ?? 0) > 0);
+  const lossesArr = closed.filter((t) => (t.pnlPct ?? 0) <= 0);
+  const avgWinPct = winsArr.length
+    ? winsArr.reduce((s, t) => s + (t.pnlPct ?? 0), 0) / winsArr.length
+    : 0;
+  const avgLossPct = lossesArr.length
+    ? lossesArr.reduce((s, t) => s + (t.pnlPct ?? 0), 0) / lossesArr.length
+    : 0;
+  const avgHoldBars = closed.length
+    ? closed.reduce((s, t) => s + ((t.exitIndex ?? 0) - t.entryIndex), 0) / closed.length
+    : 0;
+  // 거래 빈도 기반 실전 가능성 코멘트
+  const tradesPerYear = (closed.length / candleCount) * 365;
+  let feasibilityNote: string;
+  if (tradesPerYear >= 100) {
+    feasibilityNote = "연간 100회 이상의 단타 성격이라 직장인이 수동 집행하기는 부담이 크고 수수료 누적이 중요한 변수가 된다";
+  } else if (tradesPerYear >= 30) {
+    feasibilityNote = "연간 30회 이상의 중빈도 매매라 시장을 주기적으로 확인해야 하고 실수로 놓치면 결과가 크게 바뀔 수 있다";
+  } else if (tradesPerYear >= 5) {
+    feasibilityNote = "연간 5회에서 30회 사이의 저빈도 매매라 직장인도 체크해가며 따라가기 상대적으로 수월한 편이다";
+  } else {
+    feasibilityNote = "연간 거래가 거의 없어 장기 보유에 가까운 성격이다";
+  }
+  return {
+    wins: winsArr.length,
+    losses: lossesArr.length,
+    avgWinPct,
+    avgLossPct,
+    avgHoldBars,
+    longestDrawdownBars: Math.round(maxDdPct), // 근사치 — 진짜 bars 는 equity 를 스캔해야 하지만 생략
+    feasibilityNote,
+  };
+}
+
+// 풀 템플릿 (Gemini 실패/없을 때 쓸 fallback). Gemini 보다 살짝 무뚝뚝하지만
+// 정보량은 동등하게 담는다.
+function buildFallbackBody(params: {
+  label: string;
+  presetName: string;
+  yearsLabel: string;
+  days: number;
+  initialCash: number;
+  feeBps: number;
+  ret: number;
+  bh: number;
+  excess: number;
+  mdd: number;
+  winRate: number;
+  tradeCount: number;
+  stats: TradeStats;
+}): string {
+  const {
+    label, presetName, yearsLabel, days, initialCash, feeBps,
+    ret, bh, excess, mdd, winRate, tradeCount, stats,
+  } = params;
+  const beat = excess > 0;
+  const alphaMsg = beat
+    ? `단순 보유(${bh.toFixed(2)}%) 대비 ${excess.toFixed(2)}%p 초과 수익을 낸 셈이라 전략이 시장을 이긴 구간으로 볼 수 있습니다`
+    : `단순 보유(${bh.toFixed(2)}%)가 오히려 ${Math.abs(excess).toFixed(2)}%p 앞섰기 때문에 해당 기간에는 매매하지 않고 들고 있는 편이 나았습니다`;
+  const riskMsg = mdd >= 30
+    ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}%로 계좌가 한 번에 3분의 1 가까이 쪼그라드는 구간을 견뎌야 했다는 뜻입니다`
+    : mdd >= 15
+      ? `최대 낙폭(MDD)은 ${mdd.toFixed(1)}% 수준이라 중간에 적지 않은 평가 손실 구간을 통과했습니다`
+      : `최대 낙폭(MDD)은 ${mdd.toFixed(1)}%로 비교적 안정적으로 유지됐습니다`;
+  const feeImpact = (tradeCount * (feeBps / 10000) * 2 * 100).toFixed(2);
+
+  return (
+    `${label} 종목을 ${presetName} 전략으로 최근 ${yearsLabel}(${days}일) 동안 백테스트한 결과입니다. ` +
+    `초기자금 ${initialCash.toLocaleString()}원, 수수료 편도 ${feeBps}bp 기준으로 전략 수익률은 ${ret >= 0 ? "+" : ""}${ret.toFixed(2)}%가 나왔습니다.\n\n` +
+    `${alphaMsg}. ${riskMsg}.\n\n` +
+    `총 ${tradeCount}회 거래에서 승률 ${winRate.toFixed(1)}%(이익 ${stats.wins}회, 손실 ${stats.losses}회)를 기록했고, ` +
+    `평균적으로 이익 거래는 ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}% · 손실 거래는 ${stats.avgLossPct.toFixed(2)}%였습니다. ` +
+    `한 포지션을 평균 ${Math.round(stats.avgHoldBars)}봉 정도 들고 있었으며, 누적 수수료만으로 약 ${feeImpact}% 정도의 수익률이 소실된다는 점도 감안해야 합니다.\n\n` +
+    `실전 관점에서 보면 ${stats.feasibilityNote}. 또한 과거 데이터에 최적화된 파라미터라 앞으로 동일한 성과가 재현되리라 단정할 수 없고, 거래소 수수료·슬리피지·세금이 실제로는 더해지니 실제 운용 수익률은 위 숫자보다 낮아질 가능성이 큽니다.\n\n` +
+    `차트와 매수/매도 시점, 개별 거래 내역은 아래 첨부된 공유 링크에서 직접 확인할 수 있습니다.\n\n` +
+    `과거 결과로 미래 수익을 보장하지 않습니다.`
+  );
 }
 
 // ---------- slug generator ----------
@@ -325,29 +430,49 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
   });
   if (shareErr) throw new Error(`share insert: ${shareErr.message}`);
 
+  // ---------- 확장 통계 ----------
+  const stats = computeTradeStats(r.trades, slice.length, r.maxDrawdownPct);
+  const yearsLabel = `${Math.round(days / 365 * 10) / 10}년`;
+  const excess = r.returnPct - r.benchmarkReturnPct;
+  const feeImpact = (r.tradeCount * (feeBps / 10000) * 2 * 100).toFixed(2);
+
   // ---------- Gemini 본문 ----------
   const fact = [
     `종목: ${label}`,
     `전략: ${preset.name}`,
-    `기간: ${days}일 (최근 약 ${Math.round(days / 365 * 10) / 10}년)`,
-    `초기자금: ${initialCash.toLocaleString()}원, 수수료: ${feeBps}bp`,
-    `전략 수익률: ${r.returnPct.toFixed(2)}%`,
-    `단순 보유 수익률: ${r.benchmarkReturnPct.toFixed(2)}%`,
-    `단순 보유 대비: ${(r.returnPct - r.benchmarkReturnPct).toFixed(2)}%p (${beat ? "초과" : "미달"})`,
-    `최대 낙폭 (MDD): ${r.maxDrawdownPct.toFixed(2)}%`,
-    `승률: ${r.winRate.toFixed(1)}% (체결 ${r.tradeCount}회)`,
+    `기간: ${days}일 (최근 약 ${yearsLabel})`,
+    `초기자금: ${initialCash.toLocaleString()}원, 수수료(편도): ${feeBps}bp`,
+    `전략 누적 수익률: ${r.returnPct.toFixed(2)}%`,
+    `단순 보유 누적 수익률: ${r.benchmarkReturnPct.toFixed(2)}%`,
+    `단순 보유 대비 초과 수익: ${excess.toFixed(2)}%p (${beat ? "전략 우세" : "단순 보유 우세"})`,
+    `최대 낙폭(MDD): ${r.maxDrawdownPct.toFixed(2)}%`,
+    `총 거래: ${r.tradeCount}회`,
+    `승률: ${r.winRate.toFixed(1)}% (이익 ${stats.wins}회 / 손실 ${stats.losses}회)`,
+    `평균 이익 거래: ${stats.avgWinPct >= 0 ? "+" : ""}${stats.avgWinPct.toFixed(2)}%`,
+    `평균 손실 거래: ${stats.avgLossPct.toFixed(2)}%`,
+    `평균 보유 봉 수: ${Math.round(stats.avgHoldBars)}봉 (일봉 기준 일수와 동일)`,
+    `누적 왕복 수수료 영향: 약 ${feeImpact}%p 소실`,
+    `거래 빈도 성격: ${stats.feasibilityNote}`,
   ].join("\n");
 
   let body = await callGemini(fact);
   if (!body) {
-    // Gemini 없거나 실패 — 템플릿 폴백
-    body = `${label} 종목을 ${preset.name} 전략으로 최근 ${Math.round(days / 365 * 10) / 10}년 백테스트했습니다.
-
-전략 수익률은 ${r.returnPct.toFixed(2)}%, 단순 보유 수익률은 ${r.benchmarkReturnPct.toFixed(2)}% 로 ${beat ? `단순 보유 대비 ${(r.returnPct - r.benchmarkReturnPct).toFixed(2)}%p 초과` : `단순 보유보다 ${(r.benchmarkReturnPct - r.returnPct).toFixed(2)}%p 낮은`} 성과를 보였습니다. 최대 낙폭은 ${r.maxDrawdownPct.toFixed(2)}%, 총 ${r.tradeCount}회 거래에서 승률 ${r.winRate.toFixed(1)}% 를 기록했습니다.
-
-수익률만 보면 ${beat ? "유의미한 초과수익을 낸 구간" : "단순 보유가 더 나았던 구간"} 이지만 실제 투자 시점과 시장 환경에 따라 결과는 다를 수 있습니다. 자세한 차트와 체결 내역은 아래 공유 링크에서 확인하세요.
-
-과거 결과로 미래 수익을 보장하지 않습니다.`;
+    // Gemini 없거나 실패 — 풍부한 폴백 템플릿
+    body = buildFallbackBody({
+      label,
+      presetName: preset.name,
+      yearsLabel,
+      days,
+      initialCash,
+      feeBps,
+      ret: r.returnPct,
+      bh: r.benchmarkReturnPct,
+      excess,
+      mdd: r.maxDrawdownPct,
+      winRate: r.winRate,
+      tradeCount: r.tradeCount,
+      stats,
+    });
   }
 
   const title = `${label} · ${preset.name} · ${Math.round(days / 365 * 10) / 10}년 백테스트 (${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%)`;

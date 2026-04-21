@@ -212,3 +212,60 @@ export function pickRotationPair(counter: number): {
     BOT_NARRATIVE_ANGLES[Math.floor(counter / 5) % BOT_NARRATIVE_ANGLES.length];
   return { symbol, preset, period, narrative };
 }
+
+// ===== 한글 라벨 매핑 =====
+// 봇 게시글 제목·본문에 KRW-XRP 대신 "리플" 처럼 친숙한 이름을 노출.
+
+const CRYPTO_KO: Record<string, string> = {
+  BTC: "비트코인", ETH: "이더리움", XRP: "리플", SOL: "솔라나", DOGE: "도지코인",
+  ADA: "에이다", TRX: "트론", LINK: "체인링크", AVAX: "아발란체", DOT: "폴카닷",
+  BCH: "비트코인캐시", LTC: "라이트코인", ATOM: "코스모스", NEAR: "니어",
+  UNI: "유니스왑", ETC: "이더리움클래식", XLM: "스텔라", FIL: "파일코인",
+  SHIB: "시바이누", APT: "앱토스", ARB: "아비트럼", OP: "옵티미즘",
+  SUI: "수이", INJ: "인젝티브", TIA: "셀레스티아", SEI: "세이", TON: "톤",
+  WLD: "월드코인", AAVE: "에이브", ALGO: "알고랜드", APE: "에이프코인",
+  AXS: "엑시인피니티", CHZ: "칠리즈", CRO: "크로노스", CRV: "커브",
+  EGLD: "멀티버스엑스", ENJ: "엔진코인", FTM: "팬텀", GRT: "더그래프",
+  HBAR: "헤데라", ICP: "인터넷컴퓨터", IOTA: "아이오타", KAVA: "카바",
+  LDO: "리도다오", MANA: "디센트럴랜드", PEPE: "페페", SAND: "샌드박스",
+  SNX: "신테틱스", STX: "스택스", ZRX: "제로엑스", BNB: "바이낸스코인",
+  MATIC: "폴리곤",
+};
+
+const KR_STOCK_KO: Record<string, string> = {
+  "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "373220.KS": "LG에너지솔루션",
+  "207940.KS": "삼성바이오로직스", "005380.KS": "현대차", "000270.KS": "기아",
+  "035420.KS": "NAVER", "068270.KS": "셀트리온", "005490.KS": "POSCO홀딩스",
+  "051910.KS": "LG화학", "006400.KS": "삼성SDI", "105560.KS": "KB금융",
+  "055550.KS": "신한지주", "012330.KS": "현대모비스", "028260.KS": "삼성물산",
+  "066570.KS": "LG전자", "003550.KS": "LG", "017670.KS": "SK텔레콤",
+  "030200.KS": "KT", "015760.KS": "한국전력", "259960.KS": "크래프톤",
+  "293490.KQ": "카카오게임즈", "247540.KQ": "에코프로비엠", "086520.KQ": "에코프로",
+  "352820.KQ": "하이브",
+};
+
+const US_STOCK_KO: Record<string, string> = {
+  AAPL: "애플", MSFT: "마이크로소프트", NVDA: "엔비디아", GOOGL: "알파벳(구글)",
+  AMZN: "아마존", META: "메타", TSLA: "테슬라", AVGO: "브로드컴",
+  JPM: "JP모건", V: "비자", UNH: "유나이티드헬스", COST: "코스트코",
+  NFLX: "넷플릭스", AMD: "AMD", ADBE: "어도비",
+};
+
+// 종목 심볼(KRW-BTC / yahoo:005930.KS / okx_fut:BTC-USDT-SWAP 등)을
+// 사용자 친숙한 한글 이름으로 변환. 매핑 없는 건 심볼 그대로.
+export function symbolPrettyLabel(symbol: string): string {
+  if (symbol.startsWith("KRW-")) {
+    const t = symbol.slice(4);
+    return CRYPTO_KO[t] ?? t;
+  }
+  if (symbol.startsWith("yahoo:")) {
+    const t = symbol.slice("yahoo:".length);
+    return KR_STOCK_KO[t] ?? US_STOCK_KO[t] ?? t;
+  }
+  if (symbol.startsWith("okx_fut:")) {
+    const t = symbol.slice("okx_fut:".length).replace("-USDT-SWAP", "");
+    const ko = CRYPTO_KO[t];
+    return ko ? `${ko} 선물` : `${t} 선물`;
+  }
+  return symbol;
+}

@@ -14,7 +14,13 @@ import { createClient } from "@supabase/supabase-js";
 import type { Candle } from "@/lib/upbit";
 import { computeSignals } from "@/lib/strategies";
 import { runBacktest } from "@/lib/backtest";
-import { BOT_SYMBOLS, BOT_STRATEGIES, BOT_NARRATIVE_ANGLES, pickRotationPair } from "@/lib/bot-symbols";
+import {
+  BOT_SYMBOLS,
+  BOT_STRATEGIES,
+  BOT_NARRATIVE_ANGLES,
+  pickRotationPair,
+  symbolPrettyLabel,
+} from "@/lib/bot-symbols";
 import { computeDIYSignals } from "@/lib/diy-strategy";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -469,7 +475,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
   }
   const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
 
-  const label = symbolLabel(symbol);
+  const label = symbolPrettyLabel(symbol);
   const days = Math.round((slice[slice.length - 1].timestamp - slice[0].timestamp) / 86400000);
   const beat = r.returnPct > r.benchmarkReturnPct;
 
@@ -606,14 +612,17 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     });
   }
 
-  // 제목도 counter 에 따라 다른 포맷 사용해서 반복 느낌 줄이기
+  // 제목은 항상 수익률이 맨 앞에 오도록 고정 + 6가지 포맷 로테이션.
+  // 한 줄 리스트에서도 수익률/종목명 즉시 식별 가능.
+  const retStr = `${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%`;
+  const bhStr = `${r.benchmarkReturnPct >= 0 ? "+" : ""}${r.benchmarkReturnPct.toFixed(1)}%`;
   const titleFormats: ((...args: never[]) => string)[] = [
-    () => `${label} · ${preset.name} · ${yearsLabel} 백테스트 (${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%)`,
-    () => `${yearsLabel} ${marketPhase}에서 ${preset.name}을 ${label}에 돌려봤습니다`,
-    () => `[${label}] ${preset.name} ${yearsLabel} 결과 ${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}% (단순 보유 ${r.benchmarkReturnPct >= 0 ? "+" : ""}${r.benchmarkReturnPct.toFixed(1)}%)`,
-    () => `${preset.name} — ${label} ${yearsLabel} 테스트 (승률 ${r.winRate.toFixed(0)}%, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
-    () => `${label} ${yearsLabel} — ${preset.name} 이 ${beat ? "통한" : "통하지 않은"} 이유`,
-    () => `${marketPhase}의 ${label}, ${preset.name}으로 돌리면 어떻게 될까`,
+    () => `${retStr} · ${label} ${preset.name} ${yearsLabel}`,
+    () => `${retStr} — ${label} ${preset.name} (${yearsLabel}, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
+    () => `${retStr} vs 보유 ${bhStr} · ${label} ${preset.name} ${yearsLabel}`,
+    () => `[${label}] ${preset.name} ${yearsLabel} → ${retStr}`,
+    () => `${retStr} 기록한 ${label} ${preset.name} 전략 (${yearsLabel})`,
+    () => `${retStr} · ${marketPhase}의 ${label}을 ${preset.name}으로`,
   ];
   const title = titleFormats[cfg.post_counter % titleFormats.length]();
   const postSlug = randomSlug();

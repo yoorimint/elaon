@@ -686,19 +686,43 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     });
   }
 
-  // 제목은 항상 수익률이 맨 앞에 오도록 고정 + 6가지 포맷 로테이션.
-  // 한 줄 리스트에서도 수익률/종목명 즉시 식별 가능.
+  // 제목 — 롱테일 SEO 용.
+  // 원칙:
+  //  1) 종목명을 앞쪽에 둔다 (검색 쿼리에서 종목명 출현 비중이 가장 큼).
+  //  2) "백테스트 / 수익률 / 돌려보니 / 후기 / 결과 / 시뮬레이션" 등
+  //     실제 사용자가 치는 intent keyword 를 반드시 하나 이상 포함.
+  //  3) 전략 이름에서 DIY: 접두어와 괄호 속 기술 파라미터(RSI<20 / RSI>80 등)
+  //     를 제거해 일반 명사화 → 검색 매치율 증가.
+  //  4) 8가지 포맷 중 매번 랜덤 픽. (모듈로 순환은 목록 스크롤 시 패턴이 보여
+  //     봇 티가 났음.)
   const retStr = `${r.returnPct >= 0 ? "+" : ""}${r.returnPct.toFixed(1)}%`;
   const bhStr = `${r.benchmarkReturnPct >= 0 ? "+" : ""}${r.benchmarkReturnPct.toFixed(1)}%`;
-  const titleFormats: ((...args: never[]) => string)[] = [
-    () => `${retStr} · ${label} ${preset.name} ${yearsLabel}`,
-    () => `${retStr} — ${label} ${preset.name} (${yearsLabel}, MDD ${r.maxDrawdownPct.toFixed(1)}%)`,
-    () => `${retStr} vs 보유 ${bhStr} · ${label} ${preset.name} ${yearsLabel}`,
-    () => `${retStr} · [${label}] ${preset.name} (${yearsLabel})`,
-    () => `${retStr} 기록한 ${label} ${preset.name} 전략 (${yearsLabel})`,
-    () => `${retStr} · ${marketPhase} · ${label} ${preset.name}`,
+  const mddStr = r.maxDrawdownPct.toFixed(1);
+  // "DIY: 강한 RSI 역추세 (RSI<20 / RSI>80)" → "강한 RSI 역추세"
+  const cleanName = preset.name
+    .replace(/^DIY:\s*/, "")
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const titleFormats: (() => string)[] = [
+    // 1) 키워드 나열형 (검색 매치 극대화)
+    () => `${label} ${cleanName} 전략 ${yearsLabel} 백테스트 수익률 ${retStr}`,
+    // 2) 후기형
+    () => `${label} ${yearsLabel} ${cleanName} 돌려본 후기 (${retStr})`,
+    // 3) 비교형
+    () => `${label} ${cleanName} 전략 ${yearsLabel} 결과: ${retStr} vs 단순보유 ${bhStr}`,
+    // 4) 시장국면형
+    () => `${marketPhase}에서 ${label} ${cleanName} ${yearsLabel} 백테스트 (${retStr})`,
+    // 5) 시간 강조형
+    () => `${yearsLabel} 동안 ${label} ${cleanName} 전략, 수익률 ${retStr}`,
+    // 6) 리스크 포함형
+    () => `${label} ${cleanName} 백테스트 ${yearsLabel} — ${retStr} (MDD ${mddStr}%)`,
+    // 7) 시뮬레이션형
+    () => `${label} ${cleanName} 전략 ${yearsLabel} 시뮬레이션 결과 (${retStr})`,
+    // 8) 구어체형
+    () => `${label} ${cleanName} ${yearsLabel} 해봤더니 ${retStr}, MDD ${mddStr}%`,
   ];
-  const title = titleFormats[cfg.post_counter % titleFormats.length]();
+  const title = pick(titleFormats)();
   const postSlug = randomSlug();
 
   const { error: postErr } = await sb.from("posts").insert({

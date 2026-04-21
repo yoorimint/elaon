@@ -331,6 +331,7 @@ export type SiteStats = {
   total_users: number;
   banned_users: number;
   blinded_posts: number;
+  open_suggestions: number;
 };
 
 export async function getSiteStats(): Promise<SiteStats | null> {
@@ -352,6 +353,7 @@ export async function getSiteStats(): Promise<SiteStats | null> {
     total_users: num(row.total_users),
     banned_users: num(row.banned_users),
     blinded_posts: num(row.blinded_posts),
+    open_suggestions: num(row.open_suggestions),
   };
 }
 

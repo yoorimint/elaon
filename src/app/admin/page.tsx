@@ -186,6 +186,12 @@ export default function AdminDashboardPage() {
               value={stats.banned_users.toLocaleString()}
               tone={stats.banned_users > 0 ? "neg" : undefined}
             />
+            <Card
+              label="답변 대기 건의"
+              value={stats.open_suggestions.toLocaleString()}
+              tone={stats.open_suggestions > 0 ? "warn" : undefined}
+              hint="유저가 보낸 미답변 건의"
+            />
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col justify-center">
               <Link
                 href="/admin/reports"

@@ -464,3 +464,83 @@ language sql stable security definer set search_path = public as $$
     (select count(distinct client_id)::bigint from public.site_visits) as total_uniques;
 $$;
 grant execute on function public.get_visit_counters() to anon, authenticated;
+
+-- ===== 건의함 (suggestions) =====
+-- 유저가 관리자에게 1:1로 건의를 보내고, 관리자가 답변하면 본인만 답변을
+-- 확인할 수 있다. 다른 유저는 조회 불가.
+create table if not exists public.suggestions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null check (char_length(title) between 1 and 200),
+  body text not null check (char_length(body) between 1 and 10000),
+  admin_reply text,
+  replied_at timestamptz,
+  replied_by uuid references auth.users(id) on delete set null,
+  status text not null default 'open' check (status in ('open','replied','closed')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists suggestions_user_idx on public.suggestions(user_id, created_at desc);
+create index if not exists suggestions_status_idx on public.suggestions(status, created_at desc);
+
+alter table public.suggestions enable row level security;
+
+-- 본인 건의만 조회, 단 관리자는 전체 조회 가능
+drop policy if exists suggestions_read on public.suggestions;
+create policy suggestions_read on public.suggestions
+  for select using (user_id = auth.uid() or public.is_admin());
+
+-- 본인만 insert, 제재된 계정은 차단
+drop policy if exists suggestions_insert on public.suggestions;
+create policy suggestions_insert on public.suggestions
+  for insert with check (auth.uid() = user_id and not public.is_banned());
+
+-- 본인은 삭제 가능, 관리자도 삭제 가능
+drop policy if exists suggestions_delete on public.suggestions;
+create policy suggestions_delete on public.suggestions
+  for delete using (user_id = auth.uid() or public.is_admin());
+
+-- 답변은 관리자가 RPC 로만. 일반 update 정책 없음.
+create or replace function public.admin_reply_suggestion(p_id uuid, p_reply text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  if p_reply is null or length(btrim(p_reply)) = 0 then
+    raise exception 'reply cannot be empty';
+  end if;
+  update public.suggestions
+    set admin_reply = p_reply,
+        replied_at = now(),
+        replied_by = auth.uid(),
+        status = 'replied'
+    where id = p_id;
+end;
+$$;
+grant execute on function public.admin_reply_suggestion(uuid, text) to authenticated;
+
+-- admin_site_stats 에 미답변 건의 수 추가
+create or replace function public.admin_site_stats()
+returns table (
+  today_visits bigint, today_uniques bigint, yesterday_uniques bigint, week_uniques bigint,
+  today_signups bigint, today_posts bigint, today_comments bigint, today_reports bigint,
+  total_users bigint, banned_users bigint, blinded_posts bigint,
+  open_suggestions bigint
+) language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'not authorized'; end if;
+  return query select
+    (select coalesce(sum(visit_count),0)::bigint from public.site_visits where visited_date = current_date),
+    (select count(*)::bigint from public.site_visits where visited_date = current_date),
+    (select count(*)::bigint from public.site_visits where visited_date = current_date - 1),
+    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= current_date - 6),
+    (select count(*)::bigint from auth.users where created_at::date = current_date),
+    (select count(*)::bigint from public.posts where created_at::date = current_date),
+    (select count(*)::bigint from public.comments where created_at::date = current_date),
+    (select count(*)::bigint from public.post_reports where created_at::date = current_date),
+    (select count(*)::bigint from auth.users),
+    (select count(*)::bigint from public.profiles where banned = true),
+    (select count(*)::bigint from public.posts where blinded = true),
+    (select count(*)::bigint from public.suggestions where status = 'open');
+end;
+$$;
+grant execute on function public.admin_site_stats() to authenticated;

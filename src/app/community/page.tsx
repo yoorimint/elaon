@@ -36,14 +36,28 @@ function CommunityList() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">커뮤니티</h1>
-        <button
-          onClick={onWrite}
-          className="rounded-full bg-brand px-5 py-2 text-white font-semibold text-sm hover:bg-brand-dark"
-        >
-          글쓰기
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              if (!user) {
+                router.push("/login?redirect=/suggest");
+                return;
+              }
+              router.push("/suggest");
+            }}
+            className="rounded-full border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          >
+            건의하기
+          </button>
+          <button
+            onClick={onWrite}
+            className="rounded-full bg-brand px-5 py-2 text-white font-semibold text-sm hover:bg-brand-dark"
+          >
+            글쓰기
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">

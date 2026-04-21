@@ -10,8 +10,10 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+drop policy if exists profiles_read on public.profiles;
 create policy profiles_read on public.profiles
   for select using (true);
+drop policy if exists profiles_update_own on public.profiles;
 create policy profiles_update_own on public.profiles
   for update using (auth.uid() = user_id);
 
@@ -63,10 +65,16 @@ create index if not exists posts_slug_idx on public.posts(slug);
 
 alter table public.posts enable row level security;
 
+drop policy if exists posts_read on public.posts;
 create policy posts_read on public.posts for select using (true);
+drop policy if exists posts_insert on public.posts;
 create policy posts_insert on public.posts for insert with check (auth.uid() = author_id);
+drop policy if exists posts_update_own on public.posts;
 create policy posts_update_own on public.posts for update using (auth.uid() = author_id);
+drop policy if exists posts_delete_own on public.posts;
 create policy posts_delete_own on public.posts for delete using (auth.uid() = author_id);
+-- posts_insert 는 아래 "계정 제재" 섹션에서 is_banned 조건까지 포함해 한 번 더
+-- 덮어 쓴다. 거기까지 못 가도 최소한 기본 정책은 여기서 보장된다.
 
 -- ===== 댓글 =====
 create table if not exists public.comments (
@@ -81,9 +89,13 @@ create index if not exists comments_post_idx on public.comments(post_id, created
 
 alter table public.comments enable row level security;
 
+drop policy if exists comments_read on public.comments;
 create policy comments_read on public.comments for select using (true);
+drop policy if exists comments_insert on public.comments;
 create policy comments_insert on public.comments for insert with check (auth.uid() = author_id);
+drop policy if exists comments_delete_own on public.comments;
 create policy comments_delete_own on public.comments for delete using (auth.uid() = author_id);
+-- comments_insert 는 아래 "계정 제재" 섹션에서 is_banned 조건으로 덮어쓴다.
 
 -- ===== 카운터 유지 트리거 =====
 create or replace function public.bump_comment_count()

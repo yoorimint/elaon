@@ -215,12 +215,20 @@ export default function AdminBotPage() {
               </button>
             </div>
           </div>
-          <div className="mt-4 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
+          <div className="mt-4 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-2">
             <div className="font-semibold">수동 실행</div>
             <div>
-              GitHub → Actions → <b>bot post</b> 워크플로우 → <b>Run workflow</b> 버튼 클릭
-              (&quot;force&quot; 체크하면 스케줄 무시하고 1회 즉시 실행)
+              아래 버튼으로 GitHub Actions 페이지를 열고 <b>Run workflow</b> 클릭
+              (&quot;force&quot; 체크하면 스케줄 무시하고 1회 즉시 실행).
             </div>
+            <a
+              href="https://github.com/yoorimint/elaon/actions/workflows/bot-post.yml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-4 py-2 text-xs font-semibold hover:opacity-90"
+            >
+              GitHub Actions 열기 ↗
+            </a>
           </div>
         </section>
       )}

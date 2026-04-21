@@ -84,12 +84,12 @@ export default async function HomePage() {
           ELOAN BACKTEST
         </div>
         <h1 className="mt-2 text-3xl sm:text-5xl font-bold leading-tight">
-          코인 전략,
+          코인·주식·선물 전략,
           <br />
           숫자로 증명하세요.
         </h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400 text-base sm:text-lg">
-          업비트 실제 과거 데이터로 전략을 돌려봅니다. 3분 안에 결과가 나옵니다.
+          업비트·Yahoo Finance·OKX 실제 과거 시세로 전략을 돌려봅니다. 3분 안에 결과 나오고, 모의투자로 이어서 검증.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link

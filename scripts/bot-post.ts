@@ -380,6 +380,21 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     return;
   }
 
+  // 정각(:00)에 일제히 올라오면 봇 티 나니 0~50분 사이 랜덤 지연 후 포스팅.
+  // FORCE 모드(수동 실행) 에선 즉시 실행.
+  if (!FORCE) {
+    const delaySec = Math.floor(Math.random() * 50 * 60); // 0 ~ 3000초 (50분)
+    console.log(`Random delay ${Math.round(delaySec / 60)}분 ${delaySec % 60}초 대기`);
+    await new Promise((r) => setTimeout(r, delaySec * 1000));
+
+    // 대기 중에 다른 cron 실행이 먼저 포스팅했는지 재확인
+    const todayAfterSleep = await countTodayBotPosts(cfg.bot_user_id);
+    if (todayAfterSleep >= cfg.daily_count) {
+      console.log("대기 중 다른 실행이 먼저 포스팅함 — 스킵");
+      return;
+    }
+  }
+
   const { symbol, preset, period, narrative } = pickRotationPair(cfg.post_counter);
   console.log(
     `Pick: symbol=${symbol} strategy=${preset.name} period=${period.label} narrative=${narrative.id} (counter=${cfg.post_counter})`,

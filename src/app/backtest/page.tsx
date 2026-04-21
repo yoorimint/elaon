@@ -1341,14 +1341,6 @@ export default function BacktestPage() {
           >
             {loading ? "계산 중…" : result ? "완료 ✓ 다시 실행" : "백테스트 실행"}
           </button>
-          <button
-            onClick={onPaperTradeDirect}
-            disabled={loading}
-            className="inline-flex items-center rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-3 text-sm font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-60"
-            title="백테스트 결과 없이 지금 폼 설정 그대로 모의투자를 시작합니다"
-          >
-            바로 모의투자 시작 →
-          </button>
           {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </section>

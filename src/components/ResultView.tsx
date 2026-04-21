@@ -9,7 +9,17 @@ import { formatMoney, formatMoneyShort, type Currency } from "@/lib/market";
 import { TVChart } from "./TVChart";
 
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
+function Stat({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: string;
+  tone?: "pos" | "neg";
+  hint?: string;
+}) {
   const color =
     tone === "pos"
       ? "text-emerald-600 dark:text-emerald-400"
@@ -17,9 +27,99 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "po
         ? "text-red-600 dark:text-red-400"
         : "";
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
-      <div className={`mt-1 text-xl font-bold ${color}`}>{value}</div>
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 sm:p-4">
+      <div className="text-[11px] sm:text-xs text-neutral-500" title={hint}>
+        {label}
+      </div>
+      <div className={`mt-1 text-base sm:text-xl font-bold truncate ${color}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function fmtNum(n: number, digits = 2): string {
+  if (!Number.isFinite(n)) return n > 0 ? "∞" : "—";
+  return n.toFixed(digits);
+}
+
+function fmtPct(n: number, digits = 2): string {
+  if (!Number.isFinite(n)) return "—";
+  return `${n >= 0 ? "+" : ""}${n.toFixed(digits)}%`;
+}
+
+// 월별 수익률 히트맵. 가로 월(Jan~Dec) × 세로 연. 모바일에선 가로 스크롤.
+function MonthlyHeatmap({ monthly }: { monthly: BacktestResult["monthly"] }) {
+  if (!monthly || monthly.length === 0) return null;
+  const years = Array.from(new Set(monthly.map((m) => m.year))).sort();
+  const byYear = new Map<number, Map<number, number>>();
+  for (const m of monthly) {
+    if (!byYear.has(m.year)) byYear.set(m.year, new Map());
+    byYear.get(m.year)!.set(m.month, m.returnPct);
+  }
+  function cellColor(v: number | undefined): string {
+    if (v == null) return "bg-neutral-50 dark:bg-neutral-900/40 text-neutral-400";
+    if (v > 5) return "bg-emerald-500/80 text-white";
+    if (v > 1) return "bg-emerald-400/60 text-emerald-900 dark:text-emerald-50";
+    if (v > 0) return "bg-emerald-200/60 text-emerald-900 dark:text-emerald-100";
+    if (v > -1) return "bg-red-200/60 text-red-900 dark:text-red-100";
+    if (v > -5) return "bg-red-400/60 text-red-900 dark:text-red-50";
+    return "bg-red-500/80 text-white";
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="text-[10px] sm:text-xs border-separate border-spacing-0.5 min-w-full">
+        <thead>
+          <tr>
+            <th className="sticky left-0 bg-white dark:bg-neutral-950 px-2 py-1 text-neutral-500 font-normal text-left">
+              연도
+            </th>
+            {["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"].map(
+              (m) => (
+                <th key={m} className="px-1 py-1 text-neutral-500 font-normal min-w-[38px]">
+                  {m}
+                </th>
+              ),
+            )}
+            <th className="px-2 py-1 text-neutral-500 font-normal">합계</th>
+          </tr>
+        </thead>
+        <tbody>
+          {years.map((y) => {
+            const row = byYear.get(y);
+            let total = 1;
+            if (row) {
+              for (const v of row.values()) total *= 1 + v / 100;
+            }
+            const totalPct = (total - 1) * 100;
+            return (
+              <tr key={y}>
+                <td className="sticky left-0 bg-white dark:bg-neutral-950 px-2 py-1 font-semibold">
+                  {y}
+                </td>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                  const v = row?.get(m);
+                  return (
+                    <td
+                      key={m}
+                      className={`px-1 py-1 text-center rounded ${cellColor(v)}`}
+                      title={v != null ? `${v.toFixed(2)}%` : "데이터 없음"}
+                    >
+                      {v != null ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}` : "·"}
+                    </td>
+                  );
+                })}
+                <td
+                  className={`px-2 py-1 text-center font-semibold rounded ${cellColor(totalPct)}`}
+                >
+                  {totalPct >= 0 ? "+" : ""}
+                  {totalPct.toFixed(1)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -55,7 +155,8 @@ export function ResultView({
     <div>
       <h2 className="text-xl font-bold mb-4">결과</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 핵심 지표 */}
+      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
         <Stat
           label="전략 수익률"
           value={`${result.returnPct.toFixed(2)}%`}
@@ -67,17 +168,19 @@ export function ResultView({
           tone={result.benchmarkReturnPct >= 0 ? "pos" : "neg"}
         />
         <Stat
-          label="최대 낙폭(MDD)"
+          label="최대 낙폭 (MDD)"
           value={`${result.maxDrawdownPct.toFixed(2)}%`}
           tone="neg"
+          hint="기록한 고점에서 저점까지 최대 하락폭"
         />
         <Stat
           label="승률"
           value={result.tradeCount === 0 ? "-" : `${result.winRate.toFixed(1)}%`}
+          hint="이익으로 끝낸 거래 비율"
         />
       </div>
 
-      <div className="mt-4 text-sm">
+      <div className="mt-3 text-sm">
         {beatBenchmark ? (
           <span className="text-emerald-600 dark:text-emerald-400">
             ✓ 단순 보유보다 {(result.returnPct - result.benchmarkReturnPct).toFixed(2)}%p 초과 수익
@@ -88,6 +191,92 @@ export function ResultView({
           </span>
         )}
       </div>
+
+      {/* 리스크 조정 지표 */}
+      {result.sharpeRatio !== undefined && (
+        <>
+          <h3 className="mt-6 mb-2 text-sm font-semibold text-neutral-500">
+            리스크 조정 지표
+          </h3>
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
+            <Stat
+              label="Sharpe Ratio"
+              value={fmtNum(result.sharpeRatio)}
+              tone={result.sharpeRatio >= 1 ? "pos" : result.sharpeRatio < 0 ? "neg" : undefined}
+              hint="연환산 수익 대비 변동성. 1 이상이면 양호."
+            />
+            <Stat
+              label="Sortino Ratio"
+              value={fmtNum(result.sortinoRatio)}
+              tone={result.sortinoRatio >= 1 ? "pos" : result.sortinoRatio < 0 ? "neg" : undefined}
+              hint="Sharpe 의 하방 버전. 상승 변동성은 감점 안 함."
+            />
+            <Stat
+              label="Calmar Ratio"
+              value={fmtNum(result.calmarRatio)}
+              tone={result.calmarRatio >= 1 ? "pos" : undefined}
+              hint="연환산 수익률 ÷ 최대 낙폭. 1 이상이면 낙폭 대비 회수 양호."
+            />
+            <Stat
+              label="Profit Factor"
+              value={fmtNum(result.profitFactor)}
+              tone={result.profitFactor >= 1.5 ? "pos" : result.profitFactor < 1 ? "neg" : undefined}
+              hint="총 이익 ÷ 총 손실. 1 넘어야 살아남음."
+            />
+          </div>
+        </>
+      )}
+
+      {/* 거래 상세 */}
+      {result.tradeCount > 0 && result.expectancyPct !== undefined && (
+        <>
+          <h3 className="mt-6 mb-2 text-sm font-semibold text-neutral-500">거래 상세</h3>
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
+            <Stat
+              label="거래당 기대값"
+              value={fmtPct(result.expectancyPct)}
+              tone={result.expectancyPct >= 0 ? "pos" : "neg"}
+              hint="평균적으로 1회 거래에서 기대할 수 있는 수익률"
+            />
+            <Stat
+              label="평균 이익 / 손실"
+              value={`${fmtPct(result.avgWinPct, 1)} / ${fmtPct(result.avgLossPct, 1)}`}
+              hint="이익 거래 평균값 / 손실 거래 평균값"
+            />
+            <Stat
+              label="최고 / 최악 거래"
+              value={`${fmtPct(result.bestTradePct, 1)} / ${fmtPct(result.worstTradePct, 1)}`}
+            />
+            <Stat
+              label="최대 연승 / 연패"
+              value={`${result.maxConsecWins}회 / ${result.maxConsecLosses}회`}
+            />
+            <Stat
+              label="평균 보유 기간"
+              value={`${Math.round(result.avgHoldBars)}봉`}
+              hint="한 포지션을 평균 몇 봉 동안 들고 있었는지"
+            />
+            <Stat
+              label="최대 낙폭 기간"
+              value={`${result.maxDrawdownDurationBars}봉`}
+              hint="고점 대비 회복까지 걸린 최장 기간"
+              tone="neg"
+            />
+          </div>
+        </>
+      )}
+
+      {/* 월별 수익률 히트맵 */}
+      {result.monthly && result.monthly.length > 0 && (
+        <>
+          <h3 className="mt-6 mb-2 text-sm font-semibold text-neutral-500">
+            월별 수익률 <span className="text-neutral-400 font-normal">(단위: %)</span>
+          </h3>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-2">
+            <MonthlyHeatmap monthly={result.monthly} />
+          </div>
+        </>
+      )}
 
       {candles && candles.length > 0 && signals && strategy && params && (
         <div className="mt-6">

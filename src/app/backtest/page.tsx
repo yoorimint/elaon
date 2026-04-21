@@ -123,9 +123,12 @@ export default function BacktestPage() {
   const [takeProfit, setTakeProfit] = useState(0);
   const [initialCash, setInitialCash] = useState(1_000_000);
   const [feeBps, setFeeBps] = useState(5);
+  const [slippageBps, setSlippageBps] = useState(0); // 실전 모드 슬리피지
+  const [walkForward, setWalkForward] = useState(false); // 과적합 방어 모드
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [outSampleResult, setOutSampleResult] = useState<BacktestResult | null>(null);
   const [priceCandles, setPriceCandles] = useState<Candle[] | null>(null);
   const [runSignals, setRunSignals] = useState<Signal[] | null>(null);
   const [runStrategy, setRunStrategy] = useState<StrategyId | null>(null);
@@ -302,12 +305,33 @@ export default function BacktestPage() {
       } else {
         signals = computeSignals(data, strategy, paramsSnapshot, { initialCash });
       }
-      const r = runBacktest(data, signals, { initialCash, feeRate: feeBps / 10000 });
+      const btOpts = {
+        initialCash,
+        feeRate: feeBps / 10000,
+        slippageBps,
+      };
+      const r = runBacktest(data, signals, btOpts);
       setResult(r);
       setPriceCandles(data);
       setRunSignals(signals);
       setRunStrategy(strategy);
       setRunParams(paramsSnapshot);
+
+      // 과적합 방어 모드: 앞 75% (학습) 대신, 뒤 25% (검증) 구간만 별도 백테스트
+      // 해서 "학습에서만 좋았던 것 아닌지" 확인. 학습 구간은 전체 r 이 대체.
+      if (walkForward) {
+        const splitIdx = Math.floor(data.length * 0.75);
+        const oosData = data.slice(splitIdx);
+        const oosSignals = signals.slice(splitIdx);
+        if (oosData.length >= 30) {
+          const oosR = runBacktest(oosData, oosSignals, btOpts);
+          setOutSampleResult(oosR);
+        } else {
+          setOutSampleResult(null);
+        }
+      } else {
+        setOutSampleResult(null);
+      }
       const savedBuy = strategy === "custom" ? customBuy : null;
       const savedSell = strategy === "custom" ? customSell : null;
       setRunCustomBuy(savedBuy);
@@ -643,6 +667,35 @@ export default function BacktestPage() {
             <span className="mt-1 block text-xs text-neutral-500">
               업비트 기본 5bps(0.05%)
             </span>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium">슬리피지 (bps)</span>
+            <NumInput
+              className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+              value={slippageBps}
+              min={0}
+              max={200}
+              onChange={setSlippageBps}
+            />
+            <span className="mt-1 block text-xs text-neutral-500">
+              실전 체결가 오차 (0 = 이상적). 매수가 +bps, 매도가 -bps
+            </span>
+          </label>
+
+          <label className="block sm:col-span-2 flex items-start gap-2 rounded-lg border border-neutral-200 dark:border-neutral-800 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={walkForward}
+              onChange={(e) => setWalkForward(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <div>
+              <div className="text-sm font-medium">과적합 방어 모드</div>
+              <p className="mt-0.5 text-xs text-neutral-500">
+                전체 기간의 앞 75% 결과와 뒤 25% 결과를 비교해 &quot;학습에서만 좋았던 전략&quot; 을 가려냅니다. 뒤 25% 에서도 통해야 진짜 통하는 전략.
+              </p>
+            </div>
           </label>
         </div>
 
@@ -1150,6 +1203,80 @@ export default function BacktestPage() {
             customSell={runCustomSell ?? undefined}
             currency={currencyOf(market)}
           />
+
+          {outSampleResult && (
+            <div className="mt-8 rounded-2xl border-2 border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2 justify-between">
+                <h3 className="text-base font-bold">🔍 과적합 검증 (뒤 25% 구간)</h3>
+                {(() => {
+                  const isRet = result.returnPct;
+                  const oosRet = outSampleResult.returnPct;
+                  // 둘 다 양수고 OOS >= IS*0.5 면 건강한 전략
+                  const isAnnualized = result.returnPct;
+                  const oosAnnualized = oosRet;
+                  let verdict: { label: string; tone: string };
+                  if (oosAnnualized >= 0 && isAnnualized >= 0) {
+                    if (oosAnnualized >= isAnnualized * 0.5) {
+                      verdict = { label: "✓ 건강", tone: "text-emerald-700 dark:text-emerald-400" };
+                    } else {
+                      verdict = {
+                        label: "⚠️ 학습 편향 의심",
+                        tone: "text-amber-700 dark:text-amber-400",
+                      };
+                    }
+                  } else if (oosAnnualized < 0 && isAnnualized >= 0) {
+                    verdict = {
+                      label: "❌ 과적합 가능성 큼",
+                      tone: "text-red-700 dark:text-red-400",
+                    };
+                  } else {
+                    verdict = { label: "전체 하락 구간", tone: "text-neutral-500" };
+                  }
+                  return (
+                    <span className={`text-sm font-semibold ${verdict.tone}`}>
+                      {verdict.label}
+                    </span>
+                  );
+                })()}
+              </div>
+              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                전체 기간 앞 75% 는 &quot;학습 구간&quot;, 뒤 25% 는 &quot;검증 구간&quot;. 검증 구간 결과가
+                학습 구간과 비슷하거나 더 나와야 실전에서도 기대할 수 있는 전략.
+              </p>
+              <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-4">
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/40 p-3">
+                  <div className="text-[11px] text-neutral-500">검증 수익률</div>
+                  <div
+                    className={`mt-1 font-bold text-base ${
+                      outSampleResult.returnPct >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {outSampleResult.returnPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/40 p-3">
+                  <div className="text-[11px] text-neutral-500">검증 단순 보유</div>
+                  <div className="mt-1 font-bold text-base">
+                    {outSampleResult.benchmarkReturnPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/40 p-3">
+                  <div className="text-[11px] text-neutral-500">검증 MDD</div>
+                  <div className="mt-1 font-bold text-base text-red-600 dark:text-red-400">
+                    {outSampleResult.maxDrawdownPct.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/40 p-3">
+                  <div className="text-[11px] text-neutral-500">검증 거래</div>
+                  <div className="mt-1 font-bold text-base">
+                    {outSampleResult.tradeCount}회
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="mt-8 rounded-2xl border-2 border-brand/40 bg-brand/5 p-5 sm:p-6">
             <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">

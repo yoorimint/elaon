@@ -105,7 +105,10 @@ export default async function SharedPage({ params }: { params: { slug: string } 
           </span>
         </div>
         <div className="mt-3 text-xs text-neutral-500">
-          {new Date(data.created_at).toLocaleString("ko-KR")} · 조회 {data.view_count + 1}
+          {new Date(data.created_at).toLocaleString("ko-KR", {
+            timeZone: "Asia/Seoul",
+          })}{" "}
+          · 조회 {data.view_count + 1}
         </div>
       </section>
 

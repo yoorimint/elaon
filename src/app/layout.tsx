@@ -53,13 +53,10 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  // 검색엔진 사이트 소유 확인: 서치어드바이저/구글 콘솔에서 받은 코드 여기 넣으면
-  // <meta name="..." content="..."/> 로 주입됨.
+  // 검색엔진 사이트 소유 확인
   verification: {
-    // google: "GOOGLE_VERIFICATION_CODE",
     other: {
-      // 네이버는 naver-site-verification 메타태그 사용
-      // "naver-site-verification": "NAVER_VERIFICATION_CODE",
+      "naver-site-verification": "4cb9fef10cd84e338345bdd5799db0881e0bbe83",
     },
   },
 };

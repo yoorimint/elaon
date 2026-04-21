@@ -1,6 +1,8 @@
 import type { Candle, Timeframe } from "./upbit";
 
-const BASE = "/api/okx";
+// 브라우저 → /api/okx 프록시, 서버 → OKX 직통
+const BASE =
+  typeof window === "undefined" ? "https://www.okx.com" : "/api/okx";
 
 // OKX uses uppercase H/D for 1h+. Lowercase for minutes.
 function okxBar(tf: Timeframe): string {

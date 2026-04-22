@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
 import { categoryLabel, timeAgo, fetchUsernameMap, type Category } from "@/lib/community";
 import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
+import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
 
 export const revalidate = 30;
 
@@ -217,31 +218,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="mb-12">
-        <h2 className="text-lg sm:text-xl font-bold">지원 전략</h2>
-        <ul className="mt-4 grid gap-3 sm:grid-cols-3">
-          {STRATEGIES.map((s) => (
-            <li
-              key={s.id}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4"
-            >
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{s.name}</span>
-                <span className="text-[10px] text-neutral-500 rounded-full border border-neutral-200 dark:border-neutral-700 px-1.5 py-0.5">
-                  {s.group}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                {s.description}
-              </p>
-              <div className="mt-3 rounded-lg bg-brand/5 dark:bg-brand/10 px-2.5 py-1.5 text-xs leading-relaxed">
-                <span className="font-semibold text-brand mr-1">이럴 때</span>
-                <span className="text-neutral-700 dark:text-neutral-300">{s.whenToUse}</span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <SupportedStrategiesGrid />
 
       <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-2">
         <div>

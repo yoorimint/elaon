@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -89,6 +89,21 @@ const POPULAR_MARKETS = [
 ];
 
 export default function BacktestPage() {
+  // useSearchParams 는 Suspense 안에서만 안전하게 prerender 된다 (Next.js static export 요구).
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-5xl px-5 py-10 text-sm text-neutral-500">
+          백테스트 불러오는 중…
+        </main>
+      }
+    >
+      <BacktestPageInner />
+    </Suspense>
+  );
+}
+
+function BacktestPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: currentUser } = useAuth();

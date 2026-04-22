@@ -7,11 +7,16 @@ import type { BacktestConfig } from "./user-strategies";
 import type { StrategyParams } from "./strategies";
 import type { Timeframe } from "./upbit";
 
+export type PresetCategory = "crypto" | "stock" | "futures";
+
 export type BeginnerPreset = {
   id: string;
   title: string; // "BTC 초보용 RSI 전략"
   blurb: string; // 한 줄 설명
-  badge: string; // 뱃지 라벨 (난이도/특성)
+  badge: string; // 뱃지 라벨 (기존 호환용 — 카드엔 더 이상 직접 노출 안 함)
+  category: PresetCategory;
+  difficulty: 1 | 2 | 3 | 4 | 5; // 1 가장 쉬움 → 5 고급
+  forWhom: string; // "이런 분께" 한 줄
   market: string;
   strategy: BacktestConfig["strategy"];
   days: number;
@@ -19,11 +24,15 @@ export type BeginnerPreset = {
 };
 
 export const BEGINNER_PRESETS: BeginnerPreset[] = [
+  // ── 코인 ─────────────────────────────────────────────
   {
     id: "btc-buyhold-2y",
     title: "비트코인 2년 묻어두기",
     blurb: "가장 단순한 전략. 시작일에 사서 2년 내내 들고만 있기. 다른 전략과의 비교 기준선.",
     badge: "★ 가장 쉬움",
+    category: "crypto",
+    difficulty: 1,
+    forWhom: "매매 타이밍 고민하기 싫은 장기 투자자",
     market: "KRW-BTC",
     strategy: "buy_hold",
     days: 730,
@@ -34,6 +43,9 @@ export const BEGINNER_PRESETS: BeginnerPreset[] = [
     title: "비트코인 RSI 30/70 2년",
     blurb: "과매도(RSI<30)일 때 사고, 과매수(RSI>70)일 때 파는 클래식 전략. 반등 노리는 매매.",
     badge: "초급",
+    category: "crypto",
+    difficulty: 2,
+    forWhom: "급락 때 줍고 급등 때 털고 싶은 사람",
     market: "KRW-BTC",
     strategy: "rsi",
     days: 730,
@@ -44,6 +56,9 @@ export const BEGINNER_PRESETS: BeginnerPreset[] = [
     title: "이더리움 이평 20/60 교차 1년",
     blurb: "단기 이평이 장기 이평을 뚫고 올라가면 사고, 내려가면 파는 추세 추종 전략.",
     badge: "초급",
+    category: "crypto",
+    difficulty: 2,
+    forWhom: "추세 따라 타는 게 편한 사람",
     market: "KRW-ETH",
     strategy: "ma_cross",
     days: 365,
@@ -54,12 +69,101 @@ export const BEGINNER_PRESETS: BeginnerPreset[] = [
     title: "솔라나 볼린저밴드 1년",
     blurb: "가격이 밴드 하단 터치할 때 사고, 상단 터치할 때 파는 변동성 역추세 전략.",
     badge: "중급",
+    category: "crypto",
+    difficulty: 3,
+    forWhom: "변동성 큰 구간에서 단타 돌려보고 싶은 사람",
     market: "KRW-SOL",
     strategy: "bollinger",
     days: 365,
     rangePreset: "365d",
   },
+
+  // ── 주식 ─────────────────────────────────────────────
+  {
+    id: "aapl-buyhold-2y",
+    title: "애플 2년 묻어두기",
+    blurb: "미국 대표 우량주를 2년간 그냥 들고 있기. 주식 초보의 가장 쉬운 출발점.",
+    badge: "★ 가장 쉬움",
+    category: "stock",
+    difficulty: 1,
+    forWhom: "미국 우량주를 꾸준히 보유하고 싶은 사람",
+    market: "yahoo:AAPL",
+    strategy: "buy_hold",
+    days: 730,
+    rangePreset: "730d",
+  },
+  {
+    id: "samsung-ma-1y",
+    title: "삼성전자 이평 20/60 1년",
+    blurb: "국내 대표주를 이동평균 크로스 추세 추종으로 1년 돌려보는 전략.",
+    badge: "초급",
+    category: "stock",
+    difficulty: 2,
+    forWhom: "국내 우량주에 추세 매매를 시도해보고 싶은 사람",
+    market: "yahoo:005930.KS",
+    strategy: "ma_cross",
+    days: 365,
+    rangePreset: "365d",
+  },
+  {
+    id: "qqq-buyhold-2y",
+    title: "QQQ 2년 묻어두기",
+    blurb: "미국 나스닥 100 ETF 를 2년 보유. 개별주 고민 없이 지수에 베팅.",
+    badge: "★ 가장 쉬움",
+    category: "stock",
+    difficulty: 1,
+    forWhom: "개별 종목 고르기 싫은 분산투자자",
+    market: "yahoo:QQQ",
+    strategy: "buy_hold",
+    days: 730,
+    rangePreset: "730d",
+  },
+
+  // ── 선물 ─────────────────────────────────────────────
+  {
+    id: "btcfut-ma-1y",
+    title: "BTC 선물 이평 20/60 1년",
+    blurb: "OKX 비트코인 영구선물에 이동평균 추세 추종. 현물보다 변동성 크고 방향 맞추기 어려움.",
+    badge: "중급",
+    category: "futures",
+    difficulty: 3,
+    forWhom: "선물 레버리지 전에 전략부터 검증하려는 사람",
+    market: "okx_fut:BTC-USDT-SWAP",
+    strategy: "ma_cross",
+    days: 365,
+    rangePreset: "365d",
+  },
+  {
+    id: "solfut-rsi-1y",
+    title: "SOL 선물 RSI 1년",
+    blurb: "솔라나 영구선물에 RSI 역추세. 변동성 큰 알트 선물 구간에서 반등 노리기.",
+    badge: "고급",
+    category: "futures",
+    difficulty: 4,
+    forWhom: "선물 변동성 써본 경험 있는 트레이더",
+    market: "okx_fut:SOL-USDT-SWAP",
+    strategy: "rsi",
+    days: 365,
+    rangePreset: "365d",
+  },
 ];
+
+// /api/signals 로 보낼 때 필요한 전략 파라미터를 프리셋 id 로부터 조립.
+// 프리셋은 전략별 기본값을 쓰기 때문에 strategies.ts 의 기본값과 동일.
+export function presetStrategyParams(id: string): StrategyParams | null {
+  const preset = BEGINNER_PRESETS.find((p) => p.id === id);
+  if (!preset) return null;
+  switch (preset.strategy) {
+    case "ma_cross":
+      return { ma_cross: { short: 20, long: 60 } };
+    case "rsi":
+      return { rsi: { period: 14, oversold: 30, overbought: 70 } };
+    case "bollinger":
+      return { bollinger: { period: 20, stddev: 2, touch: "close" } };
+    default:
+      return {};
+  }
+}
 
 function ymd(offsetDays: number): string {
   const d = new Date(Date.now() + offsetDays * 86400000);

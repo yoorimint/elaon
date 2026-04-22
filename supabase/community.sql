@@ -357,7 +357,7 @@ begin
     return;
   end if;
   insert into public.site_visits (visited_date, client_id, user_id)
-  values (current_date, p_client_id, auth.uid())
+  values ((now() AT TIME ZONE 'Asia/Seoul')::date, p_client_id, auth.uid())
   on conflict (visited_date, client_id)
   do update set
     visit_count = public.site_visits.visit_count + 1,
@@ -385,14 +385,14 @@ returns table (
 begin
   if not public.is_admin() then raise exception 'not authorized'; end if;
   return query select
-    (select coalesce(sum(visit_count), 0)::bigint from public.site_visits where visited_date = current_date),
-    (select count(*)::bigint from public.site_visits where visited_date = current_date),
-    (select count(*)::bigint from public.site_visits where visited_date = current_date - 1),
-    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= current_date - 6),
-    (select count(*)::bigint from auth.users where created_at::date = current_date),
-    (select count(*)::bigint from public.posts where created_at::date = current_date),
-    (select count(*)::bigint from public.comments where created_at::date = current_date),
-    (select count(*)::bigint from public.post_reports where created_at::date = current_date),
+    (select coalesce(sum(visit_count), 0)::bigint from public.site_visits where visited_date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.site_visits where visited_date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.site_visits where visited_date = ((now() AT TIME ZONE 'Asia/Seoul')::date - 1)),
+    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= ((now() AT TIME ZONE 'Asia/Seoul')::date - 6)),
+    (select count(*)::bigint from auth.users where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.posts where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.comments where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.post_reports where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
     (select count(*)::bigint from auth.users),
     (select count(*)::bigint from public.profiles where banned = true),
     (select count(*)::bigint from public.posts where blinded = true);
@@ -411,7 +411,7 @@ begin
            count(*)::bigint as uniques,
            coalesce(sum(v.visit_count), 0)::bigint as views
     from public.site_visits v
-    where v.visited_date >= current_date - 13
+    where v.visited_date >= ((now() AT TIME ZONE 'Asia/Seoul')::date - 13)
     group by v.visited_date
     order by v.visited_date;
 end;
@@ -460,7 +460,7 @@ create or replace function public.get_visit_counters()
 returns table (today_uniques bigint, total_uniques bigint)
 language sql stable security definer set search_path = public as $$
   select
-    (select count(*)::bigint from public.site_visits where visited_date = current_date) as today_uniques,
+    (select count(*)::bigint from public.site_visits where visited_date = (now() AT TIME ZONE 'Asia/Seoul')::date) as today_uniques,
     (select count(distinct client_id)::bigint from public.site_visits) as total_uniques;
 $$;
 grant execute on function public.get_visit_counters() to anon, authenticated;
@@ -531,14 +531,14 @@ returns table (
 begin
   if not public.is_admin() then raise exception 'not authorized'; end if;
   return query select
-    (select coalesce(sum(visit_count),0)::bigint from public.site_visits where visited_date = current_date),
-    (select count(*)::bigint from public.site_visits where visited_date = current_date),
-    (select count(*)::bigint from public.site_visits where visited_date = current_date - 1),
-    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= current_date - 6),
-    (select count(*)::bigint from auth.users where created_at::date = current_date),
-    (select count(*)::bigint from public.posts where created_at::date = current_date),
-    (select count(*)::bigint from public.comments where created_at::date = current_date),
-    (select count(*)::bigint from public.post_reports where created_at::date = current_date),
+    (select coalesce(sum(visit_count),0)::bigint from public.site_visits where visited_date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.site_visits where visited_date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.site_visits where visited_date = ((now() AT TIME ZONE 'Asia/Seoul')::date - 1)),
+    (select count(distinct client_id)::bigint from public.site_visits where visited_date >= ((now() AT TIME ZONE 'Asia/Seoul')::date - 6)),
+    (select count(*)::bigint from auth.users where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.posts where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.comments where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
+    (select count(*)::bigint from public.post_reports where (created_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date),
     (select count(*)::bigint from auth.users),
     (select count(*)::bigint from public.profiles where banned = true),
     (select count(*)::bigint from public.posts where blinded = true),
@@ -611,7 +611,7 @@ begin
     return;
   end if;
   insert into public.site_visits (visited_date, client_id, user_id, referrer, landing_path)
-  values (current_date, p_client_id, auth.uid(), p_referrer, p_landing_path)
+  values ((now() AT TIME ZONE 'Asia/Seoul')::date, p_client_id, auth.uid(), p_referrer, p_landing_path)
   on conflict (visited_date, client_id)
   do update set
     visit_count = public.site_visits.visit_count + 1,
@@ -647,7 +647,7 @@ begin
         '(직접 방문)'
       ) as domain
     from public.site_visits v
-    where v.visited_date >= current_date - 29
+    where v.visited_date >= ((now() AT TIME ZONE 'Asia/Seoul')::date - 29)
   ) sub
   where sub.domain = '(직접 방문)'
      or (sub.domain <> 'eloan.kr' and sub.domain not like '%.eloan.kr')
@@ -674,7 +674,7 @@ begin
     sum(v.visit_count)::bigint as visits,
     count(distinct v.client_id)::bigint as uniques
   from public.site_visits v
-  where v.visited_date >= current_date - 29
+  where v.visited_date >= ((now() AT TIME ZONE 'Asia/Seoul')::date - 29)
     and v.referrer is not null
     and substring(v.referrer from '^https?://([^/]+)') <> 'eloan.kr'
     and substring(v.referrer from '^https?://([^/]+)') not like '%.eloan.kr'

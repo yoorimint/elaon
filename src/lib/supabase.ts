@@ -46,6 +46,8 @@ export type SharedBacktest = {
   custom_sell: unknown[] | null;
   stop_loss_pct: number | null;
   take_profit_pct: number | null;
+  diy_allow_reentry: boolean | null;
+  diy_sell_fraction: number | null;
   // 거래 내역 (공유 상세 페이지에서 표로 보여주려고 저장). 옛 공유는 null.
   trades: Array<{
     entryIndex: number;

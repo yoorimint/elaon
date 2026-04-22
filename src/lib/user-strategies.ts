@@ -44,6 +44,10 @@ export type BacktestConfig = {
   customSell: Condition[];
   stopLoss: number;
   takeProfit: number;
+  // 연속 매수 허용 (커스텀 전략 한정). true 면 포지션 있어도 매수 조건 재검사.
+  diyAllowReentry?: boolean;
+  // 분할 매도 비중 (0~1). 1 = 전량 (기본). 0.25 = 신호마다 25% 매도.
+  diySellFraction?: number;
   initialCash: number;
   feeBps: number;
   positionSizePct?: number;

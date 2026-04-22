@@ -34,6 +34,9 @@ type RequestItem = {
   customSell?: Condition[];
   stopLossPct?: number;
   takeProfitPct?: number;
+  // DIY 전용 플래그. undefined 면 기본(false / 1).
+  allowReentry?: boolean;
+  sellFraction?: number;
   // 0 보다 크면 해당 기간으로 백테스트도 같이 돌려서 returnPct/benchmarkReturnPct 반환.
   // 비워두면 백테스트 생략 (기존 호출자 호환).
   backtestDays?: number;
@@ -110,6 +113,8 @@ async function processOne(item: RequestItem): Promise<ResponseItem> {
         sell: item.customSell ?? [],
         stopLossPct: item.stopLossPct && item.stopLossPct > 0 ? item.stopLossPct : undefined,
         takeProfitPct: item.takeProfitPct && item.takeProfitPct > 0 ? item.takeProfitPct : undefined,
+        allowReentry: item.allowReentry,
+        sellFraction: item.sellFraction,
       });
     } else {
       signals = computeSignals(candles, item.strategy, item.params);

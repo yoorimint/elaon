@@ -47,6 +47,8 @@ export type BacktestSnapshot = {
   customSell: Condition[];
   stopLoss: number;
   takeProfit: number;
+  diyAllowReentry?: boolean;
+  diySellFraction?: number;
   initialCash: number;
   feeBps: number;
   // 사이징/리스크 옵션

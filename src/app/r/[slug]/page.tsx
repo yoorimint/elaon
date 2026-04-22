@@ -381,6 +381,8 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         customSell={data.custom_sell as Condition[] | null}
         stopLossPct={data.stop_loss_pct}
         takeProfitPct={data.take_profit_pct}
+        diyAllowReentry={(data as { diy_allow_reentry?: boolean | null }).diy_allow_reentry ?? null}
+        diySellFraction={(data as { diy_sell_fraction?: number | null }).diy_sell_fraction ?? null}
         initialCash={data.initial_cash}
         feeBps={data.fee_bps}
       />

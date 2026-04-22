@@ -51,6 +51,8 @@ export type PaperSession = PaperSessionMeta & {
   customSell?: Condition[];
   stopLossPct?: number;
   takeProfitPct?: number;
+  diyAllowReentry?: boolean;
+  diySellFraction?: number;
   // 시작 시점 가격 (단순 보유 비교용 기준가)
   startPrice: number;
   // 가장 최근에 처리한 캔들 timestamp. 다음 tick은 이 이후의 봉만 새 봉으로 본다.
@@ -146,6 +148,8 @@ export type CreateSessionInput = {
   customSell?: Condition[];
   stopLossPct?: number;
   takeProfitPct?: number;
+  diyAllowReentry?: boolean;
+  diySellFraction?: number;
   initialCash: number;
   feeBps: number;
 };
@@ -191,6 +195,8 @@ export async function createSession(input: CreateSessionInput): Promise<PaperSes
     customSell: input.customSell,
     stopLossPct: input.stopLossPct,
     takeProfitPct: input.takeProfitPct,
+    diyAllowReentry: input.diyAllowReentry,
+    diySellFraction: input.diySellFraction,
     startPrice,
     // 시작 시점에 마지막 본 캔들까지는 "이미 처리됐다"고 본다.
     // 모의투자는 시작 이후 새로 닫힌 봉부터 거래를 일으킨다.
@@ -436,6 +442,8 @@ export async function tick(session: PaperSession): Promise<TickResult> {
         sell: session.customSell ?? [],
         stopLossPct: session.stopLossPct,
         takeProfitPct: session.takeProfitPct,
+        allowReentry: session.diyAllowReentry,
+        sellFraction: session.diySellFraction,
         initialInPos: inPosNow,
         initialEntryPrice: session.openEntryPrice ?? undefined,
       });

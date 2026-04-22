@@ -29,6 +29,8 @@ export function SharedActions(props: {
   customSell: Condition[] | null;
   stopLossPct: number | null;
   takeProfitPct: number | null;
+  diyAllowReentry: boolean | null;
+  diySellFraction: number | null;
   initialCash: number;
   feeBps: number;
 }) {
@@ -70,6 +72,8 @@ export function SharedActions(props: {
       timeframe: (props.timeframe ?? "1d") as Timeframe,
       strategy: props.strategy as StrategyId,
       params: props.params as StrategyParams,
+      diyAllowReentry: props.diyAllowReentry ?? undefined,
+      diySellFraction: props.diySellFraction ?? undefined,
       customBuy: (props.customBuy ?? undefined) as Condition[] | undefined,
       customSell: (props.customSell ?? undefined) as Condition[] | undefined,
       stopLossPct: props.stopLossPct ?? undefined,
@@ -95,6 +99,8 @@ export function SharedActions(props: {
       customSell: props.customSell,
       stopLossPct: props.stopLossPct,
       takeProfitPct: props.takeProfitPct,
+      diyAllowReentry: props.diyAllowReentry,
+      diySellFraction: props.diySellFraction,
     });
     setCloneHandoff(cfg);
     router.push("/backtest");

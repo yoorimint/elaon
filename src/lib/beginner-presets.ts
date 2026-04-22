@@ -301,6 +301,8 @@ export function buildCloneConfig(args: {
   customSell?: Condition[] | null;
   stopLossPct?: number | null;
   takeProfitPct?: number | null;
+  diyAllowReentry?: boolean | null;
+  diySellFraction?: number | null;
 }): BacktestConfig {
   const base = defaultConfigShape();
   const p = args.params as Partial<StrategyParams>;
@@ -364,6 +366,14 @@ export function buildCloneConfig(args: {
   if (args.customSell && args.customSell.length > 0) base.customSell = args.customSell;
   if (typeof args.stopLossPct === "number" && args.stopLossPct > 0) base.stopLoss = args.stopLossPct;
   if (typeof args.takeProfitPct === "number" && args.takeProfitPct > 0) base.takeProfit = args.takeProfitPct;
+  if (args.diyAllowReentry === true) base.diyAllowReentry = true;
+  if (
+    typeof args.diySellFraction === "number" &&
+    args.diySellFraction > 0 &&
+    args.diySellFraction < 1
+  ) {
+    base.diySellFraction = args.diySellFraction;
+  }
 
   base.initialCash = args.initialCash;
   base.feeBps = args.feeBps;

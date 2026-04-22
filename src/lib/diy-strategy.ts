@@ -83,12 +83,21 @@ export type DIYStrategy = {
   sellLogic?: ConditionLogic;
   stopLossPct?: number;
   takeProfitPct?: number;
+  // 연속 매수 허용 — true 면 포지션 있어도 buy 조건 재검사 → 조건 맞을 때마다
+  // "buy" 신호 emit. 백테스트가 positionSizePct 에 따라 분할 매수 (물타기·피라미딩).
+  // 기본 false (한 사이클 1 진입).
+  allowReentry?: boolean;
+  // 분할 매도 비중 (0~1). 1 이면 전량 매도 (기본). 0.25 면 신호마다 25% 만
+  // 매도. sell_qty_frac 객체 신호로 emit 돼서 backtest 가 부분 청산.
+  // stop-loss / take-profit 은 항상 전량 매도 (안전 우선).
+  sellFraction?: number;
   // 모의투자 등 과거 윈도우만 재계산할 때, 세션이 이미 보유 상태면
   // inPos=true + 진입가를 주입해 손절/익절과 매도 조건이 올바르게 동작.
   // 백테스트(전체 처음부터 도는 경우)엔 생략.
   initialInPos?: boolean;
   initialEntryPrice?: number;
 };
+
 
 export const INDICATOR_LABELS: Record<IndicatorRef["kind"], string> = {
   close: "종가",
@@ -365,7 +374,10 @@ function evalCondition(
   }
 }
 
-export type Signal = "buy" | "sell" | "hold";
+// strategies.ts 의 Signal 과 같은 타입 (분할 매도 객체 신호 포함). 별도로 정의하지 않고
+// 그쪽에서 import — buy_krw / sell_qty_frac 같은 객체 신호도 emit 가능해야 함.
+import type { Signal as StrategySignal } from "./strategies";
+export type Signal = StrategySignal;
 
 export function computeDIYSignals(
   candles: Candle[],
@@ -377,20 +389,16 @@ export function computeDIYSignals(
   const cache = buildCache([...strategy.buy, ...strategy.sell], candles);
   const buyLogic = strategy.buyLogic ?? "and";
   const sellLogic = strategy.sellLogic ?? "or";
+  const allowReentry = strategy.allowReentry ?? false;
+  const sellFracRaw = strategy.sellFraction ?? 1;
+  const sellFrac = Math.min(Math.max(sellFracRaw, 0), 1);
   let inPos = strategy.initialInPos ?? false;
   let entryPrice = strategy.initialEntryPrice ?? 0;
 
   for (let i = 1; i < candles.length; i++) {
-    if (!inPos) {
-      const buyFired = buyLogic === "and"
-        ? strategy.buy.every((c) => evalCondition(c, cache, i))
-        : strategy.buy.some((c) => evalCondition(c, cache, i));
-      if (buyFired) {
-        signals[i] = "buy";
-        inPos = true;
-        entryPrice = candles[i].close;
-      }
-    } else {
+    // 1) 보유 중이면 매도 우선 체크 — 손절/익절은 항상 전량 매도 (안전 우선).
+    //    sell 규칙은 sellFrac 에 따라 전량 또는 분할 매도.
+    if (inPos) {
       const price = candles[i].close;
       const pnlPct = ((price / entryPrice) - 1) * 100;
 
@@ -413,9 +421,32 @@ export function computeDIYSignals(
           ? strategy.sell.every((c) => evalCondition(c, cache, i))
           : strategy.sell.some((c) => evalCondition(c, cache, i)));
       if (sellFired) {
-        signals[i] = "sell";
-        inPos = false;
-        entryPrice = 0;
+        if (sellFrac >= 1) {
+          signals[i] = "sell";
+          inPos = false;
+          entryPrice = 0;
+        } else if (sellFrac > 0) {
+          signals[i] = { sell_qty_frac: sellFrac, entry_price: entryPrice };
+          // 분할 매도면 포지션이 남아있다고 가정하고 inPos 유지. 백테스트가
+          // 실제 포지션 관리. 더 살 기회 있으려면 allowReentry 쓰면 됨.
+        }
+        continue;
+      }
+    }
+
+    // 2) 포지션 없거나 allowReentry 면 매수 조건 검사 (분할 매도 중에도 추가 매수 가능).
+    if (!inPos || allowReentry) {
+      const buyFired = buyLogic === "and"
+        ? strategy.buy.every((c) => evalCondition(c, cache, i))
+        : strategy.buy.some((c) => evalCondition(c, cache, i));
+      if (buyFired) {
+        signals[i] = "buy";
+        if (!inPos) {
+          // 사이클의 첫 진입만 entryPrice 로 기록 (stop-loss/take-profit 기준).
+          // 피라미딩 중에는 첫 진입 기준 유지 → 이후 추가 매수는 avg cost 가 백테스트에서 계산됨.
+          inPos = true;
+          entryPrice = candles[i].close;
+        }
       }
     }
   }

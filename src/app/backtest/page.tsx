@@ -153,6 +153,8 @@ function BacktestPageInner() {
   const [customSell, setCustomSell] = useState<Condition[]>([]);
   const [stopLoss, setStopLoss] = useState(0);
   const [takeProfit, setTakeProfit] = useState(0);
+  const [diyAllowReentry, setDiyAllowReentry] = useState(false);
+  const [diySellFraction, setDiySellFraction] = useState(100); // UI 는 %, 저장/API 는 0~1
   const [initialCash, setInitialCash] = useState(1_000_000);
   const [feeBps, setFeeBps] = useState(5);
   const [slippageBps, setSlippageBps] = useState(0); // 실전 모드 슬리피지
@@ -194,6 +196,7 @@ function BacktestPageInner() {
       dcaInterval, dcaAmount, maDcaMaPeriod,
       gridLow, gridHigh, gridCount, gridMode,
       customBuy, customSell, stopLoss, takeProfit,
+      diyAllowReentry, diySellFraction: diySellFraction / 100,
       initialCash, feeBps,
       positionSizePct, martingaleFactor, slippageBps, walkForward,
       rebalanceTP, rebalanceDrop,
@@ -234,6 +237,12 @@ function BacktestPageInner() {
     setGridCount(cfg.gridCount);
     setGridMode(cfg.gridMode);
     setCustomBuy(cfg.customBuy);
+    setDiyAllowReentry(cfg.diyAllowReentry ?? false);
+    setDiySellFraction(
+      typeof cfg.diySellFraction === "number"
+        ? Math.round(Math.min(Math.max(cfg.diySellFraction, 0), 1) * 100)
+        : 100,
+    );
     setCustomSell(cfg.customSell);
     setStopLoss(cfg.stopLoss);
     setTakeProfit(cfg.takeProfit);
@@ -319,6 +328,7 @@ function BacktestPageInner() {
     dcaInterval, dcaAmount, maDcaMaPeriod,
     gridLow, gridHigh, gridCount, gridMode,
     customBuy, customSell, stopLoss, takeProfit,
+    diyAllowReentry, diySellFraction,
     initialCash, feeBps,
     positionSizePct, martingaleFactor, slippageBps, walkForward,
     rebalanceTP, rebalanceDrop,
@@ -470,6 +480,8 @@ function BacktestPageInner() {
           sell: customSell,
           stopLossPct: stopLoss > 0 ? stopLoss : undefined,
           takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+          allowReentry: diyAllowReentry,
+          sellFraction: diySellFraction / 100,
         });
       } else {
         signals = computeSignals(data, strategy, paramsSnapshot, { initialCash });
@@ -519,6 +531,7 @@ function BacktestPageInner() {
         dcaInterval, dcaAmount, maDcaMaPeriod,
         gridLow: gLow, gridHigh: gHigh, gridCount, gridMode,
         customBuy, customSell, stopLoss, takeProfit,
+        diyAllowReentry, diySellFraction: diySellFraction / 100,
         initialCash, feeBps,
         positionSizePct, martingaleFactor, slippageBps, walkForward,
         rebalanceTP, rebalanceDrop,
@@ -599,6 +612,11 @@ function BacktestPageInner() {
       customSell: runCustomSell ?? undefined,
       stopLossPct: stopLoss > 0 ? stopLoss : undefined,
       takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+      diyAllowReentry: strategy === "custom" && diyAllowReentry ? true : undefined,
+      diySellFraction:
+        strategy === "custom" && diySellFraction < 100
+          ? diySellFraction / 100
+          : undefined,
     });
     setShareUrl(`${window.location.origin}/r/${slug}`);
     setSavedPrivate(options.isPrivate);
@@ -691,6 +709,11 @@ function BacktestPageInner() {
       customSell: runCustomSell ?? undefined,
       stopLossPct: stopLoss > 0 ? stopLoss : undefined,
       takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+      diyAllowReentry: runStrategy === "custom" && diyAllowReentry ? true : undefined,
+      diySellFraction:
+        runStrategy === "custom" && diySellFraction < 100
+          ? diySellFraction / 100
+          : undefined,
       initialCash,
       feeBps,
     });
@@ -739,6 +762,11 @@ function BacktestPageInner() {
       customSell: strategy === "custom" ? customSell : undefined,
       stopLossPct: stopLoss > 0 ? stopLoss : undefined,
       takeProfitPct: takeProfit > 0 ? takeProfit : undefined,
+      diyAllowReentry: strategy === "custom" && diyAllowReentry ? true : undefined,
+      diySellFraction:
+        strategy === "custom" && diySellFraction < 100
+          ? diySellFraction / 100
+          : undefined,
       initialCash,
       feeBps,
     });
@@ -1520,6 +1548,40 @@ function BacktestPageInner() {
                 />
                 <span className="mt-1 block text-xs text-neutral-500">
                   0 = 사용 안 함. 예: 20 → 진입가 +20% 도달 시 즉시 매도
+                </span>
+              </label>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium">연속 매수 허용</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={diyAllowReentry}
+                    onChange={(e) => setDiyAllowReentry(e.target.checked)}
+                    className="h-4 w-4 accent-brand"
+                  />
+                  <span className="text-sm">
+                    체크 시 같은 사이클에 추가 매수 (물타기·피라미딩)
+                  </span>
+                </div>
+                <span className="mt-1 block text-xs text-neutral-500">
+                  포지션 비중 100% 미만으로 두면 매수 신호마다 분할 진입
+                </span>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium">분할 매도 비중 (%)</span>
+                <NumInput
+                  className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+                  value={diySellFraction}
+                  min={1}
+                  max={100}
+                  step={5}
+                  onChange={(v) => setDiySellFraction(Math.min(100, Math.max(1, v)))}
+                />
+                <span className="mt-1 block text-xs text-neutral-500">
+                  100 = 전량 매도 (기본). 25 → 매도 신호마다 보유의 25% 만 매도
                 </span>
               </label>
             </div>

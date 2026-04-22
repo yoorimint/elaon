@@ -71,6 +71,9 @@ export type SharePayload = {
   customSell?: Condition[];
   stopLossPct?: number;
   takeProfitPct?: number;
+  // DIY 전용 — 공유 재생 시 동일 동작 재현용. 기본값은 allowReentry=false, sellFraction=1.
+  diyAllowReentry?: boolean;
+  diySellFraction?: number;
 };
 
 export async function saveShare(p: SharePayload): Promise<string> {
@@ -127,6 +130,8 @@ export async function saveShare(p: SharePayload): Promise<string> {
     custom_sell: (p.customSell ?? null) as unknown as Record<string, unknown> | null,
     stop_loss_pct: p.stopLossPct ?? null,
     take_profit_pct: p.takeProfitPct ?? null,
+    diy_allow_reentry: p.diyAllowReentry ?? null,
+    diy_sell_fraction: p.diySellFraction ?? null,
     extended_metrics: extended,
     trades: p.result.trades,
   });

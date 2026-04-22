@@ -1,24 +1,21 @@
 "use client";
 
-// 비로그인 포함 첫 방문자에게 "지금 뭘 살지 / 언제 살지" 답을 주는 큐레이션 보드.
-// 인기 종목 × 대표 전략 6개를 고정해놓고 /api/signals 로 오늘 신호 한꺼번에 조회.
-// buy_hold 는 신호 개념이 없어서 빠짐. 카드 클릭 → /backtest?preset=... 로 검증 흐름 연결.
+// 비로그인 포함 첫 방문자에게 "지금 뭘 살지 / 언제 살지" 답을 주는 보드.
+// 소스: 홈 서버 컴포넌트가 전달하는 shared_backtests 후보 (봇 + 유저가
+// 이미 공유한 백테스트 중 수익률·보유 초과 기준 통과한 것).
+// 보드는 각 후보에 대해 /api/signals 로 "오늘 신호" 만 덧붙여 렌더.
+// 카드 클릭 → /r/[slug] 공유 결과 페이지로 이동 (기존 라우트 재활용).
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import {
-  BEGINNER_PRESETS,
-  presetStrategyParams,
-  type BeginnerPreset,
-} from "@/lib/beginner-presets";
+import { useEffect, useState } from "react";
+import type { BoardCandidate } from "@/app/page";
 
 // 보드에 노출할 상한. 조건 통과한 것들 중 수익률 상위 N개만 노출.
 const DISPLAY_TOP_N = 6;
 
 // localStorage 캐시는 "다음 시장 닫힘 시각"까지 유지 (일봉 기준이라 그전엔
 // 결과 안 바뀜). 스키마 바뀌면 CACHE_KEY 버전만 올리면 자연 무효화.
-// v3: rows key 를 market → presetId 로 교체 (동일 market 에 전략만 다른 프리셋 커버)
-const CACHE_KEY = "today-signals-v3";
+const CACHE_KEY = "today-signals-v4";
 
 // 보드가 스캔하는 시장 kind 별 일봉 닫힘 시각 (UTC 시).
 // crypto/crypto_fut 00:00, stock_kr 07:00, stock_us 22:00. 외부 반영 여유 +30초.
@@ -39,6 +36,16 @@ function nextBoardRefreshMs(now: number = Date.now()): number {
   return best;
 }
 
+type SignalAction = "buy" | "sell" | "hold";
+type SignalRow = {
+  action: SignalAction;
+  lastSignalAction: "buy" | "sell" | null;
+  lastSignalBarsAgo: number | null;
+  error?: string;
+};
+
+// 캐시는 슬러그별로 저장 — candidates 가 매일 바뀔 수 있어서
+// 사라진 항목이 localStorage 에 남아도 렌더 시 자동으로 무시됨.
 type CachedPayload = { expiresAt: number; rows: Record<string, SignalRow> };
 
 function readCache(): Record<string, SignalRow> | null {
@@ -67,18 +74,6 @@ function writeCache(rows: Record<string, SignalRow>) {
   }
 }
 
-type SignalAction = "buy" | "sell" | "hold";
-type SignalRow = {
-  market: string;
-  action: SignalAction;
-  lastSignalAction: "buy" | "sell" | null;
-  lastSignalBarsAgo: number | null;
-  returnPct?: number;
-  benchmarkReturnPct?: number;
-  daysUsed?: number;
-  error?: string;
-};
-
 function shortMarketLabel(marketId: string): string {
   if (marketId.startsWith("KRW-")) return marketId.slice(4);
   if (marketId.startsWith("okx_fut:")) {
@@ -87,6 +82,7 @@ function shortMarketLabel(marketId: string): string {
   if (marketId.startsWith("yahoo:")) {
     const t = marketId.slice("yahoo:".length);
     if (t === "005930.KS") return "삼성전자";
+    if (t === "000660.KS") return "SK하이닉스";
     return t.replace(/\.KS$|\.KQ$/, "");
   }
   return marketId;
@@ -95,16 +91,43 @@ function shortMarketLabel(marketId: string): string {
 function strategyShort(s: string): string {
   switch (s) {
     case "ma_cross":
-      return "이평 20/60";
+      return "이평 크로스";
     case "rsi":
-      return "RSI 30/70";
+      return "RSI";
     case "bollinger":
       return "볼린저밴드";
     case "macd":
       return "MACD";
+    case "breakout":
+      return "브레이크아웃";
+    case "stoch":
+      return "스토캐스틱";
+    case "ichimoku":
+      return "일목균형";
+    case "dca":
+      return "DCA";
+    case "ma_dca":
+      return "MA DCA";
+    case "grid":
+      return "그리드";
+    case "rebalance":
+      return "리밸런싱";
+    case "buy_hold":
+      return "바이앤홀드";
+    case "custom":
+      return "커스텀(DIY)";
     default:
       return s;
   }
+}
+
+function daysLabel(days: number): string {
+  if (days >= 720) return "2년";
+  if (days >= 330) return "1년";
+  if (days >= 150) return "6달";
+  if (days >= 80) return "3달";
+  if (days >= 20) return "1달";
+  return `${days}일`;
 }
 
 function actionStyle(action: SignalAction) {
@@ -132,18 +155,17 @@ function actionStyle(action: SignalAction) {
   };
 }
 
-export function TodaySignalBoard() {
-  // buy_hold 는 매매 신호 개념이 없어서 제외. hidden 포함 모든 나머지를 스캔 풀로.
-  const presets = useMemo<BeginnerPreset[]>(
-    () => BEGINNER_PRESETS.filter((p) => p.strategy !== "buy_hold"),
-    [],
-  );
-
-  // 초기값은 항상 null (SSR 일치). 클라이언트에서 useEffect 로 캐시 → 필요 시 fetch.
+export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] }) {
+  // 초기값은 null (SSR 일치). 클라이언트에서 useEffect 로 캐시 → 필요 시 fetch.
   const [rows, setRows] = useState<Record<string, SignalRow> | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    if (candidates.length === 0) {
+      setRows({});
+      return;
+    }
+
     // 캐시가 유효하면 (다음 시장 닫힘 전이면) 네트워크 없이 그대로 사용
     const cached = readCache();
     if (cached) {
@@ -154,36 +176,43 @@ export function TodaySignalBoard() {
     let cancelled = false;
     (async () => {
       try {
-        // 같은 market 에 전략만 다른 프리셋이 여러 개 있을 수 있어서 응답을
-        // market 이 아닌 preset.id 로 인덱싱. 그러려면 요청 순서와 응답 순서를
-        // 맞춰 pair 로 관리한다 (API 는 입력 순서 그대로 돌려준다).
-        const pairs = presets
-          .map((p) => {
-            const params = presetStrategyParams(p.id);
-            if (!params) return null;
-            return {
-              id: p.id,
-              item: {
-                market: p.market,
-                strategy: p.strategy,
-                params,
-                backtestDays: p.days,
-              },
-            };
-          })
-          .filter((x): x is NonNullable<typeof x> => x !== null);
+        // /api/signals 는 한 번에 20개까지. 후보가 많으면 상위만 자른다.
+        // (페이지 서버 쿼리에서 이미 최대 20 으로 잘라 오고 있음)
+        const pairs = candidates.slice(0, 20).map((c) => ({
+          slug: c.slug,
+          item: {
+            market: c.market,
+            strategy: c.strategy,
+            params: c.params,
+            customBuy: (c.custom_buy ?? undefined) as unknown,
+            customSell: (c.custom_sell ?? undefined) as unknown,
+          },
+        }));
         const res = await fetch("/api/signals", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ items: pairs.map((p) => p.item) }),
         });
         if (!res.ok) throw new Error("api fail");
-        const data = (await res.json()) as { items: SignalRow[] };
+        const data = (await res.json()) as {
+          items: {
+            action: SignalAction;
+            lastSignalAction: "buy" | "sell" | null;
+            lastSignalBarsAgo: number | null;
+            error?: string;
+          }[];
+        };
         if (cancelled) return;
         const map: Record<string, SignalRow> = {};
-        (data.items ?? []).forEach((row, i) => {
-          const id = pairs[i]?.id;
-          if (id) map[id] = row;
+        (data.items ?? []).forEach((it, i) => {
+          const slug = pairs[i]?.slug;
+          if (!slug) return;
+          map[slug] = {
+            action: it.action,
+            lastSignalAction: it.lastSignalAction,
+            lastSignalBarsAgo: it.lastSignalBarsAgo,
+            error: it.error,
+          };
         });
         setRows(map);
         writeCache(map);
@@ -195,39 +224,25 @@ export function TodaySignalBoard() {
     return () => {
       cancelled = true;
     };
-  }, [presets]);
+  }, [candidates]);
 
-  // API 통째로 죽었으면 섹션 자체를 숨김 (빈 박스 노출 방지)
+  // 후보 자체가 없으면 (DB 에 조건 통과 결과가 아직 없음) 섹션 숨김.
+  if (candidates.length === 0) return null;
+  // API 통째로 죽었으면 섹션 숨김 (빈 박스 노출 방지)
   if (failed) return null;
 
-  // 로딩 중에는 헤더만 보여주고 그리드 자리엔 안내 문구. 스캔이 길 수 있어서
-  // (프리셋 ~20개 × 서버 순차 처리 + 백테스트) 빈 카드를 쏟아내지 않음.
+  // 로딩 중엔 헤더만 노출. 스캔은 서버에서 /api/signals 가 캔들 캐시 써서
+  // 수 초 내 끝남.
   if (!rows) {
     return (
       <section className="mb-12">
         <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          수익 난 전략 스캔하는 중…
-        </p>
+        <p className="mt-1 text-sm text-neutral-500">오늘 신호 불러오는 중…</p>
       </section>
     );
   }
 
-  // 통과 조건: 절대 수익률 10% 이상 & 그냥 보유보다 잘한 것. 수익률 높은 순.
-  const MIN_RETURN_PCT = 10;
-  const profitable = presets
-    .filter((p) => {
-      const r = rows[p.id];
-      if (typeof r?.returnPct !== "number") return false;
-      if (typeof r.benchmarkReturnPct !== "number") return false;
-      if (r.returnPct < MIN_RETURN_PCT) return false;
-      return r.returnPct > r.benchmarkReturnPct;
-    })
-    .sort((a, b) => (rows[b.id].returnPct ?? 0) - (rows[a.id].returnPct ?? 0))
-    .slice(0, DISPLAY_TOP_N);
-
-  // 조건 통과한 게 하나도 없으면 섹션 통째로 숨김.
-  if (profitable.length === 0) return null;
+  const display = candidates.slice(0, DISPLAY_TOP_N);
 
   return (
     <section className="mb-12">
@@ -244,8 +259,8 @@ export function TodaySignalBoard() {
       </div>
 
       <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {profitable.map((p) => {
-          const row = rows?.[p.id];
+        {display.map((c) => {
+          const row = rows[c.slug];
           const action: SignalAction = row?.action ?? "hold";
           const s = actionStyle(action);
           const recent =
@@ -254,19 +269,17 @@ export function TodaySignalBoard() {
                 ? "오늘"
                 : `${row.lastSignalBarsAgo}일 전`
               : null;
-          const ret = row?.returnPct;
-          const bench = row?.benchmarkReturnPct;
-          const beat =
-            typeof ret === "number" && typeof bench === "number" && ret > bench;
+          const ret = c.return_pct;
+          const bench = c.benchmark_return_pct;
           return (
-            <li key={p.id}>
+            <li key={c.slug}>
               <Link
-                href={`/backtest?preset=${p.id}`}
+                href={`/r/${c.slug}`}
                 className={`block h-full rounded-xl border p-3 sm:p-4 transition hover:bg-brand/5 ${s.ring}`}
               >
                 <div className={`flex items-center gap-1.5 text-sm font-bold ${s.text}`}>
                   <span aria-hidden>{s.dot}</span>
-                  <span>{rows ? s.label : "···"}</span>
+                  <span>{s.label}</span>
                   {recent && action !== "hold" && (
                     <span className="ml-auto text-[10px] font-normal text-neutral-500">
                       {recent}
@@ -274,45 +287,39 @@ export function TodaySignalBoard() {
                   )}
                 </div>
                 <div className="mt-1.5 font-semibold leading-tight">
-                  {shortMarketLabel(p.market)}
+                  {shortMarketLabel(c.market)}
                 </div>
                 <div className="mt-0.5 text-[11px] text-neutral-500">
-                  {strategyShort(p.strategy)} · {p.days >= 730 ? "2년" : "1년"}
+                  {strategyShort(c.strategy)} · {daysLabel(c.days)}
                 </div>
-                {typeof ret === "number" && (
-                  <div className="mt-2 text-xs">
+                <div className="mt-2 text-xs">
+                  <span
+                    className={`font-bold ${
+                      ret >= 0
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-red-700 dark:text-red-400"
+                    }`}
+                  >
+                    {ret >= 0 ? "+" : ""}
+                    {ret.toFixed(1)}%
+                  </span>
+                  <span className="ml-1.5 text-[10px] text-neutral-500">
+                    vs 보유{" "}
                     <span
-                      className={`font-bold ${
-                        ret >= 0
-                          ? "text-emerald-700 dark:text-emerald-400"
-                          : "text-red-700 dark:text-red-400"
-                      }`}
+                      className={
+                        bench < 0
+                          ? "text-red-600 dark:text-red-400 font-semibold"
+                          : ""
+                      }
                     >
-                      {ret >= 0 ? "+" : ""}
-                      {ret.toFixed(1)}%
+                      {bench >= 0 ? "+" : ""}
+                      {bench.toFixed(1)}%
                     </span>
-                    {typeof bench === "number" && (
-                      <span className="ml-1.5 text-[10px] text-neutral-500">
-                        vs 보유{" "}
-                        <span
-                          className={
-                            bench < 0
-                              ? "text-red-600 dark:text-red-400 font-semibold"
-                              : ""
-                          }
-                        >
-                          {bench >= 0 ? "+" : ""}
-                          {bench.toFixed(1)}%
-                        </span>
-                      </span>
-                    )}
-                    {beat && (
-                      <span className="ml-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                        ✓
-                      </span>
-                    )}
-                  </div>
-                )}
+                  </span>
+                  <span className="ml-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    ✓
+                  </span>
+                </div>
                 <div className="mt-2 text-[11px] text-brand font-semibold">
                   결과 보기 →
                 </div>

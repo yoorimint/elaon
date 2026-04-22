@@ -33,15 +33,60 @@ type SharedRow = {
   created_at: string;
 };
 
+export type BoardCandidate = {
+  slug: string;
+  market: string;
+  strategy: string;
+  timeframe: string | null;
+  days: number;
+  params: Record<string, unknown>;
+  custom_buy: unknown[] | null;
+  custom_sell: unknown[] | null;
+  return_pct: number;
+  benchmark_return_pct: number;
+  trade_count: number;
+};
+
 async function loadHomeData() {
   const sb = createServerClient();
-  const sharedRes = await sb
-    .from("shared_backtests")
-    .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
-    .order("created_at", { ascending: false })
-    .limit(3);
+  // 두 쿼리 병렬:
+  //  (1) "최근 공유된 백테스트" 섹션용 3개 (최신순)
+  //  (2) "오늘의 신호" 보드 풀 — 조건(10%+ & 보유 이김) 통과 중 수익률 상위.
+  //      봇 + 유저가 공유한 결과에서 가져옴. market 중복은 클라에서 dedup.
+  const [recentRes, topRes] = await Promise.all([
+    sb
+      .from("shared_backtests")
+      .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
+      .eq("is_private", false)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    sb
+      .from("shared_backtests")
+      .select("slug,market,strategy,timeframe,days,params,custom_buy,custom_sell,return_pct,benchmark_return_pct,trade_count")
+      .eq("is_private", false)
+      .gte("return_pct", 10)
+      .order("return_pct", { ascending: false })
+      .limit(40),
+  ]);
+
+  const topRaw = (topRes.data ?? []) as (BoardCandidate & {
+    return_pct: number;
+    benchmark_return_pct: number;
+  })[];
+  // 보유 대비 초과수익만 + market 당 1개 (최고 수익) — variety 확보
+  const seen = new Set<string>();
+  const topCandidates: BoardCandidate[] = [];
+  for (const r of topRaw) {
+    if (r.return_pct <= r.benchmark_return_pct) continue;
+    if (seen.has(r.market)) continue;
+    seen.add(r.market);
+    topCandidates.push(r);
+    if (topCandidates.length >= 20) break;
+  }
+
   return {
-    shared: (sharedRes.data ?? []) as SharedRow[],
+    shared: (recentRes.data ?? []) as SharedRow[],
+    topCandidates,
   };
 }
 
@@ -50,7 +95,7 @@ function strategyName(id: string) {
 }
 
 export default async function HomePage() {
-  const { shared } = await loadHomeData();
+  const { shared, topCandidates } = await loadHomeData();
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
@@ -82,7 +127,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <TodaySignalBoard />
+      <TodaySignalBoard candidates={topCandidates} />
 
       <BeginnerPresetSection />
 

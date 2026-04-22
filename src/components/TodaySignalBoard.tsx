@@ -139,13 +139,17 @@ export function TodaySignalBoard() {
   // API 통째로 죽었으면 섹션 자체를 숨김 (빈 박스 노출 방지)
   if (failed) return null;
 
-  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔 "그냥 보유 대비
-  // 잘한" 전략만 노출. 보유보다 수익률 낮으면 전략 쓸 이유가 없으므로 숨김.
+  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔
+  //   (1) 절대 수익률 10% 이상 &
+  //   (2) 그냥 보유보다 잘한
+  // 전략만 노출. "좀 벌었으면서 보유도 이긴" 것만 의미있음.
+  const MIN_RETURN_PCT = 10;
   const profitable = rows
     ? presets.filter((p) => {
         const r = rows[p.market];
         if (typeof r?.returnPct !== "number") return false;
         if (typeof r.benchmarkReturnPct !== "number") return false;
+        if (r.returnPct < MIN_RETURN_PCT) return false;
         return r.returnPct > r.benchmarkReturnPct;
       })
     : presets;
@@ -217,8 +221,17 @@ export function TodaySignalBoard() {
                     </span>
                     {typeof bench === "number" && (
                       <span className="ml-1.5 text-[10px] text-neutral-500">
-                        vs 보유 {bench >= 0 ? "+" : ""}
-                        {bench.toFixed(1)}%
+                        vs 보유{" "}
+                        <span
+                          className={
+                            bench < 0
+                              ? "text-red-600 dark:text-red-400 font-semibold"
+                              : ""
+                          }
+                        >
+                          {bench >= 0 ? "+" : ""}
+                          {bench.toFixed(1)}%
+                        </span>
                       </span>
                     )}
                     {beat && (

@@ -49,6 +49,9 @@ export type StrategyConfig = {
   id: StrategyId;
   name: string;
   description: string;
+  // 어떤 시장 국면·상황에서 쓰면 좋은지 초보자 관점 한 줄 힌트.
+  // 홈 그리드 등에 보조 설명으로 노출된다.
+  whenToUse: string;
   group: "추세" | "역추세" | "적립" | "커스텀";
 };
 
@@ -57,6 +60,7 @@ export const STRATEGIES: StrategyConfig[] = [
     id: "buy_hold",
     name: "바이앤홀드",
     description: "시작일에 전액 매수 후 끝까지 보유. 모든 전략의 비교 기준.",
+    whenToUse: "장기적으로 오를 거라 믿는 자산 / 매매 타이밍 고민을 피하고 싶을 때",
     group: "추세",
   },
   {
@@ -64,12 +68,14 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "이동평균 크로스",
     description:
       "단기 이평이 장기 이평을 위로 뚫으면 매수(골든크로스), 아래로 뚫으면 매도.",
+    whenToUse: "명확한 상승·하락 추세장 / 박스권에선 속임수 신호가 많아 불리",
     group: "추세",
   },
   {
     id: "macd",
     name: "MACD",
     description: "MACD 라인이 시그널을 위로 돌파하면 매수, 아래로 돌파하면 매도.",
+    whenToUse: "중기 추세 전환점을 부드럽게 포착 / 이평 크로스보다 노이즈 덜함",
     group: "추세",
   },
   {
@@ -77,6 +83,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "변동성 돌파 (래리 윌리엄스)",
     description:
       "전일 고저 변동폭의 k배(보통 0.5)만큼 당일 시가 위로 돌파하면 매수, 다음 날 청산. 단타 대표 전략.",
+    whenToUse: "단타·데이트레이딩 / 아침에 세팅하고 다음 날 청산하는 규칙적 매매",
     group: "추세",
   },
   {
@@ -84,12 +91,14 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "일목균형표",
     description:
       "전환선이 기준선을 위로 뚫고 가격이 구름대 위에 있으면 매수, 반대면 매도.",
+    whenToUse: "중장기 지지·저항·추세를 한 번에 / 한 지표로 종합 판단하고 싶을 때",
     group: "추세",
   },
   {
     id: "rsi",
     name: "RSI 역추세",
     description: "RSI 과매도(30 이하) 매수, 과매수(70 이상) 매도. 박스권 유리.",
+    whenToUse: "박스권 횡보 종목 / 급등락 후 되돌림을 노리는 단기 반전 매매",
     group: "역추세",
   },
   {
@@ -97,6 +106,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "볼린저 밴드",
     description:
       "하단 밴드 이탈 매수, 상단 밴드 이탈 매도. 터치 기준을 종가/꼬리 중 선택. 변동성 기반 역추세.",
+    whenToUse: "변동성이 커졌다 줄었다 반복 / 평균으로 되돌아오는 패턴 공략",
     group: "역추세",
   },
   {
@@ -104,6 +114,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "스토캐스틱",
     description:
       "%K가 %D를 과매도(20 이하)에서 위로 돌파하면 매수, 과매수(80 이상)에서 아래로 돌파하면 매도.",
+    whenToUse: "RSI 보다 빠르게 단기 반전 포착 / 짧은 스윙 매매",
     group: "역추세",
   },
   {
@@ -111,6 +122,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "DCA (적립식 매수)",
     description:
       "정해진 주기마다 고정 금액을 매수하여 평균 단가를 낮춥니다. 초보자용 장기 전략.",
+    whenToUse: "매달 월급으로 꾸준히 적립 / 타이밍 고민 없이 평단 관리",
     group: "적립",
   },
   {
@@ -118,6 +130,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "이동평균 DCA",
     description:
       "DCA인데 가격이 이평선 아래일 때만 매수. 비싼 구간은 건너뛰어 평단 더 낮춤.",
+    whenToUse: "적립은 꾸준히 하되, 고점에서 담는 건 피하고 싶을 때",
     group: "적립",
   },
   {
@@ -125,6 +138,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "그리드 매매",
     description:
       "가격 범위를 N구간으로 나눠 구간 하단 닿으면 1/N씩 매수, 상단 닿으면 1/N씩 매도. 박스권 최강.",
+    whenToUse: "확실한 박스권 예상 / 횡보장에서 자동 분할 매매로 수익 누적",
     group: "적립",
   },
   {
@@ -132,6 +146,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "리밸런싱 (익절 + 하락 재매수)",
     description:
       "일정 수익(+X%) 도달 시 전량 매도해 현금화, 그 가격에서 일정 비율(-Y%) 떨어지면 재매수. 박스권·변동성 장에서 유리.",
+    whenToUse: "방향성은 애매한데 변동성만 큰 장 / 익절 → 조정 재매수 반복",
     group: "적립",
   },
   {
@@ -139,6 +154,7 @@ export const STRATEGIES: StrategyConfig[] = [
     name: "커스텀 (DIY)",
     description:
       "여러 지표 조건을 AND로 조합해 매수, OR로 조합해 매도. 손절/익절 설정 가능. 나만의 전략을 만드세요.",
+    whenToUse: "위 12종에 만족 못 할 때 / 본인만의 진입·청산 규칙을 직접 조립",
     group: "커스텀",
   },
 ];

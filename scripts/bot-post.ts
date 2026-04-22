@@ -189,6 +189,61 @@ function symbolLabel(symbol: string): string {
   return symbol;
 }
 
+// ---------- TL;DR 3줄 블록 ----------
+// 봇 글의 본문(Gemini 또는 fallback) 앞에 결정적으로 덧붙인다. 리스트에서
+// 글을 열었을 때 가장 먼저 3줄로 결론이 보이도록. 숫자는 전부 원본 그대로.
+function buildTldr(params: {
+  ret: number;
+  bh: number;
+  excess: number;
+  mdd: number;
+  tradeCount: number;
+  winRate: number;
+  profitFactor: number;
+}): string {
+  const { ret, bh, excess, mdd, tradeCount, winRate, profitFactor } = params;
+  const retStr = `${ret >= 0 ? "+" : ""}${ret.toFixed(1)}%`;
+  const bhStr = `${bh >= 0 ? "+" : ""}${bh.toFixed(1)}%`;
+  const excessStr = `${excess >= 0 ? "+" : ""}${excess.toFixed(1)}%p`;
+  const mddStr = `${mdd.toFixed(1)}%`;
+  const pfStr = Number.isFinite(profitFactor) ? profitFactor.toFixed(2) : "—";
+
+  // 한줄평: 전략 vs 단순보유 + 리스크 균형으로 분기
+  const alpha =
+    excess > 10 ? "전략이 단순 보유를 크게 앞선 케이스"
+    : excess > 2 ? "전략이 단순 보유를 근소하게 앞선 케이스"
+    : excess > -2 ? "단순 보유와 사실상 비슷한 결과"
+    : excess > -10 ? "단순 보유가 조금 더 나은 구간"
+    : "단순 보유를 한참 밑돈 구간";
+
+  const absMdd = Math.abs(mdd);
+  // Infinity PF = 손실 거래 0 (=통상 표본 부족). finite 면서 >=1.5 이어야 진짜 양호.
+  const pfGood = Number.isFinite(profitFactor) && profitFactor >= 1.5;
+  const pfOk = Number.isFinite(profitFactor) && profitFactor >= 1;
+  const risk =
+    tradeCount === 0
+      ? ""
+      : !Number.isFinite(profitFactor)
+        ? ` (표본 ${tradeCount}회로 손익비가 통계적으로 유효하지 않음)`
+        : pfGood && absMdd < 25
+          ? ", 손익비·낙폭 모두 양호"
+          : pfOk
+            ? `, 손익비는 플러스지만 낙폭 -${absMdd.toFixed(0)}% 는 감내해야`
+            : ", 손익비 1 미만이라 장기 지속은 어려움";
+
+  const winRateStr = tradeCount === 0 ? "거래 없음" : `승률 ${winRate.toFixed(0)}%`;
+
+  return [
+    "[3줄 요약]",
+    `· 수익률 ${retStr} (단순보유 ${bhStr} · 초과 ${excessStr})`,
+    `· MDD ${mddStr} · 거래 ${tradeCount}회 (${winRateStr}, PF ${pfStr})`,
+    `· ${alpha}${risk}.`,
+    "",
+    "───",
+    "",
+  ].join("\n");
+}
+
 // ---------- Gemini call ----------
 async function callGemini(factBlock: string, narrativeInstruction: string): Promise<string | null> {
   if (!GEMINI_KEY) return null;
@@ -685,6 +740,19 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
       mddDurationBars: r.maxDrawdownDurationBars,
     });
   }
+
+  // 본문 앞에 결정적인 3줄 요약 블록을 덧붙인다. Gemini/fallback 본문
+  // 품질과 무관하게 리스트 → 글 진입 시 숫자부터 바로 확인 가능.
+  const tldr = buildTldr({
+    ret: r.returnPct,
+    bh: r.benchmarkReturnPct,
+    excess,
+    mdd: r.maxDrawdownPct,
+    tradeCount: r.tradeCount,
+    winRate: r.winRate,
+    profitFactor: r.profitFactor,
+  });
+  body = tldr + body;
 
   // 제목 — 롱테일 SEO 용.
   // 원칙:

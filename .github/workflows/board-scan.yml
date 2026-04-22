@@ -1,22 +1,19 @@
 name: Board Scan (daily signals)
 
-# 시장별 닫힘 이후 스캔 3회.
-# - crypto/crypto_fut: 00:00 UTC 닫힘 → 00:15 UTC
-# - stock_kr: 06:30 UTC (15:30 KST) 닫힘 → 07:15 UTC
-# - stock_us: 21:00 UTC (16:00 ET DST) 닫힘 → 22:15 UTC
+# 코인/선물 일봉 닫힘 (00:00 UTC) 이후 +15분에 스캔.
+# 주식 (stock_kr / stock_us) 은 Yahoo Finance 의 Vercel IP 차단 (429) 이슈로
+# 일시 비활성화. universe 가 빈 배열이라 스캔해도 무의미해서 스케줄 자체를 뺌.
+# 데이터 소스 안정화 후 재개 예정.
 #
-# 각 스케줄은 현재 UTC 시각을 보고 해당 kind 만 스캔. 실패해도 다른 kind 무관.
-# 수동 실행도 가능 (workflow_dispatch).
+# 수동 실행 (workflow_dispatch) 으로 stock kind 선택 시에도 빈 결과만 나옴.
 
 on:
   schedule:
     - cron: "15 0 * * *"
-    - cron: "15 7 * * *"
-    - cron: "15 22 * * *"
   workflow_dispatch:
     inputs:
       kind:
-        description: "수동 실행 시 스캔할 kind (없으면 전체)"
+        description: "수동 실행 시 스캔할 kind (없으면 코인+선물)"
         required: false
         type: choice
         options: ["", "crypto", "crypto_fut", "stock_kr", "stock_us", "all"]
@@ -38,17 +35,12 @@ jobs:
             exit 0
           fi
           if [ "$manual" = "all" ]; then
+            # 수동 'all' 은 stocks 까지 시도 (실패해도 다른 kind 영향 X)
             echo "list=crypto,crypto_fut,stock_kr,stock_us" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 크론 트리거: 현재 UTC 시 기준으로 해당하는 kind 만 선택
-          hour=$(date -u +%H)
-          case "$hour" in
-            00) echo "list=crypto,crypto_fut" >> "$GITHUB_OUTPUT" ;;
-            07) echo "list=stock_kr" >> "$GITHUB_OUTPUT" ;;
-            22) echo "list=stock_us" >> "$GITHUB_OUTPUT" ;;
-            *)  echo "list=" >> "$GITHUB_OUTPUT" ;;
-          esac
+          # 크론 트리거 — 현재 코인/선물만. 주식은 빈 universe 라 스킵.
+          echo "list=crypto,crypto_fut" >> "$GITHUB_OUTPUT"
 
       - name: Scan each kind
         if: steps.kinds.outputs.list != ''

@@ -33,33 +33,13 @@ const CRYPTO_FUT_MARKETS = [
   "okx_fut:LTC-USDT-SWAP",
 ];
 
-// 국내 주식 — KOSPI + KOSDAQ 인기 종목
-const STOCK_KR_MARKETS = [
-  "yahoo:005930.KS", // 삼성전자
-  "yahoo:000660.KS", // SK하이닉스
-  "yahoo:373220.KS", // LG에너지솔루션
-  "yahoo:207940.KS", // 삼성바이오로직스
-  "yahoo:005380.KS", // 현대차
-  "yahoo:000270.KS", // 기아
-  "yahoo:068270.KS", // 셀트리온
-  "yahoo:005490.KS", // POSCO홀딩스
-  "yahoo:035420.KS", // NAVER
-  "yahoo:051910.KS", // LG화학
-  "yahoo:006400.KS", // 삼성SDI
-  "yahoo:035720.KS", // 카카오
-  "yahoo:247540.KQ", // 에코프로비엠
-  "yahoo:086520.KQ", // 에코프로
-  "yahoo:352820.KQ", // 하이브
-];
-
-// 미국 주식 — 대형주 + 인기 ETF
-const STOCK_US_MARKETS = [
-  "yahoo:AAPL", "yahoo:MSFT", "yahoo:NVDA", "yahoo:GOOGL",
-  "yahoo:AMZN", "yahoo:META", "yahoo:TSLA", "yahoo:AVGO",
-  "yahoo:NFLX", "yahoo:AMD", "yahoo:INTC", "yahoo:COIN",
-  "yahoo:MSTR", "yahoo:PLTR", "yahoo:QQQ", "yahoo:SPY",
-  "yahoo:VOO",
-];
+// 주식 (국내·미국) — 일시 비활성화.
+// 이유: Yahoo Finance 가 Vercel IP 에 burst 차단 (429) 자주 때려서 cron 으로
+// 여러 종목 한꺼번에 받으면 거의 다 실패. 한 번 차단되면 시간/일 단위로 풀리지
+// 않아 보드 신뢰성 무너짐. 안정적 데이터 소스 (Stooq 등) 검토 후 재개 예정.
+// 개별 유저 백테스트와 워치리스트는 호출 빈도 낮아 영향 없음 — 그쪽은 정상 동작.
+const STOCK_KR_MARKETS: string[] = [];
+const STOCK_US_MARKETS: string[] = [];
 
 // 스캔 전략 4종 × 기본 파라미터. DCA / grid / rebalance / buy_hold 는 신호 개념
 // 애매해서 제외. custom (DIY) 은 사용자 정의라 여기엔 안 넣음.

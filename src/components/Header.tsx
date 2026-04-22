@@ -6,10 +6,16 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { VisitorBadge } from "./VisitorBadge";
 
-const NAV_ITEMS = [
+// 위 행 = 행동 (백테스트, 모의투자, 오늘의 신호, 관심종목).
+// 아래 행 = 탐색 (랭킹, 커뮤니티). 톤 다운 + 높이 살짝 줄임.
+const NAV_PRIMARY = [
   { href: "/backtest", label: "백테스트" },
   { href: "/paper-trade", label: "모의투자" },
-  { href: "/watchlist", label: "관심" },
+  { href: "/signals", label: "오늘의신호" },
+  { href: "/watchlist", label: "관심종목" },
+];
+
+const NAV_SECONDARY = [
   { href: "/ranking", label: "랭킹" },
   { href: "/community", label: "커뮤니티" },
 ];
@@ -77,7 +83,7 @@ export function Header() {
 
       <nav className="border-t border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-5xl px-2 flex">
-          {NAV_ITEMS.map((item) => {
+          {NAV_PRIMARY.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -87,6 +93,24 @@ export function Header() {
                   active
                     ? "text-brand border-brand"
                     : "text-neutral-600 dark:text-neutral-300 border-transparent hover:text-neutral-900 dark:hover:text-white"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+        <div className="mx-auto max-w-5xl px-2 flex border-t border-neutral-100 dark:border-neutral-900">
+          {NAV_SECONDARY.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex-1 text-center py-2 text-[13px] font-medium border-b-2 transition ${
+                  active
+                    ? "text-brand border-brand"
+                    : "text-neutral-500 dark:text-neutral-400 border-transparent hover:text-neutral-800 dark:hover:text-neutral-200"
                 }`}
               >
                 {item.label}

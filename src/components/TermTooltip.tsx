@@ -65,8 +65,14 @@ export function TermTooltip({
           e.preventDefault();
           setOpen((v) => !v);
         }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onPointerEnter={(e) => {
+          // 터치 디바이스는 탭 시 onMouseEnter/onClick 이 동시에 쏘여서
+          // 토글이 상쇄된다. 호버는 마우스/펜만.
+          if (e.pointerType !== "touch") setOpen(true);
+        }}
+        onPointerLeave={(e) => {
+          if (e.pointerType !== "touch") setOpen(false);
+        }}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-600 text-[10px] font-semibold text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
       >
         ?

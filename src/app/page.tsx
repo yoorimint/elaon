@@ -111,7 +111,7 @@ export default async function HomePage() {
       <section className="mb-12">
         <div className="flex items-baseline justify-between">
           <h2 className="text-lg sm:text-xl font-bold">처음이신가요? 이대로 눌러보세요</h2>
-          <span className="text-sm text-neutral-500">클릭하면 전략이 자동 세팅됩니다</span>
+          <span className="text-sm text-neutral-500">누르면 전략이 자동 세팅돼요</span>
         </div>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {BEGINNER_PRESETS.map((p) => (

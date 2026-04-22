@@ -217,14 +217,14 @@ function verdictSentence(data: SharedBacktest | null): string {
 
   const riskPhrase =
     mdd >= 40
-      ? `다만 중간에 ${mdd.toFixed(0)}% 까지 떨어진 구간이 있어서 멘탈 관리 난이도 상.`
+      ? `다만 중간에 -${mdd.toFixed(0)}% 까지 떨어진 구간이 있어서 멘탈 관리 난이도 상.`
       : mdd >= 20
         ? `중간에 최대 -${mdd.toFixed(0)}% 까지 떨어진 구간이 있었어요.`
-        : mdd >= 10
-          ? `낙폭은 최대 -${mdd.toFixed(0)}% 정도로 양호한 편.`
-          : `낙폭도 -${mdd.toFixed(0)}% 수준으로 작아서 안정적이에요.`;
+        : mdd >= 8
+          ? `낙폭은 최대 -${mdd.toFixed(0)}% 수준.`
+          : `낙폭도 -${mdd.toFixed(0)}% 에 불과해 안정적이에요.`;
 
-  return `이 전략은 ${yearsLabel} 동안 ${retStr} 수익을 냈고, ${winPhrase}. ${riskPhrase}`;
+  return `이 전략은 ${yearsLabel} 동안 ${retStr} 수익률을 기록했고, ${winPhrase}. ${riskPhrase}`;
 }
 
 export default async function SharedPage({ params }: { params: { slug: string } }) {

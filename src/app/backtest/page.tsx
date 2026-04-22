@@ -37,6 +37,7 @@ import {
   type BacktestSnapshot,
 } from "@/lib/backtest-snapshot";
 import {
+  consumeCloneHandoff,
   deleteStrategy,
   listMyStrategies,
   loadLastConfig,
@@ -257,6 +258,14 @@ export default function BacktestPage() {
         applyConfig(cfg);
         return;
       }
+    }
+    // 공유 페이지에서 "내 전략으로 복제"로 넘어온 경우, sessionStorage 에 심어둔
+    // config 를 꺼내 폼에 얹는다. consume 한 번에 소멸되므로 뒤로가기 재진입 시
+    // 자동 복제가 반복되지 않는다. 스냅샷보다 우선.
+    const clone = consumeCloneHandoff();
+    if (clone) {
+      applyConfig(clone);
+      return;
     }
     const snap: BacktestSnapshot | null = loadBacktestSnapshot();
     if (snap) {

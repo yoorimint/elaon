@@ -13,6 +13,7 @@ import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { SharedTradeTable } from "@/components/SharedTradeTable";
 import { SharedActions } from "@/components/SharedActions";
 import { TermTooltip } from "@/components/TermTooltip";
+import { symbolPrettyLabel } from "@/lib/bot-symbols";
 import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
@@ -153,7 +154,8 @@ export async function generateMetadata({
 
   const sName = strategyName(data.strategy);
   const ret = data.return_pct.toFixed(1);
-  const title = `${data.market} ${sName} ${data.days}일 → ${ret}% | eloan 백테스트`;
+  const marketLabel = symbolPrettyLabel(data.market);
+  const title = `${marketLabel} ${sName} ${data.days}일 → ${ret}% | eloan 백테스트`;
   const description = `전략 수익률 ${ret}% (단순 보유 ${data.benchmark_return_pct.toFixed(1)}%) · MDD ${data.max_drawdown_pct.toFixed(1)}% · 거래 ${data.trade_count}회`;
 
   return {

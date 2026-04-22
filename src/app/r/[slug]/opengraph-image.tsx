@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
+import { symbolPrettyLabel } from "@/lib/bot-symbols";
 
 export const runtime = "edge";
 export const alt = "eloan 백테스트 결과";
@@ -71,7 +72,7 @@ export default async function Image({ params }: { params: { slug: string } }) {
 
         <div style={{ display: "flex", gap: 16, marginTop: 24, fontSize: 32, color: "#a3a3a3" }}>
           <span style={{ background: "#1f1f1f", padding: "8px 20px", borderRadius: 999 }}>
-            {data.market}
+            {symbolPrettyLabel(data.market)}
           </span>
           <span style={{ background: "#1f1f1f", padding: "8px 20px", borderRadius: 999 }}>
             {strategyName(data.strategy)}

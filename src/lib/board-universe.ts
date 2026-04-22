@@ -13,17 +13,25 @@ export type UniverseCombo = {
 };
 
 // 시장별 주요 종목 — market.ts 의 전체 STOCK_MARKETS 보다 축약 (봇 글 제목 후보랑 비슷한 수준)
+// MATIC 은 폴리곤 리브랜딩으로 POL 로 바뀌어 업비트/OKX 에서 코드 변경 또는 단종.
+// LTC 는 업비트에 없어서 제외.
 const CRYPTO_MARKETS = [
   "KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL", "KRW-DOGE",
   "KRW-ADA", "KRW-TRX", "KRW-LINK", "KRW-AVAX", "KRW-DOT",
-  "KRW-MATIC", "KRW-LTC", "KRW-BNB", "KRW-APT", "KRW-ARB",
+  "KRW-BNB", "KRW-APT", "KRW-ARB",
   "KRW-OP", "KRW-NEAR", "KRW-INJ", "KRW-TON", "KRW-SUI",
 ];
 
-const CRYPTO_FUT_MARKETS = CRYPTO_MARKETS.map((m) => {
-  const sym = m.slice(4); // "KRW-BTC" → "BTC"
-  return `okx_fut:${sym}-USDT-SWAP`;
-});
+// OKX 는 MATIC 단종, LTC 는 LTC-USDT-SWAP 으로 살아있음.
+const CRYPTO_FUT_MARKETS = [
+  "okx_fut:BTC-USDT-SWAP", "okx_fut:ETH-USDT-SWAP", "okx_fut:XRP-USDT-SWAP",
+  "okx_fut:SOL-USDT-SWAP", "okx_fut:DOGE-USDT-SWAP", "okx_fut:ADA-USDT-SWAP",
+  "okx_fut:TRX-USDT-SWAP", "okx_fut:LINK-USDT-SWAP", "okx_fut:AVAX-USDT-SWAP",
+  "okx_fut:DOT-USDT-SWAP", "okx_fut:BNB-USDT-SWAP", "okx_fut:APT-USDT-SWAP",
+  "okx_fut:ARB-USDT-SWAP", "okx_fut:OP-USDT-SWAP", "okx_fut:NEAR-USDT-SWAP",
+  "okx_fut:INJ-USDT-SWAP", "okx_fut:TON-USDT-SWAP", "okx_fut:SUI-USDT-SWAP",
+  "okx_fut:LTC-USDT-SWAP",
+];
 
 // 국내 주식 — KOSPI + KOSDAQ 인기 종목
 const STOCK_KR_MARKETS = [

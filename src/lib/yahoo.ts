@@ -133,7 +133,7 @@ export async function fetchYahooCandles(
   const p1 = Math.floor(startMs / 1000);
   const p2 = Math.floor(endMs / 1000);
   const url = `${BASE}/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${p1}&period2=${p2}&interval=${yahooInterval(tf)}&events=history`;
-  const res = await fetch(url, { cache: "no-store", headers: SERVER_FETCH_HEADERS });
+  const res = await throttledFetch(url);
   if (!res.ok) throw new Error(`야후 응답 오류 (${res.status})`);
   const json = (await res.json()) as YahooChartResponse;
   const err = json.chart?.error?.description;
@@ -171,4 +171,39 @@ export async function fetchYahooCandles(
     });
   }
   return out.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// Yahoo 가 429 (rate limit) 잘 때려서 보호 레이어. 같은 인보케이션 안에서
+// 호출 사이 최소 간격 강제 + 429 받으면 한 번 더 재시도.
+const YAHOO_MIN_INTERVAL_MS = 600;
+const YAHOO_RETRY_DELAY_MS = 3000;
+let lastYahooCallAt = 0;
+let pendingChain: Promise<void> = Promise.resolve();
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
+// 동시 호출이 여러 개여도 throttle 보장하기 위해 chained Promise 로 직렬화.
+async function reserveSlot(): Promise<void> {
+  const wait = pendingChain.then(async () => {
+    const since = Date.now() - lastYahooCallAt;
+    if (since < YAHOO_MIN_INTERVAL_MS) {
+      await sleep(YAHOO_MIN_INTERVAL_MS - since);
+    }
+    lastYahooCallAt = Date.now();
+  });
+  pendingChain = wait;
+  return wait;
+}
+
+async function throttledFetch(url: string): Promise<Response> {
+  await reserveSlot();
+  let res = await fetch(url, { cache: "no-store", headers: SERVER_FETCH_HEADERS });
+  if (res.status === 429) {
+    await sleep(YAHOO_RETRY_DELAY_MS);
+    await reserveSlot();
+    res = await fetch(url, { cache: "no-store", headers: SERVER_FETCH_HEADERS });
+  }
+  return res;
 }

@@ -139,16 +139,18 @@ export function TodaySignalBoard() {
   // API 통째로 죽었으면 섹션 자체를 숨김 (빈 박스 노출 방지)
   if (failed) return null;
 
-  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔 returnPct > 0 인
-  // 것만 노출 ("수익 안 난 전략은 빼고" 정책).
+  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔 "그냥 보유 대비
+  // 잘한" 전략만 노출. 보유보다 수익률 낮으면 전략 쓸 이유가 없으므로 숨김.
   const profitable = rows
     ? presets.filter((p) => {
         const r = rows[p.market];
-        return typeof r?.returnPct === "number" && r.returnPct > 0;
+        if (typeof r?.returnPct !== "number") return false;
+        if (typeof r.benchmarkReturnPct !== "number") return false;
+        return r.returnPct > r.benchmarkReturnPct;
       })
     : presets;
 
-  // 결과 도착했는데 모두 마이너스라면 섹션 통째로 숨김.
+  // 결과 도착했는데 하나도 보유를 못 이겼으면 섹션 통째로 숨김.
   if (rows && profitable.length === 0) return null;
 
   return (
@@ -157,7 +159,7 @@ export function TodaySignalBoard() {
         <div>
           <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            과거 수익이 났던 전략의 오늘 신호만 모았어요.
+            그냥 보유보다 잘했던 전략의 오늘 신호만 모았어요.
           </p>
         </div>
         <span className="shrink-0 text-[11px] text-neutral-400 text-right">

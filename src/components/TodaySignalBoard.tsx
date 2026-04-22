@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { BoardCandidate } from "@/app/page";
+import { STOCK_MARKETS } from "@/lib/market";
 
 // 보드에 노출할 상한. 조건 통과한 것들 중 수익률 상위 N개만 노출.
 const DISPLAY_TOP_N = 6;
@@ -75,14 +76,17 @@ function writeCache(rows: Record<string, SignalRow>) {
 }
 
 function shortMarketLabel(marketId: string): string {
+  // 주식 / 선물은 STOCK_MARKETS 에 한국어 name 이 있음 (에코프로비엠, 셀트리온 등).
+  // 선물은 name 이 "비트코인 (선물)" 식이라 그대로 씀.
+  const hit = STOCK_MARKETS.find((m) => m.id === marketId);
+  if (hit) return hit.name;
+
   if (marketId.startsWith("KRW-")) return marketId.slice(4);
   if (marketId.startsWith("okx_fut:")) {
     return marketId.slice("okx_fut:".length).replace("-USDT-SWAP", "") + " 선물";
   }
   if (marketId.startsWith("yahoo:")) {
     const t = marketId.slice("yahoo:".length);
-    if (t === "005930.KS") return "삼성전자";
-    if (t === "000660.KS") return "SK하이닉스";
     return t.replace(/\.KS$|\.KQ$/, "");
   }
   return marketId;
@@ -250,11 +254,30 @@ export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] 
         <div>
           <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            그냥 보유보다 잘했던 전략의 오늘 신호만 모았어요.
+            그냥 들고만 있었을 때보다 수익 많이 낸 전략들, 오늘 신호예요.
           </p>
         </div>
         <span className="shrink-0 text-[11px] text-neutral-400 text-right">
           과거 수익률은 미래를 보장하지 않음
+        </span>
+      </div>
+
+      {/* 신호 범례 — 모르는 사람도 카드 보기 전에 의미 파악 가능 */}
+      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-600 dark:text-neutral-400">
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>🟢</span>
+          <span className="font-semibold text-emerald-700 dark:text-emerald-400">매수</span>
+          <span>지금 사라는 신호</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>🔴</span>
+          <span className="font-semibold text-red-700 dark:text-red-400">매도</span>
+          <span>지금 팔라는 신호</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span aria-hidden>⚪</span>
+          <span className="font-semibold">대기</span>
+          <span>새 신호 없음 · 최근 매매 유지</span>
         </span>
       </div>
 

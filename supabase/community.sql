@@ -547,6 +547,23 @@ end;
 $$;
 grant execute on function public.admin_site_stats() to authenticated;
 
+-- ===== SNS 포스트 로그 =====
+-- 봇이 새 커뮤니티 글 만들 때 X/Threads/Bluesky 에 포스팅 한 내역.
+-- post_slug 기준 1행 — 재실행해도 중복 포스팅 안 하게 PK 로 잠금.
+-- 각 플랫폼 status: "sent" | "skip" | "failed: <msg>" | null(아직 시도 안 함)
+create table if not exists public.social_posts (
+  post_slug text primary key references public.posts(slug) on delete cascade,
+  posted_at timestamptz not null default now(),
+  x_status text,
+  threads_status text,
+  bluesky_status text
+);
+
+alter table public.social_posts enable row level security;
+-- service_role 만 읽기/쓰기. 클라이언트에선 접근 불가.
+drop policy if exists social_posts_no_access on public.social_posts;
+create policy social_posts_no_access on public.social_posts for select using (false);
+
 -- ===== 봇 (자동 전략 추천) =====
 -- posts.category 에 'bot' 추가. CHECK 제약은 alter table 로 drop/add.
 alter table public.posts drop constraint if exists posts_category_check;

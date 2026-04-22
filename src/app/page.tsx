@@ -2,9 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { STRATEGIES } from "@/lib/strategies";
-import { categoryLabel, timeAgo, fetchUsernameMap, type Category } from "@/lib/community";
+import { timeAgo } from "@/lib/community";
 import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
 import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
+import { TodaySignalBoard } from "@/components/TodaySignalBoard";
 
 export const revalidate = 30;
 
@@ -32,43 +33,15 @@ type SharedRow = {
   created_at: string;
 };
 
-type PostRow = {
-  slug: string;
-  title: string;
-  category: Category;
-  comment_count: number;
-  view_count: number;
-  backtest_slug: string | null;
-  created_at: string;
-  author_id: string;
-  author_username?: string;
-};
-
 async function loadHomeData() {
   const sb = createServerClient();
-  const [sharedRes, postsRes] = await Promise.all([
-    sb
-      .from("shared_backtests")
-      .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
-      .order("created_at", { ascending: false })
-      .limit(6),
-    sb
-      .from("posts")
-      .select("slug,title,category,comment_count,view_count,backtest_slug,created_at,author_id")
-      .order("created_at", { ascending: false })
-      .limit(6),
-  ]);
-  const rawPosts = (postsRes.data ?? []) as Omit<PostRow, "author_username">[];
-  const usernames = await fetchUsernameMap(
-    sb,
-    rawPosts.map((p) => p.author_id),
-  );
+  const sharedRes = await sb
+    .from("shared_backtests")
+    .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
+    .order("created_at", { ascending: false })
+    .limit(3);
   return {
     shared: (sharedRes.data ?? []) as SharedRow[],
-    posts: rawPosts.map((p) => ({
-      ...p,
-      author_username: usernames.get(p.author_id),
-    })) as PostRow[],
   };
 }
 
@@ -77,7 +50,7 @@ function strategyName(id: string) {
 }
 
 export default async function HomePage() {
-  const { shared, posts } = await loadHomeData();
+  const { shared } = await loadHomeData();
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
@@ -86,12 +59,12 @@ export default async function HomePage() {
           ELOAN BACKTEST
         </div>
         <h1 className="mt-2 text-3xl sm:text-5xl font-bold leading-tight">
-          코인·주식·선물 전략,
+          유튜브에서 본 전략,
           <br />
-          숫자로 증명하세요.
+          진짜 돈 벌었는지 3분 만에 확인.
         </h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400 text-base sm:text-lg">
-          업비트·Yahoo Finance·OKX 실제 과거 시세로 전략을 돌려봅니다. 3분 안에 결과 나오고, 모의투자로 이어서 검증.
+          업비트·Yahoo Finance·OKX 실제 과거 시세로 돌려봅니다. 결과 보고 모의투자로 이어서 검증까지.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -108,6 +81,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <TodaySignalBoard />
 
       <BeginnerPresetSection />
 
@@ -171,49 +146,6 @@ export default async function HomePage() {
                 </li>
               );
             })}
-          </ul>
-        )}
-      </section>
-
-      <section className="mb-12">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg sm:text-xl font-bold">최신 커뮤니티 글</h2>
-          <Link href="/community" className="text-sm text-neutral-500 hover:underline">
-            전체 보기 →
-          </Link>
-        </div>
-        {posts.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-8 text-center text-sm text-neutral-500">
-            아직 글이 없습니다. 첫 글을 남겨주세요.
-          </div>
-        ) : (
-          <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800 border-t border-b border-neutral-200 dark:border-neutral-800">
-            {posts.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/community/${p.slug}`}
-                  className="flex items-start gap-3 py-3 px-2 -mx-2 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <span className="shrink-0 mt-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-xs px-2 py-0.5">
-                    {categoryLabel(p.category)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate">
-                      <span className="font-medium">{p.title}</span>
-                      {p.comment_count > 0 && (
-                        <span className="ml-2 text-brand text-sm">[{p.comment_count}]</span>
-                      )}
-                      {p.backtest_slug && (
-                        <span className="ml-2 text-xs text-brand">📊</span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 text-xs text-neutral-500">
-                      {p.author_username ?? "익명"} · {timeAgo(p.created_at)}
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
           </ul>
         )}
       </section>

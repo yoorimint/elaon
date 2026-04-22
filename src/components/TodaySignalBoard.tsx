@@ -29,6 +29,9 @@ type SignalRow = {
   action: SignalAction;
   lastSignalAction: "buy" | "sell" | null;
   lastSignalBarsAgo: number | null;
+  returnPct?: number;
+  benchmarkReturnPct?: number;
+  daysUsed?: number;
   error?: string;
 };
 
@@ -104,7 +107,12 @@ export function TodaySignalBoard() {
           .map((p) => {
             const params = presetStrategyParams(p.id);
             if (!params) return null;
-            return { market: p.market, strategy: p.strategy, params };
+            return {
+              market: p.market,
+              strategy: p.strategy,
+              params,
+              backtestDays: p.days,
+            };
           })
           .filter(Boolean);
         const res = await fetch("/api/signals", {
@@ -131,22 +139,34 @@ export function TodaySignalBoard() {
   // API 통째로 죽었으면 섹션 자체를 숨김 (빈 박스 노출 방지)
   if (failed) return null;
 
+  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔 returnPct > 0 인
+  // 것만 노출 ("수익 안 난 전략은 빼고" 정책).
+  const profitable = rows
+    ? presets.filter((p) => {
+        const r = rows[p.market];
+        return typeof r?.returnPct === "number" && r.returnPct > 0;
+      })
+    : presets;
+
+  // 결과 도착했는데 모두 마이너스라면 섹션 통째로 숨김.
+  if (rows && profitable.length === 0) return null;
+
   return (
     <section className="mb-12">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            인기 종목에 검증된 전략을 적용한 오늘 결과예요.
+            과거 수익이 났던 전략의 오늘 신호만 모았어요.
           </p>
         </div>
-        <span className="shrink-0 text-[11px] text-neutral-400">
-          매매 추천 아님 · 전략 결과 표시
+        <span className="shrink-0 text-[11px] text-neutral-400 text-right">
+          과거 수익률은 미래를 보장하지 않음
         </span>
       </div>
 
       <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-3">
-        {presets.map((p) => {
+        {profitable.map((p) => {
           const row = rows?.[p.market];
           const action: SignalAction = row?.action ?? "hold";
           const s = actionStyle(action);
@@ -156,6 +176,10 @@ export function TodaySignalBoard() {
                 ? "오늘"
                 : `${row.lastSignalBarsAgo}일 전`
               : null;
+          const ret = row?.returnPct;
+          const bench = row?.benchmarkReturnPct;
+          const beat =
+            typeof ret === "number" && typeof bench === "number" && ret > bench;
           return (
             <li key={p.id}>
               <Link
@@ -175,8 +199,33 @@ export function TodaySignalBoard() {
                   {shortMarketLabel(p.market)}
                 </div>
                 <div className="mt-0.5 text-[11px] text-neutral-500">
-                  {strategyShort(p.strategy)}
+                  {strategyShort(p.strategy)} · {p.days >= 730 ? "2년" : "1년"}
                 </div>
+                {typeof ret === "number" && (
+                  <div className="mt-2 text-xs">
+                    <span
+                      className={`font-bold ${
+                        ret >= 0
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : "text-red-700 dark:text-red-400"
+                      }`}
+                    >
+                      {ret >= 0 ? "+" : ""}
+                      {ret.toFixed(1)}%
+                    </span>
+                    {typeof bench === "number" && (
+                      <span className="ml-1.5 text-[10px] text-neutral-500">
+                        vs 보유 {bench >= 0 ? "+" : ""}
+                        {bench.toFixed(1)}%
+                      </span>
+                    )}
+                    {beat && (
+                      <span className="ml-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="mt-2 text-[11px] text-brand font-semibold">
                   결과 보기 →
                 </div>

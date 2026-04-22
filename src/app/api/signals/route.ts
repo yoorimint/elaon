@@ -16,6 +16,7 @@ import { computeDIYSignals } from "@/lib/diy-strategy";
 import type { StrategyId, StrategyParams, Signal } from "@/lib/strategies";
 import { computeSignals } from "@/lib/strategies";
 import { getCachedDailyCandles } from "@/lib/signal-cache";
+import { runBacktest } from "@/lib/backtest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +34,9 @@ type RequestItem = {
   customSell?: Condition[];
   stopLossPct?: number;
   takeProfitPct?: number;
+  // 0 보다 크면 해당 기간으로 백테스트도 같이 돌려서 returnPct/benchmarkReturnPct 반환.
+  // 비워두면 백테스트 생략 (기존 호출자 호환).
+  backtestDays?: number;
 };
 
 type ResponseItem = {
@@ -44,6 +48,10 @@ type ResponseItem = {
   refreshedAt: number | null;
   stale?: boolean;
   error?: string;
+  // backtestDays 가 들어왔을 때만 채워짐.
+  returnPct?: number;
+  benchmarkReturnPct?: number;
+  daysUsed?: number;
 };
 
 // Signal 타입이 object 형태도 있어서 문자열로 정규화.
@@ -122,6 +130,24 @@ async function processOne(item: RequestItem): Promise<ResponseItem> {
       }
     }
 
+    // 요청에 backtestDays 가 있으면 그 기간으로 백테스트 실행. 캔들이 부족하면
+    // 사용 가능한 만큼만 (워밍업은 슬라이스 시작 전까지의 fullSignals 가 보정).
+    let returnPct: number | undefined;
+    let benchmarkReturnPct: number | undefined;
+    let daysUsed: number | undefined;
+    if (item.backtestDays && item.backtestDays > 0) {
+      const want = Math.min(item.backtestDays, candles.length);
+      const sliceCandles = candles.slice(-want);
+      const sliceSignals = signals.slice(-want);
+      const result = runBacktest(sliceCandles, sliceSignals, {
+        initialCash: 1_000_000,
+        feeRate: 0.0005,
+      });
+      returnPct = result.returnPct;
+      benchmarkReturnPct = result.benchmarkReturnPct;
+      daysUsed = want;
+    }
+
     return {
       market: item.market,
       action,
@@ -130,6 +156,11 @@ async function processOne(item: RequestItem): Promise<ResponseItem> {
       latestPrice: candles[lastIdx].close,
       refreshedAt: cached.refreshedAt,
       stale: cached.stale,
+      ...(returnPct !== undefined && {
+        returnPct,
+        benchmarkReturnPct,
+        daysUsed,
+      }),
     };
   } catch (err) {
     return {

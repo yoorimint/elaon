@@ -13,7 +13,8 @@ import { fetchCandlesForMarket, marketKind, type MarketKind } from "./market";
 import { createServerClient } from "./supabase-server";
 
 // 1d 워치리스트는 1년 히스토리만 있으면 모든 지표 (RSI, MA, 볼린저, 일목 등) 계산에 충분.
-const LOOKBACK_DAYS = 400;
+// 신호 계산용 +α (지표 워밍업) + 2년 프리셋 백테스트(730일) 까지 커버.
+const LOOKBACK_DAYS = 800;
 
 // 외부 API 가 막 닫힌 1d 봉을 반영하기까지 여유 시간.
 const SOURCE_LAG_MS = 30 * 1000;

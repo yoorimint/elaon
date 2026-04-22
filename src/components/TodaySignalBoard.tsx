@@ -149,7 +149,7 @@ function actionStyle(action: SignalAction) {
   }
   return {
     dot: "⚪",
-    label: "관망",
+    label: "대기",
     ring: "border-neutral-200 dark:border-neutral-800",
     text: "text-neutral-600 dark:text-neutral-400",
   };
@@ -263,12 +263,22 @@ export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] 
           const row = rows[c.slug];
           const action: SignalAction = row?.action ?? "hold";
           const s = actionStyle(action);
-          const recent =
-            row?.lastSignalAction && row.lastSignalBarsAgo !== null
-              ? row.lastSignalBarsAgo === 0
+          // 최근 3봉 안에 buy/sell 있었으면 단서 노출.
+          // buy/sell 이 오늘이면 "오늘", 아니면 "N일 전".
+          // 오늘 대기(hold) 상태인데 최근 신호가 있으면 "3일 전 매수" 처럼
+          // 무슨 신호였는지까지 보여서 "이미 산 상태" 인지 "오늘 빠짐" 인지 구분.
+          const recentHint = (() => {
+            if (!row || row.lastSignalBarsAgo === null || !row.lastSignalAction) {
+              return null;
+            }
+            const when =
+              row.lastSignalBarsAgo === 0
                 ? "오늘"
-                : `${row.lastSignalBarsAgo}일 전`
-              : null;
+                : `${row.lastSignalBarsAgo}일 전`;
+            if (action === row.lastSignalAction) return when;
+            const what = row.lastSignalAction === "buy" ? "매수" : "매도";
+            return `${when} ${what}`;
+          })();
           const ret = c.return_pct;
           const bench = c.benchmark_return_pct;
           return (
@@ -280,9 +290,9 @@ export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] 
                 <div className={`flex items-center gap-1.5 text-sm font-bold ${s.text}`}>
                   <span aria-hidden>{s.dot}</span>
                   <span>{s.label}</span>
-                  {recent && action !== "hold" && (
+                  {recentHint && (
                     <span className="ml-auto text-[10px] font-normal text-neutral-500">
-                      {recent}
+                      {recentHint}
                     </span>
                   )}
                 </div>

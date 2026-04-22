@@ -374,6 +374,7 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         slug={data.slug}
         market={data.market}
         timeframe={data.timeframe}
+        days={data.days}
         strategy={data.strategy}
         params={data.params as Record<string, unknown>}
         customBuy={data.custom_buy as Condition[] | null}

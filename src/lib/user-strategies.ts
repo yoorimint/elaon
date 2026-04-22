@@ -64,6 +64,7 @@ export type SavedStrategy = {
 
 export const MAX_SAVED = 20;
 const LAST_KEY = "eloan_last_config_v1";
+const CLONE_HANDOFF_KEY = "eloan_backtest_clone_v1";
 
 // localStorage: 모든 방문자의 "마지막 설정" 자동 기억.
 // 탭을 닫아도 남고 다음 방문 때 자동 복원된다.
@@ -79,6 +80,29 @@ export function loadLastConfig(): BacktestConfig | null {
   try {
     const raw = window.localStorage.getItem(LAST_KEY);
     if (!raw) return null;
+    return JSON.parse(raw) as BacktestConfig;
+  } catch {
+    return null;
+  }
+}
+
+// "내 전략으로 복제" 인계용 sessionStorage 버킷. 공유 페이지에서 복제 버튼을
+// 누르면 여기에 한 번 던져두고 /backtest 페이지가 최초 마운트 시 꺼내 쓴다.
+// 탭 닫으면 사라지고, 한 번 consume 하면 바로 제거돼 뒤로가기 재진입 시
+// "자동 복제"가 반복되지 않는다.
+export function setCloneHandoff(cfg: BacktestConfig): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(CLONE_HANDOFF_KEY, JSON.stringify(cfg));
+  } catch {}
+}
+
+export function consumeCloneHandoff(): BacktestConfig | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(CLONE_HANDOFF_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(CLONE_HANDOFF_KEY);
     return JSON.parse(raw) as BacktestConfig;
   } catch {
     return null;

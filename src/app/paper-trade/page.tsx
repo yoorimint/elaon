@@ -109,7 +109,12 @@ export default function PaperTradeListPage() {
           </p>
         </div>
       ) : (
-        <ul className="grid gap-3">
+        <>
+          <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            ℹ️ 목록 화면은 저장된 마지막 상태만 보여줘요. 최신 시세로 갱신하려면{" "}
+            <span className="font-semibold">각 종목 카드를 눌러</span> 상세 화면에서 확인하세요.
+          </div>
+          <ul className="grid gap-3">
           {rows.map((r) => {
             const currency = currencyOf(r.market);
             const beat = r.returnPct > r.benchmarkReturnPct;
@@ -169,7 +174,8 @@ export default function PaperTradeListPage() {
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </>
       )}
     </main>
   );

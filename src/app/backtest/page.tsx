@@ -55,7 +55,7 @@ import {
   defaultCondition,
   type Condition,
 } from "@/lib/diy-strategy";
-import { buildPresetConfig } from "@/lib/beginner-presets";
+import { buildAdHocConfig, buildPresetConfig } from "@/lib/beginner-presets";
 
 function todayYmd(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86400000);
@@ -283,6 +283,33 @@ function BacktestPageInner() {
         return;
       }
     }
+
+    // /signals 카드에서 share_slug 없는 결과를 클릭했을 때 들어오는 경로:
+    //   /backtest?market=KRW-BTC&strategy=rsi&days=365
+    // URL 파라미터를 폼에 적용. localStorage 마지막 설정보다 우선.
+    const adhocMarket = searchParams?.get("market");
+    const adhocStrategy = searchParams?.get("strategy");
+    const adhocDays = parseInt(searchParams?.get("days") ?? "", 10);
+    const SUPPORTED_STRATS: StrategyId[] = [
+      "buy_hold", "ma_cross", "macd", "breakout", "ichimoku", "rsi",
+      "bollinger", "stoch", "dca", "ma_dca", "grid", "rebalance", "custom",
+    ];
+    if (
+      adhocMarket &&
+      adhocStrategy &&
+      SUPPORTED_STRATS.includes(adhocStrategy as StrategyId) &&
+      Number.isFinite(adhocDays) &&
+      adhocDays > 0
+    ) {
+      const cfg = buildAdHocConfig({
+        market: adhocMarket,
+        strategy: adhocStrategy as StrategyId,
+        days: adhocDays,
+      });
+      applyConfig(cfg);
+      return;
+    }
+
     // 공유 페이지에서 "내 전략으로 복제"로 넘어온 경우, sessionStorage 에 심어둔
     // config 를 꺼내 폼에 얹는다. consume 한 번에 소멸되므로 뒤로가기 재진입 시
     // 자동 복제가 반복되지 않는다. 스냅샷보다 우선.

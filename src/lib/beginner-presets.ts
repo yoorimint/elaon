@@ -389,6 +389,25 @@ export function buildCloneConfig(args: {
   };
 }
 
+// /signals 카드 → /backtest?market=X&strategy=Y&days=Z 로 들어왔을 때 폼 초기화용.
+// 프리셋 목록에 없는 임의 (market, strategy, days) 조합도 기본 파라미터로 폼에 얹는다.
+export function buildAdHocConfig(args: {
+  market: string;
+  strategy: BacktestConfig["strategy"];
+  days: number;
+}): BacktestConfig {
+  const base = defaultConfigShape();
+  return {
+    market: args.market,
+    timeframe: "1d" as Timeframe,
+    strategy: args.strategy,
+    rangePreset: daysToRangePreset(args.days),
+    dateFrom: ymd(-args.days),
+    dateTo: ymd(0),
+    ...base,
+  };
+}
+
 export function buildPresetConfig(id: string): BacktestConfig | null {
   const preset = BEGINNER_PRESETS.find((p) => p.id === id);
   if (!preset) return null;

@@ -9,13 +9,28 @@ export function SharedDIYDetails(props: {
   customSell?: Condition[] | null;
   stopLossPct?: number | null;
   takeProfitPct?: number | null;
+  diyAllowReentry?: boolean | null;
+  diySellFraction?: number | null;
 }) {
-  const { customBuy, customSell, stopLossPct, takeProfitPct } = props;
+  const {
+    customBuy,
+    customSell,
+    stopLossPct,
+    takeProfitPct,
+    diyAllowReentry,
+    diySellFraction,
+  } = props;
   const hasBuy = (customBuy?.length ?? 0) > 0;
   const hasSell = (customSell?.length ?? 0) > 0;
   const hasSL = (stopLossPct ?? 0) > 0;
   const hasTP = (takeProfitPct ?? 0) > 0;
-  if (!hasBuy && !hasSell && !hasSL && !hasTP) return null;
+  const hasReentry = diyAllowReentry === true;
+  const hasPartialSell =
+    typeof diySellFraction === "number" &&
+    diySellFraction > 0 &&
+    diySellFraction < 1;
+  if (!hasBuy && !hasSell && !hasSL && !hasTP && !hasReentry && !hasPartialSell)
+    return null;
 
   return (
     <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/40 p-4 text-sm space-y-2">
@@ -44,6 +59,20 @@ export function SharedDIYDetails(props: {
         <div className="text-xs text-neutral-500">
           {hasSL && <>손절 -{stopLossPct}% </>}
           {hasTP && <>익절 +{takeProfitPct}%</>}
+        </div>
+      )}
+      {(hasReentry || hasPartialSell) && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {hasReentry && (
+            <span className="inline-flex items-center rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+              연속 매수 허용 (물타기)
+            </span>
+          )}
+          {hasPartialSell && (
+            <span className="inline-flex items-center rounded-full border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-300">
+              분할 매도 {Math.round((diySellFraction as number) * 100)}%
+            </span>
+          )}
         </div>
       )}
     </div>

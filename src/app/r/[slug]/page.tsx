@@ -301,6 +301,8 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         customSell={data.custom_sell as Condition[] | null}
         stopLossPct={data.stop_loss_pct}
         takeProfitPct={data.take_profit_pct}
+        diyAllowReentry={data.diy_allow_reentry}
+        diySellFraction={data.diy_sell_fraction}
       />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -381,8 +383,8 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         customSell={data.custom_sell as Condition[] | null}
         stopLossPct={data.stop_loss_pct}
         takeProfitPct={data.take_profit_pct}
-        diyAllowReentry={(data as { diy_allow_reentry?: boolean | null }).diy_allow_reentry ?? null}
-        diySellFraction={(data as { diy_sell_fraction?: number | null }).diy_sell_fraction ?? null}
+        diyAllowReentry={data.diy_allow_reentry}
+        diySellFraction={data.diy_sell_fraction}
         initialCash={data.initial_cash}
         feeBps={data.fee_bps}
       />

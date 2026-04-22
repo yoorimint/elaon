@@ -6,6 +6,7 @@ import { timeAgo } from "@/lib/community";
 import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
 import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
 import { TodaySignalBoard } from "@/components/TodaySignalBoard";
+import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
 
 export const revalidate = 30;
 
@@ -126,6 +127,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <TodayBuyHighlight />
 
       <TodaySignalBoard candidates={topCandidates} />
 

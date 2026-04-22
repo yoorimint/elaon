@@ -1,0 +1,73 @@
+name: Board Scan (daily signals)
+
+# 시장별 닫힘 이후 스캔 3회.
+# - crypto/crypto_fut: 00:00 UTC 닫힘 → 00:15 UTC
+# - stock_kr: 06:30 UTC (15:30 KST) 닫힘 → 07:15 UTC
+# - stock_us: 21:00 UTC (16:00 ET DST) 닫힘 → 22:15 UTC
+#
+# 각 스케줄은 현재 UTC 시각을 보고 해당 kind 만 스캔. 실패해도 다른 kind 무관.
+# 수동 실행도 가능 (workflow_dispatch).
+
+on:
+  schedule:
+    - cron: "15 0 * * *"
+    - cron: "15 7 * * *"
+    - cron: "15 22 * * *"
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "수동 실행 시 스캔할 kind (없으면 전체)"
+        required: false
+        type: choice
+        options: ["", "crypto", "crypto_fut", "stock_kr", "stock_us", "all"]
+        default: ""
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve kinds to scan
+        id: kinds
+        shell: bash
+        run: |
+          set -euo pipefail
+          manual="${{ github.event.inputs.kind }}"
+          if [ -n "$manual" ] && [ "$manual" != "all" ]; then
+            echo "list=$manual" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$manual" = "all" ]; then
+            echo "list=crypto,crypto_fut,stock_kr,stock_us" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 크론 트리거: 현재 UTC 시 기준으로 해당하는 kind 만 선택
+          hour=$(date -u +%H)
+          case "$hour" in
+            00) echo "list=crypto,crypto_fut" >> "$GITHUB_OUTPUT" ;;
+            07) echo "list=stock_kr" >> "$GITHUB_OUTPUT" ;;
+            22) echo "list=stock_us" >> "$GITHUB_OUTPUT" ;;
+            *)  echo "list=" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Scan each kind
+        if: steps.kinds.outputs.list != ''
+        shell: bash
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra kinds <<< "${{ steps.kinds.outputs.list }}"
+          for k in "${kinds[@]}"; do
+            echo "::group::scan kind=$k"
+            # maxDuration=60s. 실패해도 다음 kind 로 계속.
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $ADMIN_TOKEN" \
+              -H "Content-Length: 0" \
+              --max-time 90 \
+              "$SITE_URL/api/admin/board-scan?kind=$k" \
+              | tee /tmp/resp.json || echo "scan failed for $k"
+            echo
+            echo "::endgroup::"
+          done

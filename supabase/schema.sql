@@ -114,3 +114,40 @@ alter table public.shared_backtests add column if not exists extended_metrics js
 
 -- 공유 결과에 거래 내역 전체 저장 (옛 공유는 null).
 alter table public.shared_backtests add column if not exists trades jsonb;
+
+-- ===== 오늘의 신호 보드 (크론으로 매일 갱신) =====
+-- 매일 시장별 닫힘 후 크론이 모든 (market × strategy × days) 조합을 스캔해서
+-- 조건 통과한 상위 N개만 여기 저장. 유저 홈/signals 페이지는 이 테이블만 읽음.
+create table if not exists public.board_top_signals (
+  id bigserial primary key,
+  market_kind text not null check (market_kind in ('crypto','crypto_fut','stock_kr','stock_us')),
+  market text not null,
+  strategy text not null,
+  params jsonb not null default '{}'::jsonb,
+  days integer not null,
+  return_pct numeric not null,
+  benchmark_return_pct numeric not null,
+  trade_count integer not null,
+  -- 오늘 신호 + 최근 3봉 내 마지막 buy/sell
+  action text not null check (action in ('buy','sell','hold')),
+  last_signal_action text check (last_signal_action in ('buy','sell')),
+  last_signal_bars_ago integer,
+  -- 이 조합으로 공유된 백테스트 slug (있으면 카드 클릭 → /r/[slug] 상세)
+  share_slug text,
+  rank integer not null,
+  computed_at timestamptz not null default now()
+);
+
+create index if not exists board_top_signals_kind_rank_idx
+  on public.board_top_signals(market_kind, rank);
+create index if not exists board_top_signals_action_idx
+  on public.board_top_signals(action, rank);
+
+alter table public.board_top_signals enable row level security;
+
+-- 누구나 읽기 가능 (공개 랭킹)
+drop policy if exists "board_top_signals_read" on public.board_top_signals;
+create policy "board_top_signals_read"
+  on public.board_top_signals for select
+  using (true);
+-- 쓰기는 크론 엔드포인트가 service_role 로만 수행 (RLS 우회)

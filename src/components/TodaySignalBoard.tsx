@@ -250,17 +250,13 @@ export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] 
 
   return (
     <section className="mb-12">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
-          <p className="mt-1 text-sm text-neutral-500">
-            그냥 들고만 있었을 때보다 수익 많이 낸 전략들, 오늘 신호예요.
-          </p>
-        </div>
-        <span className="shrink-0 text-[11px] text-neutral-400 text-right">
-          과거 수익률은 미래를 보장하지 않음
-        </span>
-      </div>
+      <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
+      <p className="mt-1 text-sm text-neutral-500" style={{ wordBreak: "keep-all" }}>
+        그냥 들고만 있었을 때보다 수익 많이 낸 전략들, 오늘 신호예요.
+      </p>
+      <p className="mt-0.5 text-[11px] text-neutral-400">
+        과거 수익률은 미래를 보장하지 않음
+      </p>
 
       {/* 신호 범례 — 모르는 사람도 카드 보기 전에 의미 파악 가능 */}
       <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-600 dark:text-neutral-400">

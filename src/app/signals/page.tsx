@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { STOCK_MARKETS } from "@/lib/market";
+import { SCAN_CUSTOM_TEMPLATES } from "@/lib/scan-custom-templates";
 
 export const metadata: Metadata = {
   title: "오늘의 신호 — eloan",
@@ -27,6 +28,7 @@ type BoardRow = {
   last_signal_action: "buy" | "sell" | null;
   last_signal_bars_ago: number | null;
   share_slug: string | null;
+  custom_template_id: string | null;
   rank: number;
   computed_at: string;
 };
@@ -60,7 +62,11 @@ function shortMarketLabel(marketId: string): string {
   return marketId;
 }
 
-function strategyShort(s: string): string {
+function strategyShort(s: string, customTemplateId?: string | null): string {
+  if (s === "custom" && customTemplateId) {
+    const t = SCAN_CUSTOM_TEMPLATES.find((x) => x.id === customTemplateId);
+    if (t) return t.name;
+  }
   switch (s) {
     case "ma_cross": return "이평 크로스";
     case "rsi": return "RSI";
@@ -69,6 +75,9 @@ function strategyShort(s: string): string {
     case "breakout": return "브레이크아웃";
     case "stoch": return "스토캐스틱";
     case "ichimoku": return "일목균형";
+    case "dca": return "DCA";
+    case "ma_dca": return "MA DCA";
+    case "rebalance": return "리밸런싱";
     case "custom": return "커스텀(DIY)";
     default: return s;
   }
@@ -188,7 +197,11 @@ export default async function SignalsPage() {
                         : recent;
                     const href = r.share_slug
                       ? `/r/${r.share_slug}`
-                      : `/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}`;
+                      : `/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}${
+                          r.custom_template_id
+                            ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}`
+                            : ""
+                        }`;
                     return (
                       <li key={r.id}>
                         <Link
@@ -208,7 +221,7 @@ export default async function SignalsPage() {
                             {shortMarketLabel(r.market)}
                           </div>
                           <div className="mt-0.5 text-[11px] text-neutral-500">
-                            {strategyShort(r.strategy)} · {daysLabel(r.days)}
+                            {strategyShort(r.strategy, r.custom_template_id)} · {daysLabel(r.days)}
                           </div>
                           <div className="mt-2 text-xs">
                             <span

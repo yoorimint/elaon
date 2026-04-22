@@ -4,25 +4,37 @@
 
 import type { StrategyId, StrategyParams } from "./strategies";
 import type { MarketKind } from "./market";
+import type { Condition, ConditionLogic } from "./diy-strategy";
+import { SCAN_CUSTOM_TEMPLATES } from "./scan-custom-templates";
 
 export type UniverseCombo = {
   market: string;
   strategy: StrategyId;
   params: StrategyParams;
   days: number;
+  // custom 전략일 때만 채워짐 — 어떤 DIY 템플릿인지 식별 + 신호 계산용 조건들.
+  customTemplateId?: string;
+  customBuy?: Condition[];
+  customSell?: Condition[];
+  buyLogic?: ConditionLogic;
+  sellLogic?: ConditionLogic;
 };
 
-// 시장별 주요 종목 — market.ts 의 전체 STOCK_MARKETS 보다 축약 (봇 글 제목 후보랑 비슷한 수준)
-// MATIC 은 폴리곤 리브랜딩으로 POL 로 바뀌어 업비트/OKX 에서 코드 변경 또는 단종.
-// LTC 는 업비트에 없어서 제외.
+// 코인 30종 — 업비트 KRW 마켓 인기 종목.
+// 미상장/리브랜딩으로 빠진 것: MATIC(POL), LTC, BNB, TON.
 const CRYPTO_MARKETS = [
+  // 시총 / 거래량 상위
   "KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL", "KRW-DOGE",
   "KRW-ADA", "KRW-TRX", "KRW-LINK", "KRW-AVAX", "KRW-DOT",
-  "KRW-BNB", "KRW-APT", "KRW-ARB",
-  "KRW-OP", "KRW-NEAR", "KRW-INJ", "KRW-TON", "KRW-SUI",
+  // 인기 알트
+  "KRW-APT", "KRW-ARB", "KRW-OP", "KRW-NEAR", "KRW-INJ",
+  "KRW-SUI", "KRW-ATOM", "KRW-FIL", "KRW-IMX", "KRW-GRT",
+  // 밈 + 게임 + 기타
+  "KRW-SHIB", "KRW-PEPE", "KRW-SAND", "KRW-MANA", "KRW-AXS",
+  "KRW-XLM", "KRW-VET", "KRW-BCH", "KRW-ETC", "KRW-ALGO",
 ];
 
-// OKX 는 MATIC 단종, LTC 는 LTC-USDT-SWAP 으로 살아있음.
+// OKX 영구선물 29종 (MATIC 단종 확인됨).
 const CRYPTO_FUT_MARKETS = [
   "okx_fut:BTC-USDT-SWAP", "okx_fut:ETH-USDT-SWAP", "okx_fut:XRP-USDT-SWAP",
   "okx_fut:SOL-USDT-SWAP", "okx_fut:DOGE-USDT-SWAP", "okx_fut:ADA-USDT-SWAP",
@@ -30,7 +42,10 @@ const CRYPTO_FUT_MARKETS = [
   "okx_fut:DOT-USDT-SWAP", "okx_fut:BNB-USDT-SWAP", "okx_fut:APT-USDT-SWAP",
   "okx_fut:ARB-USDT-SWAP", "okx_fut:OP-USDT-SWAP", "okx_fut:NEAR-USDT-SWAP",
   "okx_fut:INJ-USDT-SWAP", "okx_fut:TON-USDT-SWAP", "okx_fut:SUI-USDT-SWAP",
-  "okx_fut:LTC-USDT-SWAP",
+  "okx_fut:LTC-USDT-SWAP", "okx_fut:SHIB-USDT-SWAP", "okx_fut:ATOM-USDT-SWAP",
+  "okx_fut:FIL-USDT-SWAP", "okx_fut:APE-USDT-SWAP", "okx_fut:LDO-USDT-SWAP",
+  "okx_fut:TIA-USDT-SWAP", "okx_fut:PEPE-USDT-SWAP", "okx_fut:WLD-USDT-SWAP",
+  "okx_fut:SEI-USDT-SWAP", "okx_fut:ORDI-USDT-SWAP",
 ];
 
 // 주식 (국내·미국) — 일시 비활성화.
@@ -41,8 +56,12 @@ const CRYPTO_FUT_MARKETS = [
 const STOCK_KR_MARKETS: string[] = [];
 const STOCK_US_MARKETS: string[] = [];
 
-// 스캔 전략 4종 × 기본 파라미터. DCA / grid / rebalance / buy_hold 는 신호 개념
-// 애매해서 제외. custom (DIY) 은 사용자 정의라 여기엔 안 넣음.
+// 스캔 전략 — 가능한 모든 매매 신호 전략. 기본 파라미터 사용.
+// 제외:
+//  - buy_hold: 시작일에만 buy, 이후 항상 hold → return == benchmark 라
+//    필터 (return > benchmark) 에서 자동 탈락
+//  - grid: low/high 가격 범위가 종목별로 달라 일률 적용 불가
+//  - custom (DIY): 사용자 정의 조건 → 크론에서 자동 생성 불가
 const SCAN_STRATEGIES: {
   id: StrategyId;
   params: StrategyParams;
@@ -51,6 +70,12 @@ const SCAN_STRATEGIES: {
   { id: "rsi", params: { rsi: { period: 14, oversold: 30, overbought: 70 } } },
   { id: "bollinger", params: { bollinger: { period: 20, stddev: 2, touch: "close" } } },
   { id: "macd", params: { macd: { fast: 12, slow: 26, signal: 9 } } },
+  { id: "breakout", params: { breakout: { k: 0.5 } } },
+  { id: "stoch", params: { stoch: { period: 14, smooth: 3, oversold: 20, overbought: 80 } } },
+  { id: "ichimoku", params: { ichimoku: { conversion: 9, base: 26, lagging: 52 } } },
+  { id: "dca", params: { dca: { intervalDays: 7, amountKRW: 100_000 } } },
+  { id: "ma_dca", params: { ma_dca: { intervalDays: 7, amountKRW: 100_000, maPeriod: 60 } } },
+  { id: "rebalance", params: { rebalance: { takeProfitPct: 10, rebuyDropPct: 5 } } },
 ];
 
 // 기간은 1년 고정 — 2년도 의미 있지만 조합 폭발 방지 + 최근 시장 흐름 반영.
@@ -59,8 +84,23 @@ const SCAN_DAYS = 365;
 function combosForMarkets(markets: string[]): UniverseCombo[] {
   const out: UniverseCombo[] = [];
   for (const market of markets) {
+    // 1) 빌트인 전략 (10종)
     for (const s of SCAN_STRATEGIES) {
       out.push({ market, strategy: s.id, params: s.params, days: SCAN_DAYS });
+    }
+    // 2) 커스텀 (DIY) 전략 — 정의된 템플릿마다 한 조합씩
+    for (const t of SCAN_CUSTOM_TEMPLATES) {
+      out.push({
+        market,
+        strategy: "custom",
+        params: {},
+        days: SCAN_DAYS,
+        customTemplateId: t.id,
+        customBuy: t.customBuy,
+        customSell: t.customSell,
+        buyLogic: t.buyLogic,
+        sellLogic: t.sellLogic,
+      });
     }
   }
   return out;

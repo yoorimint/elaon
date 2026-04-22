@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { STOCK_MARKETS } from "@/lib/market";
+import { SCAN_CUSTOM_TEMPLATES } from "@/lib/scan-custom-templates";
 
 const DISPLAY_N = 6;
 
@@ -19,6 +20,7 @@ type Row = {
   last_signal_action: "buy" | "sell" | null;
   last_signal_bars_ago: number | null;
   share_slug: string | null;
+  custom_template_id: string | null;
 };
 
 function shortMarketLabel(marketId: string): string {
@@ -36,7 +38,11 @@ function shortMarketLabel(marketId: string): string {
   return marketId;
 }
 
-function strategyShort(s: string): string {
+function strategyShort(s: string, customTemplateId?: string | null): string {
+  if (s === "custom" && customTemplateId) {
+    const t = SCAN_CUSTOM_TEMPLATES.find((x) => x.id === customTemplateId);
+    if (t) return t.name;
+  }
   switch (s) {
     case "ma_cross": return "이평 크로스";
     case "rsi": return "RSI";
@@ -45,6 +51,10 @@ function strategyShort(s: string): string {
     case "breakout": return "브레이크아웃";
     case "stoch": return "스토캐스틱";
     case "ichimoku": return "일목균형";
+    case "dca": return "DCA";
+    case "ma_dca": return "MA DCA";
+    case "rebalance": return "리밸런싱";
+    case "custom": return "커스텀(DIY)";
     default: return s;
   }
 }
@@ -83,7 +93,7 @@ async function loadBoardTop(): Promise<Row[]> {
   // 카드는 첫 1개만 (수익률 가장 높은 것).
   const { data } = await sb
     .from("board_top_signals")
-    .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug")
+    .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
     .order("return_pct", { ascending: false })
     .limit(40);
   const all = (data ?? []) as Row[];
@@ -165,7 +175,11 @@ export async function BoardSignalsTop() {
               : recent;
           const href = r.share_slug
             ? `/r/${r.share_slug}`
-            : `/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}`;
+            : `/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}${
+                r.custom_template_id
+                  ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}`
+                  : ""
+              }`;
           return (
             <li key={r.id}>
               <Link
@@ -185,7 +199,7 @@ export async function BoardSignalsTop() {
                   {shortMarketLabel(r.market)}
                 </div>
                 <div className="mt-0.5 text-[11px] text-neutral-500">
-                  {strategyShort(r.strategy)} ·{" "}
+                  {strategyShort(r.strategy, r.custom_template_id)} ·{" "}
                   {r.days >= 720 ? "2년" : r.days >= 330 ? "1년" : `${r.days}일`}
                 </div>
                 <div className="mt-2 text-xs">

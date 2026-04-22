@@ -56,6 +56,7 @@ import {
   type Condition,
 } from "@/lib/diy-strategy";
 import { buildAdHocConfig, buildPresetConfig } from "@/lib/beginner-presets";
+import { findCustomTemplate } from "@/lib/scan-custom-templates";
 
 function todayYmd(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86400000);
@@ -301,10 +302,17 @@ function BacktestPageInner() {
       Number.isFinite(adhocDays) &&
       adhocDays > 0
     ) {
+      // custom 전략이면서 customTemplate ID 가 같이 오면, 미리 정의된 DIY
+      // 템플릿 (RSI 딥, MACD 모멘텀, 볼밴 다중확인 등) 의 conditions 까지 적용.
+      const tplId = searchParams?.get("customTemplate");
+      const tpl =
+        adhocStrategy === "custom" && tplId ? findCustomTemplate(tplId) : null;
       const cfg = buildAdHocConfig({
         market: adhocMarket,
         strategy: adhocStrategy as StrategyId,
         days: adhocDays,
+        customBuy: tpl?.customBuy,
+        customSell: tpl?.customSell,
       });
       applyConfig(cfg);
       return;

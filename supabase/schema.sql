@@ -138,6 +138,12 @@ create table if not exists public.board_top_signals (
   computed_at timestamptz not null default now()
 );
 
+-- DIY (custom) 전략 자동 스캔용 컬럼.
+-- strategy='custom' 일 때만 채워짐. 카드 클릭 → /backtest 에 조건 그대로 복원.
+alter table public.board_top_signals add column if not exists custom_template_id text;
+alter table public.board_top_signals add column if not exists custom_buy jsonb;
+alter table public.board_top_signals add column if not exists custom_sell jsonb;
+
 create index if not exists board_top_signals_kind_rank_idx
   on public.board_top_signals(market_kind, rank);
 create index if not exists board_top_signals_action_idx

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeSignals } from "@/lib/strategies";
 import type { Signal } from "@/lib/strategies";
 import { runBacktest } from "@/lib/backtest";
+import { computeDIYSignals } from "@/lib/diy-strategy";
 import { getCachedDailyCandles } from "@/lib/signal-cache";
 import { createServiceClient } from "@/lib/supabase-server";
 import type { MarketKind } from "@/lib/market";
@@ -45,6 +46,10 @@ type ScanResult = {
   action: "buy" | "sell" | "hold";
   last_signal_action: "buy" | "sell" | null;
   last_signal_bars_ago: number | null;
+  // custom 전략일 때만 채워짐 — 결과 카드 클릭 시 조건 복원용.
+  custom_template_id?: string;
+  custom_buy?: unknown;
+  custom_sell?: unknown;
 };
 
 function isKind(v: string | null): v is MarketKind {
@@ -98,7 +103,16 @@ export async function POST(req: NextRequest) {
 
       for (const combo of combosForMarket) {
         try {
-          const signals = computeSignals(candles, combo.strategy, combo.params);
+          // custom 전략은 DIY 엔진, 나머지는 빌트인.
+          const signals: Signal[] =
+            combo.strategy === "custom"
+              ? computeDIYSignals(candles, {
+                  buy: combo.customBuy ?? [],
+                  sell: combo.customSell ?? [],
+                  buyLogic: combo.buyLogic,
+                  sellLogic: combo.sellLogic,
+                })
+              : computeSignals(candles, combo.strategy, combo.params);
           const days = Math.min(combo.days, candles.length);
           const sliceCandles = candles.slice(-days);
           const sliceSignals = signals.slice(-days);
@@ -136,6 +150,9 @@ export async function POST(req: NextRequest) {
             action,
             last_signal_action: lastSignalAction,
             last_signal_bars_ago: lastSignalBarsAgo,
+            custom_template_id: combo.customTemplateId,
+            custom_buy: combo.customBuy as unknown,
+            custom_sell: combo.customSell as unknown,
           });
         } catch (err) {
           errors.push({
@@ -185,6 +202,9 @@ export async function POST(req: NextRequest) {
       action: r.action,
       last_signal_action: r.last_signal_action,
       last_signal_bars_ago: r.last_signal_bars_ago,
+      custom_template_id: r.custom_template_id ?? null,
+      custom_buy: r.custom_buy ?? null,
+      custom_sell: r.custom_sell ?? null,
       rank: i + 1,
     }));
     const { error: insErr } = await sb.from("board_top_signals").insert(rows);

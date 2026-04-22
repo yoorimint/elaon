@@ -84,20 +84,17 @@ function actionStyle(action: Row["action"]) {
   };
 }
 
-// buy 가 먼저 오게 정렬 우선순위.
-const ACTION_ORDER: Record<Row["action"], number> = { buy: 0, sell: 1, hold: 2 };
-
 async function loadBoardTop(): Promise<Row[]> {
   const sb = createServerClient();
-  // 더 많이 가져와서 market 중복 제거 후 상위 N개. 같은 market 에 전략만 다른
-  // 카드는 첫 1개만 (수익률 가장 높은 것).
+  // 매수는 위 "🔥 오늘 살 만한 거" 섹션이 담당 → 여기는 매도/대기만 노출 (중복 제거).
+  // 더 많이 받아 market 단위 dedup 후 상위 N개. 정렬은 수익률 desc.
   const { data } = await sb
     .from("board_top_signals")
     .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
+    .neq("action", "buy")
     .order("return_pct", { ascending: false })
     .limit(40);
   const all = (data ?? []) as Row[];
-  // dedup by market — 첫 등장만 keep (수익률 desc 라 자연히 best per market)
   const seen = new Set<string>();
   const unique: Row[] = [];
   for (const r of all) {
@@ -105,12 +102,6 @@ async function loadBoardTop(): Promise<Row[]> {
     seen.add(r.market);
     unique.push(r);
   }
-  // buy 가 먼저 오도록 재정렬 (수익률은 그 안에서 유지)
-  unique.sort((a, b) => {
-    const ao = ACTION_ORDER[a.action] - ACTION_ORDER[b.action];
-    if (ao !== 0) return ao;
-    return b.return_pct - a.return_pct;
-  });
   return unique.slice(0, DISPLAY_N);
 }
 
@@ -122,12 +113,12 @@ export async function BoardSignalsTop() {
     <section className="mb-12">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
+          <h2 className="text-lg sm:text-xl font-bold">검증된 전략 더 보기</h2>
           <p
             className="mt-1 text-sm text-neutral-500"
             style={{ wordBreak: "keep-all" }}
           >
-            그냥 들고만 있었을 때보다 수익 많이 낸 전략들, 오늘 신호예요.
+            보유 대비 잘했던 전략 중 오늘 매도·대기 상태인 것들. 진입 타이밍 기다리는 종목 참고용.
           </p>
         </div>
         <Link
@@ -140,25 +131,6 @@ export async function BoardSignalsTop() {
       <p className="mt-0.5 text-[11px] text-neutral-400">
         과거 수익률은 미래를 보장하지 않음
       </p>
-
-      {/* 신호 범례 — 모바일에선 자연 랩 */}
-      <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-600 dark:text-neutral-400">
-        <span className="inline-flex items-center gap-1">
-          <span aria-hidden>🟢</span>
-          <span className="font-semibold text-emerald-700 dark:text-emerald-400">매수</span>
-          <span>지금 사라는 신호</span>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span aria-hidden>🔴</span>
-          <span className="font-semibold text-red-700 dark:text-red-400">매도</span>
-          <span>지금 팔라는 신호</span>
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span aria-hidden>⚪</span>
-          <span className="font-semibold">대기</span>
-          <span>새 신호 없음 · 최근 매매 유지</span>
-        </span>
-      </div>
 
       <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => {

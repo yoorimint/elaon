@@ -156,6 +156,8 @@ export default function WatchlistPage() {
         customSell: s.config.customSell,
         stopLossPct: s.config.stopLoss,
         takeProfitPct: s.config.takeProfit,
+        allowReentry: s.config.diyAllowReentry,
+        sellFraction: s.config.diySellFraction,
       }));
       try {
         const res = await fetch("/api/signals", {

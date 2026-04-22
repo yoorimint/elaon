@@ -190,6 +190,8 @@ export function TodaySignalBoard({ candidates }: { candidates: BoardCandidate[] 
             params: c.params,
             customBuy: (c.custom_buy ?? undefined) as unknown,
             customSell: (c.custom_sell ?? undefined) as unknown,
+            allowReentry: c.diy_allow_reentry ?? undefined,
+            sellFraction: c.diy_sell_fraction ?? undefined,
           },
         }));
         const res = await fetch("/api/signals", {

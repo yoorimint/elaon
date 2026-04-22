@@ -43,6 +43,8 @@ export type BoardCandidate = {
   params: Record<string, unknown>;
   custom_buy: unknown[] | null;
   custom_sell: unknown[] | null;
+  diy_allow_reentry: boolean | null;
+  diy_sell_fraction: number | null;
   return_pct: number;
   benchmark_return_pct: number;
   trade_count: number;
@@ -63,7 +65,7 @@ async function loadHomeData() {
       .limit(3),
     sb
       .from("shared_backtests")
-      .select("slug,market,strategy,timeframe,days,params,custom_buy,custom_sell,return_pct,benchmark_return_pct,trade_count")
+      .select("slug,market,strategy,timeframe,days,params,custom_buy,custom_sell,diy_allow_reentry,diy_sell_fraction,return_pct,benchmark_return_pct,trade_count")
       .eq("is_private", false)
       .gte("return_pct", 10)
       .order("return_pct", { ascending: false })

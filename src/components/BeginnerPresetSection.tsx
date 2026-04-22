@@ -70,7 +70,7 @@ export function BeginnerPresetSection() {
   const [signals, setSignals] = useState<SignalMap>({});
 
   const filtered = useMemo(
-    () => BEGINNER_PRESETS.filter((p) => p.category === active),
+    () => BEGINNER_PRESETS.filter((p) => p.category === active && !p.hidden),
     [active],
   );
 

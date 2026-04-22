@@ -21,6 +21,9 @@ export type BeginnerPreset = {
   strategy: BacktestConfig["strategy"];
   days: number;
   rangePreset: string;
+  // true 면 "처음이신가요" 카드에선 숨기고, "오늘의 신호" 보드 스캔 풀로만 쓰임.
+  // 보드가 조건(10%+ & 보유 이김) 통과하는 후보를 찾을 확률을 높이는 용도.
+  hidden?: boolean;
 };
 
 export const BEGINNER_PRESETS: BeginnerPreset[] = [
@@ -146,6 +149,24 @@ export const BEGINNER_PRESETS: BeginnerPreset[] = [
     days: 365,
     rangePreset: "365d",
   },
+
+  // ── 히든 (오늘의 신호 보드 스캔 풀 전용) ──────────────
+  // 아래는 "처음이신가요" 섹션엔 안 뜨고, /api/signals 에 실제 백테스트를
+  // 돌려서 조건(수익 10%+ 이면서 보유 이김) 통과하는 것만 홈 보드에 노출.
+  // hidden 덕에 beginner 그리드 혼잡 없이 후보 풀만 넓어진다.
+  { id: "btc-ma-2y", title: "BTC 이평 20/60 2년", blurb: "비트코인에 이동평균 교차 추세추종 2년.", badge: "", category: "crypto", difficulty: 2, forWhom: "", market: "KRW-BTC", strategy: "ma_cross", days: 730, rangePreset: "730d", hidden: true },
+  { id: "btc-bb-1y", title: "BTC 볼린저밴드 1년", blurb: "비트코인에 볼린저밴드 역추세 1년.", badge: "", category: "crypto", difficulty: 3, forWhom: "", market: "KRW-BTC", strategy: "bollinger", days: 365, rangePreset: "365d", hidden: true },
+  { id: "btc-macd-1y", title: "BTC MACD 1년", blurb: "비트코인 MACD 추세 1년.", badge: "", category: "crypto", difficulty: 3, forWhom: "", market: "KRW-BTC", strategy: "macd", days: 365, rangePreset: "365d", hidden: true },
+  { id: "eth-rsi-2y", title: "ETH RSI 2년", blurb: "이더리움 RSI 역추세 2년.", badge: "", category: "crypto", difficulty: 2, forWhom: "", market: "KRW-ETH", strategy: "rsi", days: 730, rangePreset: "730d", hidden: true },
+  { id: "eth-bb-1y", title: "ETH 볼린저밴드 1년", blurb: "이더리움 볼린저밴드 1년.", badge: "", category: "crypto", difficulty: 3, forWhom: "", market: "KRW-ETH", strategy: "bollinger", days: 365, rangePreset: "365d", hidden: true },
+  { id: "sol-rsi-2y", title: "SOL RSI 2년", blurb: "솔라나 RSI 역추세 2년.", badge: "", category: "crypto", difficulty: 3, forWhom: "", market: "KRW-SOL", strategy: "rsi", days: 730, rangePreset: "730d", hidden: true },
+  { id: "sol-ma-1y", title: "SOL 이평 20/60 1년", blurb: "솔라나 이동평균 교차 1년.", badge: "", category: "crypto", difficulty: 3, forWhom: "", market: "KRW-SOL", strategy: "ma_cross", days: 365, rangePreset: "365d", hidden: true },
+  { id: "aapl-ma-1y", title: "애플 이평 20/60 1년", blurb: "애플 이동평균 교차 1년.", badge: "", category: "stock", difficulty: 2, forWhom: "", market: "yahoo:AAPL", strategy: "ma_cross", days: 365, rangePreset: "365d", hidden: true },
+  { id: "nvda-ma-1y", title: "엔비디아 이평 20/60 1년", blurb: "엔비디아 이동평균 교차 1년.", badge: "", category: "stock", difficulty: 2, forWhom: "", market: "yahoo:NVDA", strategy: "ma_cross", days: 365, rangePreset: "365d", hidden: true },
+  { id: "tsla-rsi-1y", title: "테슬라 RSI 1년", blurb: "테슬라 RSI 역추세 1년.", badge: "", category: "stock", difficulty: 3, forWhom: "", market: "yahoo:TSLA", strategy: "rsi", days: 365, rangePreset: "365d", hidden: true },
+  { id: "qqq-ma-1y", title: "QQQ 이평 20/60 1년", blurb: "QQQ ETF 이동평균 교차 1년.", badge: "", category: "stock", difficulty: 2, forWhom: "", market: "yahoo:QQQ", strategy: "ma_cross", days: 365, rangePreset: "365d", hidden: true },
+  { id: "btcfut-rsi-1y", title: "BTC 선물 RSI 1년", blurb: "BTC 영구선물 RSI 1년.", badge: "", category: "futures", difficulty: 3, forWhom: "", market: "okx_fut:BTC-USDT-SWAP", strategy: "rsi", days: 365, rangePreset: "365d", hidden: true },
+  { id: "ethfut-ma-1y", title: "ETH 선물 이평 1년", blurb: "ETH 영구선물 이동평균 교차 1년.", badge: "", category: "futures", difficulty: 3, forWhom: "", market: "okx_fut:ETH-USDT-SWAP", strategy: "ma_cross", days: 365, rangePreset: "365d", hidden: true },
 ];
 
 // /api/signals 로 보낼 때 필요한 전략 파라미터를 프리셋 id 로부터 조립.
@@ -160,6 +181,8 @@ export function presetStrategyParams(id: string): StrategyParams | null {
       return { rsi: { period: 14, oversold: 30, overbought: 70 } };
     case "bollinger":
       return { bollinger: { period: 20, stddev: 2, touch: "close" } };
+    case "macd":
+      return { macd: { fast: 12, slow: 26, signal: 9 } };
     default:
       return {};
   }

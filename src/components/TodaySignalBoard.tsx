@@ -12,16 +12,8 @@ import {
   type BeginnerPreset,
 } from "@/lib/beginner-presets";
 
-// 보드에 노출할 6개. 코인 3 + 주식 1 + 선물 2.
-// (buy_hold 프리셋은 신호 없어서 제외)
-const BOARD_PRESET_IDS = [
-  "btc-rsi-2y",
-  "eth-ma-1y",
-  "sol-bb-1y",
-  "samsung-ma-1y",
-  "btcfut-ma-1y",
-  "solfut-rsi-1y",
-];
+// 보드에 노출할 상한. 조건 통과한 것들 중 수익률 상위 N개만 노출.
+const DISPLAY_TOP_N = 6;
 
 type SignalAction = "buy" | "sell" | "hold";
 type SignalRow = {
@@ -89,10 +81,9 @@ function actionStyle(action: SignalAction) {
 }
 
 export function TodaySignalBoard() {
+  // buy_hold 는 매매 신호 개념이 없어서 제외. hidden 포함 모든 나머지를 스캔 풀로.
   const presets = useMemo<BeginnerPreset[]>(
-    () =>
-      BOARD_PRESET_IDS.map((id) => BEGINNER_PRESETS.find((p) => p.id === id))
-        .filter((p): p is BeginnerPreset => !!p),
+    () => BEGINNER_PRESETS.filter((p) => p.strategy !== "buy_hold"),
     [],
   );
 
@@ -139,23 +130,34 @@ export function TodaySignalBoard() {
   // API 통째로 죽었으면 섹션 자체를 숨김 (빈 박스 노출 방지)
   if (failed) return null;
 
-  // 결과 도착 전엔 모든 카드를 로딩으로 보여주고, 도착 후엔
-  //   (1) 절대 수익률 10% 이상 &
-  //   (2) 그냥 보유보다 잘한
-  // 전략만 노출. "좀 벌었으면서 보유도 이긴" 것만 의미있음.
-  const MIN_RETURN_PCT = 10;
-  const profitable = rows
-    ? presets.filter((p) => {
-        const r = rows[p.market];
-        if (typeof r?.returnPct !== "number") return false;
-        if (typeof r.benchmarkReturnPct !== "number") return false;
-        if (r.returnPct < MIN_RETURN_PCT) return false;
-        return r.returnPct > r.benchmarkReturnPct;
-      })
-    : presets;
+  // 로딩 중에는 헤더만 보여주고 그리드 자리엔 안내 문구. 스캔이 길 수 있어서
+  // (프리셋 ~20개 × 서버 순차 처리 + 백테스트) 빈 카드를 쏟아내지 않음.
+  if (!rows) {
+    return (
+      <section className="mb-12">
+        <h2 className="text-lg sm:text-xl font-bold">오늘의 신호</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          수익 난 전략 스캔하는 중…
+        </p>
+      </section>
+    );
+  }
 
-  // 결과 도착했는데 하나도 보유를 못 이겼으면 섹션 통째로 숨김.
-  if (rows && profitable.length === 0) return null;
+  // 통과 조건: 절대 수익률 10% 이상 & 그냥 보유보다 잘한 것. 수익률 높은 순.
+  const MIN_RETURN_PCT = 10;
+  const profitable = presets
+    .filter((p) => {
+      const r = rows[p.market];
+      if (typeof r?.returnPct !== "number") return false;
+      if (typeof r.benchmarkReturnPct !== "number") return false;
+      if (r.returnPct < MIN_RETURN_PCT) return false;
+      return r.returnPct > r.benchmarkReturnPct;
+    })
+    .sort((a, b) => (rows[b.market].returnPct ?? 0) - (rows[a.market].returnPct ?? 0))
+    .slice(0, DISPLAY_TOP_N);
+
+  // 조건 통과한 게 하나도 없으면 섹션 통째로 숨김.
+  if (profitable.length === 0) return null;
 
   return (
     <section className="mb-12">

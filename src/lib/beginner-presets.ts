@@ -165,6 +165,33 @@ export function presetStrategyParams(id: string): StrategyParams | null {
   }
 }
 
+// /quiz 3문항 답변으로 프리셋 1개를 결정. 해당 (market × style) 조합이
+// 목록에 없으면 style 을 우선 살리는 방향으로 차선책을 고른다.
+export type QuizAnswers = {
+  market: PresetCategory;
+  style: "hold" | "trend" | "reversion";
+  risk: "low" | "medium" | "high";
+};
+
+export function recommendPreset(a: QuizAnswers): BeginnerPreset {
+  const inMarket = BEGINNER_PRESETS.filter((p) => p.category === a.market);
+
+  const match = (p: BeginnerPreset) => {
+    if (a.style === "hold") return p.strategy === "buy_hold";
+    if (a.style === "trend") return p.strategy === "ma_cross";
+    return p.strategy === "rsi" || p.strategy === "bollinger";
+  };
+
+  const styleMatch = inMarket.filter(match);
+  const pool = styleMatch.length > 0 ? styleMatch : inMarket;
+
+  // 위험 선호에 따라 난이도 정렬: low=쉬운 것부터, high=어려운 것부터.
+  const sorted = [...pool].sort((x, y) =>
+    a.risk === "high" ? y.difficulty - x.difficulty : x.difficulty - y.difficulty,
+  );
+  return sorted[0] ?? BEGINNER_PRESETS[0];
+}
+
 function ymd(offsetDays: number): string {
   const d = new Date(Date.now() + offsetDays * 86400000);
   const y = d.getFullYear();

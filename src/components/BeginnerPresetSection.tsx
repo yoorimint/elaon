@@ -136,12 +136,22 @@ export function BeginnerPresetSection() {
 
   return (
     <section className="mb-12">
-      <h2 className="text-lg sm:text-xl font-bold">
-        처음이신가요? 이대로 눌러보세요
-      </h2>
-      <p className="mt-1 text-sm text-neutral-500">
-        누르면 전략이 자동 세팅돼요
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg sm:text-xl font-bold">
+            처음이신가요? 이대로 눌러보세요
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            누르면 전략이 자동 세팅돼요
+          </p>
+        </div>
+        <Link
+          href="/quiz"
+          className="shrink-0 inline-flex items-center rounded-full border border-brand/40 bg-brand/5 px-3 py-1.5 text-xs font-semibold text-brand hover:bg-brand/10 whitespace-nowrap"
+        >
+          내게 맞는 전략 찾기 →
+        </Link>
+      </div>
 
       <div className="mt-4 flex gap-2" role="tablist">
         {TABS.map((t) => {

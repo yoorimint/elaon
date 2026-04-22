@@ -12,6 +12,7 @@ import { SharedDIYDetails } from "@/components/SharedDIYDetails";
 import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { SharedTradeTable } from "@/components/SharedTradeTable";
 import { SharedActions } from "@/components/SharedActions";
+import { TermTooltip } from "@/components/TermTooltip";
 import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
@@ -168,7 +169,15 @@ export async function generateMetadata({
   };
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: React.ReactNode;
+  value: string;
+  tone?: "pos" | "neg";
+}) {
   const color =
     tone === "pos"
       ? "text-emerald-600 dark:text-emerald-400"
@@ -177,10 +186,45 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "po
         : "";
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
-      <div className="text-xs text-neutral-500">{label}</div>
+      <div className="text-xs text-neutral-500 flex items-center gap-1">{label}</div>
       <div className={`mt-1 text-xl font-bold ${color}`}>{value}</div>
     </div>
   );
+}
+
+// 결과를 초보자도 한 문장으로 이해할 수 있게 풀어 쓴 자연어 요약.
+// 수익률이 벤치마크를 얼마나 이겼는지, MDD 가 얼마나 컸는지 한 번에.
+function verdictSentence(data: SharedBacktest | null): string {
+  if (!data) return "";
+  const ret = data.return_pct;
+  const bh = data.benchmark_return_pct;
+  const diff = ret - bh;
+  const mdd = Math.abs(data.max_drawdown_pct);
+
+  const yearsLabel =
+    data.days >= 365 ? `${Math.round(data.days / 365)}년` : `${data.days}일`;
+  const retStr = `${ret >= 0 ? "+" : ""}${ret.toFixed(1)}%`;
+  const diffStr = `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%p`;
+
+  const winPhrase =
+    diff > 5
+      ? `단순 보유보다 ${diffStr} 앞섰어요 👍`
+      : diff > 0
+        ? `단순 보유보다 ${diffStr} 앞섰어요`
+        : diff > -5
+          ? `단순 보유 대비 ${diffStr} 로 거의 비슷해요`
+          : `단순 보유보다 ${diffStr} 뒤쳐졌어요`;
+
+  const riskPhrase =
+    mdd >= 40
+      ? `다만 중간에 -${mdd.toFixed(0)}% 까지 떨어진 구간이 있어서 멘탈 관리 난이도 상.`
+      : mdd >= 20
+        ? `중간에 최대 -${mdd.toFixed(0)}% 까지 떨어진 구간이 있었어요.`
+        : mdd >= 8
+          ? `낙폭은 최대 -${mdd.toFixed(0)}% 수준.`
+          : `낙폭도 -${mdd.toFixed(0)}% 에 불과해 안정적이에요.`;
+
+  return `이 전략은 ${yearsLabel} 동안 ${retStr} 수익률을 기록했고, ${winPhrase}. ${riskPhrase}`;
 }
 
 export default async function SharedPage({ params }: { params: { slug: string } }) {
@@ -228,6 +272,11 @@ export default async function SharedPage({ params }: { params: { slug: string } 
           · 조회 {data.view_count + 1}
         </div>
 
+        <div className="mt-4 rounded-xl bg-brand/5 dark:bg-brand/10 border border-brand/20 p-4 text-sm leading-relaxed">
+          <span className="font-semibold text-brand mr-2">한 줄 요약</span>
+          {verdictSentence(data)}
+        </div>
+
         {paramLines.length > 0 && (
           <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-800">
             <div className="text-sm font-semibold mb-2">상세 전략 설정</div>
@@ -261,13 +310,17 @@ export default async function SharedPage({ params }: { params: { slug: string } 
           tone={data.return_pct >= 0 ? "pos" : "neg"}
         />
         <Stat
-          label="단순 보유 수익률"
+          label={<TermTooltip term="Benchmark">단순 보유 수익률</TermTooltip>}
           value={`${data.benchmark_return_pct.toFixed(2)}%`}
           tone={data.benchmark_return_pct >= 0 ? "pos" : "neg"}
         />
-        <Stat label="최대 낙폭(MDD)" value={`${data.max_drawdown_pct.toFixed(2)}%`} tone="neg" />
         <Stat
-          label="승률"
+          label={<TermTooltip term="MDD">최대 낙폭(MDD)</TermTooltip>}
+          value={`${data.max_drawdown_pct.toFixed(2)}%`}
+          tone="neg"
+        />
+        <Stat
+          label={<TermTooltip term="WinRate">승률</TermTooltip>}
           value={data.trade_count === 0 ? "-" : `${Number(data.win_rate).toFixed(1)}%`}
         />
       </div>

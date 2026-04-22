@@ -4,6 +4,8 @@
 // 리스크 조정 지표 / 거래 상세 / 월별 히트맵을 그린다. ResultView 와 내용은
 // 유사하지만 서버 컴포넌트에서 호출하기 위해 별도 클라이언트 아일랜드로 분리.
 
+import { TermTooltip } from "./TermTooltip";
+
 type ExtendedMetrics = {
   sharpe_ratio?: number | null;
   sortino_ratio?: number | null;
@@ -36,7 +38,7 @@ function Stat({
   tone,
   hint,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: string;
   tone?: "pos" | "neg";
   hint?: string;
@@ -49,7 +51,10 @@ function Stat({
         : "";
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 sm:p-4">
-      <div className="text-[11px] sm:text-xs text-neutral-500" title={hint}>
+      <div
+        className="text-[11px] sm:text-xs text-neutral-500 flex items-center gap-1"
+        title={hint}
+      >
         {label}
       </div>
       <div className={`mt-1 text-base sm:text-xl font-bold truncate ${color}`}>
@@ -161,7 +166,7 @@ export function SharedExtendedStats({
           </h3>
           <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
             <Stat
-              label="Sharpe Ratio"
+              label={<TermTooltip term="Sharpe">Sharpe Ratio</TermTooltip>}
               value={fmtNum(metrics.sharpe_ratio)}
               tone={
                 (metrics.sharpe_ratio ?? 0) >= 1
@@ -170,20 +175,17 @@ export function SharedExtendedStats({
                     ? "neg"
                     : undefined
               }
-              hint="연환산 수익 대비 변동성. 1 이상이면 양호."
             />
             <Stat
-              label="Sortino Ratio"
+              label={<TermTooltip term="Sortino">Sortino Ratio</TermTooltip>}
               value={fmtNum(metrics.sortino_ratio)}
-              hint="Sharpe 의 하방 버전."
             />
             <Stat
-              label="Calmar Ratio"
+              label={<TermTooltip term="Calmar">Calmar Ratio</TermTooltip>}
               value={fmtNum(metrics.calmar_ratio)}
-              hint="연환산 수익률 ÷ 최대 낙폭."
             />
             <Stat
-              label="Profit Factor"
+              label={<TermTooltip term="ProfitFactor">Profit Factor</TermTooltip>}
               value={fmtNum(metrics.profit_factor)}
               tone={
                 (metrics.profit_factor ?? 0) >= 1.5
@@ -192,7 +194,6 @@ export function SharedExtendedStats({
                     ? "neg"
                     : undefined
               }
-              hint="총 이익 ÷ 총 손실. 1 이상이어야 살아남음."
             />
           </div>
         </div>
@@ -203,7 +204,7 @@ export function SharedExtendedStats({
           <h3 className="mb-2 text-sm font-semibold text-neutral-500">거래 상세</h3>
           <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
             <Stat
-              label="거래당 기대값"
+              label={<TermTooltip term="Expectancy">거래당 기대값</TermTooltip>}
               value={fmtPct(metrics.expectancy_pct)}
               tone={(metrics.expectancy_pct ?? 0) >= 0 ? "pos" : "neg"}
             />

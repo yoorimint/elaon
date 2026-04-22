@@ -7,6 +7,7 @@ import type { Signal, StrategyId, StrategyParams } from "@/lib/strategies";
 import type { Condition } from "@/lib/diy-strategy";
 import { formatMoney, formatMoneyShort, type Currency } from "@/lib/market";
 import { TVChart } from "./TVChart";
+import { TermTooltip } from "./TermTooltip";
 
 
 function Stat({
@@ -15,7 +16,7 @@ function Stat({
   tone,
   hint,
 }: {
-  label: string;
+  label: React.ReactNode;
   value: string;
   tone?: "pos" | "neg";
   hint?: string;
@@ -28,7 +29,7 @@ function Stat({
         : "";
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3 sm:p-4">
-      <div className="text-[11px] sm:text-xs text-neutral-500" title={hint}>
+      <div className="text-[11px] sm:text-xs text-neutral-500 flex items-center gap-1" title={hint}>
         {label}
       </div>
       <div className={`mt-1 text-base sm:text-xl font-bold truncate ${color}`}>
@@ -163,20 +164,18 @@ export function ResultView({
           tone={result.returnPct >= 0 ? "pos" : "neg"}
         />
         <Stat
-          label="단순 보유 수익률"
+          label={<TermTooltip term="Benchmark">단순 보유 수익률</TermTooltip>}
           value={`${result.benchmarkReturnPct.toFixed(2)}%`}
           tone={result.benchmarkReturnPct >= 0 ? "pos" : "neg"}
         />
         <Stat
-          label="최대 낙폭 (MDD)"
+          label={<TermTooltip term="MDD">최대 낙폭 (MDD)</TermTooltip>}
           value={`${result.maxDrawdownPct.toFixed(2)}%`}
           tone="neg"
-          hint="기록한 고점에서 저점까지 최대 하락폭"
         />
         <Stat
-          label="승률"
+          label={<TermTooltip term="WinRate">승률</TermTooltip>}
           value={result.tradeCount === 0 ? "-" : `${result.winRate.toFixed(1)}%`}
-          hint="이익으로 끝낸 거래 비율"
         />
       </div>
 
@@ -200,28 +199,24 @@ export function ResultView({
           </h3>
           <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
             <Stat
-              label="Sharpe Ratio"
+              label={<TermTooltip term="Sharpe">Sharpe Ratio</TermTooltip>}
               value={fmtNum(result.sharpeRatio)}
               tone={result.sharpeRatio >= 1 ? "pos" : result.sharpeRatio < 0 ? "neg" : undefined}
-              hint="연환산 수익 대비 변동성. 1 이상이면 양호."
             />
             <Stat
-              label="Sortino Ratio"
+              label={<TermTooltip term="Sortino">Sortino Ratio</TermTooltip>}
               value={fmtNum(result.sortinoRatio)}
               tone={result.sortinoRatio >= 1 ? "pos" : result.sortinoRatio < 0 ? "neg" : undefined}
-              hint="Sharpe 의 하방 버전. 상승 변동성은 감점 안 함."
             />
             <Stat
-              label="Calmar Ratio"
+              label={<TermTooltip term="Calmar">Calmar Ratio</TermTooltip>}
               value={fmtNum(result.calmarRatio)}
               tone={result.calmarRatio >= 1 ? "pos" : undefined}
-              hint="연환산 수익률 ÷ 최대 낙폭. 1 이상이면 낙폭 대비 회수 양호."
             />
             <Stat
-              label="Profit Factor"
+              label={<TermTooltip term="ProfitFactor">Profit Factor</TermTooltip>}
               value={fmtNum(result.profitFactor)}
               tone={result.profitFactor >= 1.5 ? "pos" : result.profitFactor < 1 ? "neg" : undefined}
-              hint="총 이익 ÷ 총 손실. 1 넘어야 살아남음."
             />
           </div>
         </>
@@ -233,10 +228,9 @@ export function ResultView({
           <h3 className="mt-6 mb-2 text-sm font-semibold text-neutral-500">거래 상세</h3>
           <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
             <Stat
-              label="거래당 기대값"
+              label={<TermTooltip term="Expectancy">거래당 기대값</TermTooltip>}
               value={fmtPct(result.expectancyPct)}
               tone={result.expectancyPct >= 0 ? "pos" : "neg"}
-              hint="평균적으로 1회 거래에서 기대할 수 있는 수익률"
             />
             <Stat
               label="평균 이익 / 손실"

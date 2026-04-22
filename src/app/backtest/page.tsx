@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   fetchMarkets,
   TIMEFRAMES,
@@ -54,6 +54,7 @@ import {
   defaultCondition,
   type Condition,
 } from "@/lib/diy-strategy";
+import { buildPresetConfig } from "@/lib/beginner-presets";
 
 function todayYmd(offsetDays = 0): string {
   const d = new Date(Date.now() + offsetDays * 86400000);
@@ -88,6 +89,7 @@ const POPULAR_MARKETS = [
 
 export default function BacktestPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user: currentUser } = useAuth();
   const [markets, setMarkets] = useState<MarketEntry[]>([]);
   const [market, setMarket] = useState("KRW-BTC");
@@ -245,7 +247,17 @@ export default function BacktestPage() {
   // 뒤로가기 등으로 재마운트 시, 직전 백테스트 결과가 있으면 폼 + 결과 전부
   // 복원해서 사용자가 다시 실행하지 않아도 결과를 볼 수 있게 한다. 스냅샷이
   // 없으면 localStorage 에 저장된 "마지막 설정"(폼 값만) 으로 폴백.
+  //
+  // 단, 홈 화면에서 /backtest?preset=xxx 로 들어온 경우는 프리셋이 최우선.
   useEffect(() => {
+    const presetId = searchParams?.get("preset");
+    if (presetId) {
+      const cfg = buildPresetConfig(presetId);
+      if (cfg) {
+        applyConfig(cfg);
+        return;
+      }
+    }
     const snap: BacktestSnapshot | null = loadBacktestSnapshot();
     if (snap) {
       applyConfig(snap);

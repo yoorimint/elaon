@@ -15,12 +15,31 @@ import {
 // 보드에 노출할 상한. 조건 통과한 것들 중 수익률 상위 N개만 노출.
 const DISPLAY_TOP_N = 6;
 
-// 일봉 기반이라 30분 안에 결과가 바뀌지 않는다. 홈 재방문 시 즉시 렌더
-// 하려고 localStorage 에 캐시. 버전 키로 schema 바뀌면 자연스럽게 무효화.
-const CACHE_KEY = "today-signals-v2";
-const CACHE_TTL_MS = 30 * 60 * 1000;
+// localStorage 캐시는 "다음 시장 닫힘 시각"까지 유지 (일봉 기준이라 그전엔
+// 결과 안 바뀜). 스키마 바뀌면 CACHE_KEY 버전만 올리면 자연 무효화.
+// v3: rows key 를 market → presetId 로 교체 (동일 market 에 전략만 다른 프리셋 커버)
+const CACHE_KEY = "today-signals-v3";
 
-type CachedPayload = { at: number; rows: Record<string, SignalRow> };
+// 보드가 스캔하는 시장 kind 별 일봉 닫힘 시각 (UTC 시).
+// crypto/crypto_fut 00:00, stock_kr 07:00, stock_us 22:00. 외부 반영 여유 +30초.
+const DAILY_CLOSES_UTC_HOURS = [0, 7, 22];
+const SOURCE_LAG_MS = 30 * 1000;
+
+function nextBoardRefreshMs(now: number = Date.now()): number {
+  const d = new Date(now);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth();
+  const day = d.getUTCDate();
+  let best = Infinity;
+  for (const h of DAILY_CLOSES_UTC_HOURS) {
+    let t = Date.UTC(y, m, day, h, 0, 0) + SOURCE_LAG_MS;
+    if (t <= now) t += 24 * 60 * 60 * 1000;
+    if (t < best) best = t;
+  }
+  return best;
+}
+
+type CachedPayload = { expiresAt: number; rows: Record<string, SignalRow> };
 
 function readCache(): Record<string, SignalRow> | null {
   if (typeof window === "undefined") return null;
@@ -28,7 +47,7 @@ function readCache(): Record<string, SignalRow> | null {
     const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
     const payload = JSON.parse(raw) as CachedPayload;
-    if (Date.now() - payload.at > CACHE_TTL_MS) return null;
+    if (Date.now() >= payload.expiresAt) return null;
     return payload.rows;
   } catch {
     return null;
@@ -38,7 +57,10 @@ function readCache(): Record<string, SignalRow> | null {
 function writeCache(rows: Record<string, SignalRow>) {
   if (typeof window === "undefined") return;
   try {
-    const payload: CachedPayload = { at: Date.now(), rows };
+    const payload: CachedPayload = {
+      expiresAt: nextBoardRefreshMs(),
+      rows,
+    };
     window.localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
   } catch {
     // quota/parse 실패는 무시
@@ -122,7 +144,7 @@ export function TodaySignalBoard() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // 30분 이내 캐시가 있으면 그대로 사용 (네트워크/백테스트 스킵)
+    // 캐시가 유효하면 (다음 시장 닫힘 전이면) 네트워크 없이 그대로 사용
     const cached = readCache();
     if (cached) {
       setRows(cached);
@@ -132,28 +154,37 @@ export function TodaySignalBoard() {
     let cancelled = false;
     (async () => {
       try {
-        const items = presets
+        // 같은 market 에 전략만 다른 프리셋이 여러 개 있을 수 있어서 응답을
+        // market 이 아닌 preset.id 로 인덱싱. 그러려면 요청 순서와 응답 순서를
+        // 맞춰 pair 로 관리한다 (API 는 입력 순서 그대로 돌려준다).
+        const pairs = presets
           .map((p) => {
             const params = presetStrategyParams(p.id);
             if (!params) return null;
             return {
-              market: p.market,
-              strategy: p.strategy,
-              params,
-              backtestDays: p.days,
+              id: p.id,
+              item: {
+                market: p.market,
+                strategy: p.strategy,
+                params,
+                backtestDays: p.days,
+              },
             };
           })
-          .filter(Boolean);
+          .filter((x): x is NonNullable<typeof x> => x !== null);
         const res = await fetch("/api/signals", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ items }),
+          body: JSON.stringify({ items: pairs.map((p) => p.item) }),
         });
         if (!res.ok) throw new Error("api fail");
         const data = (await res.json()) as { items: SignalRow[] };
         if (cancelled) return;
         const map: Record<string, SignalRow> = {};
-        for (const it of data.items ?? []) map[it.market] = it;
+        (data.items ?? []).forEach((row, i) => {
+          const id = pairs[i]?.id;
+          if (id) map[id] = row;
+        });
         setRows(map);
         writeCache(map);
       } catch {
@@ -186,13 +217,13 @@ export function TodaySignalBoard() {
   const MIN_RETURN_PCT = 10;
   const profitable = presets
     .filter((p) => {
-      const r = rows[p.market];
+      const r = rows[p.id];
       if (typeof r?.returnPct !== "number") return false;
       if (typeof r.benchmarkReturnPct !== "number") return false;
       if (r.returnPct < MIN_RETURN_PCT) return false;
       return r.returnPct > r.benchmarkReturnPct;
     })
-    .sort((a, b) => (rows[b.market].returnPct ?? 0) - (rows[a.market].returnPct ?? 0))
+    .sort((a, b) => (rows[b.id].returnPct ?? 0) - (rows[a.id].returnPct ?? 0))
     .slice(0, DISPLAY_TOP_N);
 
   // 조건 통과한 게 하나도 없으면 섹션 통째로 숨김.
@@ -214,7 +245,7 @@ export function TodaySignalBoard() {
 
       <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-3">
         {profitable.map((p) => {
-          const row = rows?.[p.market];
+          const row = rows?.[p.id];
           const action: SignalAction = row?.action ?? "hold";
           const s = actionStyle(action);
           const recent =

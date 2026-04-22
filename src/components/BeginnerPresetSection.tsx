@@ -76,30 +76,34 @@ export function BeginnerPresetSection() {
 
   // 탭이 바뀌면 아직 결과 없는 프리셋만 모아서 /api/signals 일괄 호출.
   // buy_hold 는 매매 시점이 없으니 요청 안 함.
+  // (같은 market 에 전략만 다른 프리셋이 여러 개 있을 수 있어서 키는 preset.id)
   useEffect(() => {
     const needed = filtered.filter(
-      (p) => p.strategy !== "buy_hold" && !(p.market in signals),
+      (p) => p.strategy !== "buy_hold" && !(p.id in signals),
     );
     if (needed.length === 0) return;
 
     let cancelled = false;
     (async () => {
       try {
-        const items = needed
+        const pairs = needed
           .map((p) => {
             const params = presetStrategyParams(p.id);
             if (!params) return null;
             return {
-              market: p.market,
-              strategy: p.strategy,
-              params,
+              id: p.id,
+              item: {
+                market: p.market,
+                strategy: p.strategy,
+                params,
+              },
             };
           })
-          .filter(Boolean);
+          .filter((x): x is NonNullable<typeof x> => x !== null);
         const res = await fetch("/api/signals", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ items }),
+          body: JSON.stringify({ items: pairs.map((p) => p.item) }),
         });
         if (!res.ok) throw new Error("signals api fail");
         const data = (await res.json()) as {
@@ -108,12 +112,14 @@ export function BeginnerPresetSection() {
         if (cancelled) return;
         setSignals((prev) => {
           const next = { ...prev };
-          for (const it of data.items ?? []) {
-            next[it.market] = {
+          (data.items ?? []).forEach((it, i) => {
+            const id = pairs[i]?.id;
+            if (!id) return;
+            next[id] = {
               action: it.error ? "hold" : (it.action ?? "hold"),
               error: !!it.error,
             };
-          }
+          });
           return next;
         });
       } catch {
@@ -122,7 +128,7 @@ export function BeginnerPresetSection() {
         setSignals((prev) => {
           const next = { ...prev };
           for (const p of needed) {
-            next[p.market] = { action: "hold", error: true };
+            next[p.id] = { action: "hold", error: true };
           }
           return next;
         });
@@ -177,7 +183,7 @@ export function BeginnerPresetSection() {
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {filtered.map((p) => (
           <li key={p.id}>
-            <PresetCard preset={p} signal={signals[p.market]?.action ?? null} />
+            <PresetCard preset={p} signal={signals[p.id]?.action ?? null} />
           </li>
         ))}
       </ul>

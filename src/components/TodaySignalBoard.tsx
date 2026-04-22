@@ -15,6 +15,36 @@ import {
 // 보드에 노출할 상한. 조건 통과한 것들 중 수익률 상위 N개만 노출.
 const DISPLAY_TOP_N = 6;
 
+// 일봉 기반이라 30분 안에 결과가 바뀌지 않는다. 홈 재방문 시 즉시 렌더
+// 하려고 localStorage 에 캐시. 버전 키로 schema 바뀌면 자연스럽게 무효화.
+const CACHE_KEY = "today-signals-v2";
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+type CachedPayload = { at: number; rows: Record<string, SignalRow> };
+
+function readCache(): Record<string, SignalRow> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const payload = JSON.parse(raw) as CachedPayload;
+    if (Date.now() - payload.at > CACHE_TTL_MS) return null;
+    return payload.rows;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(rows: Record<string, SignalRow>) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: CachedPayload = { at: Date.now(), rows };
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // quota/parse 실패는 무시
+  }
+}
+
 type SignalAction = "buy" | "sell" | "hold";
 type SignalRow = {
   market: string;
@@ -87,10 +117,18 @@ export function TodaySignalBoard() {
     [],
   );
 
+  // 초기값은 항상 null (SSR 일치). 클라이언트에서 useEffect 로 캐시 → 필요 시 fetch.
   const [rows, setRows] = useState<Record<string, SignalRow> | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    // 30분 이내 캐시가 있으면 그대로 사용 (네트워크/백테스트 스킵)
+    const cached = readCache();
+    if (cached) {
+      setRows(cached);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -117,6 +155,7 @@ export function TodaySignalBoard() {
         const map: Record<string, SignalRow> = {};
         for (const it of data.items ?? []) map[it.market] = it;
         setRows(map);
+        writeCache(map);
       } catch {
         if (cancelled) return;
         setFailed(true);

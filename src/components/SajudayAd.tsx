@@ -4,12 +4,14 @@
 // rel=sponsored nofollow 로 SEO 오염 방지 + 광고 공시.
 
 import Link from "next/link";
+import Image from "next/image";
 
 type Variant = "home" | "backtest";
 
 type Props = { variant: Variant };
 
 const AD_URL = "https://sajuday.kr/lp/ant";
+const AD_IMG_URL = "https://sajuday.kr/static/images/ant_ranks/ant_1_queen.png";
 
 // 페이지별 맥락 맞춰 1줄 후킹. 한 줄이라 모바일에서도 카드 높이 컴팩트.
 const COPY: Record<Variant, { hook: string; body: string }> = {
@@ -37,12 +39,15 @@ export function SajudayAd({ variant }: Props) {
           AD · 광고
         </span>
 
-        <span
-          className="shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-neutral-900/60 border border-amber-200 dark:border-amber-900/60 text-2xl select-none"
-          role="img"
-          aria-label="개미"
-        >
-          🐜
+        <span className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-white/80 dark:bg-neutral-900/60 border border-amber-200 dark:border-amber-900/60 overflow-hidden">
+          <Image
+            src={AD_IMG_URL}
+            alt="개미팔자 마스코트"
+            width={48}
+            height={48}
+            className="h-full w-full object-contain"
+            unoptimized
+          />
         </span>
 
         <div className="min-w-0 flex-1">

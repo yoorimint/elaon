@@ -66,9 +66,9 @@ export default async function HomePage() {
           ELOAN BACKTEST
         </div>
         <h1 className="mt-2 text-3xl sm:text-5xl font-bold leading-tight">
-          유튜브에서 본 전략,
+          아직 소문 듣고 매매하세요?
           <br />
-          진짜 돈 벌었는지 3분 만에 확인.
+          전략이 없으면 수익도 없어요.
         </h1>
         <p className="mt-4 text-neutral-600 dark:text-neutral-400 text-base sm:text-lg">
           업비트·Yahoo Finance·OKX 실제 과거 시세로 돌려봅니다. 결과 보고 모의투자로 이어서 검증까지.

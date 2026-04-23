@@ -72,7 +72,7 @@ function strategyShort(s: string, customTemplateId?: string | null): string {
     case "rsi": return "RSI";
     case "bollinger": return "볼린저밴드";
     case "macd": return "MACD";
-    case "breakout": return "브레이크아웃";
+    case "breakout": return "변동성 돌파";
     case "stoch": return "스토캐스틱";
     case "ichimoku": return "일목균형";
     case "dca": return "DCA";

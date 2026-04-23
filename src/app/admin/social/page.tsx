@@ -56,7 +56,7 @@ function strategyLabel(s: string, tpl: string | null): string {
   if (s === "custom" && tpl && custom[tpl]) return custom[tpl];
   const m: Record<string, string> = {
     ma_cross: "이평 크로스", rsi: "RSI", bollinger: "볼린저밴드", macd: "MACD",
-    breakout: "브레이크아웃", stoch: "스토캐스틱", ichimoku: "일목균형",
+    breakout: "변동성 돌파", stoch: "스토캐스틱", ichimoku: "일목균형",
     dca: "DCA", ma_dca: "MA DCA", rebalance: "리밸런싱",
   };
   return m[s] ?? s;

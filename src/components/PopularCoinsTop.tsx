@@ -16,6 +16,7 @@ type Row = {
   days: number;
   return_pct: number;
   benchmark_return_pct: number;
+  win_rate: number | null;
   action: "buy" | "sell" | "hold";
   last_signal_action: "buy" | "sell" | null;
   last_signal_bars_ago: number | null;
@@ -66,7 +67,7 @@ async function loadPopular(): Promise<Row[]> {
   const { data } = await sb
     .from("popular_coin_strategies")
     .select(
-      "id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,last_signal_entry_price,current_price,last_signal_at,share_slug,custom_template_id,rank,computed_at",
+      "id,market,strategy,days,return_pct,benchmark_return_pct,win_rate,action,last_signal_action,last_signal_bars_ago,last_signal_entry_price,current_price,last_signal_at,share_slug,custom_template_id,rank,computed_at",
     )
     .order("rank", { ascending: true });
   return (data ?? []) as Row[];
@@ -155,26 +156,58 @@ export async function PopularCoinsTop() {
                   </div>
                 </div>
 
-                {/* 가운데: 전략 · 기간 */}
+                {/* 가운데: 전략명 → 전략/보유 수익률 → 모의/승률 3줄 */}
                 <div className="min-w-0 flex-1">
                   <div className="text-[11px] text-neutral-500 truncate">
                     {strategyShort(r.strategy, r.custom_template_id)} ·{" "}
                     {r.days >= 700 ? "2년" : r.days >= 330 ? "1년" : `${r.days}일`}
                   </div>
-                  <div className="mt-0.5 flex items-baseline gap-1.5 flex-wrap">
-                    <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">
-                      +{r.return_pct.toFixed(1)}%
+                  <div className="mt-0.5 text-[12px] leading-snug">
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      전략 {r.return_pct >= 0 ? "+" : ""}
+                      {r.return_pct.toFixed(1)}%
                     </span>
-                    <span className="text-[10px] text-neutral-500">백테</span>
-                    {paper && (
+                    <span className="ml-1.5 text-neutral-500">
+                      vs 보유{" "}
                       <span
-                        className={`text-[11px] font-medium ${
-                          paper.pct >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
+                        className={
+                          r.benchmark_return_pct >= 0
+                            ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                            : "text-red-600 dark:text-red-400 font-semibold"
+                        }
                       >
-                        · 모의 {paper.text}
+                        {r.benchmark_return_pct >= 0 ? "+" : ""}
+                        {r.benchmark_return_pct.toFixed(1)}%
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] leading-snug">
+                    {paper ? (
+                      <>
+                        <span className="text-neutral-500">
+                          모의투자 진행중{" "}
+                        </span>
+                        <span
+                          className={
+                            paper.pct >= 0
+                              ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                              : "text-red-600 dark:text-red-400 font-semibold"
+                          }
+                        >
+                          {paper.text}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-neutral-400">
+                        모의투자 대기중
+                      </span>
+                    )}
+                    {r.win_rate != null && (
+                      <span className="ml-1.5 text-neutral-500">
+                        · 승률{" "}
+                        <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                          {r.win_rate.toFixed(0)}%
+                        </span>
                       </span>
                     )}
                   </div>

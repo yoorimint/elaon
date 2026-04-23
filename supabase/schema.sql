@@ -203,3 +203,7 @@ drop policy if exists "popular_coin_strategies_read" on public.popular_coin_stra
 create policy "popular_coin_strategies_read"
   on public.popular_coin_strategies for select
   using (true);
+
+-- 승률 컬럼 추가 — 카드 '승률 N%' 노출용.
+alter table public.popular_coin_strategies
+  add column if not exists win_rate numeric;

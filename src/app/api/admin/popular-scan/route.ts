@@ -381,6 +381,7 @@ async function runScan() {
       return_pct: r.return_pct,
       benchmark_return_pct: r.benchmark_return_pct,
       trade_count: r.trade_count,
+      win_rate: r.win_rate,
       action: r.action,
       last_signal_action: r.last_signal_action,
       last_signal_bars_ago: r.last_signal_bars_ago,

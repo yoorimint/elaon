@@ -162,3 +162,44 @@ create policy "board_top_signals_read"
   on public.board_top_signals for select
   using (true);
 -- 쓰기는 크론 엔드포인트가 service_role 로만 수행 (RLS 우회)
+
+-- ===== 인기 코인 베스트 전략 (크론으로 매일 갱신) =====
+-- BTC/ETH/XRP/SOL/DOGE 현물 각각에 대해 전체 전략(빌트인 10 + DIY 템플릿)
+-- × (1년, 2년) 스캔 → 수익률 최고 조합만 1개씩 저장. 홈 최상단 고정 노출.
+-- Phase 2B 에서 last_signal_entry_price + current_price 로 모의투자 수익률
+-- 계산 예정.
+create table if not exists public.popular_coin_strategies (
+  id bigserial primary key,
+  market text not null,
+  strategy text not null,
+  params jsonb not null default '{}'::jsonb,
+  days integer not null,
+  return_pct numeric not null,
+  benchmark_return_pct numeric not null,
+  trade_count integer not null,
+  action text not null check (action in ('buy','sell','hold')),
+  last_signal_action text check (last_signal_action in ('buy','sell')),
+  last_signal_bars_ago integer,
+  -- Phase 2B 에서 채움. 스캔 시 기록 → 프런트에서 (current/entry-1)*100 표시.
+  last_signal_entry_price numeric,
+  current_price numeric,
+  last_signal_at timestamptz,
+  share_slug text,
+  custom_template_id text,
+  custom_buy jsonb,
+  custom_sell jsonb,
+  rank integer not null,
+  computed_at timestamptz not null default now()
+);
+
+create index if not exists popular_coin_strategies_market_idx
+  on public.popular_coin_strategies(market);
+create index if not exists popular_coin_strategies_rank_idx
+  on public.popular_coin_strategies(rank);
+
+alter table public.popular_coin_strategies enable row level security;
+
+drop policy if exists "popular_coin_strategies_read" on public.popular_coin_strategies;
+create policy "popular_coin_strategies_read"
+  on public.popular_coin_strategies for select
+  using (true);

@@ -70,3 +70,20 @@ jobs:
             echo
             echo "::endgroup::"
           done
+
+      - name: Scan popular coins (BTC/ETH/XRP/SOL/DOGE 최고 전략)
+        shell: bash
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::group::popular-scan"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            -H "Content-Length: 0" \
+            --max-time 90 \
+            "$SITE_URL/api/admin/popular-scan" \
+            | tee /tmp/popular-resp.json || echo "popular-scan failed (non-fatal)"
+          echo
+          echo "::endgroup::"

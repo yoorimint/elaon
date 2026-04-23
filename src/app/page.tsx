@@ -6,6 +6,7 @@ import { timeAgo } from "@/lib/community";
 import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
 import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
 import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
+import { PopularCoinsTop } from "@/components/PopularCoinsTop";
 import { SajudayAd } from "@/components/SajudayAd";
 
 export const revalidate = 30;
@@ -87,6 +88,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <PopularCoinsTop />
 
       <TodayBuyHighlight />
 

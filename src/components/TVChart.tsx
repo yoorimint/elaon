@@ -196,6 +196,25 @@ const ZERO_HUNDRED_KINDS = new Set<IndicatorRef["kind"]>([
   "mfi",
 ]);
 
+// ±범위 (0 중심) 오실레이터 — 별도 패널 필요. RSI/Stoch 는 0~100 스케일이라
+// 같은 패널에 못 얹음 (자동 스케일이 망가져 선이 납작해짐).
+const MACD_KINDS = new Set<IndicatorRef["kind"]>([
+  "macd",
+  "macd_signal",
+]);
+
+// 자체 스케일 오실레이터 (Williams %R 은 -100~0, CCI 는 ±200 등). 현재는
+// ZERO_HUNDRED 패널에 얹어도 이상 없을 것 — williams_r 는 MFI 처럼 취급.
+const UNBOUNDED_KINDS = new Set<IndicatorRef["kind"]>([
+  "atr",
+  "cci",
+  "adx",
+  "roc",
+  "obv",
+  "ao",
+  "momentum",
+]);
+
 function dedupRefs(refs: IndicatorRef[]): IndicatorRef[] {
   const seen = new Set<string>();
   const out: IndicatorRef[] = [];
@@ -320,8 +339,10 @@ export function TVChart({
 }: TVChartProps) {
   const mainBoxRef = useRef<HTMLDivElement | null>(null);
   const subBoxRef = useRef<HTMLDivElement | null>(null);
+  const macdBoxRef = useRef<HTMLDivElement | null>(null);
   const mainChartRef = useRef<IChartApi | null>(null);
   const subChartRef = useRef<IChartApi | null>(null);
+  const macdChartRef = useRef<IChartApi | null>(null);
   // 페이지 스크롤 중 실수로 차트가 팬/줌되지 않도록 기본은 잠금.
   const [locked, setLocked] = useState(true);
   const lockedRef = useRef(locked);
@@ -332,10 +353,15 @@ export function TVChart({
       : [];
   const customOverlayRefs = customRefs.filter((r) => PRICE_OVERLAY_KINDS.has(r.kind));
   const customSubRefs = customRefs.filter((r) => ZERO_HUNDRED_KINDS.has(r.kind));
+  // DIY 에서 MACD 류 지표 사용 시 별도 ±스케일 패널 필요.
+  const customMacdRefs = customRefs.filter((r) => MACD_KINDS.has(r.kind));
 
   const hasSubPanel =
     OSCILLATOR_STRATEGIES.includes(strategy) ||
     (strategy === "custom" && customSubRefs.length > 0);
+  // DIY 에서 MACD 쓸 때만 추가 패널. 빌트인 macd 전략은 기존 sub 패널에 그려지므로 중복 방지.
+  const hasMacdPanel =
+    strategy === "custom" && customMacdRefs.length > 0;
 
   useEffect(() => {
     const mainBox = mainBoxRef.current;
@@ -763,35 +789,132 @@ export function TVChart({
       subChart.timeScale().fitContent();
     }
 
-    // Sync time scales between main and sub.
-    chart.timeScale().subscribeVisibleLogicalRangeChange((r) => {
-      if (r && subChart) subChart.timeScale().setVisibleLogicalRange(r);
-    });
-    subChart?.timeScale().subscribeVisibleLogicalRangeChange((r) => {
-      if (r) chart.timeScale().setVisibleLogicalRange(r);
-    });
+    // ===== DIY MACD 패널 (별도) =====
+    // 빌트인 MACD 전략은 위 sub 패널에 렌더되고, 여기는 custom 전략에서
+    // MACD/MACD_SIGNAL 지표 사용 시만 추가 패널.
+    let macdChart: IChartApi | null = null;
+    let macdSyncSeries: ISeriesApi<SeriesType> | null = null;
+    const macdBox = macdBoxRef.current;
+    if (hasMacdPanel && macdBox) {
+      const macdRect = macdBox.getBoundingClientRect();
+      const macdW = Math.max(1, Math.floor(macdRect.width));
+      const macdH = Math.max(1, Math.floor(macdRect.height));
+      macdChart = createChart(macdBox, baseChartOptions(dark, macdW, macdH, currency));
+      macdChartRef.current = macdChart;
 
-    // 크로스헤어(세로 점선 + 날짜 라벨)도 양쪽 차트에 동시에 표시되게 싱크.
-    // TradingView 본체처럼 위쪽에 호버하면 아래쪽에도 같은 날짜 크로스헤어가
-    // 따라다닌다. setCrosshairPosition 은 숫자 price 가 필요한데, 세로선만
-    // 재사용하려는 목적이라 0 을 넘겨도 충분 — 라벨 위치는 서브차트의 실제
-    // 데이터와 무관하게 timescale 기준으로 그려짐.
-    if (subChart && subSyncSeries) {
-      const localSub = subChart;
-      const localSubSeries = subSyncSeries;
-      chart.subscribeCrosshairMove((param) => {
-        if (!param.time || param.point === undefined) {
-          localSub.clearCrosshairPosition();
-          return;
-        }
-        localSub.setCrosshairPosition(0, param.time, localSubSeries);
+      // customMacdRefs 는 macd / macd_signal 둘 중 하나만 있을 수도 있고 둘 다
+      // 있을 수도 있음. 둘 중 어느 게 있든 MACD (fast=12, slow=26), Signal
+      // (9) 기본 파라미터 써서 둘 다 그림.
+      const macdFast = 12;
+      const macdSlow = 26;
+      const macdSignal = 9;
+      const fastE = ema(closes, macdFast);
+      const slowE = ema(closes, macdSlow);
+      const macdLine = closes.map((_, i) => {
+        const f = fastE[i];
+        const s = slowE[i];
+        return f != null && s != null ? f - s : null;
       });
-      subChart.subscribeCrosshairMove((param) => {
+      const validForSignal = macdLine.map((v) => (v == null ? 0 : v));
+      const signalLine = ema(validForSignal, macdSignal);
+      const hist = macdLine.map((v, i) =>
+        v != null && signalLine[i] != null ? v - (signalLine[i] as number) : null,
+      );
+
+      const histSeries = macdChart.addSeries(HistogramSeries, {
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "히스토그램",
+      });
+      macdSyncSeries = histSeries;
+      const histData: HistogramData<UTCTimestamp>[] = [];
+      for (const i of keepIdx) {
+        const v = hist[i];
+        if (v == null) continue;
+        histData.push({
+          time: allTimes[i],
+          value: v,
+          color: v >= 0 ? "rgba(16, 185, 129, 0.6)" : "rgba(239, 68, 68, 0.6)",
+        });
+      }
+      histSeries.setData(histData);
+
+      const macdSeries = macdChart.addSeries(LineSeries, {
+        color: "#3b82f6",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: "MACD",
+      });
+      macdSeries.setData(toLineData(candles, macdLine, keepIdx));
+
+      const sigSeries = macdChart.addSeries(LineSeries, {
+        color: "#ef4444",
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: "Signal",
+      });
+      sigSeries.setData(toLineData(candles, signalLine, keepIdx));
+
+      macdSeries.createPriceLine({
+        price: 0,
+        color: "#a3a3a3",
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: false,
+        title: "",
+      });
+
+      macdChart.timeScale().fitContent();
+    }
+
+    // Sync time scales between main and sub(s). 기존 logical range 싱크는
+    // 시리즈마다 null 제외로 length 가 달라지면 logical 0 이 서로 다른 time
+    // 을 가리켜 서브 차트가 엇나감 (MACD 서브가 main 과 날짜 안 맞던 버그).
+    // time 범위 기반 싱크로 교체 — 모든 차트가 공통 time 좌표계를 쓰므로
+    // 데이터 길이 달라도 같은 날짜 기준으로 동기화.
+    const allCharts: IChartApi[] = [chart];
+    if (subChart) allCharts.push(subChart);
+    if (macdChart) allCharts.push(macdChart);
+
+    let syncing = false;
+    for (const src of allCharts) {
+      src.timeScale().subscribeVisibleTimeRangeChange((r) => {
+        if (!r || syncing) return;
+        syncing = true;
+        for (const dst of allCharts) {
+          if (dst !== src) dst.timeScale().setVisibleRange(r);
+        }
+        syncing = false;
+      });
+    }
+
+    // 크로스헤어(세로 점선 + 날짜 라벨)도 모든 차트에 동시에 표시되게 싱크.
+    // 3개 차트 (main, sub, macd) 중 어느 것 위에 호버해도 나머지 전부에
+    // 같은 날짜 크로스헤어 따라다님. setCrosshairPosition 은 price 필요한데
+    // 세로선만 재사용 목적이라 0 넘겨도 충분.
+    type CrosshairTarget = { ch: IChartApi; series: ISeriesApi<SeriesType> };
+    const crosshairTargets: CrosshairTarget[] = [
+      { ch: chart, series: priceSeries },
+    ];
+    if (subChart && subSyncSeries) {
+      crosshairTargets.push({ ch: subChart, series: subSyncSeries });
+    }
+    if (macdChart && macdSyncSeries) {
+      crosshairTargets.push({ ch: macdChart, series: macdSyncSeries });
+    }
+    for (const src of crosshairTargets) {
+      src.ch.subscribeCrosshairMove((param) => {
         if (!param.time || param.point === undefined) {
-          chart.clearCrosshairPosition();
+          for (const dst of crosshairTargets) {
+            if (dst !== src) dst.ch.clearCrosshairPosition();
+          }
           return;
         }
-        chart.setCrosshairPosition(0, param.time, priceSeries);
+        for (const dst of crosshairTargets) {
+          if (dst !== src) dst.ch.setCrosshairPosition(0, param.time, dst.series);
+        }
       });
     }
 
@@ -805,8 +928,10 @@ export function TVChart({
     };
     chart.applyOptions(interactionOpts);
     subChart?.applyOptions(interactionOpts);
+    macdChart?.applyOptions(interactionOpts);
     applyCanvasTouchAction(mainBox, locked0);
     applyCanvasTouchAction(subBox, locked0);
+    applyCanvasTouchAction(macdBox, locked0);
 
     // Resize on actual size changes only.
     let lastMainW = mainW;
@@ -844,23 +969,48 @@ export function TVChart({
       subObserver.observe(subBox);
     }
 
+    let macdObserver: ResizeObserver | null = null;
+    if (macdChart && macdBox) {
+      const localMacd = macdChart;
+      const macdRect0 = macdBox.getBoundingClientRect();
+      let lastMacdW = Math.floor(macdRect0.width);
+      let lastMacdH = Math.floor(macdRect0.height);
+      macdObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = Math.floor(entry.contentRect.width);
+          const h = Math.floor(entry.contentRect.height);
+          if (w > 0 && h > 0 && (w !== lastMacdW || h !== lastMacdH)) {
+            lastMacdW = w;
+            lastMacdH = h;
+            localMacd.applyOptions({ width: w, height: h });
+          }
+        }
+      });
+      macdObserver.observe(macdBox);
+    }
+
     return () => {
       mainObserver.disconnect();
       subObserver?.disconnect();
+      macdObserver?.disconnect();
       subChart?.remove();
+      macdChart?.remove();
       chart.remove();
       mainChartRef.current = null;
       subChartRef.current = null;
+      macdChartRef.current = null;
     };
-  }, [candles, signals, strategy, params, hasSubPanel]);
+  }, [candles, signals, strategy, params, hasSubPanel, hasMacdPanel]);
 
   useEffect(() => {
     lockedRef.current = locked;
     const opts = { handleScroll: !locked, handleScale: !locked };
     mainChartRef.current?.applyOptions(opts);
     subChartRef.current?.applyOptions(opts);
+    macdChartRef.current?.applyOptions(opts);
     applyCanvasTouchAction(mainBoxRef.current, locked);
     applyCanvasTouchAction(subBoxRef.current, locked);
+    applyCanvasTouchAction(macdBoxRef.current, locked);
   }, [locked]);
 
   const subtitle = subtitleFor(strategy);
@@ -921,6 +1071,18 @@ export function TVChart({
           style={{
             width: "100%",
             height: "200px",
+            position: "relative",
+            touchAction: locked ? "pan-y" : "none",
+          }}
+          className="mt-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+        />
+      )}
+      {hasMacdPanel && (
+        <div
+          ref={macdBoxRef}
+          style={{
+            width: "100%",
+            height: "180px",
             position: "relative",
             touchAction: locked ? "pan-y" : "none",
           }}

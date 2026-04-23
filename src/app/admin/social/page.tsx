@@ -111,21 +111,29 @@ export default function AdminSocialPage() {
   const [copied, setCopied] = useState<number | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 새로고침 버튼 클릭 피드백용 — 쿼리 중이면 disabled + "불러오는 중",
+  // 끝난 직후 1.5초간 "갱신됨 ✓" 반짝. 버튼이 먹통처럼 보이던 문제 해결.
+  const [refreshing, setRefreshing] = useState(false);
+  const [justRefreshed, setJustRefreshed] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
+    setRefreshing(true);
     // rank: 수익률 desc, 가장 좋은 것부터
     const { data, error: err, count } = await supabase
       .from("social_content_pool")
       .select("id,market,strategy,custom_template_id,days,return_pct,benchmark_return_pct,share_slug", { count: "exact" })
       .order("return_pct", { ascending: false })
       .limit(DISPLAY_N);
+    setRefreshing(false);
     if (err) {
       setError(err.message);
       return;
     }
     setRows((data ?? []) as Row[]);
     setRemaining(count ?? 0);
+    setJustRefreshed(true);
+    setTimeout(() => setJustRefreshed(false), 1500);
   }, []);
 
   useEffect(() => {
@@ -192,18 +200,29 @@ export default function AdminSocialPage() {
         봇이 분석한 결과 중 수익률 상위. 복사해서 X · Threads · Bluesky 등에 직접 붙여넣으세요.
         "완료" 누르면 풀에서 삭제되어 다음 후보가 올라옵니다.
       </p>
-      <div className="mt-3 text-xs text-neutral-500">
+      <div className="mt-3 text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
         {remaining !== null && (
           <>
-            남은 후보 <span className="font-semibold text-neutral-700 dark:text-neutral-200">{remaining}개</span>
-            {" · "}
+            <span>
+              남은 후보{" "}
+              <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                {remaining}개
+              </span>
+            </span>
+            <span>·</span>
             <button
               type="button"
               onClick={load}
-              className="text-brand hover:underline"
+              disabled={refreshing}
+              className="text-brand hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-wait"
             >
-              새로고침
+              {refreshing ? "불러오는 중…" : "새로고침"}
             </button>
+            {justRefreshed && !refreshing && (
+              <span className="text-emerald-600 dark:text-emerald-400 animate-pulse">
+                ✓ 갱신됨
+              </span>
+            )}
           </>
         )}
       </div>

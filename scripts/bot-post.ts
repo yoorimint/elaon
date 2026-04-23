@@ -559,6 +559,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
   let scanned = 0;
   let losers = 0;
   let noTrade = 0;
+  let underperformed = 0;
   for (const { symbol: sym, preset, period } of tries) {
     scanned++;
     const candles = await loadCandles(sym);
@@ -588,6 +589,14 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
     const r = runBacktest(slice, signals, { initialCash, feeRate: feeBps / 10000 });
     if (r.tradeCount === 0) { noTrade++; continue; }
     if (r.returnPct <= 0) { losers++; continue; }
+    // 단순보유(벤치마크)한테 한참 지는 전략은 올리지 않음. 수익이 +2.9%
+    // 인데 벤치마크 +190% 같은 경우 유저가 "이런 걸 왜 추천?" 하며 빠짐.
+    // board-scan 은 이미 이 필터가 있었는데 bot-post 엔 빠져있었음.
+    // 약간의 여유 (-5%p) 는 허용 — 완전 동률까지 막으면 횡보장에 후보 부족.
+    if (r.returnPct < r.benchmarkReturnPct - 5) {
+      underperformed++;
+      continue;
+    }
     chosen = { symbol: sym, preset, period, slice, signals, r };
     console.log(
       `Hit (${scanned}/${tries.length}): ${sym} / ${preset.name} / ${period.label} → ${r.returnPct.toFixed(2)}% (거래 ${r.tradeCount}회)`,
@@ -597,7 +606,7 @@ function shouldPostThisHour(cfg: BotConfig, remainingCount: number): boolean {
 
   if (!chosen) {
     console.log(
-      `스캔 ${scanned}개 중 수익 조합 없음 — 이번 회차 스킵 (손실 ${losers} · 무거래 ${noTrade})`,
+      `스캔 ${scanned}개 중 채택 조합 없음 — 이번 회차 스킵 (손실 ${losers} · 무거래 ${noTrade} · 벤치마크 미달 ${underperformed})`,
     );
     return;
   }

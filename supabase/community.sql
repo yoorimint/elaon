@@ -585,10 +585,14 @@ create table if not exists public.social_content_pool (
 );
 
 alter table public.social_content_pool enable row level security;
--- 클라이언트 전혀 못 읽음. service_role 만 접근 가능.
+-- 일반 클라이언트 차단, 관리자와 service_role 만 읽기·삭제 가능
 drop policy if exists social_content_pool_no_access on public.social_content_pool;
-create policy social_content_pool_no_access on public.social_content_pool
-  for select using (false);
+drop policy if exists social_content_pool_admin_read on public.social_content_pool;
+drop policy if exists social_content_pool_admin_delete on public.social_content_pool;
+create policy social_content_pool_admin_read on public.social_content_pool
+  for select using (public.is_admin());
+create policy social_content_pool_admin_delete on public.social_content_pool
+  for delete using (public.is_admin());
 
 -- ===== 봇 (자동 전략 추천) =====
 -- posts.category 에 'bot' 추가. CHECK 제약은 alter table 로 drop/add.

@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/users", label: "회원 관리" },
   { href: "/admin/suggestions", label: "건의함" },
   { href: "/admin/bot", label: "봇" },
+  { href: "/admin/social", label: "SNS 포스팅" },
 ];
 
 export function AdminNav() {

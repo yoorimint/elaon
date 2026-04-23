@@ -5,8 +5,9 @@ name: social bot
 # 사용된 row 는 성공 시 삭제 → 풀 소진되면 다음 social-content-scan 실행에서 재생성.
 
 on:
-  schedule:
-    - cron: "0 0-14 * * *"
+  # 어드민이 /admin/social 탭에서 수동 복사로 포스팅하는 방식으로 전환.
+  # X credit 과금·Threads 앱 심사·bot 스팸 검열 등 외부 API 불확실성 회피.
+  # 자동 cron 은 비활성. 필요하면 workflow_dispatch 로 단발성 실행 가능.
   workflow_dispatch:
 
 permissions:

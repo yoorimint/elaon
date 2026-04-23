@@ -65,7 +65,7 @@ export default async function HomePage() {
         <div className="text-brand text-xs sm:text-sm font-semibold tracking-widest">
           ELOAN BACKTEST
         </div>
-        <h1 className="mt-2 text-3xl sm:text-5xl font-bold leading-tight">
+        <h1 className="mt-2 text-[22px] sm:text-4xl font-bold leading-tight whitespace-nowrap">
           아직 소문 듣고 매매하세요?
           <br />
           전략이 없으면 수익도 없어요.

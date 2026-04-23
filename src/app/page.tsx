@@ -91,9 +91,9 @@ export default async function HomePage() {
 
       <PopularCoinsTop />
 
-      <TodayBuyHighlight />
-
       <SajudayAd />
+
+      <TodayBuyHighlight />
 
       <BeginnerPresetSection />
 

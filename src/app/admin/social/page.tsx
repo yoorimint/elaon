@@ -119,18 +119,28 @@ export default function AdminSocialPage() {
   const load = useCallback(async () => {
     setError(null);
     setRefreshing(true);
-    // rank: 수익률 desc, 가장 좋은 것부터
+    // 풀의 모든 후보를 받아 클라에서 Fisher–Yates 셔플 후 DISPLAY_N 슬라이스.
+    // (이전: order return_pct desc + limit DISPLAY_N → 매번 동일한 10개만
+    // 나와서 '새로고침 먹통' 체감. 스캔에서 이미 수익률 필터 통과한 애들이라
+    // 전부 '좋은' 후보이므로 단순 셔플로 충분.)
+    // Supabase 기본 limit 1000. 풀이 그 이상 커지면 RPC 샘플링으로 전환 예정.
     const { data, error: err, count } = await supabase
       .from("social_content_pool")
-      .select("id,market,strategy,custom_template_id,days,return_pct,benchmark_return_pct,share_slug", { count: "exact" })
-      .order("return_pct", { ascending: false })
-      .limit(DISPLAY_N);
+      .select(
+        "id,market,strategy,custom_template_id,days,return_pct,benchmark_return_pct,share_slug",
+        { count: "exact" },
+      );
     setRefreshing(false);
     if (err) {
       setError(err.message);
       return;
     }
-    setRows((data ?? []) as Row[]);
+    const all = [...((data ?? []) as Row[])];
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    setRows(all.slice(0, DISPLAY_N));
     setRemaining(count ?? 0);
     setJustRefreshed(true);
     setTimeout(() => setJustRefreshed(false), 1500);

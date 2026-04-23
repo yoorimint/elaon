@@ -13,6 +13,9 @@ import { runBacktest } from "@/lib/backtest";
 import { computeDIYSignals } from "@/lib/diy-strategy";
 import { getCachedDailyCandles } from "@/lib/signal-cache";
 import { createServiceClient } from "@/lib/supabase-server";
+import { compactSignals } from "@/lib/share";
+import type { Candle } from "@/lib/upbit";
+import type { Trade } from "@/lib/backtest";
 import type { MarketKind } from "@/lib/market";
 import {
   universeFor,
@@ -25,6 +28,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const RECENT_BARS = 3;
+
+const SLUG_CHARS = "abcdefghijkmnpqrstuvwxyz23456789";
+
+function randomSlug(len = 8) {
+  let out = "";
+  for (let i = 0; i < len; i++) {
+    out += SLUG_CHARS[Math.floor(Math.random() * SLUG_CHARS.length)];
+  }
+  return out;
+}
 
 function normalize(sig: Signal): "buy" | "sell" | "hold" {
   if (sig === "buy" || sig === "sell" || sig === "hold") return sig;
@@ -50,6 +63,15 @@ type ScanResult = {
   custom_template_id?: string;
   custom_buy?: unknown;
   custom_sell?: unknown;
+  // /r/<slug> 결과 페이지 직접 렌더링에 필요한 상세 데이터.
+  // shared_backtests 로 함께 insert 되어 카드 클릭 시 바로 결과 열람.
+  win_rate: number;
+  max_drawdown_pct: number;
+  equity_curve: { t: number; e: number; b: number }[];
+  candles: Candle[];
+  signals_sparse: unknown;
+  trades: Trade[];
+  extended_metrics: Record<string, unknown>;
 };
 
 function isKind(v: string | null): v is MarketKind {
@@ -139,6 +161,8 @@ export async function POST(req: NextRequest) {
             }
           }
 
+          const safe = (v: number): number | null =>
+            Number.isFinite(v) ? v : null;
           results.push({
             market,
             strategy: combo.strategy,
@@ -153,6 +177,34 @@ export async function POST(req: NextRequest) {
             custom_template_id: combo.customTemplateId,
             custom_buy: combo.customBuy as unknown,
             custom_sell: combo.customSell as unknown,
+            win_rate: Number.isFinite(result.winRate) ? result.winRate : 0,
+            max_drawdown_pct: Number.isFinite(result.maxDrawdownPct)
+              ? result.maxDrawdownPct
+              : 0,
+            equity_curve: result.equity.map((e) => ({
+              t: e.timestamp,
+              e: Math.round(e.equity),
+              b: Math.round(e.benchmark),
+            })),
+            candles: sliceCandles,
+            signals_sparse: compactSignals(sliceSignals as Signal[]),
+            trades: result.trades,
+            extended_metrics: {
+              sharpe_ratio: safe(result.sharpeRatio),
+              sortino_ratio: safe(result.sortinoRatio),
+              calmar_ratio: safe(result.calmarRatio),
+              profit_factor: safe(result.profitFactor),
+              expectancy_pct: safe(result.expectancyPct),
+              avg_win_pct: safe(result.avgWinPct),
+              avg_loss_pct: safe(result.avgLossPct),
+              best_trade_pct: safe(result.bestTradePct),
+              worst_trade_pct: safe(result.worstTradePct),
+              max_consec_wins: result.maxConsecWins,
+              max_consec_losses: result.maxConsecLosses,
+              avg_hold_bars: safe(result.avgHoldBars),
+              max_drawdown_duration_bars: result.maxDrawdownDurationBars,
+              monthly: result.monthly ?? [],
+            },
           });
         } catch (err) {
           errors.push({
@@ -189,7 +241,62 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: delErr.message }, { status: 500 });
   }
 
+  // 어제자 board-scan 이 만든 shared_backtests 는 DB 비대화 방지를 위해
+  // 같이 정리. source='board-scan' + market_kind 매치만 삭제하므로 사용자가
+  // 수동 공유한 것(source null)이나 social-scan 엔트리는 안 건드림. SNS 용이
+  // 아니라 보드용이라 링크 영구 보존 필요 없음.
+  const { error: oldShareDelErr } = await sb
+    .from("shared_backtests")
+    .delete()
+    .eq("source", `board-scan:${kind}`);
+  if (oldShareDelErr) {
+    // 실패해도 치명적 아님 — 이후 insert 는 계속 진행.
+    console.error("old share delete:", oldShareDelErr.message);
+  }
+
   if (top.length > 0) {
+    // 1) 각 top 마다 shared_backtests 에 insert 해서 slug 확보.
+    //    /r/<slug> 로 바로 결과 페이지 띄우기 위함 (카드 클릭 경험 개선).
+    const shareRows = top.map((r) => ({
+      slug: randomSlug(),
+      market: r.market,
+      timeframe: "1d",
+      strategy: r.strategy,
+      params: r.params,
+      days: r.days,
+      initial_cash: 1_000_000,
+      fee_bps: 5,
+      return_pct: r.return_pct,
+      benchmark_return_pct: r.benchmark_return_pct,
+      max_drawdown_pct: r.max_drawdown_pct,
+      win_rate: r.win_rate,
+      trade_count: r.trade_count,
+      equity_curve: r.equity_curve,
+      candles: r.candles,
+      signals: r.signals_sparse,
+      trades: r.trades,
+      extended_metrics: r.extended_metrics,
+      custom_buy: r.custom_buy ?? null,
+      custom_sell: r.custom_sell ?? null,
+      is_private: false,
+      source: `board-scan:${kind}`,
+    }));
+    // row 당 ~30KB (candles 365일 + equity + trades) 이라 50개씩 chunk insert.
+    const CHUNK = 50;
+    for (let i = 0; i < shareRows.length; i += CHUNK) {
+      const slice = shareRows.slice(i, i + CHUNK);
+      const { error: shareErr } = await sb
+        .from("shared_backtests")
+        .insert(slice);
+      if (shareErr) {
+        return NextResponse.json(
+          { error: `share insert chunk ${i}: ${shareErr.message}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    // 2) board_top_signals — 각 row 에 대응하는 shareRows[i].slug 를 박아넣음.
     const rows = top.map((r, i) => ({
       market_kind: kind,
       market: r.market,
@@ -205,6 +312,7 @@ export async function POST(req: NextRequest) {
       custom_template_id: r.custom_template_id ?? null,
       custom_buy: r.custom_buy ?? null,
       custom_sell: r.custom_sell ?? null,
+      share_slug: shareRows[i].slug,
       rank: i + 1,
     }));
     const { error: insErr } = await sb.from("board_top_signals").insert(rows);

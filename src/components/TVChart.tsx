@@ -17,6 +17,7 @@ import {
   type ISeriesApi,
   type LineData,
   type SeriesMarker,
+  type SeriesType,
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle } from "@/lib/upbit";
@@ -565,6 +566,9 @@ export function TVChart({
     }
 
     let subChart: IChartApi | null = null;
+    // 크로스헤어 싱크용 — 서브차트에 addSeries 할 때마다 첫 시리즈를 여기 저장해서
+    // 메인차트 크로스헤어 이동을 서브차트에도 반영(setCrosshairPosition)할 때 사용.
+    let subSyncSeries: ISeriesApi<SeriesType> | null = null;
     const subBox = subBoxRef.current;
     if (hasSubPanel && subBox) {
       const subRect = subBox.getBoundingClientRect();
@@ -582,6 +586,7 @@ export function TVChart({
           lastValueVisible: true,
           title: "RSI",
         });
+        subSyncSeries = rsiLine;
         rsiLine.setData(toLineData(candles, rsiCalc(closes, p.period), keepIdx));
         rsiLine.createPriceLine({
           price: p.overbought,
@@ -621,6 +626,7 @@ export function TVChart({
           lastValueVisible: false,
           title: "히스토그램",
         });
+        subSyncSeries ??= histSeries;
         const histData: HistogramData<UTCTimestamp>[] = [];
         for (const i of keepIdx) {
           const v = hist[i];
@@ -679,6 +685,7 @@ export function TVChart({
           lastValueVisible: true,
           title: "%K",
         });
+        subSyncSeries ??= kSeries;
         kSeries.setData(toLineData(candles, k, keepIdx));
         const dSeries = subChart.addSeries(LineSeries, {
           color: "#f59e0b",
@@ -717,6 +724,7 @@ export function TVChart({
             lastValueVisible: true,
             title: "",
           });
+          subSyncSeries ??= line;
           line.setData(toLineData(candles, computeRef(r, candles), keepIdx));
         });
         // Common 0-100 reference lines for at-a-glance reading.
@@ -762,6 +770,30 @@ export function TVChart({
     subChart?.timeScale().subscribeVisibleLogicalRangeChange((r) => {
       if (r) chart.timeScale().setVisibleLogicalRange(r);
     });
+
+    // 크로스헤어(세로 점선 + 날짜 라벨)도 양쪽 차트에 동시에 표시되게 싱크.
+    // TradingView 본체처럼 위쪽에 호버하면 아래쪽에도 같은 날짜 크로스헤어가
+    // 따라다닌다. setCrosshairPosition 은 숫자 price 가 필요한데, 세로선만
+    // 재사용하려는 목적이라 0 을 넘겨도 충분 — 라벨 위치는 서브차트의 실제
+    // 데이터와 무관하게 timescale 기준으로 그려짐.
+    if (subChart && subSyncSeries) {
+      const localSub = subChart;
+      const localSubSeries = subSyncSeries;
+      chart.subscribeCrosshairMove((param) => {
+        if (!param.time || param.point === undefined) {
+          localSub.clearCrosshairPosition();
+          return;
+        }
+        localSub.setCrosshairPosition(0, param.time, localSubSeries);
+      });
+      subChart.subscribeCrosshairMove((param) => {
+        if (!param.time || param.point === undefined) {
+          chart.clearCrosshairPosition();
+          return;
+        }
+        chart.setCrosshairPosition(0, param.time, priceSeries);
+      });
+    }
 
     chart.timeScale().fitContent();
 

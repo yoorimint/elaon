@@ -394,6 +394,13 @@ export function computeDIYSignals(
   const sellFrac = Math.min(Math.max(sellFracRaw, 0), 1);
   let inPos = strategy.initialInPos ?? false;
   let entryPrice = strategy.initialEntryPrice ?? 0;
+  // 분할 매도가 누적되면 포지션이 사실상 0 에 수렴. 신호 레이어에서 이걸
+  // 추적하지 않으면 inPos 가 영원히 true 로 남아서 이후 RSI 과매도 같은
+  // 매수 조건이 다시 만족돼도 (allowReentry=false 인 한) 매수 신호가 나오지
+  // 않는다. remainingFrac 를 곱해가며 1e-4 미만이면 사이클 종료로 보고
+  // inPos 를 풀어 재진입이 가능하게 한다.
+  let remainingFrac = 1;
+  const EXITED_EPS = 1e-4;
 
   for (let i = 1; i < candles.length; i++) {
     // 1) 보유 중이면 매도 우선 체크 — 손절/익절은 항상 전량 매도 (안전 우선).
@@ -406,12 +413,14 @@ export function computeDIYSignals(
         signals[i] = "sell";
         inPos = false;
         entryPrice = 0;
+        remainingFrac = 1;
         continue;
       }
       if (strategy.takeProfitPct != null && pnlPct >= strategy.takeProfitPct) {
         signals[i] = "sell";
         inPos = false;
         entryPrice = 0;
+        remainingFrac = 1;
         continue;
       }
 
@@ -425,10 +434,17 @@ export function computeDIYSignals(
           signals[i] = "sell";
           inPos = false;
           entryPrice = 0;
+          remainingFrac = 1;
         } else if (sellFrac > 0) {
           signals[i] = { sell_qty_frac: sellFrac, entry_price: entryPrice };
-          // 분할 매도면 포지션이 남아있다고 가정하고 inPos 유지. 백테스트가
-          // 실제 포지션 관리. 더 살 기회 있으려면 allowReentry 쓰면 됨.
+          // 분할 매도는 남은 포지션 비율을 기하적으로 감소. 거의 다 팔린
+          // 상태면 inPos 를 풀어 다음 매수 조건이 재진입으로 동작하도록.
+          remainingFrac *= 1 - sellFrac;
+          if (remainingFrac < EXITED_EPS) {
+            inPos = false;
+            entryPrice = 0;
+            remainingFrac = 1;
+          }
         }
         continue;
       }
@@ -446,6 +462,7 @@ export function computeDIYSignals(
           // 피라미딩 중에는 첫 진입 기준 유지 → 이후 추가 매수는 avg cost 가 백테스트에서 계산됨.
           inPos = true;
           entryPrice = candles[i].close;
+          remainingFrac = 1;
         }
       }
     }

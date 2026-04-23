@@ -85,11 +85,18 @@ function buildText(r: Row): string {
         r.custom_template_id ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}` : ""
       }`;
   const templates = [
-    `${name} ${period} 그냥 들고 있으면 ${bench}.\n${strat} 전략 썼다면 ${ret}.\n그 차이, 궁금하지 않나.\n${url}`,
-    `유튜브에서 본 ${strat} 전략, ${name}에 ${period} 돌려봤다.\n${ret} 나왔다 (보유 ${bench}).\n과연 미래에도 통할까?\n${url}`,
-    `${name} ${strat} ${period} 시뮬레이션:\n전략 ${ret} vs 보유 ${bench}.\n${diffStr} 차이.\n${url}`,
-    `"${name}을 ${period} 전에 전략 매매로 샀다면?"\n${strat}: ${ret}\n단순 보유: ${bench}\n${url}`,
-    `${name} ${period} 수익률 ${ret}.\n매수·매도 규칙은 ${strat}, 그게 전부다.\n이 로직, 너도 검증해볼래?\n${url}`,
+    // 1. 대조 + 타이밍 강조
+    `${name} ${period} 그냥 들고만 있었으면 ${bench}.\n${strat} 규칙 하나 넣으면 ${ret}.\n${diffStr} 차이 — 매매 타이밍이 전부다.\n${url}`,
+    // 2. 가정법 + 물렸다면
+    `${period} 전에 ${name} 샀는데 ${bench} 물렸다면,\n같은 기간 ${strat} 전략은 ${ret} 냈다.\n규칙 하나의 차이.\n${url}`,
+    // 3. 같은 자산 다른 결말
+    `같은 ${name}, 같은 ${period}, 다른 결말.\n보유 ${bench} / ${strat} ${ret}.\n${url}`,
+    // 4. 규칙의 위력 (%p 강조)
+    `규칙 하나가 ${diffStr} 를 만든다.\n${name} ${period}, 보유 ${bench} vs ${strat} ${ret}.\n${url}`,
+    // 5. 단순함 강조
+    `${name} ${period}, ${strat} 규칙 몇 줄에:\n${ret} 수익 (보유 ${bench}).\n단순한 규칙이 이긴다.\n${url}`,
+    // 6. 물린 사람 타겟 (질문형)
+    `${name} 아직 ${bench} 물려있나?\n${strat} 로 돌렸다면 ${ret}.\n직접 돌려봐야 믿긴다.\n${url}`,
   ];
   return templates[r.id % templates.length];
 }

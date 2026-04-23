@@ -6,7 +6,6 @@ import { timeAgo } from "@/lib/community";
 import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
 import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
 import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
-import { BoardSignalsTop } from "@/components/BoardSignalsTop";
 import { SajudayAd } from "@/components/SajudayAd";
 
 export const revalidate = 30;
@@ -38,7 +37,7 @@ type SharedRow = {
 async function loadHomeData() {
   const sb = createServerClient();
   // "최근 공유된 백테스트" 섹션용 — 사회적 증거 (봇 + 유저가 자발적으로 공유한 것).
-  // "오늘의 신호" 는 별도 컴포넌트 (BoardSignalsTop) 가 board_top_signals 직접 SELECT.
+  // "검증된 전략" 은 TodayBuyHighlight 컴포넌트가 board_top_signals 직접 SELECT.
   const sharedRes = await sb
     .from("shared_backtests")
     .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
@@ -91,9 +90,7 @@ export default async function HomePage() {
 
       <TodayBuyHighlight />
 
-      <SajudayAd variant="home" />
-
-      <BoardSignalsTop />
+      <SajudayAd />
 
       <BeginnerPresetSection />
 

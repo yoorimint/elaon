@@ -1,6 +1,6 @@
-// 홈 최상단 "오늘의 매수·매도 신호" 하이라이트.
-// board_top_signals 에서 action in ('buy','sell') 인 것을 합쳐 상위 N개 노출.
-// 같은 market 중복 제거 (sell 우선). 크론이 비어있으면 null → 섹션 사라짐.
+// 홈의 "검증된 전략" 통합 섹션.
+// board_top_signals 에서 action=buy/sell/hold 전부 노출. 색으로 구분.
+// 파일명은 기존 import 경로 유지 위해 둠. 내용/섹션명은 검증된 전략.
 
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
@@ -8,7 +8,7 @@ import { STOCK_MARKETS } from "@/lib/market";
 import { SCAN_CUSTOM_TEMPLATES } from "@/lib/scan-custom-templates";
 import { timeAgo } from "@/lib/community";
 
-const DISPLAY_N = 6;
+const DISPLAY_N = 9;
 const STALE_THRESHOLD_HOURS = 26;
 
 type Row = {
@@ -18,7 +18,7 @@ type Row = {
   days: number;
   return_pct: number;
   benchmark_return_pct: number;
-  action: "buy" | "sell";
+  action: "buy" | "sell" | "hold";
   share_slug: string | null;
   custom_template_id: string | null;
   computed_at: string;
@@ -62,36 +62,28 @@ function strategyShort(s: string, customTemplateId?: string | null): string {
 
 async function loadSignals(): Promise<Row[]> {
   const sb = createServerClient();
-  // buy 와 sell 을 각각 수익률순으로 상위 40개씩 받아 합침. market 중복은
-  // buy/sell 각 큐 안에서 제거 — 같은 market 에 buy 와 sell 이 동시 있으면
-  // 드물지만 수익률 높은 쪽 유지.
-  const COLS =
-    "id,market,strategy,days,return_pct,benchmark_return_pct,action,share_slug,custom_template_id,computed_at";
-  const [buyRes, sellRes] = await Promise.all([
-    sb
-      .from("board_top_signals")
-      .select(COLS)
-      .eq("action", "buy")
-      .order("return_pct", { ascending: false })
-      .limit(40),
-    sb
-      .from("board_top_signals")
-      .select(COLS)
-      .eq("action", "sell")
-      .order("return_pct", { ascending: false })
-      .limit(40),
-  ]);
-  const buys = (buyRes.data ?? []) as Row[];
-  const sells = (sellRes.data ?? []) as Row[];
+  // 모든 액션 (buy/sell/hold) 수익률순으로 받아서 market 중복 제거.
+  // 같은 market 에 여러 row 가 있으면 buy > sell > hold 우선 (action 으로 정렬).
+  // DB 에서 action 우선순위는 별도 컬럼 없으니 앱단에서 정렬.
+  const { data } = await sb
+    .from("board_top_signals")
+    .select(
+      "id,market,strategy,days,return_pct,benchmark_return_pct,action,share_slug,custom_template_id,computed_at",
+    )
+    .order("return_pct", { ascending: false })
+    .limit(60);
+  const all = (data ?? []) as Row[];
 
-  // 수익률로 통합 정렬 — 매수/매도 섞여도 수익률 상위부터 노출.
-  // 같은 market 중복 제거 (먼저 등장한 쪽 유지).
-  const merged = [...buys, ...sells].sort(
-    (a, b) => b.return_pct - a.return_pct,
-  );
+  const actionRank: Record<Row["action"], number> = { buy: 0, sell: 1, hold: 2 };
+  all.sort((a, b) => {
+    const ar = actionRank[a.action] - actionRank[b.action];
+    if (ar !== 0) return ar;
+    return b.return_pct - a.return_pct;
+  });
+
   const seen = new Set<string>();
   const unique: Row[] = [];
-  for (const r of merged) {
+  for (const r of all) {
     if (seen.has(r.market)) continue;
     seen.add(r.market);
     unique.push(r);
@@ -113,33 +105,32 @@ export async function TodayBuyHighlight() {
 
   const buyCount = rows.filter((r) => r.action === "buy").length;
   const sellCount = rows.filter((r) => r.action === "sell").length;
+  const holdCount = rows.filter((r) => r.action === "hold").length;
 
   return (
-    <section className="mb-8">
+    <section className="mb-10">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold">
-            🔥 오늘의 매수·매도 신호 ({rows.length})
-          </h2>
+          <h2 className="text-lg sm:text-xl font-bold">🏆 검증된 전략</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            과거 수익률 높았던 전략들이 오늘{" "}
+            과거 수익률이 단순보유를 이긴 조합들. 오늘의 액션도 함께.
+          </p>
+          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-neutral-500">
             {buyCount > 0 && (
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                 매수 {buyCount}
               </span>
             )}
-            {buyCount > 0 && sellCount > 0 && <span> · </span>}
             {sellCount > 0 && (
               <span className="font-semibold text-red-600 dark:text-red-400">
                 매도 {sellCount}
               </span>
-            )}{" "}
-            신호를 냈어요.
-          </p>
-          <div className="mt-1 text-[11px] text-neutral-500">
+            )}
+            {holdCount > 0 && <span>대기 {holdCount}</span>}
+            <span>·</span>
             {isStale ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-medium">
-                ⚠️ 신호 갱신 {timeAgo(latestComputedAt)} · 최신 아닐 수 있어요
+                ⚠️ 갱신 {timeAgo(latestComputedAt)} · 최신 아닐 수 있어요
               </span>
             ) : (
               <span>갱신 {timeAgo(latestComputedAt)}</span>
@@ -156,7 +147,6 @@ export async function TodayBuyHighlight() {
 
       <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => {
-          const isBuy = r.action === "buy";
           const href = r.share_slug
             ? `/r/${r.share_slug}`
             : `/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}${
@@ -164,26 +154,41 @@ export async function TodayBuyHighlight() {
                   ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}`
                   : ""
               }`;
-          const cardColor = isBuy
-            ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-950/50"
-            : "border-red-300 dark:border-red-700 bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100/70 dark:hover:bg-red-950/50";
-          const pillColor = isBuy
-            ? "text-emerald-700 dark:text-emerald-300"
-            : "text-red-700 dark:text-red-300";
-          const returnColor = isBuy
-            ? "text-emerald-700 dark:text-emerald-400"
-            : "text-red-700 dark:text-red-400";
+          const actionStyle =
+            r.action === "buy"
+              ? {
+                  card: "border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-950/50",
+                  pill: "text-emerald-700 dark:text-emerald-300",
+                  ret: "text-emerald-700 dark:text-emerald-400",
+                  dot: "🟢",
+                  label: "매수",
+                }
+              : r.action === "sell"
+                ? {
+                    card: "border-red-300 dark:border-red-700 bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100/70 dark:hover:bg-red-950/50",
+                    pill: "text-red-700 dark:text-red-300",
+                    ret: "text-red-700 dark:text-red-400",
+                    dot: "🔴",
+                    label: "매도",
+                  }
+                : {
+                    card: "border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-900/30 hover:bg-neutral-100/70 dark:hover:bg-neutral-900/50",
+                    pill: "text-neutral-600 dark:text-neutral-400",
+                    ret: "text-neutral-700 dark:text-neutral-300",
+                    dot: "⚪",
+                    label: "대기",
+                  };
           return (
             <li key={r.id}>
               <Link
                 href={href}
-                className={`block h-full rounded-xl border p-3 sm:p-4 transition ${cardColor}`}
+                className={`block h-full rounded-xl border p-3 sm:p-4 transition ${actionStyle.card}`}
               >
                 <div
-                  className={`flex items-center gap-1.5 text-sm font-bold ${pillColor}`}
+                  className={`flex items-center gap-1.5 text-sm font-bold ${actionStyle.pill}`}
                 >
-                  <span aria-hidden>{isBuy ? "🟢" : "🔴"}</span>
-                  <span>{isBuy ? "매수" : "매도"}</span>
+                  <span aria-hidden>{actionStyle.dot}</span>
+                  <span>{actionStyle.label}</span>
                   <span className="ml-auto text-[10px] font-normal text-neutral-500">
                     오늘
                   </span>
@@ -196,7 +201,7 @@ export async function TodayBuyHighlight() {
                   {r.days >= 330 ? "1년" : `${r.days}일`}
                 </div>
                 <div className="mt-2 text-xs">
-                  <span className={`font-bold ${returnColor}`}>
+                  <span className={`font-bold ${actionStyle.ret}`}>
                     {r.return_pct >= 0 ? "+" : ""}
                     {r.return_pct.toFixed(1)}%
                   </span>

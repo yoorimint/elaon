@@ -144,6 +144,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  try {
+    return await runScan();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("popular-scan 치명 오류:", msg, stack);
+    // 500 대신 200 으로 body 에 에러 싣어서 크론 로그에서 바로 원인 파악.
+    return NextResponse.json(
+      { error: msg, stack: stack?.split("\n").slice(0, 8).join("\n") },
+      { status: 200 },
+    );
+  }
+}
+
+async function runScan() {
   const combos = buildCombos();
   const hits: ScanHit[] = [];
   const errors: { market: string; strategy: string; error: string }[] = [];
@@ -304,7 +319,8 @@ export async function POST(req: NextRequest) {
     .delete()
     .neq("id", 0);
   if (delErr) {
-    return NextResponse.json({ error: delErr.message }, { status: 500 });
+    // delete 실패해도 이후 insert 는 시도 — row 중복이 생겨도 괜찮음.
+    console.error("popular_coin_strategies delete failed:", delErr.message);
   }
   const { error: oldShareDelErr } = await sb
     .from("shared_backtests")
@@ -315,6 +331,8 @@ export async function POST(req: NextRequest) {
   }
 
   let shareInsertFailed = false;
+  let shareInsertError: string | null = null;
+  let boardInsertError: string | null = null;
   const shareSlugs: (string | null)[] = finals.map(() => randomSlug());
 
   if (finals.length > 0) {
@@ -347,6 +365,7 @@ export async function POST(req: NextRequest) {
       .insert(shareRows);
     if (shareErr) {
       shareInsertFailed = true;
+      shareInsertError = shareErr.message;
       console.error("popular share insert failed:", shareErr.message);
     }
 
@@ -378,19 +397,24 @@ export async function POST(req: NextRequest) {
       .from("popular_coin_strategies")
       .insert(rows);
     if (insErr) {
-      return NextResponse.json({ error: insErr.message }, { status: 500 });
+      boardInsertError = insErr.message;
+      console.error("popular_coin_strategies insert failed:", insErr.message);
     }
   }
 
   return NextResponse.json({
     scanned: combos.length,
     passed: hits.length,
-    stored: finals.length,
+    best_per_market: Array.from(bestPerMarket.entries()).map(
+      ([m, h]) => `${m}:${h.return_pct.toFixed(1)}%`,
+    ),
+    stored: boardInsertError ? 0 : finals.length,
     errors: errors.length,
     errorSamples: errors.slice(0, 5),
     ...(shareInsertFailed
-      ? { warning: "shared_backtests insert 실패 — share_slug null 폴백" }
+      ? { share_insert_error: shareInsertError }
       : {}),
+    ...(boardInsertError ? { board_insert_error: boardInsertError } : {}),
   });
 }
 

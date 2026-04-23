@@ -120,7 +120,7 @@ export async function PopularCoinsTop() {
         </div>
       </div>
 
-      <ul className="mt-4 grid gap-3 grid-cols-2 lg:grid-cols-5">
+      <ul className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2">
         {rows.map((r) => {
           const href = r.share_slug
             ? `/r/${r.share_slug}`
@@ -140,40 +140,50 @@ export async function PopularCoinsTop() {
             <li key={r.id}>
               <Link
                 href={href}
-                className="block h-full rounded-xl border border-amber-300 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-neutral-950 p-3 sm:p-4 transition hover:shadow-md"
+                className="group flex items-center gap-3 rounded-xl border border-amber-300 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-white dark:from-amber-950/30 dark:to-neutral-950 px-3 py-2.5 transition hover:shadow-md"
               >
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-bold leading-tight">
+                {/* 좌측: 코인명 + 액션 뱃지 */}
+                <div className="shrink-0 min-w-[72px]">
+                  <div className="font-bold leading-tight text-sm">
                     {coinLabel(r.market)}
-                  </span>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${actionStyle.pill}`}>
-                    {actionStyle.dot} {actionStyle.label}
-                  </span>
-                </div>
-                <div className="mt-1.5 text-[11px] text-neutral-500 truncate">
-                  {strategyShort(r.strategy, r.custom_template_id)} ·{" "}
-                  {r.days >= 700 ? "2년" : r.days >= 330 ? "1년" : `${r.days}일`}
-                </div>
-                <div className="mt-2">
-                  <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">
-                    +{r.return_pct.toFixed(1)}%
-                  </span>
-                  <span className="ml-1 text-[10px] text-neutral-500">백테</span>
-                </div>
-                {paper && (
-                  <div
-                    className={`mt-1 text-[11px] font-medium ${
-                      paper.pct >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-red-600 dark:text-red-400"
-                    }`}
-                  >
-                    모의 {paper.text}
                   </div>
-                )}
-                <div className="mt-2 text-[11px] text-brand font-semibold">
-                  결과 보기 →
+                  <div
+                    className={`mt-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${actionStyle.pill}`}
+                  >
+                    <span>{actionStyle.dot}</span>
+                    <span>{actionStyle.label}</span>
+                  </div>
                 </div>
+
+                {/* 가운데: 전략 · 기간 */}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] text-neutral-500 truncate">
+                    {strategyShort(r.strategy, r.custom_template_id)} ·{" "}
+                    {r.days >= 700 ? "2년" : r.days >= 330 ? "1년" : `${r.days}일`}
+                  </div>
+                  <div className="mt-0.5 flex items-baseline gap-1.5 flex-wrap">
+                    <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-400">
+                      +{r.return_pct.toFixed(1)}%
+                    </span>
+                    <span className="text-[10px] text-neutral-500">백테</span>
+                    {paper && (
+                      <span
+                        className={`text-[11px] font-medium ${
+                          paper.pct >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        · 모의 {paper.text}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 우측: 화살표 */}
+                <span className="shrink-0 text-brand font-bold text-sm group-hover:translate-x-0.5 transition">
+                  →
+                </span>
               </Link>
             </li>
           );

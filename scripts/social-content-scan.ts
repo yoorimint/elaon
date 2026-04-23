@@ -212,12 +212,9 @@ async function main() {
   const top = allResults.slice(0, POOL_SIZE);
   console.log(`[scan] 전체 ${allResults.length}개 통과, 상위 ${top.length}개 저장`);
 
-  // 1) 이전 스캔의 shared_backtests (source='social-scan') 정리 + 풀 비우기
-  const { error: delShareErr } = await sb
-    .from("shared_backtests")
-    .delete()
-    .eq("source", "social-scan");
-  if (delShareErr) console.warn(`[scan] prev share delete: ${delShareErr.message}`);
+  // 1) 풀만 비움 — shared_backtests 의 source='social-scan' 엔트리는 영구 보존.
+  // SNS 에 공유된 /r/<slug> 링크가 몇 달 뒤에도 계속 살아있어야 함.
+  // 풀 row 는 "현재 노출 후보" 역할이라 매 scan 마다 새로 교체.
   const { error: delPoolErr } = await sb.from("social_content_pool").delete().neq("id", -1);
   if (delPoolErr) throw new Error(`pool delete: ${delPoolErr.message}`);
 

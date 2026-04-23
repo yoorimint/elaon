@@ -257,8 +257,11 @@ export async function POST(req: NextRequest) {
   if (top.length > 0) {
     // 1) 각 top 마다 shared_backtests 에 insert 해서 slug 확보.
     //    /r/<slug> 로 바로 결과 페이지 띄우기 위함 (카드 클릭 경험 개선).
-    const shareRows = top.map((r) => ({
-      slug: randomSlug(),
+    //    실패해도 board_top_signals 는 계속 채움 — share_slug=null 이면
+    //    클릭이 /backtest 셋팅 페이지로 폴백. 홈 카드는 계속 렌더됨.
+    const shareSlugs: (string | null)[] = top.map(() => randomSlug());
+    const shareRows = top.map((r, idx) => ({
+      slug: shareSlugs[idx] as string,
       market: r.market,
       timeframe: "1d",
       strategy: r.strategy,
@@ -283,20 +286,31 @@ export async function POST(req: NextRequest) {
     }));
     // row 당 ~30KB (candles 365일 + equity + trades) 이라 50개씩 chunk insert.
     const CHUNK = 50;
+    let shareInsertFailed = false;
+    let shareInsertError: string | null = null;
     for (let i = 0; i < shareRows.length; i += CHUNK) {
       const slice = shareRows.slice(i, i + CHUNK);
       const { error: shareErr } = await sb
         .from("shared_backtests")
         .insert(slice);
       if (shareErr) {
-        return NextResponse.json(
-          { error: `share insert chunk ${i}: ${shareErr.message}` },
-          { status: 500 },
+        // 한 번 실패하면 이후 청크도 의미 없음. 전체 slug 무효화하고
+        // board_top_signals 는 share_slug=null 로 계속 진행.
+        shareInsertFailed = true;
+        shareInsertError = shareErr.message;
+        console.error(
+          `share insert chunk ${i} failed (계속 진행):`,
+          shareErr.message,
         );
+        break;
       }
     }
+    // 실패 시 슬러그 전부 null 처리 → 카드 클릭이 /backtest 폴백.
+    const slugsForBoard = shareInsertFailed
+      ? shareSlugs.map(() => null)
+      : shareSlugs;
 
-    // 2) board_top_signals — 각 row 에 대응하는 shareRows[i].slug 를 박아넣음.
+    // 2) board_top_signals — 각 row 에 대응하는 slug(or null) 박음.
     const rows = top.map((r, i) => ({
       market_kind: kind,
       market: r.market,
@@ -312,12 +326,24 @@ export async function POST(req: NextRequest) {
       custom_template_id: r.custom_template_id ?? null,
       custom_buy: r.custom_buy ?? null,
       custom_sell: r.custom_sell ?? null,
-      share_slug: shareRows[i].slug,
+      share_slug: slugsForBoard[i],
       rank: i + 1,
     }));
     const { error: insErr } = await sb.from("board_top_signals").insert(rows);
     if (insErr) {
       return NextResponse.json({ error: insErr.message }, { status: 500 });
+    }
+
+    if (shareInsertFailed) {
+      return NextResponse.json({
+        kind,
+        scanned: combos.length,
+        passed: results.length,
+        stored: top.length,
+        errors: errors.length,
+        errorSamples: errors.slice(0, 5),
+        warning: `shared_backtests insert 실패 — 카드 클릭이 /backtest 셋팅 페이지로 폴백됨: ${shareInsertError}`,
+      });
     }
   }
 

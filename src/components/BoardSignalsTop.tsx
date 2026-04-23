@@ -86,32 +86,21 @@ function actionStyle(action: Row["action"]) {
 
 async function loadBoardTop(): Promise<Row[]> {
   const sb = createServerClient();
-  // 매수는 위 "🔥 오늘 살 만한 거" 섹션이 담당 → 여기는 매도/대기만 노출.
-  // 과거: 수익률 desc 로만 정렬 → 수익률 높은 hold 들이 상위 40 을 전부
-  // 차지해 dedup 거치고 나면 sell 이 한 개도 안 뜨는 문제. sell 을
-  // action 기준으로 먼저 뽑고, 남는 슬롯만 hold 로 채워서 매도 신호가
-  // 반드시 노출되도록 보장.
-  const [sellRes, holdRes] = await Promise.all([
-    sb
-      .from("board_top_signals")
-      .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
-      .eq("action", "sell")
-      .order("return_pct", { ascending: false })
-      .limit(40),
-    sb
-      .from("board_top_signals")
-      .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
-      .eq("action", "hold")
-      .order("return_pct", { ascending: false })
-      .limit(40),
-  ]);
-  const sells = (sellRes.data ?? []) as Row[];
-  const holds = (holdRes.data ?? []) as Row[];
+  // 매수·매도는 위 "🔥 오늘의 매수·매도" 섹션이 담당.
+  // 여기는 '대기' 상태만 — 오늘 바로 신호는 안 나왔지만 과거 수익률이
+  // 좋아서 진입 타이밍 기다릴 만한 종목 참고용.
+  const { data } = await sb
+    .from("board_top_signals")
+    .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
+    .eq("action", "hold")
+    .order("return_pct", { ascending: false })
+    .limit(40);
+  const all = (data ?? []) as Row[];
 
-  // market 중복 제거 — 같은 코인의 sell 과 hold 가 동시에 있으면 sell 우선.
+  // market 중복 제거.
   const seen = new Set<string>();
   const unique: Row[] = [];
-  for (const r of [...sells, ...holds]) {
+  for (const r of all) {
     if (seen.has(r.market)) continue;
     seen.add(r.market);
     unique.push(r);
@@ -127,12 +116,13 @@ export async function BoardSignalsTop() {
     <section className="mb-12">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg sm:text-xl font-bold">검증된 전략 더 보기</h2>
+          <h2 className="text-lg sm:text-xl font-bold">검증된 전략 · 대기 중</h2>
           <p
             className="mt-1 text-sm text-neutral-500"
             style={{ wordBreak: "keep-all" }}
           >
-            보유 대비 잘했던 전략 중 오늘 매도·대기 상태인 것들. 진입 타이밍 기다리는 종목 참고용.
+            과거 수익률은 좋았지만 오늘은 매수·매도 신호가 없는 종목. 진입
+            타이밍 기다릴 때 참고.
           </p>
         </div>
         <Link

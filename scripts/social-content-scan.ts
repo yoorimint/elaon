@@ -12,6 +12,7 @@
 //   SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from "@supabase/supabase-js";
+import crypto from "node:crypto";
 import type { Candle } from "@/lib/upbit";
 import { computeSignals, type StrategyId, type StrategyParams } from "@/lib/strategies";
 import { computeDIYSignals, type Condition } from "@/lib/diy-strategy";
@@ -74,7 +75,18 @@ type ScanResult = {
   benchmark_return_pct: number;
   trade_count: number;
   max_drawdown_pct: number | null;
+  win_rate: number;
+  equity_curve: Array<{ t: number; e: number; b: number }>;
 };
+
+const SLUG_CHARS = "abcdefghijkmnpqrstuvwxyz23456789";
+function randomSlug(len = 8) {
+  let out = "";
+  const buf = new Uint8Array(len);
+  crypto.getRandomValues(buf);
+  for (let i = 0; i < len; i++) out += SLUG_CHARS[buf[i] % SLUG_CHARS.length];
+  return out;
+}
 
 async function fetchCandles(market: string): Promise<Candle[]> {
   const end = Date.now();
@@ -123,6 +135,12 @@ async function scanMarket(market: string): Promise<ScanResult[]> {
           benchmark_return_pct: r.benchmarkReturnPct,
           trade_count: r.tradeCount,
           max_drawdown_pct: Number.isFinite(r.maxDrawdownPct) ? r.maxDrawdownPct : null,
+          win_rate: Number.isFinite(r.winRate) ? r.winRate : 0,
+          equity_curve: r.equity.map((e) => ({
+            t: e.timestamp,
+            e: Math.round(e.equity),
+            b: Math.round(e.benchmark),
+          })),
         });
       } catch {
         // ignore single combo error
@@ -159,6 +177,12 @@ async function scanMarket(market: string): Promise<ScanResult[]> {
           benchmark_return_pct: r.benchmarkReturnPct,
           trade_count: r.tradeCount,
           max_drawdown_pct: Number.isFinite(r.maxDrawdownPct) ? r.maxDrawdownPct : null,
+          win_rate: Number.isFinite(r.winRate) ? r.winRate : 0,
+          equity_curve: r.equity.map((e) => ({
+            t: e.timestamp,
+            e: Math.round(e.equity),
+            b: Math.round(e.benchmark),
+          })),
         });
       } catch {
         // ignore
@@ -188,27 +212,77 @@ async function main() {
   const top = allResults.slice(0, POOL_SIZE);
   console.log(`[scan] 전체 ${allResults.length}개 통과, 상위 ${top.length}개 저장`);
 
-  // 풀 전체 교체
-  const { error: delErr } = await sb.from("social_content_pool").delete().neq("id", -1);
-  if (delErr) throw new Error(`pool delete: ${delErr.message}`);
+  // 1) 이전 스캔의 shared_backtests (source='social-scan') 정리 + 풀 비우기
+  const { error: delShareErr } = await sb
+    .from("shared_backtests")
+    .delete()
+    .eq("source", "social-scan");
+  if (delShareErr) console.warn(`[scan] prev share delete: ${delShareErr.message}`);
+  const { error: delPoolErr } = await sb.from("social_content_pool").delete().neq("id", -1);
+  if (delPoolErr) throw new Error(`pool delete: ${delPoolErr.message}`);
 
-  if (top.length > 0) {
-    const rows = top.map((r) => ({
+  if (top.length === 0) {
+    console.log("[scan] 저장할 결과 없음 — 완료");
+    return;
+  }
+
+  // 2) 각 top 에 대해 shared_backtests 엔트리 만들고 슬러그 붙여 pool 에 저장.
+  //    source='social-scan' 이라 홈/랭킹 리스트에선 숨겨지지만 /r/<slug> 직접
+  //    접근은 가능 (SNS 링크 landing 용).
+  const shareRows = top.map((r) => {
+    const slug = randomSlug();
+    return {
+      slug,
       market: r.market,
+      timeframe: "1d",
       strategy: r.strategy,
       params: r.params,
-      custom_template_id: r.custom_template_id,
-      custom_buy: r.custom_buy,
-      custom_sell: r.custom_sell,
       days: r.days,
+      initial_cash: 1_000_000,
+      fee_bps: 5,
       return_pct: r.return_pct,
       benchmark_return_pct: r.benchmark_return_pct,
+      max_drawdown_pct: r.max_drawdown_pct ?? 0,
+      win_rate: r.win_rate,
       trade_count: r.trade_count,
-      max_drawdown_pct: r.max_drawdown_pct,
-    }));
-    const { error: insErr } = await sb.from("social_content_pool").insert(rows);
-    if (insErr) throw new Error(`pool insert: ${insErr.message}`);
+      equity_curve: r.equity_curve,
+      custom_buy: r.custom_buy,
+      custom_sell: r.custom_sell,
+      is_private: false,
+      source: "social-scan",
+    };
+  });
+
+  // chunk insert (Supabase 한 번에 너무 큰 payload 피함)
+  const CHUNK = 100;
+  for (let i = 0; i < shareRows.length; i += CHUNK) {
+    const slice = shareRows.slice(i, i + CHUNK);
+    const { error } = await sb.from("shared_backtests").insert(slice);
+    if (error) throw new Error(`share insert chunk ${i}: ${error.message}`);
   }
+  console.log(`[scan] shared_backtests ${shareRows.length}개 insert`);
+
+  // 3) 풀 insert — 매치된 share_slug 포함
+  const poolRows = top.map((r, i) => ({
+    market: r.market,
+    strategy: r.strategy,
+    params: r.params,
+    custom_template_id: r.custom_template_id,
+    custom_buy: r.custom_buy,
+    custom_sell: r.custom_sell,
+    days: r.days,
+    return_pct: r.return_pct,
+    benchmark_return_pct: r.benchmark_return_pct,
+    trade_count: r.trade_count,
+    max_drawdown_pct: r.max_drawdown_pct,
+    share_slug: shareRows[i].slug,
+  }));
+  for (let i = 0; i < poolRows.length; i += CHUNK) {
+    const slice = poolRows.slice(i, i + CHUNK);
+    const { error } = await sb.from("social_content_pool").insert(slice);
+    if (error) throw new Error(`pool insert chunk ${i}: ${error.message}`);
+  }
+  console.log(`[scan] social_content_pool ${poolRows.length}개 insert`);
   console.log("[scan] 완료");
 }
 

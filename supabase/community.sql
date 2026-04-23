@@ -581,6 +581,9 @@ create table if not exists public.social_content_pool (
   benchmark_return_pct numeric not null,
   trade_count int not null,
   max_drawdown_pct numeric,
+  -- scan 때 같이 만드는 shared_backtests 슬러그. 어드민 SNS 탭 → 복사 버튼의
+  -- 링크가 /r/<share_slug> 로 바로 결과 페이지 향함.
+  share_slug text,
   computed_at timestamptz not null default now()
 );
 

@@ -36,6 +36,8 @@ async function loadRanks(periodDays: number | null): Promise<RankRow[]> {
     .select(
       "slug,market,strategy,days,return_pct,benchmark_return_pct,max_drawdown_pct,trade_count,created_at,author_id",
     )
+    // SNS 봇 자동 스캔 결과는 랭킹에서 제외 (슬러그로는 접근 가능)
+    .or("source.is.null,source.neq.social-scan")
     .order("return_pct", { ascending: false })
     .limit(100);
   if (periodDays !== null) {

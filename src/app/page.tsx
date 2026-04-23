@@ -42,6 +42,8 @@ async function loadHomeData() {
     .from("shared_backtests")
     .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
     .eq("is_private", false)
+    // SNS 봇 전용 자동 스캔 결과는 리스트에서 제외 (슬러그로는 접근 가능)
+    .or("source.is.null,source.neq.social-scan")
     .order("created_at", { ascending: false })
     .limit(3);
   return {

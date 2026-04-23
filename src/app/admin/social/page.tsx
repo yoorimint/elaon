@@ -19,6 +19,7 @@ type Row = {
   days: number;
   return_pct: number;
   benchmark_return_pct: number;
+  share_slug: string | null;
 };
 
 const DISPLAY_N = 10;
@@ -77,9 +78,12 @@ function buildText(r: Row): string {
   const bench = (r.benchmark_return_pct >= 0 ? "+" : "") + r.benchmark_return_pct.toFixed(1) + "%";
   const diff = r.return_pct - r.benchmark_return_pct;
   const diffStr = (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%p";
-  const url = `${SITE_URL}/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}${
-    r.custom_template_id ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}` : ""
-  }`;
+  // 결과 페이지 직접 링크. share_slug 는 scan 때 함께 만들어 둔 shared_backtests 엔트리.
+  const url = r.share_slug
+    ? `${SITE_URL}/r/${r.share_slug}`
+    : `${SITE_URL}/backtest?market=${encodeURIComponent(r.market)}&strategy=${r.strategy}&days=${r.days}${
+        r.custom_template_id ? `&customTemplate=${encodeURIComponent(r.custom_template_id)}` : ""
+      }`;
   const templates = [
     `${name} ${period} 그냥 들고 있으면 ${bench}.\n${strat} 전략 썼다면 ${ret}.\n그 차이, 궁금하지 않나.\n${url}`,
     `유튜브에서 본 ${strat} 전략, ${name}에 ${period} 돌려봤다.\n${ret} 나왔다 (보유 ${bench}).\n과연 미래에도 통할까?\n${url}`,
@@ -106,7 +110,7 @@ export default function AdminSocialPage() {
     // rank: 수익률 desc, 가장 좋은 것부터
     const { data, error: err, count } = await supabase
       .from("social_content_pool")
-      .select("id,market,strategy,custom_template_id,days,return_pct,benchmark_return_pct", { count: "exact" })
+      .select("id,market,strategy,custom_template_id,days,return_pct,benchmark_return_pct,share_slug", { count: "exact" })
       .order("return_pct", { ascending: false })
       .limit(DISPLAY_N);
     if (err) {

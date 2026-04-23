@@ -115,6 +115,11 @@ alter table public.shared_backtests add column if not exists extended_metrics js
 -- 공유 결과에 거래 내역 전체 저장 (옛 공유는 null).
 alter table public.shared_backtests add column if not exists trades jsonb;
 
+-- 출처 분류 — "user"/"bot-post"/"social-scan".
+-- social-scan 은 SNS 포스팅용 백테스트라 홈·랭킹엔 숨김 (슬러그로는 여전히 조회 가능).
+alter table public.shared_backtests add column if not exists source text;
+create index if not exists shared_backtests_source_idx on public.shared_backtests(source);
+
 -- ===== 오늘의 신호 보드 (크론으로 매일 갱신) =====
 -- 매일 시장별 닫힘 후 크론이 모든 (market × strategy × days) 조합을 스캔해서
 -- 조건 통과한 상위 N개만 여기 저장. 유저 홈/signals 페이지는 이 테이블만 읽음.

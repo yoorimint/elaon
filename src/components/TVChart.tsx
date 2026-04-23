@@ -30,8 +30,18 @@ import {
   stddev,
   rsi as rsiCalc,
   stochK as stochKCalc,
+  stochD as stochDCalc,
+  slowStochK as slowStochKCalc,
+  slowStochD as slowStochDCalc,
   mfi as mfiCalc,
   williamsR as williamsRCalc,
+  atr as atrCalc,
+  cci as cciCalc,
+  adx as adxCalc,
+  roc as rocCalc,
+  obv as obvCalc,
+  awesomeOscillator as aoCalc,
+  momentum as momentumCalc,
   vwap as vwapCalc,
   ichimokuConvLine,
   donchianHigh,
@@ -194,6 +204,7 @@ const ZERO_HUNDRED_KINDS = new Set<IndicatorRef["kind"]>([
   "slow_stoch_k",
   "slow_stoch_d",
   "mfi",
+  "adx", // 0~100 추세 강도
 ]);
 
 // ±범위 (0 중심) 오실레이터 — 별도 패널 필요. RSI/Stoch 는 0~100 스케일이라
@@ -203,17 +214,77 @@ const MACD_KINDS = new Set<IndicatorRef["kind"]>([
   "macd_signal",
 ]);
 
-// 자체 스케일 오실레이터 (Williams %R 은 -100~0, CCI 는 ±200 등). 현재는
-// ZERO_HUNDRED 패널에 얹어도 이상 없을 것 — williams_r 는 MFI 처럼 취급.
-const UNBOUNDED_KINDS = new Set<IndicatorRef["kind"]>([
+// 스케일이 각자 다른 "기타" 오실레이터. ATR(가격단위), CCI(±200),
+// ROC(±%), OBV(누적 거래량 억대), AO(±수천), Momentum(±),
+// Williams %R(-100~0) — 같은 패널에 얹으면 스케일 안 맞아서 일부 선이
+// 납작해짐. 각 지표별 전용 패널로 렌더.
+const OTHER_SCALE_KINDS = new Set<IndicatorRef["kind"]>([
   "atr",
   "cci",
-  "adx",
   "roc",
   "obv",
   "ao",
   "momentum",
+  "williams_r",
 ]);
+
+function indicatorKey(r: IndicatorRef): string {
+  switch (r.kind) {
+    case "close":
+    case "open":
+    case "high":
+    case "low":
+    case "volume":
+    case "obv":
+    case "vwap":
+    case "ao":
+    case "ha_open":
+    case "ha_high":
+    case "ha_low":
+    case "ha_close":
+      return r.kind;
+    case "sma":
+    case "ema":
+    case "rsi":
+    case "atr":
+    case "williams_r":
+    case "cci":
+    case "adx":
+    case "roc":
+    case "mfi":
+    case "stoch_k":
+    case "bb_middle":
+    case "ichimoku_conv":
+    case "ichimoku_base":
+    case "donchian_upper":
+    case "donchian_lower":
+    case "momentum":
+      return `${r.kind}_${r.period}`;
+    case "stoch_d":
+      return `stoch_d_${r.period}_${r.smooth}`;
+    case "slow_stoch_k":
+      return `slow_stoch_k_${r.period}_${r.slowSmooth}`;
+    case "slow_stoch_d":
+      return `slow_stoch_d_${r.period}_${r.slowSmooth}_${r.dSmooth}`;
+    case "bb_upper":
+    case "bb_lower":
+      return `${r.kind}_${r.period}_${r.stddev}`;
+    case "macd":
+      return `macd_${r.fast}_${r.slow}`;
+    case "macd_signal":
+      return `macd_signal_${r.fast}_${r.slow}_${r.signal}`;
+    case "sar":
+      return `sar_${r.step}_${r.max}`;
+    case "const":
+      return `const_${r.value}`;
+  }
+}
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return h;
+}
 
 function dedupRefs(refs: IndicatorRef[]): IndicatorRef[] {
   const seen = new Set<string>();
@@ -282,6 +353,16 @@ function refLabel(r: IndicatorRef): string {
 function computeRef(r: IndicatorRef, candles: Candle[]): (number | null)[] {
   const closes = candles.map((c) => c.close);
   switch (r.kind) {
+    case "close":
+      return closes;
+    case "open":
+      return candles.map((c) => c.open);
+    case "high":
+      return candles.map((c) => c.high);
+    case "low":
+      return candles.map((c) => c.low);
+    case "volume":
+      return candles.map((c) => c.volume);
     case "sma":
       return sma(closes, r.period);
     case "ema":
@@ -304,6 +385,47 @@ function computeRef(r: IndicatorRef, candles: Candle[]): (number | null)[] {
         m != null && sd[i] != null ? m - r.stddev * (sd[i] as number) : null,
       );
     }
+    case "macd": {
+      const fastE = ema(closes, r.fast);
+      const slowE = ema(closes, r.slow);
+      return closes.map((_, i) => {
+        const f = fastE[i];
+        const s = slowE[i];
+        return f != null && s != null ? f - s : null;
+      });
+    }
+    case "macd_signal": {
+      const fastE = ema(closes, r.fast);
+      const slowE = ema(closes, r.slow);
+      const macdLine = closes.map((_, i) => {
+        const f = fastE[i];
+        const s = slowE[i];
+        return f != null && s != null ? f - s : 0;
+      });
+      return ema(macdLine, r.signal);
+    }
+    case "stoch_k":
+      return stochKCalc(candles, r.period);
+    case "stoch_d":
+      return stochDCalc(candles, r.period, r.smooth);
+    case "slow_stoch_k":
+      return slowStochKCalc(candles, r.period, r.slowSmooth);
+    case "slow_stoch_d":
+      return slowStochDCalc(candles, r.period, r.slowSmooth, r.dSmooth);
+    case "atr":
+      return atrCalc(candles, r.period);
+    case "cci":
+      return cciCalc(candles, r.period);
+    case "adx":
+      return adxCalc(candles, r.period);
+    case "roc":
+      return rocCalc(closes, r.period);
+    case "obv":
+      return obvCalc(candles);
+    case "ao":
+      return aoCalc(candles);
+    case "momentum":
+      return momentumCalc(closes, r.period);
     case "ichimoku_conv":
     case "ichimoku_base":
       return ichimokuConvLine(candles, r.period);
@@ -315,12 +437,17 @@ function computeRef(r: IndicatorRef, candles: Candle[]): (number | null)[] {
       return donchianLow(candles, r.period);
     case "sar":
       return parabolicSAR(candles, r.step, r.max);
-    case "stoch_k":
-      return stochKCalc(candles, r.period);
     case "mfi":
       return mfiCalc(candles, r.period);
     case "williams_r":
       return williamsRCalc(candles, r.period);
+    case "ha_open":
+    case "ha_high":
+    case "ha_low":
+    case "ha_close":
+    case "const":
+      // 가격 오버레이로 렌더하기엔 스케일 안 맞거나 상수라 차트 렌더 대상 아님.
+      return new Array(candles.length).fill(null);
     default:
       return new Array(candles.length).fill(null);
   }
@@ -343,6 +470,9 @@ export function TVChart({
   const mainChartRef = useRef<IChartApi | null>(null);
   const subChartRef = useRef<IChartApi | null>(null);
   const macdChartRef = useRef<IChartApi | null>(null);
+  // DIY 에서 '기타 스케일' 지표들 — 지표별 전용 패널이라 동적 개수.
+  const otherBoxRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const otherChartRefs = useRef<Map<string, IChartApi>>(new Map());
   // 페이지 스크롤 중 실수로 차트가 팬/줌되지 않도록 기본은 잠금.
   const [locked, setLocked] = useState(true);
   const lockedRef = useRef(locked);
@@ -355,6 +485,8 @@ export function TVChart({
   const customSubRefs = customRefs.filter((r) => ZERO_HUNDRED_KINDS.has(r.kind));
   // DIY 에서 MACD 류 지표 사용 시 별도 ±스케일 패널 필요.
   const customMacdRefs = customRefs.filter((r) => MACD_KINDS.has(r.kind));
+  // ATR/CCI/ROC/OBV/AO/Momentum/Williams%R — 지표마다 전용 패널.
+  const customOtherRefs = customRefs.filter((r) => OTHER_SCALE_KINDS.has(r.kind));
 
   const hasSubPanel =
     OSCILLATOR_STRATEGIES.includes(strategy) ||
@@ -869,6 +1001,96 @@ export function TVChart({
       macdChart.timeScale().fitContent();
     }
 
+    // ===== DIY '기타 스케일' 지표 전용 패널들 =====
+    // ATR/CCI/ROC/OBV/AO/Momentum/Williams%R 각각 스케일이 완전히 달라서
+    // 지표당 1 개 전용 패널로 렌더. customOtherRefs 순서대로 렌더.
+    const otherCharts: IChartApi[] = [];
+    const otherSyncPairs: { ch: IChartApi; series: ISeriesApi<SeriesType> }[] =
+      [];
+    if (strategy === "custom" && customOtherRefs.length > 0) {
+      for (const ref of customOtherRefs) {
+        const key = indicatorKey(ref);
+        const box = otherBoxRefs.current.get(key);
+        if (!box) continue;
+        const rect = box.getBoundingClientRect();
+        const w = Math.max(1, Math.floor(rect.width));
+        const h = Math.max(1, Math.floor(rect.height));
+        const ch = createChart(box, baseChartOptions(dark, w, h, currency));
+        otherChartRefs.current.set(key, ch);
+        otherCharts.push(ch);
+
+        const color =
+          OVERLAY_PALETTE[
+            Math.abs(hashStr(key)) % OVERLAY_PALETTE.length
+          ];
+        const line = ch.addSeries(LineSeries, {
+          color,
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          title: refLabel(ref),
+        });
+        line.setData(toLineData(candles, computeRef(ref, candles), keepIdx));
+        otherSyncPairs.push({ ch, series: line });
+
+        // Williams %R (-100~0) 기준선 -20 / -80
+        if (ref.kind === "williams_r") {
+          line.createPriceLine({
+            price: -20,
+            color: "#ef4444",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: "과매수",
+          });
+          line.createPriceLine({
+            price: -80,
+            color: "#10b981",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: "과매도",
+          });
+        }
+        // CCI (±200 주변) 기준선 ±100
+        if (ref.kind === "cci") {
+          line.createPriceLine({
+            price: 100,
+            color: "#ef4444",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: "+100",
+          });
+          line.createPriceLine({
+            price: -100,
+            color: "#10b981",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: "-100",
+          });
+        }
+        // AO / Momentum / ROC — 0 중심선
+        if (
+          ref.kind === "ao" ||
+          ref.kind === "momentum" ||
+          ref.kind === "roc"
+        ) {
+          line.createPriceLine({
+            price: 0,
+            color: "#a3a3a3",
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            axisLabelVisible: false,
+            title: "",
+          });
+        }
+
+        ch.timeScale().fitContent();
+      }
+    }
+
     // Sync time scales between main and sub(s). 기존 logical range 싱크는
     // 시리즈마다 null 제외로 length 가 달라지면 logical 0 이 서로 다른 time
     // 을 가리켜 서브 차트가 엇나감 (MACD 서브가 main 과 날짜 안 맞던 버그).
@@ -877,6 +1099,7 @@ export function TVChart({
     const allCharts: IChartApi[] = [chart];
     if (subChart) allCharts.push(subChart);
     if (macdChart) allCharts.push(macdChart);
+    for (const oc of otherCharts) allCharts.push(oc);
 
     let syncing = false;
     for (const src of allCharts) {
@@ -904,6 +1127,9 @@ export function TVChart({
     if (macdChart && macdSyncSeries) {
       crosshairTargets.push({ ch: macdChart, series: macdSyncSeries });
     }
+    for (const p of otherSyncPairs) {
+      crosshairTargets.push(p);
+    }
     for (const src of crosshairTargets) {
       src.ch.subscribeCrosshairMove((param) => {
         if (!param.time || param.point === undefined) {
@@ -929,9 +1155,13 @@ export function TVChart({
     chart.applyOptions(interactionOpts);
     subChart?.applyOptions(interactionOpts);
     macdChart?.applyOptions(interactionOpts);
+    for (const oc of otherCharts) oc.applyOptions(interactionOpts);
     applyCanvasTouchAction(mainBox, locked0);
     applyCanvasTouchAction(subBox, locked0);
     applyCanvasTouchAction(macdBox, locked0);
+    for (const box of otherBoxRefs.current.values()) {
+      applyCanvasTouchAction(box, locked0);
+    }
 
     // Resize on actual size changes only.
     let lastMainW = mainW;
@@ -969,6 +1199,30 @@ export function TVChart({
       subObserver.observe(subBox);
     }
 
+    const otherObservers: ResizeObserver[] = [];
+    for (const ref of customOtherRefs) {
+      const key = indicatorKey(ref);
+      const box = otherBoxRefs.current.get(key);
+      const ch = otherChartRefs.current.get(key);
+      if (!box || !ch) continue;
+      const rect0 = box.getBoundingClientRect();
+      let lastW = Math.floor(rect0.width);
+      let lastH = Math.floor(rect0.height);
+      const obs = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = Math.floor(entry.contentRect.width);
+          const h = Math.floor(entry.contentRect.height);
+          if (w > 0 && h > 0 && (w !== lastW || h !== lastH)) {
+            lastW = w;
+            lastH = h;
+            ch.applyOptions({ width: w, height: h });
+          }
+        }
+      });
+      obs.observe(box);
+      otherObservers.push(obs);
+    }
+
     let macdObserver: ResizeObserver | null = null;
     if (macdChart && macdBox) {
       const localMacd = macdChart;
@@ -993,14 +1247,17 @@ export function TVChart({
       mainObserver.disconnect();
       subObserver?.disconnect();
       macdObserver?.disconnect();
+      for (const obs of otherObservers) obs.disconnect();
       subChart?.remove();
       macdChart?.remove();
+      for (const oc of otherCharts) oc.remove();
       chart.remove();
       mainChartRef.current = null;
       subChartRef.current = null;
       macdChartRef.current = null;
+      otherChartRefs.current.clear();
     };
-  }, [candles, signals, strategy, params, hasSubPanel, hasMacdPanel]);
+  }, [candles, signals, strategy, params, hasSubPanel, hasMacdPanel, customOtherRefs.map((r) => indicatorKey(r)).join(",")]);
 
   useEffect(() => {
     lockedRef.current = locked;
@@ -1008,9 +1265,13 @@ export function TVChart({
     mainChartRef.current?.applyOptions(opts);
     subChartRef.current?.applyOptions(opts);
     macdChartRef.current?.applyOptions(opts);
+    for (const ch of otherChartRefs.current.values()) ch.applyOptions(opts);
     applyCanvasTouchAction(mainBoxRef.current, locked);
     applyCanvasTouchAction(subBoxRef.current, locked);
     applyCanvasTouchAction(macdBoxRef.current, locked);
+    for (const box of otherBoxRefs.current.values()) {
+      applyCanvasTouchAction(box, locked);
+    }
   }, [locked]);
 
   const subtitle = subtitleFor(strategy);
@@ -1089,6 +1350,29 @@ export function TVChart({
           className="mt-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
         />
       )}
+      {customOtherRefs.map((r) => {
+        const key = indicatorKey(r);
+        return (
+          <div key={key} className="mt-3">
+            <div className="mb-1 text-[11px] font-medium text-neutral-500">
+              {refLabel(r)}
+            </div>
+            <div
+              ref={(el) => {
+                if (el) otherBoxRefs.current.set(key, el);
+                else otherBoxRefs.current.delete(key);
+              }}
+              style={{
+                width: "100%",
+                height: "160px",
+                position: "relative",
+                touchAction: locked ? "pan-y" : "none",
+              }}
+              className="rounded-2xl border border-neutral-200 dark:border-neutral-800 overflow-hidden"
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

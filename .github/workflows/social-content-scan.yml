@@ -1,0 +1,34 @@
+name: social content scan
+
+# SNS 포스팅용 내부 콘텐츠 풀 생성. 3일마다 전체 교체.
+# cron */3 (month day) 는 1,4,7,10,13,16,19,22,25,28 에 실행 — 대략 3일 간격.
+# 결과는 social_content_pool 테이블 (RLS 비공개). 공개 페이지 노출 X.
+
+on:
+  schedule:
+    - cron: "0 0 */3 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-content-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run scan
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx --tsconfig tsconfig.json scripts/social-content-scan.ts

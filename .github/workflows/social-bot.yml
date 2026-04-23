@@ -1,12 +1,12 @@
 name: social bot
 
-# bot-post.yml 의 커뮤니티 글 생성 후 5~10분 뒤 SNS 포스팅.
-# bot-post 가 UTC 매시 0분 시작해서 2~3분 정도 돌아감 → social-bot 은 10분에.
-# 중복 방지: social_posts 테이블의 post_slug PK. 재실행해도 안전.
+# SNS 자동 포스팅. social_content_pool 에서 랜덤 1개 뽑아 X/Threads/Bluesky 에 포스팅.
+# KST 09:00~23:00 (UTC 00~14) 매시간 = 하루 최대 15개. 풀 비면 자동 스킵.
+# 사용된 row 는 성공 시 삭제 → 풀 소진되면 다음 social-content-scan 실행에서 재생성.
 
 on:
   schedule:
-    - cron: "10 0-14 * * *"
+    - cron: "0 0-14 * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,15 +32,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SITE_URL: ${{ vars.SITE_URL }}
-          # X (Twitter) — 없으면 X 스킵
           X_API_KEY: ${{ secrets.X_API_KEY }}
           X_API_SECRET: ${{ secrets.X_API_SECRET }}
           X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
           X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-          # Threads — 없으면 Threads 스킵
           THREADS_USER_ID: ${{ secrets.THREADS_USER_ID }}
           THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-          # Bluesky — 없으면 Bluesky 스킵
           BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
           BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
         run: npx tsx --tsconfig tsconfig.json scripts/social-bot.ts

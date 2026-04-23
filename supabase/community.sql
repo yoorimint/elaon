@@ -564,6 +564,32 @@ alter table public.social_posts enable row level security;
 drop policy if exists social_posts_no_access on public.social_posts;
 create policy social_posts_no_access on public.social_posts for select using (false);
 
+-- ===== SNS 콘텐츠 풀 (봇 전용, 공개 페이지에 노출 X) =====
+-- social-content-scan 이 3일마다 봇 내부 분석 결과로 교체.
+-- SNS 봇이 랜덤 픽 후 포스팅 → 성공한 row 는 삭제 → 풀 점점 줄어듦 → 다음 스캔에서 재교체.
+-- 500개 상한 (top by return_pct).
+create table if not exists public.social_content_pool (
+  id bigserial primary key,
+  market text not null,
+  strategy text not null,
+  params jsonb not null default '{}'::jsonb,
+  custom_template_id text,
+  custom_buy jsonb,
+  custom_sell jsonb,
+  days int not null,
+  return_pct numeric not null,
+  benchmark_return_pct numeric not null,
+  trade_count int not null,
+  max_drawdown_pct numeric,
+  computed_at timestamptz not null default now()
+);
+
+alter table public.social_content_pool enable row level security;
+-- 클라이언트 전혀 못 읽음. service_role 만 접근 가능.
+drop policy if exists social_content_pool_no_access on public.social_content_pool;
+create policy social_content_pool_no_access on public.social_content_pool
+  for select using (false);
+
 -- ===== 봇 (자동 전략 추천) =====
 -- posts.category 에 'bot' 추가. CHECK 제약은 alter table 로 drop/add.
 alter table public.posts drop constraint if exists posts_category_check;

@@ -86,18 +86,32 @@ function actionStyle(action: Row["action"]) {
 
 async function loadBoardTop(): Promise<Row[]> {
   const sb = createServerClient();
-  // 매수는 위 "🔥 오늘 살 만한 거" 섹션이 담당 → 여기는 매도/대기만 노출 (중복 제거).
-  // 더 많이 받아 market 단위 dedup 후 상위 N개. 정렬은 수익률 desc.
-  const { data } = await sb
-    .from("board_top_signals")
-    .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
-    .neq("action", "buy")
-    .order("return_pct", { ascending: false })
-    .limit(40);
-  const all = (data ?? []) as Row[];
+  // 매수는 위 "🔥 오늘 살 만한 거" 섹션이 담당 → 여기는 매도/대기만 노출.
+  // 과거: 수익률 desc 로만 정렬 → 수익률 높은 hold 들이 상위 40 을 전부
+  // 차지해 dedup 거치고 나면 sell 이 한 개도 안 뜨는 문제. sell 을
+  // action 기준으로 먼저 뽑고, 남는 슬롯만 hold 로 채워서 매도 신호가
+  // 반드시 노출되도록 보장.
+  const [sellRes, holdRes] = await Promise.all([
+    sb
+      .from("board_top_signals")
+      .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
+      .eq("action", "sell")
+      .order("return_pct", { ascending: false })
+      .limit(40),
+    sb
+      .from("board_top_signals")
+      .select("id,market,strategy,days,return_pct,benchmark_return_pct,action,last_signal_action,last_signal_bars_ago,share_slug,custom_template_id")
+      .eq("action", "hold")
+      .order("return_pct", { ascending: false })
+      .limit(40),
+  ]);
+  const sells = (sellRes.data ?? []) as Row[];
+  const holds = (holdRes.data ?? []) as Row[];
+
+  // market 중복 제거 — 같은 코인의 sell 과 hold 가 동시에 있으면 sell 우선.
   const seen = new Set<string>();
   const unique: Row[] = [];
-  for (const r of all) {
+  for (const r of [...sells, ...holds]) {
     if (seen.has(r.market)) continue;
     seen.add(r.market);
     unique.push(r);

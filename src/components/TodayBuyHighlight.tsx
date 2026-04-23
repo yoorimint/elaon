@@ -6,8 +6,12 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase-server";
 import { STOCK_MARKETS } from "@/lib/market";
 import { SCAN_CUSTOM_TEMPLATES } from "@/lib/scan-custom-templates";
+import { timeAgo } from "@/lib/community";
 
 const DISPLAY_N = 3;
+// GitHub Actions 크론이 종종 스킵되는 이슈가 있어서, computed_at 이
+// 이 시간을 넘으면 "신호가 오래됐어요" 경고를 띄워 유저가 혼란을 안 겪게.
+const STALE_THRESHOLD_HOURS = 26;
 
 type Row = {
   id: number;
@@ -18,6 +22,7 @@ type Row = {
   benchmark_return_pct: number;
   share_slug: string | null;
   custom_template_id: string | null;
+  computed_at: string;
 };
 
 function shortMarketLabel(marketId: string): string {
@@ -60,7 +65,7 @@ async function loadBuys(): Promise<Row[]> {
   const sb = createServerClient();
   const { data } = await sb
     .from("board_top_signals")
-    .select("id,market,strategy,days,return_pct,benchmark_return_pct,share_slug,custom_template_id")
+    .select("id,market,strategy,days,return_pct,benchmark_return_pct,share_slug,custom_template_id,computed_at")
     .eq("action", "buy")
     .order("return_pct", { ascending: false })
     .limit(DISPLAY_N);
@@ -70,6 +75,14 @@ async function loadBuys(): Promise<Row[]> {
 export async function TodayBuyHighlight() {
   const rows = await loadBuys();
   if (rows.length === 0) return null;
+
+  const latestComputedAt = rows.reduce<string>(
+    (acc, r) => (r.computed_at > acc ? r.computed_at : acc),
+    rows[0].computed_at,
+  );
+  const ageHours =
+    (Date.now() - new Date(latestComputedAt).getTime()) / 3_600_000;
+  const isStale = ageHours > STALE_THRESHOLD_HOURS;
 
   return (
     <section className="mb-8">
@@ -81,6 +94,15 @@ export async function TodayBuyHighlight() {
           <p className="mt-1 text-sm text-neutral-500">
             과거 수익률 높았던 전략들이 오늘 매수 신호를 냈어요.
           </p>
+          <div className="mt-1 text-[11px] text-neutral-500">
+            {isStale ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-medium">
+                ⚠️ 신호 갱신 {timeAgo(latestComputedAt)} · 최신 아닐 수 있어요
+              </span>
+            ) : (
+              <span>갱신 {timeAgo(latestComputedAt)}</span>
+            )}
+          </div>
         </div>
         <Link
           href="/signals"

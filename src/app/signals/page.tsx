@@ -140,6 +140,13 @@ export default async function SignalsPage() {
     null,
   );
   const latestLabel = latest ? timeAgo(latest) : null;
+  // GitHub Actions 크론이 종종 지연/스킵되는 이슈가 있어 26h 넘으면
+  // 유저가 "이 신호 오늘 거 맞나?" 고 헷갈리지 않도록 경고 표시.
+  const STALE_THRESHOLD_HOURS = 26;
+  const isStale = latest
+    ? (Date.now() - new Date(latest).getTime()) / 3_600_000 >
+      STALE_THRESHOLD_HOURS
+    : false;
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10">
@@ -156,7 +163,14 @@ export default async function SignalsPage() {
             </span>
           </span>
         )}
-        {latestLabel && <span>· 갱신 {latestLabel}</span>}
+        {latestLabel &&
+          (isStale ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 font-medium">
+              ⚠️ 갱신 {latestLabel} · 최신 아닐 수 있어요
+            </span>
+          ) : (
+            <span>· 갱신 {latestLabel}</span>
+          ))}
       </div>
 
       {rows.length === 0 ? (

@@ -77,7 +77,21 @@ type ScanResult = {
   max_drawdown_pct: number | null;
   win_rate: number;
   equity_curve: Array<{ t: number; e: number; b: number }>;
+  // 공유 페이지에서 캔들 차트 + 매수/매도 마커 + 거래 테이블 + 확장 지표
+  // (Sharpe / Sortino 등) 전부 보이도록 full 저장.
+  candles: unknown;
+  signals_sparse: Array<{ i: number; s: unknown }>;
+  trades: unknown;
+  extended_metrics: Record<string, unknown>;
 };
+
+function compactSignals(signals: unknown[]): Array<{ i: number; s: unknown }> {
+  const out: Array<{ i: number; s: unknown }> = [];
+  for (let i = 0; i < signals.length; i++) {
+    if (signals[i] !== "hold") out.push({ i, s: signals[i] });
+  }
+  return out;
+}
 
 const SLUG_CHARS = "abcdefghijkmnpqrstuvwxyz23456789";
 function randomSlug(len = 8) {
@@ -141,6 +155,25 @@ async function scanMarket(market: string): Promise<ScanResult[]> {
             e: Math.round(e.equity),
             b: Math.round(e.benchmark),
           })),
+          candles: sliceC,
+          signals_sparse: compactSignals(sliceS as unknown[]),
+          trades: r.trades,
+          extended_metrics: {
+            sharpe_ratio: Number.isFinite(r.sharpeRatio) ? r.sharpeRatio : null,
+            sortino_ratio: Number.isFinite(r.sortinoRatio) ? r.sortinoRatio : null,
+            calmar_ratio: Number.isFinite(r.calmarRatio) ? r.calmarRatio : null,
+            profit_factor: Number.isFinite(r.profitFactor) ? r.profitFactor : null,
+            expectancy_pct: Number.isFinite(r.expectancyPct) ? r.expectancyPct : null,
+            avg_win_pct: Number.isFinite(r.avgWinPct) ? r.avgWinPct : null,
+            avg_loss_pct: Number.isFinite(r.avgLossPct) ? r.avgLossPct : null,
+            best_trade_pct: Number.isFinite(r.bestTradePct) ? r.bestTradePct : null,
+            worst_trade_pct: Number.isFinite(r.worstTradePct) ? r.worstTradePct : null,
+            max_consec_wins: r.maxConsecWins,
+            max_consec_losses: r.maxConsecLosses,
+            avg_hold_bars: Number.isFinite(r.avgHoldBars) ? r.avgHoldBars : null,
+            max_drawdown_duration_bars: r.maxDrawdownDurationBars,
+            monthly: r.monthly ?? [],
+          },
         });
       } catch {
         // ignore single combo error
@@ -183,6 +216,25 @@ async function scanMarket(market: string): Promise<ScanResult[]> {
             e: Math.round(e.equity),
             b: Math.round(e.benchmark),
           })),
+          candles: sliceC,
+          signals_sparse: compactSignals(sliceS as unknown[]),
+          trades: r.trades,
+          extended_metrics: {
+            sharpe_ratio: Number.isFinite(r.sharpeRatio) ? r.sharpeRatio : null,
+            sortino_ratio: Number.isFinite(r.sortinoRatio) ? r.sortinoRatio : null,
+            calmar_ratio: Number.isFinite(r.calmarRatio) ? r.calmarRatio : null,
+            profit_factor: Number.isFinite(r.profitFactor) ? r.profitFactor : null,
+            expectancy_pct: Number.isFinite(r.expectancyPct) ? r.expectancyPct : null,
+            avg_win_pct: Number.isFinite(r.avgWinPct) ? r.avgWinPct : null,
+            avg_loss_pct: Number.isFinite(r.avgLossPct) ? r.avgLossPct : null,
+            best_trade_pct: Number.isFinite(r.bestTradePct) ? r.bestTradePct : null,
+            worst_trade_pct: Number.isFinite(r.worstTradePct) ? r.worstTradePct : null,
+            max_consec_wins: r.maxConsecWins,
+            max_consec_losses: r.maxConsecLosses,
+            avg_hold_bars: Number.isFinite(r.avgHoldBars) ? r.avgHoldBars : null,
+            max_drawdown_duration_bars: r.maxDrawdownDurationBars,
+            monthly: r.monthly ?? [],
+          },
         });
       } catch {
         // ignore
@@ -243,6 +295,10 @@ async function main() {
       win_rate: r.win_rate,
       trade_count: r.trade_count,
       equity_curve: r.equity_curve,
+      candles: r.candles,
+      signals: r.signals_sparse,
+      trades: r.trades,
+      extended_metrics: r.extended_metrics,
       custom_buy: r.custom_buy,
       custom_sell: r.custom_sell,
       is_private: false,
@@ -251,7 +307,8 @@ async function main() {
   });
 
   // chunk insert (Supabase 한 번에 너무 큰 payload 피함)
-  const CHUNK = 100;
+  // row 당 ~40KB (candles 800일 + equity + trades + extended) 이라 50개씩 → ~2MB/chunk
+  const CHUNK = 50;
   for (let i = 0; i < shareRows.length; i += CHUNK) {
     const slice = shareRows.slice(i, i + CHUNK);
     const { error } = await sb.from("shared_backtests").insert(slice);

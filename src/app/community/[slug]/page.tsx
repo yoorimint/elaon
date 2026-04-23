@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { BacktestPreviewCard } from "@/components/BacktestPreviewCard";
+import { SajudayAd } from "@/components/SajudayAd";
 import {
   categoryLabel,
   createComment,
@@ -285,10 +286,15 @@ export default function PostDetailPage() {
         </div>
         )}
         {post.category === "bot" && (
-          <div className="mt-6 rounded-xl bg-brand/5 border border-brand/20 p-3 text-xs text-neutral-600 dark:text-neutral-300">
-            🤖 이 글은 자동 생성된 전략 분석입니다. 좋아요·신고는 비활성, 댓글만 가능합니다.
-            수치는 실제 백테스트 결과이며 투자 권유가 아닙니다.
-          </div>
+          <>
+            <div className="mt-6 rounded-xl bg-brand/5 border border-brand/20 p-3 text-xs text-neutral-600 dark:text-neutral-300">
+              🤖 이 글은 자동 생성된 전략 분석입니다. 좋아요·신고는 비활성, 댓글만 가능합니다.
+              수치는 실제 백테스트 결과이며 투자 권유가 아닙니다.
+            </div>
+            <div className="mt-4">
+              <SajudayAd variant="backtest" />
+            </div>
+          </>
         )}
       </article>
 

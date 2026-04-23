@@ -12,6 +12,7 @@ import { SharedDIYDetails } from "@/components/SharedDIYDetails";
 import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { SharedTradeTable } from "@/components/SharedTradeTable";
 import { SharedActions } from "@/components/SharedActions";
+import { SajudayAd } from "@/components/SajudayAd";
 import { TermTooltip } from "@/components/TermTooltip";
 import { symbolPrettyLabel } from "@/lib/bot-symbols";
 import { currencyOf } from "@/lib/market";
@@ -373,6 +374,10 @@ export default async function SharedPage({ params }: { params: { slug: string } 
       {data.trades && data.trades.length > 0 && (
         <SharedTradeTable trades={data.trades} currency={currencyOf(data.market)} />
       )}
+
+      <div className="mt-8">
+        <SajudayAd variant="backtest" />
+      </div>
 
       <SharedActions
         slug={data.slug}

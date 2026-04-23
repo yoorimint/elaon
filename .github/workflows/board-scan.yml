@@ -6,10 +6,17 @@ name: Board Scan (daily signals)
 # 데이터 소스 안정화 후 재개 예정.
 #
 # 수동 실행 (workflow_dispatch) 으로 stock kind 선택 시에도 빈 결과만 나옴.
+#
+# 3중 슬롯 — GitHub Actions 스케줄은 고부하 시간대에 조용히 스킵되는
+# 이슈가 있어 30분~1시간 간격으로 3번 예약. 엔드포인트가 멱등
+# (기존 row 전부 지우고 다시 insert) + 캔들 캐시로 외부 거래소 재호출
+# 없음 → 중복 실행 무해. 1슬롯 실패해도 나머지가 커버.
 
 on:
   schedule:
     - cron: "15 0 * * *"
+    - cron: "45 0 * * *"
+    - cron: "15 1 * * *"
   workflow_dispatch:
     inputs:
       kind:

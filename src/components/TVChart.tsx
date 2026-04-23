@@ -9,6 +9,7 @@ import {
   ColorType,
   CrosshairMode,
   LineStyle,
+  PriceScaleMode,
   createSeriesMarkers,
   type CandlestickData,
   type HistogramData,
@@ -130,7 +131,12 @@ function baseChartOptions(
       vertLines: { color: dark ? "#27272a" : "#f4f4f5" },
       horzLines: { color: dark ? "#27272a" : "#f4f4f5" },
     },
-    rightPriceScale: { borderColor: dark ? "#3f3f46" : "#e5e5e5" },
+    rightPriceScale: {
+      borderColor: dark ? "#3f3f46" : "#e5e5e5",
+      // 로그 스케일: 넓은 가격 범위 자동 압축 + 음수 값 불가능해서 유저가
+      // 조작하다가 Y축이 $-0.2 같은 의미없는 영역 가는 사고 방지.
+      mode: PriceScaleMode.Logarithmic,
+    },
     timeScale: {
       borderColor: dark ? "#3f3f46" : "#e5e5e5",
       timeVisible: false,

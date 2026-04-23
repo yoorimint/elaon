@@ -1,32 +1,21 @@
 // 개미팔자 (사주데이) 네이티브 광고 카드.
-// 홈 피드와 백테스트 결과 하단에 맥락 맞춰 문구만 달리해서 붙인다.
+// 홈 · 백테스트 결과 · 봇 커뮤니티 글 — 세 곳 전부 동일 카피로 노출.
 // 클릭은 `https://sajuday.kr/lp/ant` 랜딩 페이지로 직행. 외부라 target=_blank +
 // rel=sponsored nofollow 로 SEO 오염 방지 + 광고 공시.
 
 import Link from "next/link";
 import Image from "next/image";
 
-type Variant = "home" | "backtest";
-
-type Props = { variant: Variant };
-
 const AD_URL = "https://sajuday.kr/lp/ant";
 const AD_IMG_URL = "https://sajuday.kr/static/images/ant_ranks/ant_1_queen.png";
 
-// 페이지별 맥락 맞춰 1줄 후킹. 한 줄이라 모바일에서도 카드 높이 컴팩트.
-const COPY: Record<Variant, { hook: string; body: string }> = {
-  home: {
-    hook: "당신은 몇 등급 개미입니까?",
-    body: "상위 5% 건물주 개미 vs 손절 개미 · 사주로 진단",
-  },
-  backtest: {
-    hook: "이 전략, 나랑 진짜 맞는 걸까?",
-    body: "백테스트로 못 찾는 내 투자 체질 · 사주로 확인",
-  },
-};
+const HOOK = "당신은 몇 등급 개미입니까?";
+const BODY = "상위 5% 건물주 개미 vs 손절 개미 · 사주로 진단";
 
-export function SajudayAd({ variant }: Props) {
-  const { hook, body } = COPY[variant];
+// variant prop 은 이전 호환용 — 받긴 해도 무시하고 한 가지 카피만 렌더.
+type Props = { variant?: "home" | "backtest" };
+
+export function SajudayAd(_props: Props = {}) {
   return (
     <aside className="mb-6" aria-label="광고">
       <Link
@@ -52,10 +41,10 @@ export function SajudayAd({ variant }: Props) {
 
         <div className="min-w-0 flex-1">
           <div className="text-sm font-extrabold leading-tight text-neutral-900 dark:text-neutral-100 truncate">
-            🔥 {hook}
+            🔥 {HOOK}
           </div>
           <div className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400 truncate">
-            {body}
+            {BODY}
           </div>
         </div>
 

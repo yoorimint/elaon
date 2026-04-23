@@ -39,13 +39,13 @@ export function SajudayAd({ variant }: Props) {
           AD · 광고
         </span>
 
-        <span className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-white/80 dark:bg-neutral-900/60 border border-amber-200 dark:border-amber-900/60 overflow-hidden">
+        <span className="shrink-0 -my-2 flex items-center justify-center w-16 h-16 rounded-full bg-white/80 dark:bg-neutral-900/60 border border-amber-200 dark:border-amber-900/60 overflow-hidden">
           <Image
             src={AD_IMG_URL}
             alt="개미팔자 마스코트"
-            width={48}
-            height={48}
-            className="h-full w-full object-contain"
+            width={96}
+            height={96}
+            className="h-full w-full object-cover scale-110"
             unoptimized
           />
         </span>

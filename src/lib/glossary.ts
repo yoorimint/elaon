@@ -769,6 +769,148 @@ export const INDICATOR_DOCS: IndicatorDoc[] = [
       "ROC 가 더 직관적이라 보통 ROC 선호",
     ],
   },
+
+  // ===== 2.4 변동성·밴드·채널 =====
+  {
+    id: "bollinger-bands",
+    kinds: ["bb_upper", "bb_middle", "bb_lower"],
+    name: "볼린저 밴드",
+    englishName: "Bollinger Bands",
+    category: "volatility",
+    oneLiner: "이평선 ± 표준편차 N배로 만든 밴드. 변동성 기반 지지·저항.",
+    standardClaim:
+      "John Bollinger 1980년대 개발. 통계적으로 95% 캔들이 ±2σ 밴드 안에 위치 (정규분포 가정). TradingView·HTS 표준.",
+    formula:
+      "중심선 = SMA(N)\n상단 = 중심 + k × 표준편차(N)\n하단 = 중심 - k × 표준편차(N)",
+    ourImpl: [
+      "기본 기간 20봉, 표준편차 배수 2 (조정 가능)",
+      "DIY 에서 상단·중심·하단 따로 선택 가능",
+      "표준 모집단 표준편차 사용 (n으로 나눔, n-1 아님)",
+    ],
+    howToTrade: [
+      "역추세: 하단 터치 매수 → 중심선 / 상단 도달 시 매도",
+      "스퀴즈: 밴드 폭이 좁아진 뒤 돌파 방향으로 진입 (변동성 폭발 노림)",
+      "워킹 더 밴드: 강한 추세에선 가격이 한쪽 밴드 따라 이동 — 매도 보류",
+      "RSI / 거래량 결합으로 거짓 돌파 필터",
+    ],
+    limits: [
+      "강한 추세장에서 한쪽 밴드 길게 추종 → 거짓 신호",
+      "변동성 급변 시 밴드 폭 변화 늦음",
+      "단독 사용보다 다른 지표 결합 필수",
+    ],
+  },
+  {
+    id: "atr",
+    kinds: ["atr"],
+    name: "ATR (평균 진폭)",
+    englishName: "Average True Range",
+    category: "volatility",
+    oneLiner:
+      "최근 N봉의 평균 변동폭 (가격 단위). 손절 폭·포지션 사이징의 표준.",
+    standardClaim:
+      "J. Welles Wilder 1978년 개발. 모든 차팅 도구 표준. Wilder's RMA 평활 사용.",
+    formula:
+      "TR = max(고가-저가, |고가-전종가|, |저가-전종가|)\nATR = TR 의 14봉 와일더 평활",
+    ourImpl: [
+      "기본 14봉, Wilder's smoothing",
+      "값 단위 = 가격 단위 (BTC 면 ±원, 주식이면 ±원)",
+    ],
+    howToTrade: [
+      "손절 폭: 진입가 - (ATR × 2) 가 표준 손절선",
+      "포지션 사이징: 변동성 큰 종목 = 작은 포지션, 작은 종목 = 큰 포지션",
+      "변동성 폭발 감지: ATR 급증 = 큰 움직임 시작 신호",
+      "Chandelier Exit: 최고가 - (ATR × 3) 으로 추적 손절",
+    ],
+    limits: [
+      "방향 정보 없음 — 강도만 측정",
+      "급격한 변동성 변화 시 후행",
+      "절대값이라 자산 간 비교 불가 (% 환산 필요)",
+    ],
+  },
+  {
+    id: "donchian",
+    kinds: ["donchian_upper", "donchian_lower"],
+    name: "돈치안 채널",
+    englishName: "Donchian Channels",
+    category: "volatility",
+    oneLiner:
+      "최근 N봉의 최고가·최저가 라인. 전설적 Turtle Trading 의 핵심 지표.",
+    standardClaim:
+      "Richard Donchian 의 1960년대 트레이딩 시스템. Turtle Trading (1983) 에서 검증된 추세 추종 표준.",
+    formula:
+      "상단 = max(최근 N봉 고가)\n하단 = min(최근 N봉 저가)\n중간 = (상단+하단)/2",
+    ourImpl: [
+      "기본 20봉 (Turtle 표준)",
+      "DIY 에서 상단·하단 별도 선택 가능",
+    ],
+    howToTrade: [
+      "Turtle 룰: 20봉 고가 돌파 매수, 10봉 저가 이탈 청산",
+      "장기 추세 추종 — 강한 트렌드에서 큰 수익",
+      "거짓 돌파 필터: 거래량 급증 + 돌파 시 진입",
+      "변동성 채널 폭으로 추세 강도 파악",
+    ],
+    limits: [
+      "휩쏘 잦음 — 최근 고저가 기반이라 횡보장에서 빈번한 거짓 돌파",
+      "후행 — 추세 끝물에 진입할 위험",
+      "ATR 기반 손절 같이 써야 안정적",
+    ],
+  },
+  {
+    id: "sar",
+    kinds: ["sar"],
+    name: "Parabolic SAR",
+    englishName: "Parabolic SAR (Stop and Reverse)",
+    category: "trend",
+    oneLiner:
+      "추세 추종 + 자동 손절 라인. 가격 위 / 아래 점으로 표시되는 트레일링 스탑.",
+    standardClaim:
+      "J. Welles Wilder 1978년 개발 (RSI / ATR / ADX 와 같은 저자). 모든 차팅 도구 표준 공식.",
+    formula:
+      "SAR(t) = SAR(t-1) + AF × (EP - SAR(t-1))\nAF (가속도) 매번 step 만큼 증가, max 까지\nEP = 추세 시작 후 최고가/최저가",
+    ourImpl: [
+      "기본 step 0.02, max 0.20 (Wilder 표준)",
+      "추세 전환 시 SAR 가 가격 반대편으로 점프",
+    ],
+    howToTrade: [
+      "가격 > SAR: 상승 추세 (점이 가격 아래 표시)",
+      "가격 < SAR: 하락 추세 (점이 가격 위 표시)",
+      "SAR 위치를 트레일링 손절선으로 사용 — 추세 끝나면 자동 청산",
+      "step 키우면 더 빠른 청산 (보수적), 줄이면 느슨한 청산 (공격적)",
+    ],
+    limits: [
+      "횡보장에서 빈번한 추세 전환 → 거짓 신호 폭발",
+      "갑작스런 반전 시 SAR 가 따라잡기 전 큰 손실 가능",
+      "추세 명확한 시장 전용 — ADX 같이 써서 추세 확인 후 사용",
+    ],
+  },
+  {
+    id: "ao",
+    kinds: ["ao"],
+    name: "AO (어썸 오실레이터)",
+    englishName: "Awesome Oscillator",
+    category: "oscillator",
+    oneLiner:
+      "5봉 SMA 와 34봉 SMA 의 차이로 모멘텀 측정. Bill Williams 의 시그니처 지표.",
+    standardClaim:
+      "Bill Williams 의 표준 공식. TradingView 표준 등록 지표. MACD 의 단순화 버전.",
+    formula:
+      "AO = SMA(MedianPrice, 5) - SMA(MedianPrice, 34)\nMedianPrice = (고+저)/2",
+    ourImpl: [
+      "기간 고정 5/34 (Bill Williams 원본)",
+      "값 범위 ±, 0 중심",
+    ],
+    howToTrade: [
+      "0선 돌파: 양수 진입 → 매수, 음수 진입 → 매도",
+      "트윈 픽스: 두 번 연속 음봉 후 양봉 = 강한 매수 신호",
+      "받침접시 (Saucer): 음수 영역에서 패턴 형성 후 양수 전환 = 매수",
+      "MACD 와 비슷하지만 SMA 기반이라 더 안정적",
+    ],
+    limits: [
+      "MACD 와 정보 중복 — 둘 중 하나만 사용",
+      "후행 지표 — 추세 시작 후 신호 늦음",
+      "강한 변동성에선 노이즈 많음",
+    ],
+  },
 ];
 
 export function findIndicatorDoc(kind: IndicatorRef["kind"]): IndicatorDoc | null {

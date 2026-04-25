@@ -629,6 +629,146 @@ export const INDICATOR_DOCS: IndicatorDoc[] = [
       "강한 추세에선 극단 영역 길게 머무름",
     ],
   },
+
+  // ===== 2.3 추세·모멘텀 =====
+  {
+    id: "macd-ind",
+    kinds: ["macd", "macd_signal"],
+    name: "MACD (이동평균 수렴·발산)",
+    englishName: "Moving Average Convergence Divergence",
+    category: "trend",
+    oneLiner:
+      "두 EMA 의 차이로 모멘텀 측정. MACD 라인이 시그널 위로 뚫으면 매수.",
+    standardClaim:
+      "Gerald Appel 1970년대 개발. 12·26·9 파라미터는 전 세계 표준. TradingView·MT4·HTS 동일 공식.",
+    formula:
+      "MACD = EMA(12) - EMA(26)\nSignal = EMA(MACD, 9)\nHistogram = MACD - Signal",
+    ourImpl: [
+      "기본: 빠른선 12, 느린선 26, 시그널 9 (조정 가능)",
+      "MACD / Signal 둘 다 DIY 에서 별도 선택 가능",
+      "히스토그램은 시각화 전용 (조건엔 직접 안 씀, MACD-Signal 차이로 표현)",
+    ],
+    howToTrade: [
+      "골든크로스: MACD > Signal → 매수 (상승 모멘텀 시작)",
+      "데드크로스: MACD < Signal → 매도",
+      "0선 위 / 아래: 양수 영역 = 상승 추세, 음수 = 하락",
+      "다이버전스: 가격 신고가인데 MACD 신고가 못 찍음 → 추세 약화 경고",
+      "RSI 50선 + MACD 골든크로스 결합 시 신뢰도 ↑",
+    ],
+    limits: [
+      "EMA 기반이라 횡보장 휩쏘 잦음",
+      "후행 지표 — 추세 시작 후 1-3봉 늦음",
+      "MACD 단독보다 추세 / 거래량 지표 결합 권장",
+    ],
+  },
+  {
+    id: "adx",
+    kinds: ["adx"],
+    name: "ADX (추세 강도 지수)",
+    englishName: "Average Directional Index",
+    category: "trend",
+    oneLiner:
+      "추세의 '방향' 이 아니라 '강도' 만 측정. 0~100, 25 위면 추세 있음.",
+    standardClaim:
+      "J. Welles Wilder 1978년 개발 (RSI 와 같은 저자). 모든 차팅 도구 표준 공식.",
+    formula:
+      "+DI / -DI 로 방향성 측정 → DX = |+DI - -DI|/|+DI + -DI| × 100\nADX = DX 의 14봉 와일더 평활",
+    ourImpl: [
+      "기본 14봉, Wilder's smoothing",
+      "값 범위 0~100",
+    ],
+    howToTrade: [
+      "ADX < 20: 횡보장 — 추세 추종 전략 비추천",
+      "ADX 20~25: 추세 형성 중 — 진입 준비",
+      "ADX > 25: 강한 추세 진행 — 추세 추종 / 모멘텀 전략 적극",
+      "ADX > 50: 매우 강한 추세 — 곧 조정 가능성도 염두",
+      "+DI > -DI 면 상승 추세, 반대면 하락 (방향 추가 정보)",
+    ],
+    limits: [
+      "방향 정보 없음 — 강도만 알려주므로 다른 지표로 매매 방향 결정",
+      "후행 지표 — 추세 끝나갈 때 정점",
+      "급변 구간에선 늦게 반응",
+    ],
+  },
+  {
+    id: "cci",
+    kinds: ["cci"],
+    name: "CCI (상품 채널 지수)",
+    englishName: "Commodity Channel Index",
+    category: "oscillator",
+    oneLiner:
+      "현재가가 평균 대비 얼마나 벗어났나 측정. 보통 ±100 기준선 사용.",
+    standardClaim:
+      "Donald Lambert 1980년 개발. 상품 시장에서 시작했으나 모든 자산에 적용. 표준 공식 그대로.",
+    formula:
+      "Typical Price = (고+저+종)/3\nCCI = (Typical - SMA(Typical, N)) / (0.015 × 평균 절대 편차)",
+    ourImpl: [
+      "기본 20봉",
+      "0.015 상수는 표준값 — 약 70~80% 의 값이 ±100 안에 들어가도록 설계",
+    ],
+    howToTrade: [
+      "기본형: CCI < -100 매수, CCI > +100 매도 (평균 회귀)",
+      "추세형: 0선 돌파 + 추세 지표 동반 시 매수 (모멘텀)",
+      "다이버전스: 가격 신고가 + CCI 신고가 못 찍음 = 추세 약화",
+      "±200 도달 시 극단 — 곧 회귀 가능성 ↑",
+    ],
+    limits: [
+      "값이 음수~양수 자유롭게 — 임계값 선택 어려움",
+      "강한 추세장에서 ±100 영역 길게 유지",
+      "RSI / 스토캐스틱과 비슷한 용도라 셋 중 하나만 사용 권장",
+    ],
+  },
+  {
+    id: "roc",
+    kinds: ["roc"],
+    name: "ROC (변화율)",
+    englishName: "Rate of Change",
+    category: "trend",
+    oneLiner: "N봉 전 가격 대비 현재가의 % 변화. 가장 단순한 모멘텀 지표.",
+    standardClaim:
+      "표준 모멘텀 공식 그대로. 모든 차팅 도구 동일.",
+    formula: "ROC = (현재가 - N봉 전 가격) / N봉 전 가격 × 100",
+    ourImpl: [
+      "기본 14봉",
+      "값 범위 ±%, 0 중심 (양수 = 상승, 음수 = 하락)",
+    ],
+    howToTrade: [
+      "0선 돌파: 양수 진입 → 매수, 음수 진입 → 매도",
+      "극단값: ROC > +20% 면 단기 과열, < -20% 면 단기 과매도",
+      "이동평균 크로스 + ROC 양수 = 추세 확인",
+      "다이버전스: 가격 신고가 + ROC 둔화 → 추세 약화",
+    ],
+    limits: [
+      "단순한 변화율이라 노이즈 많음",
+      "다른 지표 (RSI/MACD) 와 정보 중복",
+      "단독으로는 거의 안 씀 — 다른 지표 보조용",
+    ],
+  },
+  {
+    id: "momentum",
+    kinds: ["momentum"],
+    name: "모멘텀",
+    englishName: "Momentum",
+    category: "trend",
+    oneLiner: "ROC 와 비슷하지만 % 가 아닌 가격 차이. 'N봉 전 대비 얼마나 올랐나'.",
+    standardClaim:
+      "전통적 표준 공식. ROC 의 절대값 버전.",
+    formula: "Momentum = 현재가 - N봉 전 가격",
+    ourImpl: [
+      "기본 14봉",
+      "값 범위 자산 가격 단위 (BTC 면 ±수천만, 주식이면 ±수만 원)",
+    ],
+    howToTrade: [
+      "0선 돌파로 추세 전환 판단",
+      "ROC 와 거의 동일 용도 — 단위만 다름 (% vs 가격)",
+      "다이버전스 시그널 가능",
+      "단독보다 다른 지표 보완용",
+    ],
+    limits: [
+      "절대값이라 자산별 비교 불가 (BTC 와 주식의 모멘텀 직접 비교 X)",
+      "ROC 가 더 직관적이라 보통 ROC 선호",
+    ],
+  },
 ];
 
 export function findIndicatorDoc(kind: IndicatorRef["kind"]): IndicatorDoc | null {

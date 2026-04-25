@@ -8,6 +8,7 @@ import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
 import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
 import { PopularCoinsTop } from "@/components/PopularCoinsTop";
 import { SajudayAd } from "@/components/SajudayAd";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const revalidate = 30;
 
@@ -163,7 +164,8 @@ export default async function HomePage() {
 
       <SupportedStrategiesGrid />
 
-      <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-2">
+      <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-3">
+        <ThemeToggle />
         <div>
           * 투자 판단은 본인 책임입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
         </div>

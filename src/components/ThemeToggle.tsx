@@ -1,8 +1,7 @@
 "use client";
 
-// 라이트/다크/시스템 3-state 토글.
-// localStorage 'theme' 키에 'light' | 'dark' | 'system' 저장.
-// system 이면 OS prefers-color-scheme 따라가고, OS 변경 시 자동 반영.
+// 테마 선택 — 라이트 / 다크 / 시스템 3-버튼 명시적 UI.
+// localStorage 'theme' 키. system 모드 중엔 OS 변경 즉시 반영.
 // 첫 페인트 전 layout.tsx 의 inline 스크립트가 클래스 적용해서 FOUC 없음.
 
 import { useEffect, useState } from "react";
@@ -15,6 +14,12 @@ function applyTheme(t: Theme) {
   document.documentElement.classList.toggle("dark", dark);
 }
 
+const OPTIONS: { value: Theme; label: string; icon: string }[] = [
+  { value: "light", label: "라이트", icon: "☀️" },
+  { value: "dark", label: "다크", icon: "🌙" },
+  { value: "system", label: "시스템", icon: "🖥️" },
+];
+
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("system");
   const [mounted, setMounted] = useState(false);
@@ -24,7 +29,6 @@ export function ThemeToggle() {
     setTheme(saved);
     setMounted(true);
 
-    // OS 색상 모드 바뀔 때 system 모드면 즉시 반영.
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
       const cur = (localStorage.getItem("theme") as Theme | null) ?? "system";
@@ -34,38 +38,36 @@ export function ThemeToggle() {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
-  function cycle() {
-    const next: Theme =
-      theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    applyTheme(next);
+  function pick(t: Theme) {
+    setTheme(t);
+    localStorage.setItem("theme", t);
+    applyTheme(t);
   }
-
-  if (!mounted) {
-    // 하이드레이션 전엔 자리만 잡고 아이콘 비움 — SSR/CSR mismatch 방지.
-    return (
-      <button
-        type="button"
-        aria-label="테마 변경"
-        className="h-8 w-8 rounded-full border border-neutral-300 dark:border-neutral-700"
-      />
-    );
-  }
-
-  const label =
-    theme === "light" ? "라이트" : theme === "dark" ? "다크" : "시스템";
-  const icon = theme === "light" ? "☀️" : theme === "dark" ? "🌙" : "🖥️";
 
   return (
-    <button
-      type="button"
-      onClick={cycle}
-      title={`현재: ${label} · 클릭하면 ${theme === "light" ? "다크" : theme === "dark" ? "시스템" : "라이트"}`}
-      aria-label={`테마 ${label}, 클릭해서 변경`}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900 transition"
-    >
-      <span aria-hidden>{icon}</span>
-    </button>
+    <div className="inline-flex items-center gap-2 text-xs">
+      <span className="text-neutral-500">테마</span>
+      <div className="inline-flex rounded-full border border-neutral-300 dark:border-neutral-700 overflow-hidden">
+        {OPTIONS.map((opt) => {
+          const active = mounted && theme === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => pick(opt.value)}
+              aria-pressed={active}
+              className={`px-2.5 py-1 transition ${
+                active
+                  ? "bg-brand text-white font-semibold"
+                  : "text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+              }`}
+            >
+              <span aria-hidden className="mr-0.5">{opt.icon}</span>
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

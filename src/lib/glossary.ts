@@ -911,6 +911,121 @@ export const INDICATOR_DOCS: IndicatorDoc[] = [
       "강한 변동성에선 노이즈 많음",
     ],
   },
+
+  // ===== 2.5 가격 가공 + 종합 =====
+  {
+    id: "vwap",
+    kinds: ["vwap"],
+    name: "VWAP (거래량 가중 평균가)",
+    englishName: "Volume Weighted Average Price",
+    category: "specialized",
+    oneLiner:
+      "거래량으로 가중한 평균 가격. 기관 / 알고 트레이더의 매매 기준선.",
+    standardClaim:
+      "월스트리트 표준 알고리즘. 기관 트레이더가 '시장 평균보다 잘 샀나' 판단할 때 쓰는 벤치마크.",
+    formula:
+      "VWAP = Σ(Typical Price × Volume) / Σ(Volume)\nTypical Price = (고+저+종)/3",
+    ourImpl: [
+      "누적 VWAP — 백테스트 시작일부터 누적 계산 (HTS 의 일중 VWAP 와 다름)",
+      "거래량 데이터 정확도에 의존",
+    ],
+    howToTrade: [
+      "가격 > VWAP = 평균보다 비싸게 거래 중 (시장이 강함)",
+      "가격 < VWAP = 평균보다 싸게 거래 중 (저점 매수 기회)",
+      "VWAP 를 지지·저항선으로 사용",
+      "기관 매매 모방 — VWAP 근처에서 분할 진입",
+    ],
+    limits: [
+      "장기 누적은 의미 약함 — 일중 VWAP 가 더 유용 (현재는 일봉 기준이라 한계)",
+      "변동성 큰 자산에선 VWAP 자체가 흔들림",
+      "주식 / 외환 시장에선 효과 큼, 24시간 코인에선 의미 약함",
+    ],
+  },
+  {
+    id: "ichimoku-lines",
+    kinds: ["ichimoku_conv", "ichimoku_base"],
+    name: "일목균형표 전환선·기준선",
+    englishName: "Ichimoku Tenkan / Kijun",
+    category: "trend",
+    oneLiner:
+      "일목균형표의 핵심 두 선. 전환선 9봉, 기준선 26봉 기반.",
+    standardClaim:
+      "細田悟一(호소다 고이치) 1930년대 개발. 일본·한국 표준 추세 시스템.",
+    formula:
+      "전환선 = (9봉 최고가 + 9봉 최저가) / 2\n기준선 = (26봉 최고가 + 26봉 최저가) / 2",
+    ourImpl: [
+      "기본 9 / 26 (일목 원본)",
+      "구름대(雲帯) 는 빌트인 일목 전략에서 사용, DIY 에선 두 선만",
+    ],
+    howToTrade: [
+      "전환선 > 기준선 → 단기 추세 상승 (매수 시그널)",
+      "전환선 < 기준선 → 단기 추세 하락 (매도 시그널)",
+      "기준선 가격 지지선으로 작용 — 가격이 기준선 아래로 떨어지면 추세 약화",
+      "일목균형 전체 시스템(구름대·후행스팬) 과 같이 보면 신뢰도 ↑",
+    ],
+    limits: [
+      "26봉 기반이라 단기 매매엔 부적합",
+      "복잡한 일목 시스템의 일부만 가져오면 신호 모호",
+      "변동성 작은 시장에선 신호 적음",
+    ],
+  },
+  {
+    id: "obv",
+    kinds: ["obv"],
+    name: "OBV (누적 거래량)",
+    englishName: "On-Balance Volume",
+    category: "volume",
+    oneLiner:
+      "양봉이면 거래량 +, 음봉이면 거래량 - 누적. 자금 유입·유출 흐름.",
+    standardClaim:
+      "Joseph Granville 1963년 개발. 거래량 기반 가장 고전적인 누적 지표. 모든 차팅 도구 표준.",
+    formula:
+      "양봉(종가 > 전종가): OBV(t) = OBV(t-1) + Volume\n음봉: OBV(t) = OBV(t-1) - Volume\n동일: OBV(t) = OBV(t-1)",
+    ourImpl: [
+      "백테스트 시작일부터 누적 계산",
+      "값 단위 = 거래량 (수억~수십억 단위로 커질 수 있음)",
+    ],
+    howToTrade: [
+      "OBV 추세선과 가격 추세선 일치 = 강한 추세",
+      "다이버전스: 가격 신고가인데 OBV 신고가 못 찍으면 매도자가 우세 (분배 단계)",
+      "OBV 돌파가 가격 돌파에 선행하는 경우 많음 — 선행 지표 성격",
+      "거래량 급증 후 OBV 점프 = 진성 돌파 신호",
+    ],
+    limits: [
+      "거래소·기간에 따라 절대값 천차만별 — 비교 어려움",
+      "거짓 매물 (워시 트레이딩) 영향 받음",
+      "단독 신호로는 약함 — 가격 / 추세와 함께",
+    ],
+  },
+  {
+    id: "heikin-ashi",
+    kinds: ["ha_open", "ha_high", "ha_low", "ha_close"],
+    name: "하이킨아시 (HA)",
+    englishName: "Heikin Ashi",
+    category: "specialized",
+    oneLiner:
+      "OHLC 를 평활화한 캔들. 추세를 더 명확하게 보여줌.",
+    standardClaim:
+      "일본의 1700년대 캔들 차트 변형. TradingView·MetaTrader 표준. '평균 캔들' 이라는 뜻.",
+    formula:
+      "HA Close = (시+고+저+종)/4\nHA Open = (전 HA Open + 전 HA Close)/2\nHA High = max(고, HA Open, HA Close)\nHA Low = min(저, HA Open, HA Close)",
+    ourImpl: [
+      "표준 하이킨아시 공식",
+      "DIY 에서 ha_open/high/low/close 별도 선택 가능",
+      "차트엔 따로 안 그림 (조건 평가 전용)",
+    ],
+    howToTrade: [
+      "연속 양봉 = 강한 상승 추세 (매수 유지)",
+      "연속 음봉 = 강한 하락 추세 (매도 유지)",
+      "도지 (꼬리만 있는 봉) 등장 = 추세 전환 가능성",
+      "추세 추종 전략에 노이즈 줄여줌 — 진입·청산 신호 명확해짐",
+    ],
+    limits: [
+      "지연 효과 — 실제 가격보다 느리게 반응",
+      "역추세 / 평균 회귀 전략엔 부적합",
+      "갭 / 급변동 정보 손실",
+    ],
+  },
 ];
 
 export function findIndicatorDoc(kind: IndicatorRef["kind"]): IndicatorDoc | null {

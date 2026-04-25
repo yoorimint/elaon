@@ -18,6 +18,7 @@ const NAV_PRIMARY = [
 const NAV_SECONDARY = [
   { href: "/ranking", label: "랭킹" },
   { href: "/community", label: "커뮤니티" },
+  { href: "/glossary", label: "지표 사전" },
 ];
 
 export function Header() {

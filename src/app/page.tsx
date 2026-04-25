@@ -62,6 +62,9 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
+      <div className="mb-4 flex justify-end">
+        <ThemeToggle />
+      </div>
       <section className="mb-12">
         <div className="text-brand text-xs sm:text-sm font-semibold tracking-widest">
           ELOAN BACKTEST
@@ -164,8 +167,7 @@ export default async function HomePage() {
 
       <SupportedStrategiesGrid />
 
-      <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-3">
-        <ThemeToggle />
+      <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-2">
         <div>
           * 투자 판단은 본인 책임입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
         </div>

@@ -162,7 +162,7 @@ export function ResultView({
       <h2 className="text-xl font-bold mb-4">결과</h2>
 
       {/* 빌트인 전략은 글로서리 기반 개요 박스 (DIY 는 컴포넌트 내부에서 null 반환). */}
-      <StrategyIntroBox strategy={strategy} />
+      {strategy && <StrategyIntroBox strategy={strategy} />}
 
       {/* 핵심 지표 */}
       <div className="mt-6 grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">

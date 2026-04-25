@@ -59,11 +59,11 @@ function StrategyCard({ s }: { s: StrategyDoc }) {
       </header>
 
       <div className="space-y-3 text-[14px] leading-relaxed">
-        <Field label="📐 표준 공식" body={s.standardClaim} />
-        <FieldList label="⚙️ 우리 구현" items={s.ourImpl} />
-        <FieldList label="📈 어떻게 매매에 쓰나" items={s.howToTrade} />
-        <FieldList label="⚠️ 한계" items={s.limits} />
-        <Field label="🎯 어울리는 시장" body={s.bestFor} />
+        <Field label="📐 정의" body={s.standardClaim} />
+        <FieldList label="⚙️ 적용 사양" items={s.ourImpl} />
+        <FieldList label="📈 활용 방법" items={s.howToTrade} />
+        <FieldList label="⚠️ 유의 사항" items={s.limits} />
+        <Field label="🎯 적합 시장" body={s.bestFor} />
       </div>
     </article>
   );
@@ -86,11 +86,11 @@ function IndicatorCard({ d }: { d: IndicatorDoc }) {
       </header>
 
       <div className="space-y-3 text-[14px] leading-relaxed">
-        <Field label="📐 표준성" body={d.standardClaim} />
+        <Field label="📐 정의" body={d.standardClaim} />
         <Field label="🧮 공식" body={d.formula} mono />
-        <FieldList label="⚙️ 우리 구현" items={d.ourImpl} />
-        <FieldList label="📈 어떻게 매매에 쓰나" items={d.howToTrade} />
-        <FieldList label="⚠️ 한계" items={d.limits} />
+        <FieldList label="⚙️ 적용 사양" items={d.ourImpl} />
+        <FieldList label="📈 활용 방법" items={d.howToTrade} />
+        <FieldList label="⚠️ 유의 사항" items={d.limits} />
       </div>
     </article>
   );

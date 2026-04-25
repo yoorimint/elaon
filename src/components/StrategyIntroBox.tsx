@@ -15,9 +15,7 @@ export function StrategyIntroBox({ strategy }: { strategy: StrategyId }) {
 
   return (
     <section className="mt-6 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/40 dark:bg-blue-950/20 p-5 sm:p-6">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <h2 className="text-lg font-bold">📚 이 전략은 뭐고 어떻게 매매하나?</h2>
-      </div>
+      <h2 className="text-lg font-bold">📚 전략 개요</h2>
 
       <div className="mt-3 text-sm leading-relaxed">
         <div className="flex flex-wrap items-baseline gap-1.5">
@@ -31,16 +29,16 @@ export function StrategyIntroBox({ strategy }: { strategy: StrategyId }) {
 
       <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
         <div>
-          <div className="text-[11px] font-semibold text-neutral-500 mb-1">
-            📐 표준성
+          <div className="text-[12px] font-semibold text-neutral-500 mb-1">
+            📐 정의
           </div>
           <div className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
             {doc.standardClaim}
           </div>
         </div>
         <div>
-          <div className="text-[11px] font-semibold text-neutral-500 mb-1">
-            🎯 어울리는 시장
+          <div className="text-[12px] font-semibold text-neutral-500 mb-1">
+            🎯 적합 시장
           </div>
           <div className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
             {doc.bestFor}
@@ -49,8 +47,8 @@ export function StrategyIntroBox({ strategy }: { strategy: StrategyId }) {
       </div>
 
       <div className="mt-4">
-        <div className="text-[11px] font-semibold text-neutral-500 mb-1.5">
-          📈 대표 활용법 (요약)
+        <div className="text-[12px] font-semibold text-neutral-500 mb-1.5">
+          📈 활용 방법
         </div>
         <ul className="list-disc pl-5 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
           {doc.howToTrade.slice(0, 2).map((it, i) => (
@@ -64,7 +62,7 @@ export function StrategyIntroBox({ strategy }: { strategy: StrategyId }) {
           href={`/glossary#${doc.id}`}
           className="text-brand font-semibold hover:underline"
         >
-          전체 활용법 + 한계 + 공식 자세히 보기 →
+          공식·전체 활용법·유의 사항 보기 →
         </Link>
       </div>
     </section>

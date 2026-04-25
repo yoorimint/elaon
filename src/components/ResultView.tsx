@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { BacktestResult } from "@/lib/backtest";
 import type { Candle } from "@/lib/upbit";
@@ -8,6 +9,8 @@ import type { Condition } from "@/lib/diy-strategy";
 import { formatMoney, formatMoneyShort, type Currency } from "@/lib/market";
 import { TVChart } from "./TVChart";
 import { TermTooltip } from "./TermTooltip";
+
+const TRADES_PREVIEW = 5;
 
 
 function Stat({
@@ -144,6 +147,7 @@ export function ResultView({
   customSell?: Condition[];
   currency?: Currency;
 }) {
+  const [tradesExpanded, setTradesExpanded] = useState(false);
   const data = result.equity.map((p) => ({
     date: new Date(p.timestamp).toISOString().slice(0, 10),
     전략: Math.round(p.equity),
@@ -315,38 +319,74 @@ export function ResultView({
         {result.trades.length === 0 ? (
           <div className="text-sm text-neutral-500">거래가 발생하지 않았습니다.</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 dark:bg-neutral-900">
-                <tr>
-                  <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-right">진입가</th>
-                  <th className="px-3 py-2 text-right">청산가</th>
-                  <th className="px-3 py-2 text-right">손익</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.trades.map((t, i) => (
-                  <tr key={i} className="border-t border-neutral-200 dark:border-neutral-800">
-                    <td className="px-3 py-2">{i + 1}</td>
-                    <td className="px-3 py-2 text-right">{formatMoney(t.entryPrice, currency)}</td>
-                    <td className="px-3 py-2 text-right">
-                      {t.exitPrice ? formatMoney(t.exitPrice, currency) : "-"}
-                    </td>
-                    <td
-                      className={`px-3 py-2 text-right ${
-                        (t.pnlPct ?? 0) >= 0
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-red-600 dark:text-red-400"
-                      }`}
-                    >
-                      {t.pnlPct == null ? "-" : `${t.pnlPct.toFixed(2)}%`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          (() => {
+            const reversed = [...result.trades].reverse();
+            const shown = tradesExpanded
+              ? reversed
+              : reversed.slice(0, TRADES_PREVIEW);
+            const remaining = reversed.length - shown.length;
+            return (
+              <div className="overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50 dark:bg-neutral-900">
+                    <tr>
+                      <th className="px-3 py-2 text-left">#</th>
+                      <th className="px-3 py-2 text-right">진입가</th>
+                      <th className="px-3 py-2 text-right">청산가</th>
+                      <th className="px-3 py-2 text-right">손익</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((t, i) => (
+                      <tr
+                        key={`${t.entryIndex}-${i}`}
+                        className="border-t border-neutral-200 dark:border-neutral-800"
+                      >
+                        <td className="px-3 py-2 text-neutral-500">
+                          {reversed.length - i}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {formatMoney(t.entryPrice, currency)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {t.exitPrice ? formatMoney(t.exitPrice, currency) : "-"}
+                        </td>
+                        <td
+                          className={`px-3 py-2 text-right font-semibold ${
+                            (t.pnlPct ?? 0) >= 0
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {t.pnlPct == null
+                            ? "-"
+                            : `${t.pnlPct >= 0 ? "+" : ""}${t.pnlPct.toFixed(2)}%`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!tradesExpanded && remaining > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTradesExpanded(true)}
+                    className="w-full border-t border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-sm font-medium text-brand hover:bg-neutral-50 dark:hover:bg-neutral-900 transition"
+                  >
+                    더보기 ({remaining}건)
+                  </button>
+                )}
+                {tradesExpanded && reversed.length > TRADES_PREVIEW && (
+                  <button
+                    type="button"
+                    onClick={() => setTradesExpanded(false)}
+                    className="w-full border-t border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-sm text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition"
+                  >
+                    접기
+                  </button>
+                )}
+              </div>
+            );
+          })()
         )}
       </div>
     </div>

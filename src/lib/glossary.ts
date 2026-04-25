@@ -490,6 +490,145 @@ export const INDICATOR_DOCS: IndicatorDoc[] = [
       "초기값 계산법 따라 미세하게 값 차이 발생 가능",
     ],
   },
+
+  // ===== 2.2 오실레이터 (0~100 / -100~0 범위) =====
+  {
+    id: "rsi-ind",
+    kinds: ["rsi"],
+    name: "RSI (상대강도지수)",
+    englishName: "Relative Strength Index",
+    category: "oscillator",
+    oneLiner:
+      "최근 N봉의 상승폭 / 하락폭 비율로 계산하는 0~100 범위 모멘텀 지표.",
+    standardClaim:
+      "J. Welles Wilder 1978년 발표 표준 공식. TradingView·MT4·HTS 모두 동일한 와일더 평활(Wilder's smoothing) 사용.",
+    formula:
+      "RSI = 100 - 100/(1+RS),  RS = 평균 상승폭 / 평균 하락폭 (Wilder's RMA 사용)",
+    ourImpl: [
+      "기본 14봉. 기간 / 임계값 모두 조정 가능",
+      "Wilder's smoothing — 표준 EMA 가 아닌 와일더 RMA 사용 (정통 공식)",
+      "처음 14봉은 데이터 부족 → null",
+    ],
+    howToTrade: [
+      "기본형: < 30 과매도 매수, > 70 과매수 매도 (평균 회귀)",
+      "추세형: 50 위 = 상승 추세, 50 아래 = 하락 추세 — 50선 사용",
+      "다이버전스: 가격 신고가인데 RSI 신고가 못 찍으면 추세 약화 신호",
+      "강한 추세장에선 30/70 → 20/80 으로 좁혀서 거짓 신호 줄임",
+    ],
+    limits: [
+      "강한 상승장에서 70+ 오래 머무름 → 매도 후 더 오름",
+      "강한 하락장에서 30- 오래 머무름 → 매수 후 더 빠짐",
+      "단독 사용은 비추 — 추세 지표와 결합",
+    ],
+  },
+  {
+    id: "stoch",
+    kinds: ["stoch_k", "stoch_d"],
+    name: "스토캐스틱 (Fast)",
+    englishName: "Stochastic Oscillator (Fast %K, %D)",
+    category: "oscillator",
+    oneLiner:
+      "최근 N봉 내에서 현재가의 상대적 위치를 0~100 으로 표시. RSI 와 유사 용도.",
+    standardClaim:
+      "George Lane 1950년대 개발. 전 세계 차팅 도구 표준. RSI 와 함께 가장 많이 쓰이는 모멘텀 오실레이터.",
+    formula:
+      "%K = (현재가 - N봉 최저가) / (N봉 최고가 - N봉 최저가) × 100\n%D = %K 의 M봉 SMA (시그널선)",
+    ourImpl: [
+      "기본: %K 기간 14, %D 평활 3",
+      "Fast Stochastic — 평활화 1회만 (즉각 반응)",
+      "DIY 에서 stoch_k / stoch_d 별도 선택 가능",
+    ],
+    howToTrade: [
+      "기본형: %K < 20 매수, %K > 80 매도",
+      "%K 와 %D 교차: 과매도 영역에서 %K 가 %D 위로 뚫으면 매수 (이중 확인)",
+      "다이버전스: 가격 신저가 + %K 신저가 안 찍힘 = 반등 신호",
+      "거래량 큰 자산보다 변동성 명확한 자산에서 효과적",
+    ],
+    limits: [
+      "Fast 라 거짓 신호 잦음 — 안정성 원하면 Slow 사용",
+      "강한 추세에서 80 / 20 영역 길게 머무름",
+      "RSI 보다 노이즈 많음",
+    ],
+  },
+  {
+    id: "slow-stoch",
+    kinds: ["slow_stoch_k", "slow_stoch_d"],
+    name: "슬로우 스토캐스틱",
+    englishName: "Slow Stochastic Oscillator",
+    category: "oscillator",
+    oneLiner:
+      "Fast Stochastic 의 %K 를 한 번 더 평활화. 거짓 신호 줄인 안정형.",
+    standardClaim:
+      "George Lane 의 Slow Stochastic 표준 변형. HTS / TradingView 의 'Slow' 옵션과 동일.",
+    formula:
+      "Slow %K = Fast %K 의 M봉 SMA (한 번 더 평활)\nSlow %D = Slow %K 의 M봉 SMA",
+    ourImpl: [
+      "기본: 기간 14, slowSmooth 3, dSmooth 3",
+      "Fast %K 보다 노이즈 줄어 일중·단기 매매에서 거짓 신호 ↓",
+    ],
+    howToTrade: [
+      "Fast 와 동일 사용법 (20/80 임계, 교차 신호) 인데 신뢰도 ↑",
+      "장기 / 스윙 매매에 적합",
+      "Fast 와 함께 쓰면서 둘 다 신호 일치할 때만 진입 — 필터 효과",
+    ],
+    limits: [
+      "신호 늦음 — 진입 시점이 Fast 보다 1-2봉 후행",
+      "급변동 캐치 못 함",
+    ],
+  },
+  {
+    id: "mfi",
+    kinds: ["mfi"],
+    name: "MFI (자금 흐름 지수)",
+    englishName: "Money Flow Index",
+    category: "oscillator",
+    oneLiner: "거래량을 반영한 RSI. 0~100 범위. '거래량 가중 RSI'.",
+    standardClaim:
+      "Gene Quong & Avrum Soudack 의 표준 공식. RSI 에 거래량 곱한 변형으로 모든 차팅 도구 표준.",
+    formula:
+      "Typical Price = (고+저+종)/3,\nMoney Flow = Typical Price × Volume,\nMFI = 100 - 100/(1+ 양 자금흐름/음 자금흐름)",
+    ourImpl: [
+      "기본 14봉",
+      "RSI 와 같은 0~100 범위지만 거래량까지 반영 → 모멘텀 + 자금 유입 동시 측정",
+    ],
+    howToTrade: [
+      "기본형: < 20 매수, > 80 매도 (RSI 보다 임계값 다름)",
+      "RSI 다이버전스 + MFI 다이버전스 동시 발생 → 매우 강한 신호",
+      "거래량 적은 자산엔 부적합 (값이 극단으로 튐)",
+      "주식 / 메이저 코인에서 가장 신뢰도 높음",
+    ],
+    limits: [
+      "거래량 데이터 신뢰도 의존 (거래소마다 차이)",
+      "RSI 와 비슷하지만 거짓 신호 빈도는 비슷",
+    ],
+  },
+  {
+    id: "williams-r",
+    kinds: ["williams_r"],
+    name: "Williams %R",
+    englishName: "Williams %R",
+    category: "oscillator",
+    oneLiner:
+      "스토캐스틱의 역방향 버전. -100~0 범위. -20 위 과매수, -80 아래 과매도.",
+    standardClaim:
+      "Larry Williams 의 표준 공식. 스토캐스틱 발표 직전 1973년 개발 — 사실상 스토캐스틱의 사촌.",
+    formula:
+      "%R = (N봉 최고가 - 현재가) / (N봉 최고가 - N봉 최저가) × -100",
+    ourImpl: [
+      "기본 14봉",
+      "값 범위 -100 ~ 0 (스토캐스틱 0~100 의 역수)",
+    ],
+    howToTrade: [
+      "기본형: %R > -20 과매수 매도, %R < -80 과매도 매수",
+      "스토캐스틱과 거의 동일하지만 음수 표현 차이",
+      "단기 평균 회귀 매매에 사용",
+      "추세 강도 판단보다 진입·청산 타이밍에 적합",
+    ],
+    limits: [
+      "스토캐스틱과 비교해 차별점 적음 (둘 중 하나 골라 쓰면 됨)",
+      "강한 추세에선 극단 영역 길게 머무름",
+    ],
+  },
 ];
 
 export function findIndicatorDoc(kind: IndicatorRef["kind"]): IndicatorDoc | null {

@@ -95,8 +95,29 @@ const orgJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
-      <body className="min-h-screen antialiased">
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        {/*
+          첫 페인트 전에 다크모드 클래스 결정 → 라이트→다크 깜빡임(FOUC) 방지.
+          localStorage 우선, 없으면 OS prefers-color-scheme.
+          'system' 저장된 경우도 OS 따라감.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function(){
+  try {
+    var pref = localStorage.getItem('theme');
+    var sys = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var dark = pref === 'dark' || (pref !== 'light' && sys);
+    if (dark) document.documentElement.classList.add('dark');
+  } catch(_) {}
+})();
+`,
+          }}
+        />
+      </head>
+      <body className="min-h-screen antialiased bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}

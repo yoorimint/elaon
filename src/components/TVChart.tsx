@@ -108,6 +108,9 @@ function rangeLow(candles: Candle[], i: number, n: number): number {
 
 function isDark(): boolean {
   if (typeof window === "undefined") return false;
+  // 수동 토글이 <html> 에 'dark' 클래스 붙이므로 그걸 우선 확인.
+  // 클래스 없으면 OS 설정으로 폴백 (system 모드).
+  if (document.documentElement.classList.contains("dark")) return true;
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
 }
 

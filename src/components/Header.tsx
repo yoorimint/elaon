@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { VisitorBadge } from "./VisitorBadge";
+import { ThemeToggle } from "./ThemeToggle";
 
 // 위 행 = 행동 (백테스트, 모의투자, 오늘의 신호, 관심종목).
 // 아래 행 = 탐색 (랭킹, 커뮤니티). 톤 다운 + 높이 살짝 줄임.
@@ -47,6 +48,7 @@ export function Header() {
         <VisitorBadge />
 
         <div className="flex items-center gap-2 shrink-0">
+          <ThemeToggle />
           {loading ? null : user ? (
             <>
               <Link

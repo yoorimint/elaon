@@ -6,6 +6,7 @@
 // - "어떻게 매매에 쓰나" 를 가장 중요하게 — 신뢰 + 실용성
 
 import type { StrategyId } from "./strategies";
+import type { IndicatorRef } from "./diy-strategy";
 
 export type StrategyDoc = {
   id: StrategyId;
@@ -22,6 +23,29 @@ export type StrategyDoc = {
   limits: string[];
   // 어울리는 시장 국면
   bestFor: string;
+};
+
+export type IndicatorCategory =
+  | "price"
+  | "average"
+  | "oscillator"
+  | "trend"
+  | "volatility"
+  | "volume"
+  | "specialized";
+
+export type IndicatorDoc = {
+  id: string; // anchor 용. URL fragment 그대로 쓰임 (#sma, #rsi-ind 등)
+  kinds: IndicatorRef["kind"][]; // 이 doc 가 커버하는 DIY ref kind 들
+  name: string; // 한글
+  englishName: string;
+  category: IndicatorCategory;
+  oneLiner: string;
+  standardClaim: string;
+  formula: string;
+  ourImpl: string[];
+  howToTrade: string[];
+  limits: string[];
 };
 
 export const STRATEGY_DOCS: StrategyDoc[] = [
@@ -335,4 +359,139 @@ export const STRATEGY_DOCS: StrategyDoc[] = [
 
 export function findStrategyDoc(id: StrategyId): StrategyDoc | null {
   return STRATEGY_DOCS.find((s) => s.id === id) ?? null;
+}
+
+// ===== DIY 지표 사전 =====
+// DIY 빌더에서 선택 가능한 지표들의 표준 공식 + 활용법.
+// 같은 doc 가 여러 ref kind 커버하는 경우 있음 (bb_upper / bb_middle /
+// bb_lower → 'bollinger' doc 하나).
+export const INDICATOR_DOCS: IndicatorDoc[] = [
+  // ===== 2.1 가격 / 거래량 / 이동평균 =====
+  {
+    id: "price",
+    kinds: ["close", "open", "high", "low"],
+    name: "가격 (시·고·저·종)",
+    englishName: "Price (OHLC)",
+    category: "price",
+    oneLiner: "한 봉의 시가·고가·저가·종가. 모든 지표의 원재료.",
+    standardClaim:
+      "OHLC (Open / High / Low / Close) 는 캔들스틱 차트의 표준 4요소. 모든 거래소 / 데이터 제공사 동일.",
+    formula:
+      "한 봉(예: 1일봉) 동안의 첫 거래가(시가), 최고가, 최저가, 마지막 거래가(종가).",
+    ourImpl: [
+      "업비트(KRW) · OKX(선물) · Yahoo Finance(주식) 의 일봉 OHLC 원본 그대로 사용",
+      "수정 / 보간 없음 — 거래소 발표 값 그대로",
+    ],
+    howToTrade: [
+      "종가(close): 가장 자주 쓰임. 일중 노이즈 제거 효과",
+      "고가(high): 저항선·돌파 판단",
+      "저가(low): 지지선·손절선 기준",
+      "시가(open): 갭 발생 / 일중 변동성 시작점",
+      "DIY 에서 'RSI > 70 AND 종가 < 20일 SMA' 같은 식으로 다른 지표와 결합",
+    ],
+    limits: [
+      "단독으로는 의미 작음 — 항상 다른 지표 / 기준과 함께",
+      "일봉이라 일중 패턴 (시가 급등 후 하락 등) 캡처 못 함",
+    ],
+  },
+  {
+    id: "volume",
+    kinds: ["volume"],
+    name: "거래량",
+    englishName: "Volume",
+    category: "volume",
+    oneLiner: "한 봉 동안 체결된 거래 수량. 추세 / 돌파의 신뢰도 척도.",
+    standardClaim:
+      "모든 거래소 표준 데이터. '거래량은 가격에 선행한다' 는 다우 이론의 핵심.",
+    formula: "한 봉 시간 동안 체결된 자산 수량의 합 (코인 수 또는 주식 수).",
+    ourImpl: [
+      "거래소 / Yahoo Finance 발표값 원본",
+      "거래대금 (volume × 평균가) 이 아닌 '수량' 기준",
+    ],
+    howToTrade: [
+      "추세 확인: 상승 + 거래량 증가 → 신뢰도 ↑",
+      "돌파 확인: 저항 돌파 시 거래량 급증 동반해야 진성 돌파",
+      "다이버전스: 가격 신고가인데 거래량 줄면 추세 약화",
+      "OBV / MFI 같은 거래량 지표의 원재료",
+    ],
+    limits: [
+      "거래소마다 거래량 차이 큼 (메이저 vs 마이너 거래소)",
+      "단독 신호로는 약함 — 가격 / 추세와 함께",
+    ],
+  },
+  {
+    id: "const",
+    kinds: ["const"],
+    name: "숫자 (상수)",
+    englishName: "Constant",
+    category: "price",
+    oneLiner: "사용자가 지정한 고정값. 'RSI > 70' 의 70 같은 비교 기준.",
+    standardClaim: "DIY 조건 비교의 기본 — 모든 차팅 도구가 동일.",
+    formula: "사용자가 입력한 그대로의 숫자.",
+    ourImpl: ["DIY 빌더에서 'RSI < 30' 같은 식 작성 시 우변에 입력하는 값"],
+    howToTrade: [
+      "오실레이터 임계값: RSI 30/70, Stoch 20/80, Williams -20/-80",
+      "수익률 / 손절 기준: 'pnlPct < -5' 같은 손절 룰",
+      "거래량 임계값: 'volume > 100' 식의 최소 거래량 필터",
+    ],
+    limits: ["고정값이라 시장 국면 변화에 자동 대응 못 함 — 주기적 조정 필요"],
+  },
+  {
+    id: "sma",
+    kinds: ["sma"],
+    name: "단순 이동평균 (SMA)",
+    englishName: "Simple Moving Average",
+    category: "average",
+    oneLiner: "최근 N봉 종가의 산술 평균. 가장 기본적인 추세 지표.",
+    standardClaim:
+      "통계학의 단순 평균 그대로. 모든 차팅 도구 동일 — 계산법에 변형 없음.",
+    formula: "SMA(n) = (P₁ + P₂ + … + Pₙ) / n  (P 는 종가)",
+    ourImpl: [
+      "기본 입력: 종가 기준 (DIY 에서 다른 시리즈도 가능)",
+      "기간 자유 지정 (5, 20, 60, 200 등)",
+      "처음 N-1 봉은 데이터 부족으로 null",
+    ],
+    howToTrade: [
+      "지지·저항: 200일 SMA = 장기 추세선, 종종 지지·저항으로 작용",
+      "이평 크로스: 단기(20) > 장기(60) 골든크로스 → 매수",
+      "이평 위 / 아래: 가격 > SMA 면 상승 추세, 아래면 하락",
+      "거래자별 선호: 단타는 5/20일, 스윙은 20/60일, 장투는 60/200일",
+    ],
+    limits: [
+      "후행 지표 — 추세 시작 후 신호 늦음",
+      "변동성 큰 자산에선 휩쏘 잦음",
+      "EMA 보다 신호 더 늦지만 그만큼 노이즈 적음",
+    ],
+  },
+  {
+    id: "ema",
+    kinds: ["ema"],
+    name: "지수 이동평균 (EMA)",
+    englishName: "Exponential Moving Average",
+    category: "average",
+    oneLiner: "최근 봉에 가중치 부여한 이동평균. SMA 보다 반응 빠름.",
+    standardClaim:
+      "표준 EMA 공식 그대로. 가중치 α = 2/(N+1). MACD 등 많은 지표의 기반.",
+    formula:
+      "EMA(t) = α × P(t) + (1-α) × EMA(t-1),  α = 2/(N+1)",
+    ourImpl: [
+      "초기값은 첫 N봉의 SMA 로 시드 (표준 방식)",
+      "기간 자유 지정",
+      "MACD / 다른 지표 내부에서도 EMA 사용",
+    ],
+    howToTrade: [
+      "SMA 보다 빠른 추세 캐치 — 단기 매매에 적합",
+      "20 EMA 가 매매 시그널선으로 자주 쓰임",
+      "이평 크로스에 EMA 사용하면 더 빠른 진입 / 청산",
+      "최근 가격 비중 높아 급변동 빠르게 반영",
+    ],
+    limits: [
+      "노이즈에 민감 — 횡보장에서 거짓 신호 더 많음",
+      "초기값 계산법 따라 미세하게 값 차이 발생 가능",
+    ],
+  },
+];
+
+export function findIndicatorDoc(kind: IndicatorRef["kind"]): IndicatorDoc | null {
+  return INDICATOR_DOCS.find((d) => d.kinds.includes(kind)) ?? null;
 }

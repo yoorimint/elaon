@@ -9,6 +9,7 @@ import type { Condition } from "@/lib/diy-strategy";
 import { formatMoney, formatMoneyShort, type Currency } from "@/lib/market";
 import { TVChart } from "./TVChart";
 import { TermTooltip } from "./TermTooltip";
+import { StrategyIntroBox } from "./StrategyIntroBox";
 
 const TRADES_PREVIEW = 5;
 
@@ -160,8 +161,11 @@ export function ResultView({
     <div>
       <h2 className="text-xl font-bold mb-4">결과</h2>
 
+      {/* 빌트인 전략은 글로서리 기반 개요 박스 (DIY 는 컴포넌트 내부에서 null 반환). */}
+      <StrategyIntroBox strategy={strategy} />
+
       {/* 핵심 지표 */}
-      <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
         <Stat
           label="전략 수익률"
           value={`${result.returnPct.toFixed(2)}%`}

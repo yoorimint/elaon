@@ -13,6 +13,7 @@ import { SharedExtendedStats } from "@/components/SharedExtendedStats";
 import { SharedTradeTable } from "@/components/SharedTradeTable";
 import { SharedActions } from "@/components/SharedActions";
 import { SajudayAd } from "@/components/SajudayAd";
+import { StrategyIntroBox } from "@/components/StrategyIntroBox";
 import { TermTooltip } from "@/components/TermTooltip";
 import { symbolPrettyLabel } from "@/lib/bot-symbols";
 import { currencyOf } from "@/lib/market";
@@ -297,8 +298,8 @@ export default async function SharedPage({ params }: { params: { slug: string } 
         )}
       </section>
 
-      {/* DIY 전략이면 매수/매도 조건을 상단에서 바로 보여준다. 예전엔 차트 아래에
-          있어서 "상세 전략이 안 나온다"는 피드백이 있었다. */}
+      {/* 빌트인 전략은 사전(글로서리) 기반 설명 박스, DIY 는 매수/매도 조건 직접 박스. */}
+      <StrategyIntroBox strategy={data.strategy as StrategyId} />
       <SharedDIYDetails
         customBuy={data.custom_buy as Condition[] | null}
         customSell={data.custom_sell as Condition[] | null}

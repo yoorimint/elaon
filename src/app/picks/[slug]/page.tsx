@@ -179,6 +179,16 @@ function ItemCard({
             <span>→</span>
           </Link>
         )}
+
+        {item.hubSlug && item.detailContent && !item.subItems && (
+          <Link
+            href={`/picks/${categorySlug}/${item.hubSlug}`}
+            className="mt-1 inline-flex items-center justify-between gap-2 w-full rounded-xl bg-brand/10 hover:bg-brand hover:text-white text-brand border border-brand/30 px-4 py-2.5 text-[13px] font-semibold transition"
+          >
+            <span>📖 사용법·가격·FAQ 자세히 보기</span>
+            <span>→</span>
+          </Link>
+        )}
       </div>
     </article>
   );

@@ -9119,11 +9119,62 @@ const FREE: PickCategory = {
               { step: 5, title: "설치", body: "Windows/Mac 폰트 폴더에 ttf·otf 파일 복사 후 시스템에 설치." },
             ],
             faq: [
-              { q: "눈누와 차이?", a: "눈누는 개인·기업·공공기관 폰트 모두, 폰트프리는 기업 폰트만. 카카오·네이버 같은 한국 기업 폰트 빠르게 찾고 싶으면 폰트프리, 다양성이 필요하면 눈누. 둘 다 무료." },
-              { q: "기업 폰트 상업 사용?", a: "대부분 가능. 카카오·네이버 폰트는 기업이 명확히 상업 허용. 다만 폰트별 LICENSE 다시 확인 필수 (BI/CI 용도는 제한 있는 폰트도)." },
-              { q: "BI 로고 사용?", a: "기업 폰트는 보통 BI/CI 사용 허용하지만 폰트마다 다름. LICENSE 파일 또는 폰트 페이지에서 'BI/CI 허용' 명시 확인." },
-              { q: "재배포·재판매?", a: "재판매는 거의 모든 폰트가 금지. 본인 디자인에 임베드해 결과물 사용은 OK, 폰트 자체 재배포는 금지." },
-              { q: "사이트 신뢰?", a: "한국에서 오래 운영된 사이트로 디자이너 사이 신뢰도 양호. 기업 공식 배포 폰트만 모으는 정책이라 안전성 높음." },
+              {
+                q: "폰트프리 정말 100% 무료? 회원가입?",
+                a: "폰트프리(fontsfree.kr) = 100% 무료 한국 기업 폰트 모음 사이트. 회원가입 없이 다운로드 가능. 광고 일부. 사설 '한국 기업 폰트 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. fontsfree.kr 공식 도메인만 이용. 한국 기업(카카오·네이버·NHN·삼성·아모레·우아한형제들·서울시 등) 이 공식 배포한 폰트 모음 — 라이선스 안전 1티어. 한국 디자이너·블로거·소상공인·1인 사업자 누구나 활용 핵심 사이트이며 약 200+ 한국 기업 폰트 통합 검색 가능합니다. 눈누와 함께 한국 폰트 표준 사이트.",
+              },
+              {
+                q: "폰트프리 vs 눈누 vs 공유마당 폰트 차이?",
+                a: "한국 폰트 사이트 차이: ① 폰트프리(fontsfree.kr) = 한국 기업 폰트 모음 특화, 약 200+ ② 눈누(noonnu.cc) = 개인·기업·공공기관 폰트 모두 통합, 약 1,000+, 양 1티어 ③ 공유마당(gongu.copyright.or.kr) = 한국저작권위원회 검증, 라이선스 안전 1티어, 만료저작물 + 기업 + 정부. 추천: ① 한국 기업 폰트 빠른 검색 = 폰트프리 우선 ② 다양성·전체 = 눈누 우선 ③ 라이선스 안전·정부 문서 = 공유마당. 한국 사용자 표준: 눈누(다양성) + 폰트프리(기업 정리) + 공유마당(안전) 3박자 분담. 한국 디자인 작업 시 본인 톤·자격에 맞는 사이트 활용이 효율적입니다.",
+              },
+              {
+                q: "폰트프리 한국 기업 어떤 폰트 있나?",
+                a: "폰트프리 등록 한국 기업 폰트(2026 기준): ① 카카오 — 카페24 시리즈·카카오 산스 ② 네이버 — 나눔고딕·나눔명조·나눔손글씨·나눔스퀘어·D2 코딩 ③ 삼성 — 삼성 산스·삼성 원UI ④ 아모레퍼시픽 — 아리따 ⑤ 우아한형제들 — 한나체·연성체·도현체 ⑥ NHN — 토스 페이스·NHN 폰트 ⑦ 서울시 — 한강체·남산체 ⑧ 부산시 — 부산체 ⑨ 전주시 — 완판본 ⑩ 제주도 — 제주명조 ⑪ 빙그레 — 빙그레체 ⑫ 코카콜라 — 코카콜라체. 기업 폰트 강점: ① 라이선스 명확 ② 분쟁 가능성 낮음 ③ 디자인 톤 일관 ④ 영구 무료 운영 보장. 본인 디자인 톤에 맞는 기업 폰트 선택 권장.",
+              },
+              {
+                q: "폰트프리 기업 폰트 상업 사용 안전?",
+                a: "한국 기업 폰트 상업 사용: ① 대부분 100% 안전 — 기업이 공식 배포 + 상업 허용 명시 ② 카카오·네이버·삼성·아모레 같은 대기업 폰트 = 분쟁 사례 거의 없음 ③ 회사 BI·CI·광고·인쇄·웹·SNS 모두 자유. 단 폰트별 차이: ① 일부 폰트 = BI/CI 별도 라이선스 필요 ② 임베디드(앱·소프트웨어 내장) 별도 라이선스 일부 ③ 재배포·재판매 모든 폰트 금지. 안전 활용: ① 다운로드 zip 안 LICENSE 파일 사전 확인 ② BI/CI 용도 = 'BI/CI 허용' 명시 폰트만 ③ 본인 자산 보호 = LICENSE 보관 + 사용 범위 명확 인지. 한국 기업 폰트 = 라이선스 명확 = 평생 자산 보호 1티어.",
+              },
+              {
+                q: "폰트프리 회사 BI·CI 로고 사용?",
+                a: "한국 기업 폰트 회사 BI·CI 사용 시 주의: ① 다운로드 zip 안 LICENSE 파일 'BI/CI 사용 허용' 명시 확인 ② 카카오·네이버·삼성 등 대기업 폰트 = BI/CI 대부분 허용 ③ 일부 폰트 = BI 별도 라이선스 필요(사용 시 분쟁). BI/CI 안전 한국 기업 폰트: ① 카카오 카페24 시리즈 = 자유 ② 네이버 나눔 시리즈 = 자유 ③ 삼성 산스 = 자유 ④ 아리따(아모레) = 자유 ⑤ 우아한형제들 한나체 = 자유. 단 ① 본인 회사 BI = 다른 회사도 같은 폰트 사용 가능 → 차별화 권장 ② 본인 회사 색상 + 일부 변형 = 차별화 ③ 본인 회사 BI 핵심 로고 = 본인 디자이너·외주 차별화 권장. 평생 자산 보호 = LICENSE 보관 + 차별화.",
+              },
+              {
+                q: "폰트프리 한국 디자이너·블로거 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 디자이너 = 한국 브랜드 톤 디자인(카드뉴스·명함·전단지·포스터) ② 블로거·티스토리 = 헤더·본문 폰트(나눔고딕·카페24) ③ 유튜버 = 썸네일·자막 폰트(우아한형제들·카페24·아리따) ④ 1인 사업자 = 회사 명함·BI·홍보 자료 ⑤ 직장인 = PPT·보고서·발표 자료 ⑥ 학생·교사 = 강의 자료·과제 ⑦ 결혼·돌잔치 청첩장 ⑧ 광고·CF 디자인. 평생 활용: 매월 디자인 작업 시 폰트프리 활용 = 매년 50~300만원 폰트 비용 절약(유료 한국 폰트 평균 5~50만원), 평생 누적 500만~3,000만원. 한국 디자이너·블로거에게 핵심 자산.",
+              },
+              {
+                q: "폰트프리 다운로드·설치 절차?",
+                a: "다운로드 + 설치 절차: ① fontsfree.kr 접속 + 검색 또는 카테고리 탐색 ② 본인 텍스트로 미리보기 ③ zip 파일 다운로드 ④ 압축 해제 → TTF·OTF 파일 + LICENSE 동봉 확인 ⑤ Windows = 우클릭 '설치' / Mac = 더블클릭 '폰트 추가' ⑥ 설치 완료 후 디자인 도구(Photoshop·Illustrator·Figma·Word·PPT) 폰트 메뉴 자동 표시. 활용: ① 본인 PC 설치 후 모든 도구에서 사용 ② 회사 PC = 시스템 관리자 권한 ③ 모바일 = 폰트 설치 어려움(웹 디자인 도구 활용). 회사·팀 단위 사용 = 한 번 LICENSE 검토 후 직원 모두 설치 가능한 폰트만 표준화 권장.",
+              },
+              {
+                q: "폰트프리 vs 글로벌 폰트(Google Fonts·Adobe Fonts) 차이?",
+                a: "한국 vs 글로벌 폰트 사이트 차이: ① 폰트프리·눈누 = 한국 기업·공공·개인 폰트, 한글 양·품질 1티어 ② Google Fonts = 영문·글로벌 폰트, 노토 산스 KR(한글) 일부, 웹 임베디드 표준 ③ Adobe Fonts = Creative Cloud 구독자 추가 폰트, 디자이너 도구. 한국 사용자 표준: ① 한글 디자인 = 폰트프리 + 눈누 + 공유마당 ② 영문·웹 = Google Fonts ③ 본격 디자이너 = Adobe Fonts(CC 구독자) ④ 한·영 통합 = 노토 산스 KR(Google Fonts) + 한국 기업 폰트(폰트프리). 본인 작업에 한·영 분담 활용이 효율적입니다.",
+              },
+              {
+                q: "폰트프리 재배포·재판매 안전?",
+                a: "한국 기업 폰트 재배포·재판매 정책: ① 재배포 금지 — 거의 모든 폰트(본인 사이트에 폰트 자체 업로드·공유 = 약관 위반) ② 재판매 금지 — 모든 폰트 ③ 본인 디자인에 임베드 결과물 = 사용·판매 가능 ④ 회사 직원 배포 = LICENSE 일부 허용 폰트만. 안전 활용: ① 본인 디자인 작품에 폰트 임베드 = 안전 ② 폰트 자체 공유·재배포 절대 금지 ③ 본인 PC 사용 자유 ④ 회사 PC 사용 = 직원 모두 fontsfree.kr 에서 직접 다운로드 권장. 본인 자산 보호 = 사용 범위 명확 인지 + LICENSE 보관. 한국 기업 폰트 라이선스 분쟁 사례 매년 증가 — 사전 LICENSE 확인이 핵심.",
+              },
+              {
+                q: "폰트프리 모바일·휴대폰 활용?",
+                a: "폰트프리 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 폰트 검색·미리보기 ② 다운로드. 모바일 한계: ① 모바일 폰트 설치 어려움 — Mac·Windows PC 권장 ② 모바일 디자인 앱(Canva·미리캔버스) 에서 폰트 사용 가능 ③ 모바일 자체 폰트 변경 = 일부 모바일 OS 만 지원. 활용: ① 외출 중 폰트 검색 + 즐겨찾기 ② 본인 PC 에서 다운로드·설치 ③ 모바일 디자인 도구는 자체 폰트 활용. 본격 디자인 작업 = PC + Photoshop·Figma·Illustrator 권장. 모바일 = 빠른 검색 + 영감 + 즐겨찾기 위주.",
+              },
+              {
+                q: "폰트프리 운영자·신뢰도?",
+                a: "폰트프리 운영: ① 한국 디자이너·개인 운영 ② 한국에서 오래 운영(2010+) ③ 디자이너 사이 신뢰도 양호 ④ 기업 공식 배포 폰트만 모으는 정책 ⑤ 폰트별 LICENSE 명시. 신뢰도: ① 운영자 신뢰 — 기업 공식 폰트 위주 ② 라이선스 명확 ③ 다운로드 안전 ④ 사기 위험 낮음. 단 ① 광고 일부 ② 일부 폰트 LICENSE 변경 가능 — 다운로드 시점 LICENSE 보관 권장 ③ 운영자 변경·종료 시 다른 사이트(눈누·기업 공식 사이트) 보완. 폰트프리 + 눈누 + 공유마당 + 기업 공식 사이트 분담 = 평생 자산 안전.",
+              },
+              {
+                q: "폰트프리 사기·라이선스 분쟁·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '한국 폰트 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 폰트프리 사이트 — 본인 정보·악성코드 ③ 폰트 자체 재배포 — 약관 위반 + 분쟁 ④ BI/CI 미허용 폰트 사용 → 사후 분쟁 ⑤ 일부 폰트 LICENSE 변경 후 미인지 사용. 주의사항: ① fontsfree.kr 공식 도메인만 ② 본인이 직접 다운로드 ③ LICENSE 파일 사전 확인 + 보관 ④ BI/CI 용도 = 명시 폰트만 ⑤ 재배포·재판매 절대 금지 ⑥ 본인 자산 보호 = 평생 LICENSE 보관 + 사용 범위 인지. 한국 기업 폰트 = 라이선스 안전 1티어 — 사전 확인 시 평생 분쟁 0.",
+              },
+              {
+                q: "폰트프리 회사·팀 단위 사용 가이드?",
+                a: "회사·팀 단위 한국 기업 폰트 활용: ① OFL 또는 자유 라이선스 폰트만 = 직원 모두 설치 자유 ② 회사 표준 폰트 5~10개 선정 + 직원 가이드 ③ BI/CI = 명시 허용 폰트만 ④ 임베디드(앱·소프트웨어) = 별도 라이선스 확인. 회사 폰트 가이드 만들기: ① 본인 회사 톤에 맞는 한국 기업 폰트 선정(예: 카페24 + 나눔고딕 + 아리따) ② 본문·제목·강조 페어링 ③ 직원 모두 설치 안내 ④ LICENSE 보관 ⑤ 디자인 일관성. 한국 디자인 회사·마케팅 에이전시·콘텐츠 제작팀에 표준 도구. 매년 1회 LICENSE 재확인 권장(라이선스 변경 가능).",
+              },
+              {
+                q: "폰트프리 한국 디자인 표준 폰트 추천?",
+                a: "한국 디자인 표준 인기 폰트(2026): ① 본문용 — 나눔고딕·노토 산스 KR·프리텐다드 ② 제목용 — 카페24 시리즈·카카오 산스·우아한형제들 한나체 ③ 손글씨 — 나눔손글씨·우아한형제들 연성체 ④ 디자인용 — 아모레 아리따·삼성 산스 ⑤ 코딩용 — D2 코딩(네이버) ⑥ 한국적 — 부산체·전주완판본·제주명조·서울 한강체. 한국 디자인 표준 페어링: ① 본문 = 나눔고딕 + 제목 = 카페24 ② 본문 = 노토 산스 KR + 제목 = 한나체 ③ 본문 = 프리텐다드 + 제목 = 아리따. 본인 디자인 톤에 맞는 페어링 5~10개 = 평생 디자인 자산 + 일관성. 본인 회사 BI 페어링 정의 = 작업 효율 큰 폭 향상.",
+              },
             ],
             relatedKeywords: [
               "폰트프리 다운로드",
@@ -9203,13 +9254,62 @@ const FREE: PickCategory = {
               { step: 5, title: "로컬 호스팅 (선택)", body: "GDPR 대응 또는 속도 최적화 위해 폰트 파일 다운로드 후 본인 서버 호스팅." },
             ],
             faq: [
-              { q: "정말 상업 사용 가능?", a: "예. 모든 Google Fonts 는 OFL 또는 Apache 2.0 라이선스로 상업·수정·재배포·임베드 모두 자유. 회사 BI·CI 로고에도 안전하게 사용 가능." },
-              { q: "한글 폰트는?", a: "Noto Sans KR, Noto Serif KR, Black Han Sans, Do Hyeon, Gowun Batang 등 메이저 한글 폰트 포함. 한국 인기 폰트(카카오·네이버 등) 는 눈누 또는 폰트프리에서 별도 다운로드." },
-              { q: "CDN vs 로컬?", a: "CDN 은 한 줄 임베드로 즉시 적용 가능하지만 Google 에 IP 가 전송되어 GDPR 우려 있음. 로컬 호스팅은 폰트 파일 다운로드 후 본인 서버에 두는 방식 — 더 빠르고 추적 없음." },
-              { q: "Variable Fonts 가 뭐?", a: "한 폰트 파일로 굵기(100~900), 기울기, 너비 등을 자유롭게 조절하는 최신 폰트 기술. 파일 크기 작고 디자인 유연성 큼." },
-              { q: "Adobe Fonts 와 비교?", a: "Google Fonts 무료 + 1,500+, Adobe Fonts 는 CC 구독 필수 + 17,000+ 고품질 폰트. 일반 사용자는 Google Fonts, Adobe CC 사용자는 Adobe Fonts 도 같이." },
-              { q: "한국에서 빠른가?", a: "Google CDN 이 한국에도 캐시 서버를 두어 매우 빠름. 그래도 더 최적화하려면 로컬 호스팅 또는 Cloudflare 같은 글로벌 CDN 사용." },
-              { q: "Material Symbols 는?", a: "Material Design 아이콘을 폰트 형태로 제공. <span class='material-symbols-outlined'>home</span> 같이 텍스트로 아이콘 사용. 무료." },
+              {
+                q: "Google Fonts 정말 100% 무료? 회원가입?",
+                a: "Google Fonts(fonts.google.com) = 100% 무료 글로벌 1위 웹 폰트 사이트. 회원가입 없이 즉시 다운로드·임베드. 광고 없음 — Google 이 직접 운영. 사설 '웹 폰트 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. fonts.google.com 공식 도메인만 이용. 약 1,500+ 폰트 모두 OFL 또는 Apache 2.0 라이선스 — 100% 자유. 한국 웹 디자이너·개발자·블로거 누구나 활용 핵심 사이트이며 한·영 통합 디자인 + 웹 임베디드 1티어. 글로벌 웹 디자인 사실상 표준입니다.",
+              },
+              {
+                q: "Google Fonts 정말 상업 사용? 회사 BI·CI?",
+                a: "Google Fonts 라이선스 = 100% 자유: ① 상업 사용 ② 수정·편집 ③ 재배포 ④ 웹 임베드(@font-face) ⑤ 앱 임베드 ⑥ 회사 BI·CI 로고 자유. SIL Open Font License(OFL) 또는 Apache 2.0 — 가장 너그러운 라이선스. 활용: ① 회사 웹사이트 = 자유 ② 모바일 앱 임베드 = 자유 ③ 인쇄·CF·광고 = 자유 ④ BI·CI 로고 = 안전 ⑤ 본인 폰트 수정·재배포 가능. 한국 디자이너에게 라이선스 안전 1티어 — 평생 분쟁 0. 평생 자산 보호 측면에서 가장 안전한 폰트 사이트 중 하나입니다.",
+              },
+              {
+                q: "Google Fonts 한글 폰트 어떤 게 있나?",
+                a: "Google Fonts 한글 폰트(2026 기준): ① Noto Sans KR — 본문용 1티어, 가장 보편 ② Noto Serif KR — 명조 본문 ③ Black Han Sans — 강한 제목 ④ Do Hyeon — 친근한 제목 ⑤ Gothic A1 — 다양한 굵기 ⑥ Gowun Batang — 우아한 명조 ⑦ Gowun Dodum — 깔끔 ⑧ Hi Melody — 손글씨 ⑨ Jua — 위트 제목 ⑩ Nanum Gothic — 네이버 ⑪ Nanum Myeongjo — 네이버 명조 ⑫ Single Day — 손글씨. 약 30+ 한글 폰트 — 글로벌 사이트 중 한글 폰트 1티어. 단 한국 인기 기업 폰트(카카오·삼성·아모레 등) = 폰트프리·눈누에서 별도. Google Fonts 한글 + 한국 기업 폰트 분담 활용 표준.",
+              },
+              {
+                q: "Google Fonts 웹 임베드 어떻게? CDN vs 로컬?",
+                a: "Google Fonts 웹 임베드 옵션: ① CDN(가장 보편) — 한 줄 코드 `<link href='...'>` 임베드, 즉시 적용 ② 로컬 호스팅 — 폰트 파일 다운로드 후 본인 서버 호스팅, @font-face 직접 정의. 추천 비교: ① CDN — 쉬움, 캐시 효율, 단 Google 에 IP 전송 → GDPR 우려 ② 로컬 — 빠름, 추적 없음, GDPR 안전, 단 본인 서버 부담. 한국 사이트 표준: ① 일반 블로그·티스토리 = CDN 충분 ② 본인 사이트·SaaS = 로컬 호스팅 권장(GDPR + 성능) ③ 한국 사용자 = Google CDN 한국 캐시 서버 매우 빠름 ④ 글로벌 진출 = Cloudflare 등 CDN 추가. GDPR 안전 우선 = 로컬 호스팅.",
+              },
+              {
+                q: "Google Fonts vs Adobe Fonts 차이?",
+                a: "글로벌 웹 폰트 사이트 차이: ① Google Fonts = 100% 무료, 약 1,500+ 폰트, 웹 임베디드 표준, 한글 풍부 ② Adobe Fonts = Adobe CC 구독 필수($22.99/월), 약 17,000+ 고품질 폰트, 디자이너 표준 ③ 폰트프리·눈누 = 한국 기업 폰트, 한글 1티어. 추천: ① 일반 사용자·블로거·개발자 = Google Fonts 충분 ② Adobe CC 구독자(Photoshop·Illustrator 사용) = Adobe Fonts 보너스 ③ 본격 디자이너 = Google Fonts + Adobe Fonts ④ 한글 디자인 = Google Fonts + 폰트프리 + 눈누. 한국 사용자 표준: Google Fonts(웹·기본) + 한국 기업 폰트(한글 디자인) + Adobe Fonts(CC 구독자). 작업별 분담 활용.",
+              },
+              {
+                q: "Google Fonts Variable Fonts 가 무엇인가?",
+                a: "Variable Fonts = 한 폰트 파일로 다양한 변수(굵기·기울기·너비) 조절하는 최신 폰트 기술. 활용: ① 한 폰트 파일 → 100~900 굵기 모두 지원(기존 = 굵기별 별도 파일 9개) ② 파일 크기 1/9 절약 ③ 디자인 유연성 큼(중간 굵기·미세 조정) ④ 웹 페이지 로딩 속도 향상. Variable 한글 폰트: ① Noto Sans KR Variable ② 일부 새 한글 폰트. 활용: ① 본인 웹사이트 = Variable Fonts 사용 = 로딩 속도·디자인 유연성 ② 디자이너 = 다양한 굵기 자유 사용 ③ 모바일 앱 = 폰트 크기 절약. 단 ① 일부 구형 브라우저·OS 호환 제한 ② 모든 폰트 Variable 지원 안 함. 본격 웹 디자이너에게 표준이 되어가는 중입니다.",
+              },
+              {
+                q: "Google Fonts 한국에서 빠른가? 성능?",
+                a: "Google CDN = 한국에도 캐시 서버 — 매우 빠름. 한국 사용자 로딩 속도: ① CDN 임베드 = 평균 50~200ms ② 로컬 호스팅 = 평균 30~100ms ③ Cloudflare CDN = 글로벌 빠름. 추가 최적화: ① preconnect — `<link rel='preconnect' href='https://fonts.googleapis.com'>` ② font-display: swap — 폰트 로딩 중 텍스트 즉시 표시 ③ 필요한 굵기·언어만 임베드(서브셋) ④ Variable Fonts 활용 ⑤ 로컬 호스팅 + Cloudflare CDN. 한국 블로그·티스토리 = Google CDN 충분 + GDPR 우려 시 로컬 호스팅. 본인 사이트 성능 측정 = PageSpeed Insights · WebPageTest 활용 권장.",
+              },
+              {
+                q: "Google Fonts Material Symbols 아이콘?",
+                a: "Material Symbols = Google Material Design 아이콘 폰트. 활용: ① `<span class='material-symbols-outlined'>home</span>` = 텍스트로 아이콘 ② 아이콘 폰트라 색·크기 자유 ③ 100% 무료 ④ 약 2,000+ 아이콘. 종류: ① Outlined — 윤곽선 ② Rounded — 둥근 ③ Sharp — 직선. 추가 옵션: ① Fill(채움) ② Weight(굵기) ③ Grade(밝기) ④ Optical Size(시각 크기). Lucide·Heroicons 와 차이: ① Material Symbols = Google 디자인 기반, Material Design 일관성 ② Lucide·Heroicons = 트렌디 모던 디자인. 한국 웹 디자이너 표준: Material Symbols + Lucide + Heroicons 분담 활용. Google 생태계 일관성 우선 = Material Symbols.",
+              },
+              {
+                q: "Google Fonts 회사 BI·웹사이트 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 본인 웹사이트·블로그 = Noto Sans KR(본문) + Black Han Sans(제목) ② 회사 웹사이트 = Pretendard 또는 Noto Sans KR + 본인 회사 색상 ③ 모바일 앱 임베드 = Noto Sans KR + Variable Fonts ④ 인쇄물·CF = 한국 기업 폰트 + Google Fonts 영문 ⑤ 글로벌 진출 = Google Fonts 영문 + 한국 폰트 ⑥ React·Vue 컴포넌트 = Google Fonts CDN 또는 로컬. 평생 활용: 매년 본인 회사 웹사이트·앱 폰트 = 평생 자산 + 사용자 경험 큰 차이. 한국 웹 개발자·디자이너에게 사실상 표준 도구. 무료 + 라이선스 안전 + 글로벌 사용 = 평생 자산.",
+              },
+              {
+                q: "Google Fonts Pretendard 같은 한국 인기 폰트도?",
+                a: "Pretendard = 한국 디자이너가 만든 모던 한글 폰트(IT·디자이너 표준). 단 Google Fonts 공식 등록 X — 별도 사이트(github.com/orioncactus/pretendard) 에서 다운로드. 추천 한국 인기 폰트(2026): ① Pretendard — IT·모던 1티어 ② 카카오 카페24 시리즈 — 친근 ③ 우아한형제들 한나체 — 위트 ④ 삼성 산스 — 깔끔 ⑤ 아모레 아리따 — 우아 ⑥ 노토 산스 KR(Google) — 본문 ⑦ Pretendard JP·CN — 한·일·중 통합. 활용: 본인 디자인 톤에 맞는 한글 폰트 5~10개 + Google Fonts 영문 = 한·영 통합 디자인 시스템. 한국 IT 회사·SaaS 표준 = Pretendard + 영문 = Inter(Google Fonts).",
+              },
+              {
+                q: "Google Fonts 다운로드·로컬 호스팅 절차?",
+                a: "Google Fonts 다운로드·로컬 호스팅 절차: ① fonts.google.com 접속 ② 본인 폰트 검색 ③ 'Get font' 클릭 → 'Download' ④ ZIP 파일 다운로드 ⑤ TTF·OTF 파일 본인 PC 설치 또는 본인 서버 업로드 ⑥ @font-face CSS 정의: `@font-face { font-family: 'Noto Sans KR'; src: url('/fonts/NotoSansKR.woff2') format('woff2'); }`. 활용: ① 본인 PC 디자인 = 설치 후 모든 도구에서 사용 ② 본인 웹사이트 = 로컬 호스팅(GDPR 안전 + 성능). woff2 변환 도구: Transfonter·Font Squirrel Webfont Generator. 본격 웹 개발자 = 로컬 호스팅 + woff2 + Variable Fonts 결합 = 평생 성능 + 안전.",
+              },
+              {
+                q: "Google Fonts GDPR·개인정보·보안?",
+                a: "Google Fonts CDN 임베드 시 사용자 IP 가 Google 에 전송 → 일부 GDPR(유럽) 분쟁 사례. 한국 사이트 = GDPR 직접 대상 아니나 ① EU 사용자 접속 시 적용 ② 한국 개인정보보호법 일부 검토 권장. 안전 워크플로우: ① 로컬 호스팅 = 사용자 IP Google 전송 안 함 ② 폰트 파일 본인 서버 ③ Cloudflare 등 자체 CDN. 추천: ① 한국 일반 블로그·티스토리 = CDN 충분(한국 사용자 위주) ② EU·글로벌 진출 사이트 = 로컬 호스팅 ③ 회사 사이트 = 로컬 호스팅 권장. 본인 사이트 GDPR 안전성 + 성능 = 로컬 호스팅이 가장 안전. 자동 변환 도구 = google-webfonts-helper.",
+              },
+              {
+                q: "Google Fonts 모바일·앱 임베드?",
+                a: "Google Fonts 앱 임베드: ① iOS 앱 — 폰트 파일 Bundle 추가 + Info.plist 등록 ② Android 앱 — assets/fonts 폴더 + Typeface 사용 ③ React Native — 폰트 파일 link + 시스템 폰트 등록 ④ Flutter — pubspec.yaml + assets 등록 ⑤ Electron 앱 — 웹 임베드 동일. 활용: ① 본인 모바일 앱 디자인 일관성 ② 한·영 통합 폰트 ③ 100% 무료 라이선스 안전. 한국 앱 개발자 표준: Noto Sans KR(한국어) + Inter 또는 Roboto(영문) = 통합 디자인 시스템. Variable Fonts 활용 = 앱 크기 절약 + 디자인 유연성. 평생 자산 = 본인 앱 디자인 일관성.",
+              },
+              {
+                q: "Google Fonts 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '무료 웹 폰트 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Google Fonts 사이트 — 본인 정보·악성코드 ③ Google Fonts 외 무단 폰트를 'Google Fonts' 라 표기 → 라이선스 분쟁 ④ 일부 한글 폰트 = Google Fonts 라이선스 외 별도 라이선스 ⑤ Material Symbols 무단 수정 후 재배포. 주의사항: ① fonts.google.com 공식 도메인만 ② 본인이 직접 다운로드·임베드 ③ 라이선스 OFL/Apache 2.0 명시 폰트만 ④ 무단 폰트 'Google Fonts' 표기 금지 ⑤ 본인 자산 보호 = LICENSE 보관. Google Fonts = 가장 안전한 글로벌 무료 웹 폰트 사이트 — 평생 분쟁 0.",
+              },
             ],
             relatedKeywords: [
               "Google Fonts 한글",
@@ -9284,12 +9384,62 @@ const FREE: PickCategory = {
               { step: 5, title: "웹 임베드", body: "Web Project 생성 → 폰트 추가 → <link> 또는 CSS 코드 복사 → 본인 웹사이트에 적용." },
             ],
             faq: [
-              { q: "Adobe CC 구독 안 쓰면?", a: "Adobe Fonts 단독 구독은 불가. Adobe CC(Photoshop, Illustrator 등) 구독자만 사용 가능. Adobe CC 안 쓰면 Google Fonts·눈누 추천." },
-              { q: "상업 이용?", a: "Adobe CC 약관에 따라 인쇄·웹·BI/CI 상업 사용 모두 허용. 단, 구독을 해지하면 그 시점부터는 사용 불가 (이미 만든 결과물은 사용 가능)." },
-              { q: "한글 폰트 양은?", a: "글로벌 폰트 대비 한글 비중은 작음. 산돌·아모레퍼시픽 등 일부 기업 폰트만 포함. 한국 인기 폰트는 눈누 또는 폰트프리에서 별도 다운로드." },
-              { q: "Google Fonts 와 비교?", a: "양: Adobe(17K) > Google(1.5K). 디자인 품질: Adobe 가 프리미엄. 비용: Google 무료 vs Adobe CC 구독 필수. 일반 사용자는 Google Fonts, 디자이너는 Adobe Fonts 도 같이." },
-              { q: "구독 해지하면?", a: "Adobe Fonts 사용권이 사라집니다. 이미 만든 결과물(인쇄·웹) 은 그대로 유지되지만 새 작업에 그 폰트 사용 불가. 구독 유지가 중요." },
-              { q: "웹 임베드 어떻게?", a: "fonts.adobe.com → Web Project → 폰트 선택 → 코드 복사 → 본인 웹사이트 <head> 에 붙여넣기. Google Fonts 와 비슷한 방식." },
+              {
+                q: "Adobe Fonts 정말 무료? Adobe CC 구독 필요?",
+                a: "Adobe Fonts(fonts.adobe.com) = Adobe Creative Cloud(CC) 구독자 전용 프리미엄 폰트 서비스. 단독 구독 불가 — Adobe CC 구독($22.99/월·연 약 30만원) 필수. CC 구독자는 추가 비용 없이 약 17,000+ 고품질 폰트 무제한 사용. 사설 'Adobe 폰트 패키지' 업체는 ① 무단 복제·배포 = 라이선스 분쟁 위험 ② Adobe CC 공식 구독만 안전. fonts.adobe.com 공식 도메인만 이용. 한국 본격 디자이너·Adobe CC 사용자(Photoshop·Illustrator·InDesign·Premiere) 핵심 도구. CC 구독 안 하면 Google Fonts + 폰트프리 + 눈누 추천.",
+              },
+              {
+                q: "Adobe Fonts vs Google Fonts 차이?",
+                a: "글로벌 웹 폰트 사이트 차이: ① Google Fonts = 100% 무료, 약 1,500+ 폰트, 웹 임베디드 표준, 한·영 통합 ② Adobe Fonts = Adobe CC 구독 필수($22.99/월), 약 17,000+ 고품질 프리미엄 폰트, 디자이너 표준. 비교: ① 양 = Adobe(17K) > Google(1.5K) ② 디자인 품질 = Adobe 프리미엄 우위 ③ 비용 = Google 무료 vs Adobe CC 구독 ④ 한글 = Google(노토 산스 KR 등) > Adobe ⑤ 웹 임베디드 = 둘 다 강력. 추천: ① 일반 사용자·블로거·개발자 = Google Fonts 충분 ② Adobe CC 사용자(Photoshop·Illustrator) = Adobe Fonts 보너스 ③ 본격 디자이너 = Google + Adobe 둘 다. 한국 사용자 표준: Adobe CC + Google Fonts + 한국 폰트 분담.",
+              },
+              {
+                q: "Adobe Fonts 한글 폰트 어떤 게 있나?",
+                a: "Adobe Fonts 한글 비중 = 글로벌 폰트 대비 작음. 등록 한글 폰트(2026): ① 산돌(SDFA) 시리즈 — 한국 디자이너 산돌 1티어 ② 본명조·본고딕(Source Han Serif·Sans) — Adobe + Google 공동 제작 ③ 아모레퍼시픽 아리따 ④ 일부 NHN·카카오 폰트 ⑤ 일부 산돌 격주 신작. 한국 인기 폰트(대부분) = 눈누·폰트프리에서 별도 다운로드 필요(카카오·우아한형제들·삼성 등). 한국 디자이너 표준: ① 한글 = 폰트프리·눈누 + Adobe Fonts 일부 ② 영문 = Adobe Fonts 1티어 + Google Fonts ③ 디자인 = 한·영 통합 페어링. Adobe Fonts 영문 폰트 양·품질이 압도적이라 글로벌 진출 디자인에 핵심.",
+              },
+              {
+                q: "Adobe Fonts 상업 이용·라이선스?",
+                a: "Adobe Fonts 라이선스 = Adobe CC 약관 기반: ① 상업 사용 허용 — 인쇄·웹·BI/CI·앱 자유 ② 회사 BI 로고 = 안전 ③ 광고·CF·인쇄물 = 자유 ④ 클라이언트 의뢰 작품 = 안전. 단 ① Adobe CC 구독 유지 = 사용권 유지 ② 구독 해지 시 = 그 시점부터 사용 불가, 이미 만든 결과물(인쇄·웹·앱) 은 유지 ③ 폰트 자체 재배포·재판매 금지 ④ 본인 작품에 임베드한 형태만 사용. 한국 디자이너에게 라이선스 안전 1티어(Adobe 공식). 평생 자산 보호 = Adobe CC 구독 유지 + 본인 작품 보관.",
+              },
+              {
+                q: "Adobe Fonts 구독 해지하면 어떻게?",
+                a: "Adobe CC 구독 해지 시: ① Adobe Fonts 사용권 = 그 시점부터 즉시 종료 ② 이미 만든 결과물(인쇄·웹·앱) = 그대로 유지 ③ 새 작업에 Adobe Fonts 폰트 사용 불가 ④ 본인 PC 에 다운로드된 폰트 파일 = 일정 기간 후 자동 삭제 ⑤ 본인 디자인 파일(.psd·.ai·.indd) 열기 = 폰트 누락 표시 + 다른 폰트로 대체. 활용: ① 구독 유지가 평생 자산 보호 핵심 ② 해지 전 본인 디자인 파일 PDF·아웃라인 변환 보관 ③ Google Fonts 같은 무료 폰트로 마이그레이션 검토. 한국 본격 디자이너 = Adobe CC 평생 구독이 표준 — 평생 자산 형성. 한 달 구독비 약 3만원 = 본인 작품 가치 비교 시 가성비 큼.",
+              },
+              {
+                q: "Adobe Fonts 웹 임베드 어떻게?",
+                a: "Adobe Fonts 웹 임베드 절차: ① fonts.adobe.com 접속 + Adobe CC 로그인 ② 본인 폰트 검색·선택 ③ 'Add to Web Project' 클릭 ④ Web Project 만들기 + 폰트 추가 ⑤ 임베드 코드 복사 — `<link rel='stylesheet' href='https://use.typekit.net/[ID].css'>` ⑥ 본인 웹사이트 `<head>` 에 붙여넣기. CSS 사용: `font-family: 'Source Sans Pro', sans-serif;`. 활용: ① 본인 웹사이트 디자인 일관성 ② 인쇄 + 웹 동일 폰트 ③ Adobe Photoshop 디자인 → 웹 동일 폰트 사용. 단 ① Web Project 한도 = CC 플랜별 차이 ② 트래픽 한도 일부 ③ 구독 해지 시 사이트 폰트 누락. 한국 디자이너 = Adobe CC + 본인 웹사이트 통합 디자인 가능.",
+              },
+              {
+                q: "Adobe Fonts Photoshop·Illustrator·InDesign 통합?",
+                a: "Adobe Fonts = Adobe CC 도구 완벽 통합: ① Photoshop = 폰트 메뉴 'Sync Fonts' = Adobe Fonts 폰트 즉시 사용 ② Illustrator = 동일 ③ InDesign = 인쇄 디자인 핵심 ④ Premiere Pro·After Effects = 영상 자막·로고 ⑤ XD·Figma 일부 = 디자인 시안. 활용: ① CC 도구에서 폰트 검색 → 즉시 동기화 → 본인 PC 자동 설치 ② 폰트 사용 시 자동 라이선스 적용 ③ 디자인 작업 시간 큰 폭 절약. 한국 디자이너 표준 워크플로우: Adobe CC + Adobe Fonts + Google Fonts + 한국 폰트(눈누·폰트프리) = 평생 디자인 자산. CC 구독자는 Adobe Fonts 안 쓰면 큰 손해.",
+              },
+              {
+                q: "Adobe Fonts 한국 디자이너 활용 시나리오?",
+                a: "한국 디자이너 표준 활용: ① 인쇄 디자인 — 책·잡지·포스터·전단지(InDesign + Adobe Fonts 영문 폰트) ② 글로벌 진출 디자인 — 영문 BI·웹사이트 ③ 광고·CF — 영문 카피 + 한글(눈누 보조) ④ 영상 자막 — Premiere + Adobe Fonts ⑤ 모션 그래픽 — After Effects ⑥ 일러스트 — Illustrator + 폰트 통합 ⑦ 디자인 시스템 — Figma + Adobe Fonts. 평생 활용: 디자이너 본업 = Adobe CC + Adobe Fonts = 평생 디자인 자산 형성. CC 구독 30만원/년 = 본인 디자인 작품 가치 vs 비용 = 압도적 가성비. 한국 디자인 회사·마케팅 에이전시·광고 회사 = Adobe CC 표준 도구.",
+              },
+              {
+                q: "Adobe Fonts 인기 영문 폰트 추천?",
+                a: "Adobe Fonts 인기 영문 폰트(2026): ① Source Sans Pro/Source Serif Pro — 본문 1티어 ② Adobe Caslon Pro — 클래식 본문 ③ Acumin Pro — 모던 산세리프 ④ Trajan Pro — 격식 제목 ⑤ Mrs Eaves — 우아한 명조 ⑥ Brandon Grotesque — 트렌디 ⑦ FreightSans Pro — 우아 본문 ⑧ Proxima Nova — 인기 산세리프 ⑨ Garamond Premier Pro — 고급 명조 ⑩ Helvetica Neue — 클래식. 추천 페어링: ① 본문 = Source Sans Pro + 제목 = Trajan Pro ② 본문 = Acumin Pro + 제목 = Brandon Grotesque ③ 한·영 통합 = Source Han Sans(한글) + Source Sans Pro(영문). 본인 디자인 톤에 맞는 페어링 5~10개 = 평생 자산.",
+              },
+              {
+                q: "Adobe Fonts 모바일·앱 임베드?",
+                a: "Adobe Fonts 앱 임베드 = 일부 제한적: ① 웹 임베드 = 표준(Web Project) ② iOS·Android 앱 임베드 = Adobe CC 약관 별도 확인 필요 ③ Electron·React Native 앱 = 웹 임베드 동일 가능. 추천: ① 웹 = Adobe Fonts Web Project 사용 ② 모바일 앱 = Google Fonts(OFL/Apache 라이선스 자유) + Adobe Fonts 일부 ③ 본인 회사 앱 디자인 = 라이선스 신중 검토 ④ Adobe 공식 가이드 확인 권장. 한국 앱 개발자 표준: Google Fonts(무료 + 자유) 우선 + Adobe Fonts 디자인 시안용. 본인 앱 임베드 시 Adobe CC 공식 가이드 + 법무 검토 권장.",
+              },
+              {
+                q: "Adobe Fonts 한국에서 결제·구독?",
+                a: "Adobe CC 구독 한국 결제: ① 결제 옵션 = 비자·마스터·아멕스 한국 신용카드·체크카드 정상 ② USD 결제 — 약 $22.99/월(약 3.2만원) ③ 연 결제 = 약 $263(약 36만원) ④ 학생·교사 할인 = $19.99/월(약 60% 할인) ⑤ 사진가 플랜 = $9.99/월(Photoshop·Lightroom 만). 카카오·네이버페이 미지원 — 카드 등록 필수. 회사 결제 = 사업자번호 + 세금계산서 발급. 환불: ① 14일 이내 무료 체험 + 환불 ② 연 결제 해지 시 일부 위약금 ③ 월 결제 = 자유 해지. 한국 본격 디자이너 = 학생·교사 시기에 미리 가입 + 졸업 후 일반 가격 = 평생 자산 형성.",
+              },
+              {
+                q: "Adobe Fonts 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 본업 디자이너(광고·디자인 회사) = Adobe CC 평생 구독 + Adobe Fonts 무제한 ② 인쇄 디자이너 = InDesign + Adobe Fonts 영문 + 한국 기업 폰트 ③ 영상 편집자 = Premiere + Adobe Fonts ④ 마케터·광고 회사 = Photoshop + Illustrator + Adobe Fonts ⑤ 학생·디자인 학과 = 학생 할인($19.99/월) + 평생 자산 ⑥ 글로벌 진출 회사 = 영문 디자인 + Adobe Fonts. 평생 활용: 본격 디자이너 = Adobe CC 평생 구독 + Adobe Fonts = 평생 디자인 자산. 학생 시기 가입 + 졸업 후 본업 진출 = 평생 시간 절약 + 디자인 일관성. 한국 디자인 업계 표준 도구.",
+              },
+              {
+                q: "Adobe Fonts 환불·체험·자동 결제?",
+                a: "Adobe CC 환불·체험: ① 14일 무료 체험 — 가입 후 14일 이내 해지 시 환불 ② 월 결제 = 자유 해지 + 결제한 달 끝까지 사용 ③ 연 결제 해지 = 14일 후는 위약금(잔여 기간 50%). 자동 결제 해지: account.adobe.com → Plans → Cancel. 한 달만 결제 후 해지 자유(월 결제). 카드 변경·삭제·인보이스 다운로드 가능. 추천: ① 처음 사용 = 14일 무료 체험 ② 본격 사용 = 월 결제 → 패턴 파악 → 연 결제(약 30% 할인) ③ 학생 = 학생 플랜 우선. 한국 디자이너 = 본업 시 평생 연 결제 가성비 최고. 사기 사례: 'Adobe 무료 평생' 가짜 사이트 — 절대 금지.",
+              },
+              {
+                q: "Adobe Fonts 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① 'Adobe CC 무료 평생' 가짜 사이트 — 본인 정보·악성코드 ② 사설 'Adobe 폰트 패키지' 업체 — 무단 복제·배포 ③ 폰트 자체 재배포·재판매 — 약관 위반 ④ 구독 해지 후 폰트 무단 사용 → 사후 분쟁 ⑤ 가짜 결제 페이지 — 카드 정보 탈취. 주의사항: ① fonts.adobe.com·adobe.com 공식 도메인만 ② Adobe CC 공식 구독만 ③ 본인이 직접 결제 ④ 사설 업체에 카드·OTP 절대 알려주지 말기 ⑤ 구독 유지 = 사용권 유지 ⑥ 폰트 자체 재배포 절대 금지 ⑦ 본인 디자인 파일 보관. Adobe CC 공식 구독 = 평생 자산 + 라이선스 안전.",
+              },
             ],
             relatedKeywords: [
               "Adobe Fonts 사용법",
@@ -9762,11 +9912,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Pexels·Mixkit 보완", body: "영상 종류가 부족하면 Pexels·Mixkit 함께 사용." },
             ],
             faq: [
-              { q: "Pexels Videos 와 차이?", a: "Pexels 는 양·다양성이 풍부, Coverr 는 웹 배경 특화 큐레이션. 단순 b-roll 은 Pexels, 웹사이트 헤더는 Coverr 가 톤이 잘 맞음." },
-              { q: "상업 사용?", a: "Coverr 라이선스로 상업 사용 허용. 저작자 표시는 권장이지만 의무 아님." },
-              { q: "Mixkit 와 비교?", a: "Mixkit 은 영상 + BGM + 효과음 + 템플릿 통합. Coverr 는 웹 배경 영상 특화. 통합 라이브러리는 Mixkit, 웹 배경 톤은 Coverr." },
-              { q: "한국 콘셉트 영상?", a: "비중 낮음. 글로벌 풍경·라이프스타일 위주. 한국식 영상은 직접 촬영 또는 한국 스톡 영상 사이트 보완." },
-              { q: "회원가입 필요?", a: "다운로드는 가능하지만 4K 풀 해상도와 신규 영상은 회원가입 후 사용 가능. 무료 가입." },
+              {
+                q: "Coverr 정말 100% 무료? 회원가입?",
+                a: "Coverr(coverr.co) = 100% 무료 웹사이트 배경 영상 특화 사이트. 회원가입 없이 일부 다운로드 가능. 4K 풀 해상도·신규 영상은 회원가입 후. 광고 없음. 사설 '웹 영상 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. coverr.co 공식 도메인만 이용. 약 1,500+ 시네마틱 영상 — 웹사이트 헤더·랜딩페이지·프레젠테이션 도입 영상 1티어. 한국 웹 디자이너·1인 사업자·스타트업 누구나 활용 핵심 사이트이며 웹 배경 영상 톤 큐레이션 1티어입니다.",
+              },
+              {
+                q: "Coverr vs Pexels vs Mixkit 차이?",
+                a: "글로벌 무료 영상 사이트 차이: ① Coverr = 웹사이트 배경 영상 특화, 시네마틱 톤 큐레이션 ② Pexels Videos = 영상 양·다양성 1티어, 한국어 검색 ③ Mixkit = 영상 + BGM + 효과음 + Premiere·AE 템플릿 통합 ④ Pixabay = 사진 + 영상 + 음악 종합. 추천 분담: ① 웹사이트 헤더·랜딩페이지 배경 = Coverr 우선(톤 큐레이션) ② 일반 b-roll·다양성 = Pexels Videos ③ 영상 + BGM + 템플릿 = Mixkit ④ 종합 = Pixabay. 한국 웹 디자이너 표준: Coverr(웹 배경) + Pexels(b-roll) + Mixkit(BGM·템플릿) 3박자 분담 활용. 본인 작업에 따라 선택.",
+              },
+              {
+                q: "Coverr 정말 상업 사용 가능? 라이선스?",
+                a: "Coverr 라이선스 = 100% 자유: ① 상업 사용 ② 수정·편집 ③ 재배포 ④ 회사 웹사이트·앱·SaaS 임베드 ⑤ 광고·CF·인쇄. 저작자 표시 권장이나 의무 아님. 단 ① 영상 자체 재판매 금지(예: 본인 스톡 사이트 재업로드) ② 영상 속 인물 초상권 별개 ③ 식별 가능 브랜드·로고 광고 사용 시 별도 권리. 활용: ① 본인 웹사이트 헤더 영상 ② SaaS 랜딩페이지 ③ 회사 광고·홍보 ④ 프레젠테이션 도입. 한국 웹 디자이너·스타트업·1인 사업자에게 라이선스 안전 1티어. 평생 자산 보호 측면에서 안전한 사이트.",
+              },
+              {
+                q: "Coverr 웹사이트 배경 영상 적용 방법?",
+                a: "웹사이트 배경 영상 적용 절차: ① Coverr 다운로드 MP4 파일 ② HTML `<video autoplay muted loop playsinline>` 태그 ③ CSS `position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;`. 활용 팁: ① autoplay = 자동 재생 ② muted = 음소거(자동 재생 필수) ③ loop = 무한 반복 ④ playsinline = 모바일 인라인 재생 ⑤ poster = 영상 로딩 중 이미지. 성능 최적화: ① 모바일 = 영상 비활성화 + 이미지 표시 ② 파일 크기 최적화(1080p · 1MB 이하) ③ Cloudflare Stream 등 CDN. 한국 웹 디자이너 표준: Coverr + Cloudflare Stream + 모바일 이미지 대체.",
+              },
+              {
+                q: "Coverr 활용 시나리오? 웹사이트·앱?",
+                a: "Coverr 활용 시나리오: ① 회사 웹사이트 헤더 영상 — 가장 많은 활용 ② SaaS 랜딩페이지 배경 영상 ③ 스타트업 IR 페이지 ④ 본인 포트폴리오 ⑤ 결혼 청첩장 웹 ⑥ 이벤트·콘서트 웹 ⑦ 프레젠테이션 PPT 도입 영상 ⑧ 광고·CF 배경 ⑨ 유튜브 인트로·아웃트로 ⑩ 영상 편집 b-roll. 강점: ① 시네마틱·미적 톤 ② 웹 배경에 최적화된 길이(5~30초) ③ 무한 루프 자연스러움 ④ 4K 고해상도. 한국 웹 디자이너 = Coverr 가 웹 디자인 표준 도구. 외주 영상 촬영 비용 평균 100~500만원 절약. 평생 자산 형성.",
+              },
+              {
+                q: "Coverr 카테고리·인기 영상?",
+                a: "Coverr 카테고리: ① Nature — 자연·풍경·산·바다 ② City — 도시·거리·교통 ③ Aerial — 드론·항공 ④ Lifestyle — 일상·라이프스타일 ⑤ People — 인물(초상권 검토) ⑥ Technology — IT·코드·디지털 ⑦ Business — 회사·미팅·차트 ⑧ Abstract — 추상·패턴 ⑨ Food — 음식 ⑩ Travel — 여행. 인기 영상 활용: ① 스타트업·SaaS = Technology·Business·City ② 디자이너 포트폴리오 = Abstract·Lifestyle ③ 식당·카페 웹 = Food ④ 여행·호텔 웹 = Travel·Aerial·Nature ⑤ 결혼·이벤트 = Nature·Lifestyle. 본인 사이트 톤에 맞는 카테고리 + 영상 5~10개 즐겨찾기 = 평생 자산.",
+              },
+              {
+                q: "Coverr 회원가입 후 추가 기능?",
+                a: "Coverr 회원가입(무료) 후 추가 기능: ① 4K 풀 해상도 다운로드 ② 신규 영상 즉시 액세스 ③ 좋아요·컬렉션 ④ 본인 컬렉션 만들기 ⑤ 본인 영상 업로드(일부) ⑥ 푸시 알림. 가입 = Google·이메일 SSO 1분. 활용: ① 본인 회사 영상 컬렉션 ② 프로젝트별 폴더 ③ 시간 절약. 무료 4K 다운로드 = 다른 사이트(Pexels·Mixkit) 와 같은 가성비. 회원가입 부담 없음 — 한국 디자이너·스타트업 누구나 가입 권장. 한 계정으로 PC·모바일 동기화.",
+              },
+              {
+                q: "Coverr 다운로드 형식·해상도?",
+                a: "Coverr 다운로드 형식: ① MP4 = 표준, 4K / 1080p / 720p / 480p ② WebM 일부. 활용: ① 웹사이트 배경 = MP4 1080p 충분 ② 4K 디스플레이 + 큰 화면 = 4K ③ 모바일 = 720p(데이터 절약) ④ 인쇄·전시 = 4K. 다운로드 즉시 본인 PC 보관 + 정리 권장. 회사 웹사이트 라이브러리 구축 시 본인 자주 쓰는 영상 20~50개 다운로드 + 분류(카테고리·길이·해상도) = 평생 자산. 외장 SSD 또는 클라우드 백업 권장. 한 영상 = 4K 약 100~500MB / 1080p 약 30~100MB.",
+              },
+              {
+                q: "Coverr 한국 콘셉트 영상?",
+                a: "Coverr 한국 콘셉트 비중 = 매우 낮음. 글로벌 풍경·도시·라이프스타일 위주. 한국 영상 비중: ① 한국 도시·풍경 = 거의 없음 ② 한국 음식·문화 = 없음 ③ 한국 인물 = 없음 ④ 글로벌 비즈니스·자연·도시 = 1티어. 한국 콘셉트 = ① Coverr 일반 영상 + ② 한국 영상 별도 촬영 ③ 한국 무료 영상 사이트(Pixabay·공유마당) ④ 한국 유료 스톡 분담. 글로벌 톤 = Coverr 우선. 한국 로컬 콘셉트 = 본인 촬영 또는 한국 사이트. 한국 진출 외국 회사 = Coverr 글로벌 톤 + 본인 한국 영상 보완 표준입니다.",
+              },
+              {
+                q: "Coverr 영상 속 인물 광고 사용 안전?",
+                a: "영상 속 인물 = 초상권 별개 위험. Coverr 라이선스 영상 자체 사용권만 부여. 위험 사례: ① 인물 영상 광고 사용 → 모델 동의 안 함 → 초상권 분쟁 ② 광고 모델 인지 가능한 영상 ③ 아동·약자·장애인 영상. 안전 활용: ① 풍경·도시·자연 영상(인물 인지 어려움) = 100% 안전 ② 인물 광고 = 모델 릴리스 확보 유료 스톡 권장 ③ 본인 촬영 + 모델 동의서 ④ 인물 일반 콘텐츠(블로그·웹) = 위험 낮음. 회사 광고·CF = 본인 촬영 또는 유료 스톡 권장 — 평생 자산 보호. Coverr 풍경·자연 영상 위주 활용이 가장 안전합니다.",
+              },
+              {
+                q: "Coverr 디자인 도구 통합?",
+                a: "Coverr 영상 디자인 도구 통합: ① 웹사이트 = HTML `<video>` 태그 직접 임베드 ② Figma·Sketch — MP4 import + 프로토타입 ③ Adobe XD — MP4 import ④ Webflow — Video Background 직접 ⑤ WordPress — 플러그인 ⑥ Squarespace·Wix — 비디오 헤더 직접 임베드. 활용: ① 본인 웹사이트 헤더 = Coverr 직접 임베드 ② 디자인 시안 = Figma 프로토타입 ③ 노코드 = Webflow·Squarespace. 한국 웹 디자이너 표준 워크플로우: Coverr + 본인 웹사이트 빌더 = 시간 큰 폭 절약. 외주 영상 촬영 비용 평균 100~500만원 절약 + 디자인 일관성.",
+              },
+              {
+                q: "Coverr 모바일·휴대폰?",
+                a: "Coverr 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 영상 검색·미리보기 ② 다운로드 ③ 좋아요·컬렉션. 모바일 한계: ① 4K 영상 다운로드 = 데이터·저장공간 ② 본격 영상 편집 = PC 권장 ③ 웹사이트 임베드 = PC 코드 편집 필수. 활용: ① 외출 중 빠른 검색 + 즐겨찾기 ② PC 본격 다운로드·임베드 ③ 모바일 영상 편집 도구(CapCut) + Coverr 다운로드 결합. 한 계정으로 PC·모바일 동기화. 본격 작업 = PC 권장. 모바일 = 영감 + 즐겨찾기 + 빠른 검색.",
+              },
+              {
+                q: "Coverr 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 디자이너 = 클라이언트 웹사이트 헤더 영상 ② 1인 사업자 = 회사 홈페이지 ③ 스타트업 = 랜딩페이지·IR 페이지 ④ 디자이너 포트폴리오 ⑤ 결혼 청첩장 웹 ⑥ 이벤트·콘서트 ⑦ SaaS 회사 = 제품 소개 ⑧ 광고 회사 = CF 배경 영상 ⑨ 마케터 = 캠페인 영상 ⑩ 유튜버 = b-roll 일부. 평생 활용: 매월 웹 디자인 작업 시 Coverr 활용 = 매년 100~500만원 영상 비용 절약, 평생 누적 1,000만~5,000만원. 한국 웹 디자이너·1인 사업자에게 사실상 표준 도구. 외주 영상 촬영 평균 100~500만원 절약 + 평생 라이브러리 형성.",
+              },
+              {
+                q: "Coverr 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '무료 영상 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Coverr 사이트 — 본인 정보·악성코드 ③ 인물 영상 광고 사용 → 초상권 분쟁 ④ 영상 자체 재판매 — 약관 위반 ⑤ 영상에 본인 워터마크 → 본인 작품 가장. 주의사항: ① coverr.co 공식 도메인만 ② 본인이 직접 다운로드 ③ 인물 영상 광고 사용 시 모델 릴리스 확보 또는 풍경 영상 ④ 영상 자체 재판매 절대 금지 ⑤ 본인 작품 = 본인이 임베드한 결과물만 ⑥ 회사 광고 = 본인 콘텐츠 + Coverr 자료. 풍경·도시·자연 영상 = 사실상 100% 안전.",
+              },
             ],
             relatedKeywords: [
               "Coverr 무료 영상",
@@ -10500,13 +10701,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Figma 플러그인", body: "디자이너는 Figma·Sketch 플러그인으로 디자인 시안에 즉시 삽입." },
             ],
             faq: [
-              { q: "Heroicons 와 차이?", a: "Heroicons = Tailwind 팀 제작, 양 적지만 디자인 톤 일관. Lucide = 커뮤니티 운영, 양 많고 업데이트 활발. Tailwind 기본 톤은 Heroicons, 더 다양성이 필요하면 Lucide." },
-              { q: "Flaticon 과 비교?", a: "Flaticon = 1,400만+, 디자인 자료 풍부, 출처 표시 의무. Lucide = 1,400+, 깔끔한 UI 톤, ISC 자유. 개발용은 Lucide, 디자인용은 Flaticon." },
-              { q: "라이선스 진짜 자유?", a: "예. ISC 라이선스는 MIT 와 유사한 자유 라이선스. 상업·재배포·수정·임베드 모두 가능, 저작자 표시 의무 없음. 회사 프로젝트에 안심하고 사용." },
-              { q: "어느 프레임워크?", a: "React·Vue·Svelte·Solid·Angular·Lit 모두 공식 npm 패키지. 프레임워크 없이도 SVG 직접 다운로드 가능." },
-              { q: "Tailwind 와 함께?", a: "lucide-react 컴포넌트에 className 으로 Tailwind 유틸리티 적용. 'text-blue-500 w-6 h-6' 같이." },
-              { q: "Tree-shaking?", a: "사용한 아이콘만 번들에 포함. 1,400개 전부 import 해도 실제 번들에는 사용한 것만 들어감. 파일 크기 최소화." },
-              { q: "Figma 사용?", a: "Figma 플러그인 'Lucide Icons' 설치 후 검색·삽입. 디자이너·개발자 협업에 편리." },
+              {
+                q: "Lucide 정말 100% 무료? 라이선스?",
+                a: "Lucide(lucide.dev) = 100% 무료 오픈소스 아이콘 사이트. 회원가입 없이 즉시 다운로드. 광고 없음 — 커뮤니티 운영. ISC 라이선스(MIT 와 유사) — 가장 자유로운 라이선스. 약 1,400+ 아이콘 — Feather Icons 의 후속 프로젝트. 사설 'SVG 아이콘 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. lucide.dev 공식 도메인만 이용. 한국 웹 개발자·디자이너 누구나 활용 핵심 사이트이며 React·Vue·Svelte·Angular 표준 도구. 깔끔한 UI 톤 + 자유 라이선스 = 평생 자산 안전.",
+              },
+              {
+                q: "Lucide vs Heroicons vs Tabler Icons 차이?",
+                a: "글로벌 오픈소스 아이콘 사이트 차이: ① Lucide = 약 1,400+ 아이콘, 커뮤니티 운영, 업데이트 활발, Feather 후속 ② Heroicons = 약 300+ 아이콘, Tailwind 팀 제작, 디자인 톤 일관, Tailwind 기본 ③ Tabler Icons = 약 5,000+ 아이콘, 일관된 톤, 양 1티어 ④ Phosphor Icons = 6가지 스타일 ⑤ Material Symbols(Google) = Material Design. 추천: ① Tailwind 사용자 = Heroicons 우선 ② 양·다양성 = Tabler Icons ③ 깔끔·UI 표준 = Lucide ④ 다양 스타일 = Phosphor ⑤ Google 생태계 = Material. 한국 웹 개발자 표준: Lucide(가장 보편) + Heroicons(Tailwind) + Tabler(다양성) 분담 활용.",
+              },
+              {
+                q: "Lucide ISC 라이선스 진짜 자유?",
+                a: "Lucide ISC 라이선스 = MIT 와 유사한 가장 자유로운 라이선스: ① 상업 사용 ② 수정·편집 ③ 재배포 ④ 재판매(법적 OK) ⑤ 임베드 ⑥ 저작자 표시 의무 없음 ⑦ 본인 작품 같이 사용. 활용: ① 회사 BI·CI 로고 = 안전 ② 광고·CF·인쇄 자유 ③ SaaS·앱 임베드 자유 ④ 클라이언트 의뢰 작품 안전 ⑤ 본인 디자인 시스템 통합. 한국 웹 개발자·SaaS 회사에게 라이선스 안전 1티어 — 평생 분쟁 0. 다른 사이트(Flaticon 출처 표시 의무, Storyset 출처 표시) 대비 압도적 자유도. 평생 자산 보호 측면에서 가장 안전한 아이콘 사이트 중 하나.",
+              },
+              {
+                q: "Lucide 프레임워크 통합? React·Vue·Svelte?",
+                a: "Lucide 프레임워크 공식 npm 패키지: ① React = `lucide-react` ② Vue = `lucide-vue-next` ③ Svelte = `lucide-svelte` ④ Solid = `lucide-solid` ⑤ Angular = `lucide-angular` ⑥ Lit = `lucide-lit` ⑦ Preact = `@lucide/preact` ⑧ 일반 SVG = lucide.dev 다운로드. 활용 예(React): `import { Home, User, Settings } from 'lucide-react'; <Home className='w-6 h-6 text-blue-500' />`. 강점: ① 트리 쉐이킹 ② TypeScript 지원 ③ Tailwind 호환 ④ 일관된 API. 한국 웹 개발자 표준: React + Lucide + Tailwind = 빠른 UI 개발. SaaS·앱 개발에 사실상 표준 도구입니다.",
+              },
+              {
+                q: "Lucide Tree-shaking·번들 크기?",
+                a: "Lucide Tree-shaking 강점 = 사용한 아이콘만 번들에 포함. 활용: ① 1,400개 전부 import 해도 실제 번들에는 사용한 것만 ② Webpack·Rollup·Vite·esbuild 모두 자동 ③ 평균 아이콘 1개 = 약 1~3KB. 비교: ① `import { Home } from 'lucide-react'` = Home 아이콘만 번들에 ② `import * as icons from 'lucide-react'` = 전체 포함(피해야 함). 본인 앱 100개 아이콘 사용 시 = 약 200~300KB(매우 작음). 모바일 앱·SaaS = 번들 크기 최적화 필수 — Lucide 표준. 한국 웹 개발자 표준: Lucide + Tree-shaking + Tailwind = 빠른 + 가벼운 앱.",
+              },
+              {
+                q: "Lucide 아이콘 커스터마이징?",
+                a: "Lucide 아이콘 자유 커스터마이징: ① 색상 — currentColor 기본, CSS color 또는 Tailwind text-blue-500 ② 크기 — w-4·w-6·w-8(Tailwind) 또는 width·height ③ 굵기(stroke width) — `<Home strokeWidth={1.5} />` 1~3 ④ 회전 — Tailwind rotate-45 ⑤ 애니메이션 — Tailwind animate-spin. 활용: ① 본인 회사 색상 적용 ② 다크 모드 자동 적용 ③ 디자인 시스템 일관성 ④ 반응형 크기. 강점: SVG 기반 = 모든 커스터마이징 자유 + 무한 확대. 한국 웹 디자이너·UX 디자이너 표준: Lucide + Tailwind + 본인 회사 디자인 시스템 = 일관된 UI.",
+              },
+              {
+                q: "Lucide Figma·디자인 도구 통합?",
+                a: "Lucide 디자인 도구 통합: ① Figma — 'Lucide Icons' 플러그인 = 직접 검색·삽입(가장 보편) ② Sketch — 플러그인 ③ Adobe XD — SVG import ④ Webflow — SVG 임베드 ⑤ Framer — SVG 통합. Figma + Lucide 워크플로우: ① Figma 디자인 시안 작성 → Lucide 플러그인 검색·삽입 → 본인 회사 색상 적용 → 개발자에게 인계 ② 개발자 = React lucide-react 사용 = 디자이너 시안과 동일 아이콘. 디자이너·개발자 협업 = Lucide 가 표준 — 디자이너 시안과 개발 결과물 일치. 한국 웹 디자이너·개발자 협업 시간 절약 1티어 도구입니다.",
+              },
+              {
+                q: "Lucide 회사 BI·SaaS 활용?",
+                a: "Lucide = 회사 BI·SaaS 활용 1티어. 활용 시나리오: ① SaaS 제품 UI — 가장 많은 활용 ② 회사 웹사이트 ③ 모바일 앱 ④ 본인 디자인 시스템 ⑤ 디자인 핸드오프(디자이너→개발자) ⑥ 회사 BI 보조 아이콘 ⑦ 블로그·문서 사이트. 강점: ① ISC 라이선스 = 라이선스 안전 1티어 ② 깔끔한 UI 톤 = SaaS·모던 디자인 표준 ③ Tree-shaking = 빠른 앱 ④ 프레임워크 통합 = 개발 시간 절약. 단 ① 회사 BI 핵심 로고 = 다른 회사도 같은 아이콘 가능 → 차별화 권장 ② 본인 회사 색상 + 일부 변형 = 차별화. 한국 SaaS·스타트업 표준 도구.",
+              },
+              {
+                q: "Lucide 업데이트 주기·새 아이콘?",
+                a: "Lucide 업데이트 주기 = 매월 또는 분기별 신규 아이콘 추가. 확인: ① lucide.dev 'New' 메뉴 ② GitHub repo(github.com/lucide-icons/lucide) ③ Discord 커뮤니티 ④ Twitter·X(@lucideicons). 신규 아이콘 카테고리: ① AI·머신러닝 ② 암호화폐·블록체인 ③ 소셜 미디어 신규 플랫폼 ④ 일상·라이프스타일 ⑤ 비즈니스·금융. 활용: ① 매월 npm 패키지 업데이트 ② 신규 아이콘 정기 확인 ③ 본인 디자인 시스템 갱신. 정기 업데이트 = 본인 앱·웹사이트 트렌드 반영. 한국 웹 개발자 표준: Lucide + 분기별 업데이트 확인 = 평생 자산 + 트렌드 반영.",
+              },
+              {
+                q: "Lucide vs Flaticon 어떻게 분담?",
+                a: "Lucide vs Flaticon 분담 가이드: ① 코드·웹·앱 개발 = Lucide(ISC 자유 + 프레임워크 통합 + Tree-shaking) ② 디자인 자료·PPT·일러스트·인포그래픽 = Flaticon(양 1,400만+ + 다양 스타일) ③ 회사 BI 핵심 = 본인 디자이너 차별화 ④ 회사 UI 보조 = Lucide ⑤ 회사 외주 디자인 자료 = Flaticon. 한국 사용자 표준: ① 웹 개발자 = Lucide 우선 + Flaticon 일부 ② 디자이너 = Flaticon 우선 + Lucide 일부 ③ 1인 사업·블로거 = 둘 다 활용 ④ SaaS 회사 = Lucide + 본인 디자이너. 본인 작업·역할에 따라 분담이 효율적입니다.",
+              },
+              {
+                q: "Lucide 다운로드·SVG·React 사용?",
+                a: "Lucide 사용 방법 3가지: ① 일반 SVG = lucide.dev 검색 후 SVG 다운로드 → 본인 디자인·앱에 사용 ② npm 패키지 = `npm install lucide-react` 후 `import { Home } from 'lucide-react'` ③ CDN = `<link rel='stylesheet' href='https://unpkg.com/lucide-static@latest/font/lucide.css'>`. 추천: ① React·Vue·Svelte 앱 = npm 패키지 ② 일반 웹사이트 = CDN 또는 SVG 직접 ③ 디자인 시안 = Figma 플러그인. SVG 다운로드 후 본인 디자인 시스템에 통합 = 평생 자산. 본격 개발자 = npm 패키지 + Tree-shaking + TypeScript = 표준 워크플로우.",
+              },
+              {
+                q: "Lucide 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 개발자(React·Vue) = SaaS·앱 UI 아이콘 (가장 많은 활용) ② UI/UX 디자이너 = Figma 디자인 시안 + 개발자 인계 ③ 스타트업 = 제품 UI ④ 1인 사업자 = 회사 웹사이트 ⑤ 블로거 = 본문 아이콘 ⑥ 학생·개발자 = 사이드 프로젝트 ⑦ 디자인 시스템 구축. 평생 활용: 매월 개발 작업 시 Lucide 활용 = 매년 50~300만원 아이콘 비용 절약, 평생 누적 500만~3,000만원. 한국 웹 개발자·디자이너에게 사실상 표준 도구. ISC 라이선스 + 프레임워크 통합 + 트렌디 = 평생 자산.",
+              },
+              {
+                q: "Lucide 모바일·휴대폰?",
+                a: "Lucide 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 아이콘 검색·미리보기 ② SVG 다운로드 ③ 코드 복사. 모바일 한계: ① 본격 개발 = PC 권장(IDE·npm 필수) ② 디자인 작업 = PC 효율적 ③ 모바일 React Native 개발 = PC 코드 작성. 활용: ① PC 본격 작업 + 모바일 빠른 검색 분담 ② React Native 앱 = lucide-react-native 사용. 한 계정 동기화는 GitHub 통해 가능. 본격 개발 = PC. 모바일 = 빠른 검색 + 즐겨찾기.",
+              },
+              {
+                q: "Lucide 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '무료 SVG 아이콘 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Lucide 사이트 — 본인 정보·악성코드 ③ 회사 BI 핵심에 그대로 사용 → 다른 회사와 동일 ④ Lucide 무단 수정 후 재배포 (법적 OK 이나 윤리적 문제). 주의사항: ① lucide.dev 공식 도메인만 ② 본인이 직접 다운로드·npm 설치 ③ ISC 라이선스 자유 활용 ④ 회사 BI 핵심 = 본인 디자이너 차별화 ⑤ 본인 회사 색상 + 일부 변형 = 차별화 ⑥ Lucide 커뮤니티 존중(GitHub 기여·기부). ISC 라이선스 = 평생 자산 보호 + 자유도 1티어. 한국 웹 개발자에게 가장 안전한 아이콘 사이트.",
+              },
             ],
             relatedKeywords: [
               "Lucide 아이콘",
@@ -10580,12 +10830,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Mini 톤", body: "16x16 작은 아이콘이 필요할 때 Mini 사용. 버튼·뱃지에 적합." },
             ],
             faq: [
-              { q: "Lucide 와 차이?", a: "Heroicons = Tailwind 팀 공식, 양 적지만 톤 일관성 1티어. Lucide = 커뮤니티, 양 많고 업데이트 활발. 단순 UI 표준은 Heroicons, 다양성·신규 아이콘은 Lucide. 두 개 같이 쓰는 프로젝트도 흔함." },
-              { q: "shadcn/ui 에서 사용?", a: "shadcn/ui 의 기본 아이콘이 Lucide 이지만 Heroicons 로 교체 자유. 본인 디자인 톤에 맞춰 선택." },
-              { q: "Outline 과 Solid 차이?", a: "Outline = 선만 있는 미니멀 톤, Solid = 채워진 톤, Mini = 작은 16x16 버전. 같은 아이콘을 다른 톤으로 자유롭게 교체." },
-              { q: "MIT 라이선스 안전?", a: "예. 회사 프로젝트·재배포·수정·임베드 모두 자유. 저작자 표시 의무 없음." },
-              { q: "Vue 도 지원?", a: "@heroicons/vue 공식 패키지. React 와 동일한 방식." },
-              { q: "신규 아이콘 추가?", a: "정기 업데이트되지만 Lucide 만큼 빠르지는 않음. 신규 아이콘이 필요하면 Lucide 또는 Tabler 보완." },
+              {
+                q: "Heroicons 정말 100% 무료? 라이선스?",
+                a: "Heroicons(heroicons.com) = 100% 무료 오픈소스 아이콘 사이트. 회원가입 없이 즉시 다운로드. 광고 없음 — Tailwind CSS 팀 공식 운영. MIT 라이선스 — 가장 자유로운 라이선스. 약 300+ 아이콘 — 양은 적지만 디자인 톤 일관성 1티어. 사설 'Tailwind 아이콘 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. heroicons.com 공식 도메인만 이용. Tailwind CSS · shadcn/ui · v0 사용자 = Heroicons 사실상 표준. 한국 웹 개발자·디자이너 누구나 활용 핵심 사이트입니다.",
+              },
+              {
+                q: "Heroicons vs Lucide vs Tabler Icons 차이?",
+                a: "글로벌 오픈소스 아이콘 사이트 차이: ① Heroicons = 약 300+ 아이콘, Tailwind 팀 제작, 디자인 톤 일관성 1티어, Tailwind 기본 ② Lucide = 약 1,400+ 아이콘, 커뮤니티 운영, 업데이트 활발 ③ Tabler Icons = 약 5,000+ 아이콘, 일관된 톤, 양 1티어 ④ Phosphor = 6가지 스타일 ⑤ Material Symbols(Google). 추천: ① Tailwind 사용자 = Heroicons 우선 ② 양·다양성 = Tabler 또는 Lucide ③ shadcn/ui = Lucide(기본) ④ Google 생태계 = Material. 한국 웹 개발자 표준: Heroicons(Tailwind) + Lucide(다양) + Tabler(양) 분담. 본인 사용 디자인 시스템에 따라 선택.",
+              },
+              {
+                q: "Heroicons Outline·Solid·Mini 차이?",
+                a: "Heroicons 3가지 스타일: ① Outline(24x24) — 선만 있는 미니멀 톤, 가장 보편, 일반 UI 표준 ② Solid(24x24) — 채워진 톤, 강조·활성 상태 ③ Mini(20x20) — 작은 크기, 컴팩트 UI ④ Micro(16x16) — 매우 작음, 추가 추가됨. 활용: ① 일반 UI = Outline 우선(미니멀 모던) ② 활성·선택 상태 = Solid(시각적 강조) ③ 작은 버튼·라벨 = Mini ④ 표·리스트 = Micro. 추천 워크플로우: 일반 상태 = Outline, hover·active = Solid 변환 = 사용자 경험 큰 폭 향상. Tailwind + shadcn/ui = Heroicons 표준 페어링.",
+              },
+              {
+                q: "Heroicons MIT 라이선스 안전?",
+                a: "Heroicons MIT 라이선스 = 가장 자유로운 라이선스 중 하나: ① 상업 사용 ② 수정·편집 ③ 재배포 ④ 재판매(법적 OK) ⑤ 회사 BI·CI 자유 ⑥ 저작자 표시 의무 없음 ⑦ 임베드 자유. 활용: ① 회사 SaaS·앱 UI = 안전 ② 광고·CF·인쇄 자유 ③ 클라이언트 의뢰 작품 안전 ④ 본인 디자인 시스템 통합 ⑤ 회사 BI 보조 활용. 한국 웹 개발자·SaaS 회사에게 라이선스 안전 1티어 — 평생 분쟁 0. Lucide(ISC)·Heroicons(MIT)·Tabler(MIT) 모두 자유 라이선스 — 회사 프로젝트에 안심하고 사용 가능. 평생 자산 보호 측면 가장 안전.",
+              },
+              {
+                q: "Heroicons React·Vue 사용?",
+                a: "Heroicons 공식 npm 패키지: ① React = `@heroicons/react` ② Vue = `@heroicons/vue` ③ Tailwind CSS = 기본 호환. 활용 예(React): `import { HomeIcon } from '@heroicons/react/24/outline'; <HomeIcon className='h-6 w-6 text-blue-500' />`. 강점: ① Tailwind 100% 호환 ② TypeScript 지원 ③ Tree-shaking 자동 ④ Outline·Solid·Mini 동일 API ⑤ shadcn/ui · v0 호환. 한국 웹 개발자 표준: React + Tailwind + Heroicons + shadcn/ui = 빠른 SaaS·앱 UI 개발. Next.js · Remix · Vite 모두 호환. 본격 웹 개발자에게 표준 워크플로우 도구입니다.",
+              },
+              {
+                q: "Heroicons shadcn/ui·v0 호환?",
+                a: "Heroicons + shadcn/ui · v0 통합: ① shadcn/ui 기본 아이콘 = Lucide 이나 Heroicons 로 교체 자유 ② v0(Vercel) 생성 코드 = Heroicons 또는 Lucide 선택 가능 ③ 본인 디자인 톤에 맞춰 선택. 활용: ① Tailwind 기본 디자인 = Heroicons 우선 ② Lucide 디자인 톤이 더 다양성 필요 시 = Lucide ③ 본인 회사 디자인 시스템 = 하나 선택 후 일관성 유지. 한국 SaaS·스타트업 표준 워크플로우: ① v0 또는 shadcn/ui 로 빠른 UI 생성 ② 본인 디자인 톤에 맞는 아이콘(Heroicons or Lucide) ③ Tailwind + 본인 회사 색상 = 모던 SaaS UI 완성. 평생 자산 형성.",
+              },
+              {
+                q: "Heroicons Tailwind CSS 와 함께?",
+                a: "Heroicons = Tailwind CSS 팀 공식 제작 — 완벽 호환. 활용: ① Tailwind 클래스로 색상 = `text-blue-500` ② 크기 = `w-4 h-4`·`w-6 h-6` ③ 배경 = `bg-blue-100` ④ 호버 = `hover:text-blue-600` ⑤ 다크 모드 = `dark:text-white`. 활용 예: `<HomeIcon className='h-6 w-6 text-gray-700 hover:text-blue-500 dark:text-gray-300' />`. 강점: ① Tailwind 디자인 토큰 자동 적용 ② 디자인 시스템 일관성 ③ 다크 모드 자동 ④ 반응형 자동 ⑤ 코드 작성 시간 큰 폭 절약. 한국 웹 개발자 = Tailwind + Heroicons = 표준 페어링. shadcn/ui · v0 사용자에게 필수입니다.",
+              },
+              {
+                q: "Heroicons 신규 아이콘·업데이트?",
+                a: "Heroicons 업데이트: ① 신규 아이콘 추가 = 분기별 또는 반기별 ② Tailwind 팀 직접 운영 = 디자인 톤 일관성 유지 ③ Lucide 만큼 빠르지는 않음 ④ 본격 신규 아이콘 = Lucide 또는 Tabler 보완. 약 300+ 아이콘 = 일반 UI 작업에 충분하나 특수 아이콘(암호화폐·AI·신규 SNS·산업 특화) = 부족. 활용: ① 기본 UI(홈·검색·설정·메뉴 등) = Heroicons 충분 ② 특수 분야 = Lucide·Tabler 보완 ③ 매년 1회 npm 패키지 업데이트 ④ Heroicons + 다른 사이트 분담. 단순 깔끔 UI = Heroicons 우선 + 필요 시 Lucide·Tabler 보완이 표준입니다.",
+              },
+              {
+                q: "Heroicons 다운로드·Figma 사용?",
+                a: "Heroicons 사용 방법: ① 일반 SVG = heroicons.com 검색 후 SVG 또는 JSX 코드 복사 ② npm 패키지 = `npm install @heroicons/react` 또는 `@heroicons/vue` ③ Figma 플러그인 = 'Heroicons' 플러그인 검색·삽입 ④ CDN = 일부. Figma 워크플로우: ① Figma 디자인 시안 → Heroicons 플러그인 검색·삽입 ② 본인 회사 색상 적용 ③ 개발자에게 인계 = React 동일 아이콘. 디자이너·개발자 협업 시간 절약 1티어. 한국 웹 디자이너 = Figma + Heroicons 플러그인 = 표준 도구.",
+              },
+              {
+                q: "Heroicons 회사 BI·SaaS 활용?",
+                a: "Heroicons = SaaS·모던 디자인 활용 1티어. 활용 시나리오: ① SaaS 제품 UI — 가장 많은 활용 ② Tailwind 기반 회사 웹사이트 ③ 본인 디자인 시스템 ④ 스타트업 IR · 피치덱 ⑤ 회사 BI 보조 ⑥ 모바일 앱(React Native) ⑦ 본인 포트폴리오. 강점: ① MIT 라이선스 = 라이선스 안전 1티어 ② 디자인 톤 일관성 = SaaS 표준 ③ Tailwind 완벽 호환 ④ Tree-shaking ⑤ Outline·Solid 자유 교체. 단 ① 회사 BI 핵심 = 다른 회사도 같은 아이콘 가능 → 차별화 권장 ② 본인 회사 색상 + 일부 변형 = 차별화. 한국 SaaS·스타트업·Tailwind 사용자에게 사실상 표준 도구.",
+              },
+              {
+                q: "Heroicons 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 개발자(React·Vue + Tailwind) = SaaS·앱 UI ② shadcn/ui·v0 사용자 = 기본 아이콘 ③ UI/UX 디자이너 = Figma 디자인 시안 ④ 스타트업 = 제품 UI ⑤ 1인 사업자 = Tailwind 회사 웹사이트 ⑥ 본인 디자인 시스템 구축. 평생 활용: 매월 개발 작업 시 Heroicons 활용 = 매년 50~300만원 아이콘 비용 절약, 평생 누적 500만~3,000만원. 한국 SaaS·스타트업·Tailwind 사용자에게 사실상 표준 도구. MIT 라이선스 + Tailwind 완벽 호환 + 깔끔 톤 = 평생 자산. 본격 웹 개발자는 Heroicons + Lucide 둘 다 활용 권장.",
+              },
+              {
+                q: "Heroicons 모바일·휴대폰?",
+                a: "Heroicons 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 아이콘 검색·미리보기 ② SVG·JSX 코드 복사 ③ 다운로드. 모바일 한계: ① 본격 개발 = PC 권장 ② IDE·npm = PC 필수 ③ Figma 디자인 = PC 효율적. 활용: ① PC 본격 작업 + 모바일 빠른 검색 분담 ② Figma 모바일 앱 + Heroicons 플러그인 일부 ③ React Native 앱 = lucide-react-native 또는 react-native-vector-icons. 한국 웹 개발자 = PC 본격 + 모바일 빠른 검색. 본격 작업 = PC 권장.",
+              },
+              {
+                q: "Heroicons 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '무료 Tailwind 아이콘 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Heroicons 사이트 — 본인 정보·악성코드 ③ 회사 BI 핵심에 그대로 사용 → 다른 회사와 동일 ④ Heroicons 무단 수정 후 재배포(법적 OK 이나 윤리적 문제). 주의사항: ① heroicons.com 공식 도메인만 ② 본인이 직접 다운로드·npm 설치 ③ MIT 라이선스 자유 활용 ④ 회사 BI 핵심 = 본인 디자이너 차별화 ⑤ 본인 회사 색상 + 일부 변형 = 차별화 ⑥ Tailwind 팀 존중(GitHub 기여·Tailwind 후원). MIT 라이선스 = 평생 자산 보호 + 자유도 1티어. 한국 웹 개발자에게 가장 안전한 아이콘 사이트 중 하나.",
+              },
+              {
+                q: "Heroicons 다른 아이콘 사이트와 결합 활용?",
+                a: "본인 디자인 시스템 = 여러 아이콘 사이트 결합 활용 가능: ① 기본 UI = Heroicons(Tailwind 표준) ② 다양 아이콘 = Lucide ③ 매우 다양 = Tabler ④ Material Design = Material Symbols ⑤ 특수 분야 = Phosphor·Iconify(전체 모음). 단 ① 디자인 톤 일관성 유지 = 한 사이트 우선 + 부족할 때만 다른 사이트 ② 본인 디자인 시스템에 표준화 ③ 한 사이트 = 본문 70%+ 차지. Iconify(iconify.design) = 모든 아이콘 사이트 통합 검색·사용 가능 — 본인 디자인 시스템에 다양 아이콘 통합 시 활용. 한국 웹 개발자 표준: Heroicons + Lucide 분담 + Iconify 통합.",
+              },
             ],
             relatedKeywords: [
               "Heroicons 사용법",
@@ -10659,12 +10959,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Tabler UI 통합", body: "같은 팀의 Tabler 대시보드 템플릿과 같이 사용하면 디자인 일관성." },
             ],
             faq: [
-              { q: "Lucide·Heroicons 와 차이?", a: "Tabler = 양 압도적(5,500+) + 굵기·둥글기 조절 + 브랜드 로고. Lucide = 1,400+, 톤 일관. Heroicons = 300+, Tailwind 톤. 다양성·특수 아이콘은 Tabler, 일관된 톤은 Heroicons·Lucide. 같이 쓰는 경우도 많음." },
-              { q: "브랜드 로고 어떤 거?", a: "GitHub·X·Instagram·LinkedIn·Facebook·YouTube·TikTok 등 글로벌 + 일부 한국 브랜드. tabler.io/icons 에서 brand 카테고리." },
-              { q: "굵기 조절?", a: "<Icon stroke={1.5} /> 또는 CSS 의 stroke-width 속성. 사이트에서 미리보기 후 본인 디자인에 맞춰 적용." },
-              { q: "MIT 라이선스 안전?", a: "예. 상업·재배포·수정 100% 자유. 회사 프로젝트에 안심." },
-              { q: "Vue·Svelte 도?", a: "공식 패키지 모두 제공. @tabler/icons-vue, @tabler/icons-svelte 등." },
-              { q: "Tabler UI 가 뭐?", a: "Tabler Icons 와 같은 팀의 무료 어드민 대시보드 템플릿. tabler.io/admin. 같이 쓰면 디자인 톤 일관." },
+              {
+                q: "Tabler Icons 정말 100% 무료? 라이선스?",
+                a: "Tabler Icons(tabler.io/icons) = 100% 무료 오픈소스 아이콘 사이트. 회원가입 없이 즉시 다운로드. 광고 없음 — Tabler 팀 운영. MIT 라이선스 — 가장 자유로운 라이선스. 약 5,500+ 아이콘 — 글로벌 오픈소스 아이콘 양 1티어. 사설 '오픈소스 아이콘 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. tabler.io/icons 공식 도메인만 이용. 한국 웹 개발자·디자이너 누구나 활용 핵심 사이트. Lucide·Heroicons 대비 양 압도적 + 굵기·둥글기 조절 + 브랜드 로고 풍부. 본격 디자인 시스템 구축에 1티어.",
+              },
+              {
+                q: "Tabler vs Lucide vs Heroicons 차이?",
+                a: "글로벌 오픈소스 아이콘 사이트 차이: ① Tabler = 약 5,500+ 아이콘, 양 압도적, 굵기·둥글기 조절, 브랜드 로고 풍부, MIT ② Lucide = 약 1,400+, 커뮤니티 운영, 업데이트 활발, ISC ③ Heroicons = 약 300+, Tailwind 팀, 디자인 톤 일관성, MIT ④ Material Symbols = Google ⑤ Phosphor = 6가지 스타일. 추천: ① 양·다양성·특수 아이콘 = Tabler 우선 ② Tailwind 사용자 = Heroicons + Lucide ③ Google 생태계 = Material ④ 디자인 톤 일관성 = Heroicons. 한국 웹 개발자 표준: Tabler(양) + Lucide(보편) + Heroicons(Tailwind) 분담 활용. 본인 디자인 시스템에 따라 우선순위.",
+              },
+              {
+                q: "Tabler 5,500+ 아이콘 카테고리?",
+                a: "Tabler Icons 약 5,500+ 아이콘 카테고리: ① UI 기본 — 홈·검색·설정·메뉴·사용자·아이콘 ② 비즈니스 — 차트·그래프·돈·은행·차트 ③ 커뮤니케이션 — 메일·메시지·전화·채팅 ④ 디바이스 — PC·모바일·태블릿·스마트폰 ⑤ 파일·폴더 — 다양 ⑥ 미디어 — 영상·음악·재생·일시정지 ⑦ 소셜·브랜드 — GitHub·X·Instagram·LinkedIn·Facebook·YouTube·TikTok·Discord·Slack·100+ 브랜드 ⑧ 음식 — 다양 ⑨ 운송 — 자동차·자전거·비행기·기차 ⑩ 자연 — 동물·식물·날씨 ⑪ 의료 — 헬스·약·병원 ⑫ 기술 — 코드·DB·서버. 한국 웹 개발자가 찾는 거의 모든 아이콘 발견 가능합니다.",
+              },
+              {
+                q: "Tabler 브랜드 로고 어떤 거? 한국 브랜드?",
+                a: "Tabler 브랜드 로고 카테고리(2026): ① 글로벌 SNS — X(Twitter)·Instagram·Facebook·LinkedIn·YouTube·TikTok·Discord·Snapchat·Reddit·Pinterest·Threads ② 메신저 — Telegram·WhatsApp·Signal·Messenger ③ 개발자 — GitHub·GitLab·Bitbucket·Stack Overflow·CodePen·Visual Studio Code ④ 기술 — Apple·Google·Microsoft·Amazon·Meta·Adobe·Figma·Notion·Slack ⑤ 결제 — PayPal·Stripe·Visa·Mastercard·American Express. 한국 브랜드 = 일부(카카오톡·네이버 일부) — 매우 적음. 한국 브랜드 로고 = 본인 회사 공식 사이트에서 SVG 다운로드 권장. 글로벌 브랜드 = Tabler 1티어.",
+              },
+              {
+                q: "Tabler 굵기·둥글기 조절 어떻게?",
+                a: "Tabler 핵심 강점 = 굵기·둥글기 조절: ① 굵기(stroke width) — `<IconHome stroke={1.5} />` 1~3 자유 조절 ② 둥글기(stroke linecap) — `round`(둥근)·`square`(직선)·`butt` ③ 모서리(stroke linejoin) — `round`·`miter`·`bevel`. 활용: ① 본인 디자인 톤 = 가는 굵기(1) 또는 굵은(2.5) 선택 ② 둥근 톤 = round 사용(친근) ③ 직선 톤 = square(공식). 본인 회사 디자인 시스템에 굵기·둥글기 표준화 = 일관성. CSS: `svg { stroke-width: 1.5; stroke-linecap: round; }`. Lucide·Heroicons 보다 자유도 1티어.",
+              },
+              {
+                q: "Tabler MIT 라이선스 안전?",
+                a: "Tabler MIT 라이선스 = 가장 자유로운 라이선스 중 하나: ① 상업 사용 ② 수정·편집 ③ 재배포 ④ 재판매(법적 OK) ⑤ 회사 BI·CI 자유 ⑥ 저작자 표시 의무 없음 ⑦ 임베드 자유. 단 ① 브랜드 로고(GitHub·Instagram 등) = 각 브랜드 트레이드마크 별도 — 사용 시 본인 책임 ② 브랜드 로고 무단 변형 금지(브랜드 가이드 위반) ③ 본인 작품 같이 사용. 활용: ① 본인 회사 SaaS·앱 UI = 안전 ② 광고·CF·인쇄 자유 ③ 브랜드 로고 = 각 브랜드 공식 사용 가이드 준수. MIT + Tabler 자체 = 자유, 브랜드 로고 = 별도 검토. 한국 웹 개발자에게 라이선스 안전 1티어.",
+              },
+              {
+                q: "Tabler React·Vue·Svelte 사용?",
+                a: "Tabler 공식 npm 패키지: ① React = `@tabler/icons-react` ② Vue = `@tabler/icons-vue` ③ Svelte = `@tabler/icons-svelte` ④ Solid = `@tabler/icons-solidjs` ⑤ Webfont = CDN ⑥ 일반 SVG = tabler.io/icons. 활용 예(React): `import { IconHome, IconUser } from '@tabler/icons-react'; <IconHome size={24} stroke={1.5} color='blue' />`. 강점: ① Tree-shaking ② TypeScript 지원 ③ 굵기·색·크기 자유 ④ Tailwind 호환 ⑤ 번들 크기 작음. 한국 웹 개발자 표준: React + Tabler + Tailwind = 빠른 SaaS·앱 UI 개발. 5,500+ 아이콘 양 = 본인이 찾는 아이콘 거의 모두 발견.",
+              },
+              {
+                q: "Tabler UI 어드민 대시보드 템플릿?",
+                a: "Tabler UI(tabler.io/admin) = Tabler Icons 와 같은 팀의 무료 어드민 대시보드 템플릿. 강점: ① 100% 무료 + MIT ② Bootstrap 5 기반 ③ Tabler Icons 기본 통합 ④ 다양한 페이지 템플릿(대시보드·로그인·테이블·차트) ⑤ 다크 모드 지원 ⑥ 반응형. 활용: ① 회사 어드민 페이지 빠른 시작 ② SaaS 백오피스 ③ 사내 도구 ④ Tabler Icons + Tabler UI = 디자인 톤 일관. 한국 웹 개발자 = SaaS 어드민·백오피스 빠른 개발에 활용. 단 React·Next.js 표준 환경 = shadcn/ui + Tailwind + Tabler Icons 가 더 보편. Tabler UI = Bootstrap 환경에 적합합니다.",
+              },
+              {
+                q: "Tabler 다운로드·사용 절차?",
+                a: "Tabler 사용 방법 3가지: ① 일반 SVG = tabler.io/icons 검색 후 SVG 다운로드 ② npm 패키지 = `npm install @tabler/icons-react` 후 `import` ③ 웹폰트 = `<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/@tabler/icons-webfont/tabler-icons.min.css'>`. 추천: ① React·Vue·Svelte 앱 = npm 패키지 ② 일반 웹사이트 = SVG 직접 또는 웹폰트 ③ Figma 시안 = 'Tabler Icons' 플러그인. SVG 다운로드 후 본인 디자인 시스템에 통합 = 평생 자산. 본격 개발자 = npm 패키지 + Tree-shaking + TypeScript = 표준 워크플로우.",
+              },
+              {
+                q: "Tabler 회사 BI·SaaS 활용?",
+                a: "Tabler = 양 압도적 + 라이선스 안전 = 본격 SaaS·디자인 시스템 활용 1티어. 활용 시나리오: ① SaaS 제품 UI — 가장 많은 활용 ② 본인 디자인 시스템 ③ 회사 어드민·백오피스 ④ 모바일 앱 ⑤ 회사 웹사이트 ⑥ 문서 사이트 ⑦ 본인 포트폴리오. 강점: ① MIT 라이선스 = 라이선스 안전 ② 5,500+ 양 압도 ③ 굵기·둥글기 조절 = 디자인 자유 ④ 브랜드 로고 풍부 = SNS·기술 통합 쉬움 ⑤ Tree-shaking. 단 ① 회사 BI 핵심 = 본인 디자이너 차별화 ② 본인 회사 색상 + 굵기 표준화 = 차별화. 한국 SaaS·스타트업·디자인 시스템 구축에 표준 도구.",
+              },
+              {
+                q: "Tabler Figma·디자인 도구 통합?",
+                a: "Tabler 디자인 도구 통합: ① Figma — 'Tabler Icons' 플러그인 = 직접 검색·삽입 ② Sketch — 플러그인 ③ Adobe XD — SVG import ④ Webflow — SVG 임베드 ⑤ Framer — SVG 통합. Figma + Tabler 워크플로우: ① Figma 디자인 시안 → Tabler 플러그인 검색·삽입 → 본인 회사 색상·굵기 적용 → 개발자에게 인계 ② 개발자 = React `@tabler/icons-react` 사용 = 디자이너 시안과 동일 아이콘. 디자이너·개발자 협업 = Tabler 양 1티어 = 본인이 찾는 아이콘 거의 모두 발견. 한국 웹 디자이너·개발자 협업 시간 절약 핵심.",
+              },
+              {
+                q: "Tabler 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 개발자(React·Vue) = SaaS·앱 UI(가장 많은 활용) ② UI/UX 디자이너 = Figma 디자인 시안 ③ 본인 디자인 시스템 구축 ④ 어드민·백오피스 = Tabler UI 템플릿 ⑤ 1인 사업자 = 회사 웹사이트 ⑥ 학생·개발자 = 사이드 프로젝트 ⑦ 디자인 시스템 양 1티어. 평생 활용: 매월 개발 작업 시 Tabler 활용 = 매년 50~300만원 아이콘 비용 절약, 평생 누적 500만~3,000만원. 한국 SaaS·디자인 시스템 구축자에게 사실상 표준 도구. MIT + 양 1티어 + 굵기 자유 = 평생 자산. 본격 개발자 = Tabler + Lucide + Heroicons 분담 활용.",
+              },
+              {
+                q: "Tabler 모바일·휴대폰?",
+                a: "Tabler 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 아이콘 검색·미리보기 ② SVG 다운로드 ③ 코드 복사. 모바일 한계: ① 본격 개발 = PC 권장 ② IDE·npm = PC 필수 ③ Figma 디자인 = PC 효율적. 활용: ① PC 본격 작업 + 모바일 빠른 검색 분담 ② Figma 모바일 앱 + Tabler 플러그인 일부 ③ React Native 앱 = `@tabler/icons-react-native`. 한 계정 동기화는 GitHub 통해 가능. 본격 개발 = PC. 모바일 = 빠른 검색 + 즐겨찾기 + 영감.",
+              },
+              {
+                q: "Tabler 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '오픈소스 아이콘 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Tabler 사이트 — 본인 정보·악성코드 ③ 회사 BI 핵심에 그대로 사용 → 다른 회사와 동일 ④ 브랜드 로고 무단 변형 → 브랜드 가이드 위반 ⑤ Tabler 무단 수정 후 재배포(법적 OK 이나 윤리적 문제). 주의사항: ① tabler.io 공식 도메인만 ② 본인이 직접 다운로드·npm 설치 ③ MIT 라이선스 자유 활용 ④ 회사 BI 핵심 = 본인 디자이너 차별화 ⑤ 브랜드 로고 = 각 브랜드 공식 가이드 준수 ⑥ Tabler 팀 존중(GitHub 기여·후원). MIT 라이선스 = 평생 자산 보호 + 자유도 1티어.",
+              },
             ],
             relatedKeywords: [
               "Tabler Icons 사용법",
@@ -11091,13 +11441,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Basic 결제", body: "본격 사용 시 Basic(월 9,900원). 한국 결제수단 모두 사용." },
             ],
             faq: [
-              { q: "미리캔버스와 차이?", a: "PPT 위주는 미리캔버스, 카드뉴스·인포그래픽은 망고보드. 두 도구를 같이 쓰는 한국 사용자 많음. 가격은 비슷한 수준." },
-              { q: "Canva 와 비교?", a: "글로벌 디자인 트렌드·인스타 릴스는 Canva, 한국식 카드뉴스·인포그래픽은 망고보드. 사용 목적·취향에 따라 선택." },
-              { q: "무료로 어디까지?", a: "기본 템플릿 사용 + 워터마크 포함 다운로드. 워터마크 제거하려면 Basic(월 9,900원) 이상 필요." },
-              { q: "데이터 시각화 정확?", a: "엑셀 표 또는 직접 입력한 데이터를 자동으로 차트·다이어그램·인포그래픽으로 변환. 정확도 안정적. 마케팅 자료에 충분." },
-              { q: "동영상 편집은?", a: "Pro 플랜에서 무제한. 짧은 SNS 영상(릴스·쇼츠) 정도. 본격 영상 편집은 Premiere·CapCut." },
-              { q: "결제 환불?", a: "결제 후 7일 이내 미사용 시 가능. 한국 결제법 따라 처리." },
-              { q: "팀 협업?", a: "Pro 플랜에서 팀 공유 폴더·동시 편집 가능. 마케팅팀·교육팀이 같이 작업할 때." },
+              {
+                q: "망고보드 한국에서 가입·결제·이용? 카카오·네이버 결제?",
+                a: "망고보드(mangoboard.net) = 100% 한국 서비스 — 한국 IP·KT·SK·LG U+ 모두 정상, VPN 불필요. 가입: 카카오·네이버·이메일 SSO 1분. 결제: ① 신용카드·체크카드 ② 계좌이체 ③ 카카오페이 ④ 네이버페이 ⑤ 토스페이 모두 지원. 원화(KRW) 결제 — 환율 변동 없음. Basic 월 9,900원·Pro 월 19,900원. 연 결제 시 약 20% 할인. 사업자번호 입력 시 세금계산서·전자 영수증 즉시 발급. 회사 결제·법인카드 정상. 한국 디자이너·블로거·마케터·소상공인 누구나 활용 핵심 도구. 한국 카드뉴스·인포그래픽 1티어.",
+              },
+              {
+                q: "망고보드 무료로 어디까지? 본인이 충분?",
+                a: "망고보드 무료 플랜으로 한국 디자인 작업 60%+ 가능. 무료: ① 기본 템플릿 사용 ② 워터마크 포함 다운로드(PNG·JPG) ③ 한글 폰트 일부 ④ 5GB 저장공간. 추가 Basic·Pro 가치: ① 워터마크 제거(가장 큰 가치) ② 유료 템플릿 풀 사용 ③ 고해상도 인쇄(300dpi) ④ 동영상 편집 ⑤ 데이터 시각화 풀세트 ⑥ 팀 협업 ⑦ 본인 폰트 업로드. 추천: ① 가벼운 사용·블로그 = 무료 + 워터마크 ② 본업 마케터·디자이너 = Basic 가성비 ③ 회사·팀 = Pro. 무료 플랜의 워터마크가 가장 큰 한계 — 본격 상업 사용은 Basic 이상 필수.",
+              },
+              {
+                q: "망고보드 vs 미리캔버스 vs Canva 차이?",
+                a: "한국 디자인 도구 차이: ① 망고보드 = 카드뉴스·인포그래픽·데이터 시각화 1티어, 한국식 디자인 ② 미리캔버스 = PPT·명함·전단지·SNS 디자인, 한국 디자인 1티어 ③ Canva = 글로벌 트렌드·인스타 릴스·틱톡·해외 폰트, 영문 콘텐츠. 추천 분담: ① 한국 카드뉴스·인포그래픽 = 망고보드 우선 ② 한국 PPT·명함·전단지 = 미리캔버스 ③ 글로벌 SNS·인스타 릴스 = Canva. 한국 마케터·블로거 표준: 망고보드(인포그래픽) + 미리캔버스(PPT·명함) + Canva(글로벌) 3박자 분담. 본인 작업의 70%+ 가 인포그래픽·카드뉴스 = 망고보드 1티어.",
+              },
+              {
+                q: "망고보드 Basic($9,900) vs Pro($19,900) 차이?",
+                a: "망고보드 플랜 차이: ① 무료 = 기본 + 워터마크 + 비상업 ② Basic(월 9,900원) = 워터마크 제거 + 모든 템플릿 + PNG·JPG·PDF·PPT 다운로드 + 상업 사용 + 5GB ③ Pro(월 19,900원) = Basic + 동영상 편집 + 팀 협업 + 데이터 시각화 풀세트 + 본인 폰트 업로드 + 100GB. 추천: ① 가벼운 사용·블로그·SNS = Basic 가성비 ② 본업 마케터·디자이너 = Basic 충분 ③ 회사·팀·동영상 + 인포그래픽 = Pro ④ 5명+ 회사 = 팀 플랜 검토. Basic 의 워터마크 제거 + 상업 사용 = 가장 큰 가치. 한 달만 결제 후 해지 자유.",
+              },
+              {
+                q: "망고보드 카드뉴스·인포그래픽 활용?",
+                a: "망고보드 = 한국 카드뉴스·인포그래픽 1티어 도구. 활용: ① 인스타 카드뉴스 시리즈(1080×1080·1080×1350) ② 페이스북 카드뉴스 ③ 블로그·티스토리 인포그래픽 ④ 네이버 블로그·포스트 ⑤ 카카오 채널 카드 ⑥ 회사 마케팅 자료. 강점: ① 한국 인기 트렌드 템플릿 즉시 사용 ② 한글 폰트 풍부 ③ 시리즈 디자인(여러 장 일관성) ④ 데이터 시각화 자동 ⑤ 한국식 디자인 톤 1티어. 한국 마케터·콘텐츠 제작자에게 사실상 표준 도구. 매주 카드뉴스·인포그래픽 양산 = 시간 절약 효과 큼. SNS 마케팅·블로그 운영자 핵심 자산.",
+              },
+              {
+                q: "망고보드 데이터 시각화·차트 활용?",
+                a: "망고보드 데이터 시각화 강점: ① 엑셀 표 또는 직접 입력 데이터 → 차트·다이어그램·인포그래픽 자동 변환 ② 다양 차트 형식(막대·원·꺾은선·도넛·지도·트리맵·인포그래픽) ③ 한국 지도·세계 지도 ④ 마케팅·교육 자료 시각화. 활용: ① 마케팅 보고서 = 매출·트래픽 시각화 ② 교육 자료 = 통계·비교 ③ 블로그 = 데이터 인포그래픽 ④ 회사 IR · 피치덱 = 시각화 자료. 강점: ① 정확도 안정 ② 한국식 디자인 톤 ③ Pro 플랜에서 풀세트 ④ 외주 디자이너 비용 절약. 데이터 분석 결과 시각화 = 마케팅·교육·발표 자료 핵심 도구.",
+              },
+              {
+                q: "망고보드 결제 환불·해지·자동 결제?",
+                a: "환불: 결제 후 7일 이내 + 미사용 상태일 때 가능. 신청: 설정 → 결제 관리 → 환불 신청 또는 고객센터(help@mangoboard.net). 한국어 처리. 자동 결제 해지: 같은 메뉴 'Cancel' 즉시 가능, 결제한 달 끝까지 사용. 한 달만 결제 후 해지 자유, 페널티 없음. 카드 변경·삭제·인보이스 다운로드 가능. 연 결제 약 20% 할인. 사업자 결제 시 세금계산서 자동 발급. 결제 옵션: 신용·체크카드·계좌이체·카카오·네이버·토스페이 모두. 한국 결제법(전자상거래법) 준수 — 7일 환불 보장. 사기 사례 없음 — 한국 정식 서비스.",
+              },
+              {
+                q: "망고보드 팀 협업·회사 단위 사용?",
+                a: "망고보드 팀 협업 기능: ① Pro 플랜 = 팀 공유 폴더 + 동시 편집 ② 팀 플랜(별도) = 추가 사용자 + 권한 관리 + 브랜드 키트 ③ 회사 단위 결제 = 직원 1인당 월정액 ④ 사업자 세금계산서 발급. 활용: ① 마케팅팀 = 카드뉴스·SNS 양산 ② 교육팀 = 강의 자료·교재 ③ 디자인 회사 = 클라이언트 작업 ④ 1인 사업자 = Basic 충분. 회사 도입 = 팀 플랜 검토 + 영업팀 협의. 한국 마케팅 에이전시·교육 회사·SNS 마케팅팀에 활용 사례 많음. 디자인 일관성 + 시간 절약 효과 큼.",
+              },
+              {
+                q: "망고보드 동영상 편집 가능? 인스타 릴스?",
+                a: "망고보드 동영상 편집(Pro 플랜): ① 짧은 SNS 영상(릴스·쇼츠·스토리) 빠른 제작 ② 텍스트 애니메이션 ③ 음악·효과음 추가 ④ 간단한 컷 편집 ⑤ MP4·GIF 다운로드. 무료 = 동영상 편집 제한적. 활용: ① 인스타 릴스(15~60초) ② 유튜브 쇼츠(60초) ③ 카드뉴스 → 슬라이드 영상 ④ 짧은 광고 영상. 한계: ① 본격 영상 편집 = Premiere·DaVinci·CapCut 권장 ② 5분+ 긴 영상 = 효율 떨어짐. 짧은 SNS 영상 = 망고보드 충분, 본격 영상 = 전용 도구 분담. 한국 SNS 마케터 = 망고보드(카드뉴스 + 짧은 영상) + CapCut(본격 영상) 분담.",
+              },
+              {
+                q: "망고보드 한글 폰트·디자인 톤?",
+                a: "망고보드 한글 폰트: ① 내장 한글 폰트 — 눈누 무료 폰트 다수, 카카오·네이버·삼성 등 ② Pro 이상 = 본인 폰트 업로드 가능 ③ 한국 디자인 톤 1티어. 한국식 디자인 강점: ① 한글 텍스트 자동 줄바꿈 자연 ② 한국 인기 카드뉴스·인포그래픽 톤 ③ 한국 SNS 트렌드 반영. Canva 대비 강점: ① 한글 폰트 양 ② 한국식 디자인 톤. 미리캔버스 대비 강점: ① 카드뉴스·인포그래픽 ② 데이터 시각화. 한국 사용자 = 한국식 카드뉴스·인포그래픽 = 망고보드 우선. 본인 한글 폰트 업로드 시 LICENSE 확인 필수.",
+              },
+              {
+                q: "망고보드 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 1인 사업자·소상공인 = 카드뉴스·인포그래픽·SNS 광고(가장 많음) ② 블로거·티스토리 = 헤더·본문 인포그래픽 ③ SNS 마케터 = 인스타 카드뉴스 시리즈 ④ 직장인 = 회사 보고서·발표 자료(데이터 시각화) ⑤ 학생·교사 = 교육 자료·과제 ⑥ 강사 = 교재 인포그래픽 ⑦ 교육 회사 = 교재·교육 자료 ⑧ NGO·동호회 = 캠페인 자료. 평생 활용: 매월 디자인 작업 시간 절약 + 외주 비용 절약 = 매년 평균 100~500만원, 평생 누적 1,000만~5,000만원. 한국 카드뉴스·인포그래픽 1티어 도구.",
+              },
+              {
+                q: "망고보드 모바일 앱·휴대폰?",
+                a: "망고보드 공식 모바일 앱(iOS·Android) 제공. 기능: ① 본인 디자인 미리보기·간단 편집 ② 새 디자인 시작 ③ 다운로드·공유 ④ 푸시 알림. 모바일 강점: ① 외출 중 빠른 시각화 ② 클라이언트 즉시 시연 ③ 인스타·카톡 즉시 공유. 모바일 한계: ① 본격 디자인 = PC 권장(작은 화면 비효율) ② 데이터 시각화·복잡한 작업 = PC ③ PDF·PPT 다운로드 = PC 안정적. 활용: ① 본격 디자인 = PC ② 외출 중 확인·공유 = 모바일 ③ PC + 모바일 동기화. 한 계정으로 PC·모바일 동기화 — 어디서나 본인 작업 이어가기.",
+              },
+              {
+                q: "망고보드 인쇄용 명함·전단지 활용?",
+                a: "망고보드 인쇄용 디자인: ① 명함(90×54mm) ② 전단지·리플렛 ③ 포스터(A4·A3) ④ 메뉴판 ⑤ 현수막·배너. 인쇄 품질: ① 무료·Basic = 표준 해상도(72dpi) — SNS 충분 ② Pro = 고해상도 300dpi — 인쇄 표준 ③ Pro = CMYK 색상 모드 — 인쇄 정확 ④ 재단선·여백 자동 설정. 인쇄 워크플로우: ① 망고보드 Pro 디자인 → ② PDF(고해상도) 다운로드 → ③ 한국 인쇄 업체(레드프린팅·오프린트미·PrintCity) 발주 → ④ 1~3일 내 배송. 한국 인쇄 업체와 호환 100%. 디자이너 외주 없이 본인 시안 → 인쇄까지 가능.",
+              },
+              {
+                q: "망고보드 사기·라이선스·주의사항?",
+                a: "망고보드 = 한국 정식 서비스 — 사기 가능성 매우 낮음. 주의 사례: ① '망고보드 Pro 무료' 가짜 광고 — 본인 정보·카드 탈취 ② 사설 '디자인 컨설팅' 업체 — 무료 도구 유료 판매 ③ 보이스피싱 — 망고보드 사칭 + OTP 요구 ④ 가짜 결제 페이지 — 카드 정보 탈취. 주의사항: ① mangoboard.net 공식 도메인만 ② 본인이 직접 결제 ③ 사설 업체에 카드·OTP 절대 알려주지 말기 ④ 의심 시 고객센터 직접 확인 ⑤ 본인 디자인 = 본인 저작권 — 무단 도용 시 법적 대응. 망고보드는 100% 한국 서비스 + 한국 결제법 준수 = 안전. 한국 마케터·블로거 안심하고 활용 가능.",
+              },
             ],
             relatedKeywords: [
               "망고보드 사용법",

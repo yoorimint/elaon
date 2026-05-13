@@ -7,8 +7,12 @@ export type Pricing = "free" | "freemium" | "paid";
 
 export type SubItem = {
   name: string;
-  blurb?: string;
-  url?: string;
+  blurb?: string;       // 한 줄 요약
+  details?: string;     // 본문 (1~3문장)
+  amount?: string;      // 지원 금액 (예: "월 최대 20만원 × 12개월")
+  eligibility?: string; // 자격 요건
+  applyWhen?: string;   // 신청 시기 (예: "수시" / "5월 정기")
+  url?: string;         // 외부 deep link
 };
 
 export type PickItem = {
@@ -23,6 +27,7 @@ export type PickItem = {
   alternatives?: string[];
   korean?: boolean;
   founded?: string;
+  hubSlug?: string;     // 있으면 /picks/{cat}/{hub} 별도 페이지 생성
   subItems?: SubItem[];
 };
 
@@ -769,10 +774,15 @@ const MONEY: PickCategory = {
           tip: "로그인 후 '나의 혜택' 결과를 캡처해두면 1년 후 재확인할 때 비교가 쉽습니다.",
           founded: "2015",
           korean: true,
+          hubSlug: "gov24",
           subItems: [
             {
               name: "주민등록등본·초본 발급",
               blurb: "온라인 무료, 즉시 PDF·프린트",
+              details: "본인·세대 주민등록표 등본·초본을 PDF 로 즉시 발급. 인쇄 또는 전자문서 보관 가능. 발급 수수료 무료.",
+              amount: "무료 (오프라인 수수료 400원 → 온라인 0원)",
+              eligibility: "본인 또는 세대원",
+              applyWhen: "24시간",
               url: "https://www.gov.kr/portal/main",
             },
             {
@@ -833,35 +843,59 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2010",
           korean: true,
+          hubSlug: "bokjiro",
           subItems: [
             {
               name: "복지서비스 모의계산",
               blurb: "받을 수 있는 급여 금액 시뮬레이션",
-              url: "https://www.bokjiro.go.kr",
-            },
-            {
-              name: "기초생활보장 신청",
-              blurb: "생계·의료·주거·교육급여",
+              details: "본인의 소득·재산·가구원 정보를 입력하면 받을 수 있는 복지급여 항목과 예상 금액이 자동 표시됩니다. 신청 전 자격 확인 도구.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
             {
               name: "청년월세 한시 특별지원",
               blurb: "월 최대 20만원 × 12개월",
+              details: "만 19~34세 무주택 청년에게 월세를 최대 12개월간 지원합니다. 본인 중위소득 60% 이하 + 원가구 중위소득 100% 이하 조건.",
+              amount: "월 최대 20만원 × 12개월 (총 240만원)",
+              eligibility: "만 19~34세, 본인 중위소득 60% 이하",
+              applyWhen: "수시 (예산 소진 시 종료)",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "기초생활보장",
+              blurb: "생계·의료·주거·교육 4대 급여",
+              details: "기준 중위소득 30~50% 이하 가구에 생계급여(중위 32%), 의료급여(중위 40%), 주거급여(중위 48%), 교육급여(중위 50%)를 차등 지원합니다.",
+              amount: "4인 가구 생계급여 최대 약 195만원/월 (2026 기준)",
+              eligibility: "기준 중위소득 30~50% 이하",
+              applyWhen: "수시",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "긴급복지 지원",
+              blurb: "위기 가구 단기 생계비",
+              details: "주소득자 사망·실직, 중한 질병, 가정폭력 등 위기 사유 발생 시 생계·주거·의료·교육비를 신속 지원합니다. 사후 조사로 자격 확인.",
+              amount: "4인 가구 생계지원 약 162만원/월 (최대 6회)",
+              eligibility: "위기 사유 + 소득·재산 기준",
+              applyWhen: "긴급 시 즉시",
               url: "https://www.bokjiro.go.kr",
             },
             {
               name: "한부모가족 지원",
               blurb: "양육비·교육비·주거 지원",
+              details: "한부모·조손 가구에 아동양육비, 학용품비, 한부모가족 시설 입소, 무이자 자녀 학자금 등을 지원합니다.",
+              amount: "아동양육비 월 21만원 (만 18세 미만)",
+              eligibility: "한부모·조손 가구, 중위소득 63~100% 이하",
+              applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
             {
-              name: "긴급복지 지원",
-              blurb: "위기 가구 긴급 생계비",
-              url: "https://www.bokjiro.go.kr",
-            },
-            {
-              name: "장애인·노인 돌봄",
-              blurb: "활동지원·돌봄서비스",
+              name: "장애인 활동지원",
+              blurb: "활동지원사 시간제 파견",
+              details: "만 6~65세 등록 장애인을 대상으로 활동지원사가 신변보호·가사·이동 등을 시간 단위로 지원합니다. 장애 정도에 따라 월 지원 시간 차등.",
+              amount: "월 최대 480시간 (장애 등급별)",
+              eligibility: "만 6~65세 등록 장애인",
+              applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
           ],
@@ -941,6 +975,7 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2016",
           korean: true,
+          hubSlug: "fine",
           subItems: [
             {
               name: "내 계좌 한눈에",
@@ -1028,6 +1063,7 @@ const MONEY: PickCategory = {
           tip: "5월 종합소득세 기간에 '환급금 조회' 메뉴를 먼저 확인하면 과거 미수령 환급금이 표시됩니다.",
           founded: "2002",
           korean: true,
+          hubSlug: "hometax",
           subItems: [
             {
               name: "환급금 조회·신청",
@@ -1113,6 +1149,7 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "1998",
           korean: true,
+          hubSlug: "work24",
           subItems: [
             {
               name: "실업급여 (구직급여)",
@@ -1411,6 +1448,7 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2010",
           korean: true,
+          hubSlug: "k-startup",
           subItems: [
             {
               name: "예비창업패키지",
@@ -1481,6 +1519,7 @@ const MONEY: PickCategory = {
           tip: "본인부담상한제 초과 환급금은 매년 8월경 자동 안내되며 미신청 시 5년 내 청구 가능합니다.",
           founded: "2000",
           korean: true,
+          hubSlug: "nhis",
           subItems: [
             {
               name: "무료 건강검진 대상 조회",
@@ -2747,4 +2786,35 @@ export function pricingLabel(p: Pricing): string {
     case "paid":
       return "유료";
   }
+}
+
+// hubSlug 가 있는 PickItem 만 모은 형태 (sub-페이지 라우트 생성용)
+export type HubEntry = {
+  categorySlug: PickCategorySlug;
+  hubSlug: string;
+  item: PickItem;
+};
+
+export function listHubs(): HubEntry[] {
+  const out: HubEntry[] = [];
+  for (const cat of PICK_CATEGORIES) {
+    for (const g of cat.groups) {
+      for (const it of g.items) {
+        if (it.hubSlug && it.subItems && it.subItems.length > 0) {
+          out.push({ categorySlug: cat.slug, hubSlug: it.hubSlug, item: it });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+export function getHub(
+  categorySlug: string,
+  hubSlug: string,
+): HubEntry | null {
+  for (const e of listHubs()) {
+    if (e.categorySlug === categorySlug && e.hubSlug === hubSlug) return e;
+  }
+  return null;
 }

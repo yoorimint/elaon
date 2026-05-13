@@ -148,15 +148,31 @@ function HubBody({
   const itemLinkProps = itemExternal
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
+  const host = itemExternal ? hostname(item.url) : "";
+  const faviconUrl = host
+    ? `https://www.google.com/s2/favicons?domain=${host}&sz=128`
+    : "";
   return (
     <>
-      <header className="mt-3 mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
-          {item.name} 신청 가능 항목
-        </h1>
-        <p className="mt-3 text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          {item.blurb}
-        </p>
+      <header className="mt-3 mb-8 flex items-start gap-4">
+        {faviconUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={faviconUrl}
+            alt={`${item.name} 로고`}
+            width={64}
+            height={64}
+            className="shrink-0 w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-2 object-contain"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+            {item.name} 신청 가능 항목
+          </h1>
+          <p className="mt-3 text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            {item.blurb}
+          </p>
+        </div>
       </header>
 
       <section className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-5">
@@ -175,7 +191,7 @@ function HubBody({
               {...itemLinkProps}
               className="shrink-0 inline-flex items-center gap-1 rounded-full border border-brand text-brand bg-white dark:bg-neutral-950 px-3.5 py-1.5 text-sm font-semibold hover:bg-brand hover:text-white transition"
             >
-              {hostname(item.url)} ↗
+              {host} ↗
             </a>
           )}
         </div>
@@ -206,34 +222,50 @@ function DetailBody({
   const itemLinkProps = itemExternal
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
+  const host = itemExternal ? hostname(item.url) : "";
+  const faviconUrl = host
+    ? `https://www.google.com/s2/favicons?domain=${host}&sz=128`
+    : "";
   return (
     <>
-      <header className="mt-3 mb-8">
-        <div className="flex flex-wrap items-baseline gap-2 mb-2">
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
-            {item.name}
-          </h1>
-          <span className="text-[12px] font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-2 py-0.5">
-            {pricingLabel(item.pricing)}
-          </span>
-          {item.korean && (
-            <span className="text-[12px] font-semibold rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 px-2 py-0.5">
-              KR
+      <header className="mt-3 mb-8 flex items-start gap-4">
+        {faviconUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={faviconUrl}
+            alt={`${item.name} 로고`}
+            width={64}
+            height={64}
+            className="shrink-0 w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-2 object-contain"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-baseline gap-2 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+              {item.name}
+            </h1>
+            <span className="text-[12px] font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-2 py-0.5">
+              {pricingLabel(item.pricing)}
             </span>
+            {item.korean && (
+              <span className="text-[12px] font-semibold rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 px-2 py-0.5">
+                KR
+              </span>
+            )}
+          </div>
+          <p className="text-[15px] font-medium text-neutral-700 dark:text-neutral-300">
+            {item.blurb}
+          </p>
+          {itemExternal && (
+            <a
+              href={item.url}
+              {...itemLinkProps}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm"
+            >
+              {item.name} 바로가기 ↗
+            </a>
           )}
         </div>
-        <p className="text-[15px] font-medium text-neutral-700 dark:text-neutral-300">
-          {item.blurb}
-        </p>
-        {itemExternal && (
-          <a
-            href={item.url}
-            {...itemLinkProps}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand text-white px-5 py-2.5 text-sm font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm"
-          >
-            {item.name} 바로가기 ↗
-          </a>
-        )}
       </header>
 
       <section className="mb-10 space-y-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">

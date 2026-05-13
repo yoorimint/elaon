@@ -20,6 +20,9 @@ import { PicksFab } from "@/components/PicksFab";
 
 const SITE = "https://www.eloan.kr";
 
+// 정적 빌드 캐시 강제 무효화 — Vercel 배포 시 매번 새로 생성.
+export const revalidate = 0;
+
 type Params = { slug: string };
 
 export function generateStaticParams(): Params[] {

@@ -5,12 +5,9 @@
 // 아래: 사주데이 홈으로 이동 (항상 표시, 새 탭) — 같은 운영자 사이트 간 링크
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const SAJUDAY_URL = "https://sajuday.kr";
-const SAJUDAY_ICON =
-  "https://sajuday.kr/static/images/ant_ranks/ant_1_queen.png";
 
 export function PicksFab() {
   const [showTop, setShowTop] = useState(false);
@@ -59,17 +56,11 @@ export function PicksFab() {
         href={SAJUDAY_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="사주데이"
-        className="group relative w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-rose-400 shadow-lg flex items-center justify-center overflow-hidden hover:scale-105 transition active:scale-95"
+        aria-label="사주보기"
+        className="group relative w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg flex flex-col items-center justify-center text-white font-bold leading-tight hover:scale-105 transition active:scale-95"
       >
-        <Image
-          src={SAJUDAY_ICON}
-          alt="사주데이"
-          width={56}
-          height={56}
-          className="w-full h-full object-cover scale-110"
-          unoptimized
-        />
+        <span className="text-[13px]">사주</span>
+        <span className="text-[13px]">보기</span>
       </Link>
     </div>
   );

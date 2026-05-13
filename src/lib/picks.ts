@@ -3489,17 +3489,38 @@ export type HubEntry = {
   item: PickItem;
 };
 
+// 모든 PickItem 에 안정적인 slug 를 부여한다.
+// 1. hubSlug 가 명시되었으면 그대로 사용
+// 2. 외부 URL 은 hostname 기반 (예: chat.openai.com → chat-openai-com)
+// 3. 내부 라우트(/backtest) 는 경로 그대로 (backtest)
+export function autoSlug(item: PickItem): string {
+  if (item.hubSlug) return item.hubSlug;
+  if (item.url.startsWith("/")) {
+    return item.url.replace(/^\//, "").replace(/\//g, "-") || "item";
+  }
+  try {
+    const host = new URL(item.url).hostname.replace(/^www\./, "");
+    return host.replace(/\./g, "-");
+  } catch {
+    return "item";
+  }
+}
+
 export function listHubs(): HubEntry[] {
   const out: HubEntry[] = [];
+  const seen = new Set<string>();
   for (const cat of PICK_CATEGORIES) {
     for (const g of cat.groups) {
       for (const it of g.items) {
-        if (
-          it.hubSlug &&
-          ((it.subItems && it.subItems.length > 0) || it.detailContent)
-        ) {
-          out.push({ categorySlug: cat.slug, hubSlug: it.hubSlug, item: it });
+        let slug = autoSlug(it);
+        let key = `${cat.slug}/${slug}`;
+        let dedup = 2;
+        while (seen.has(key)) {
+          slug = `${autoSlug(it)}-${dedup++}`;
+          key = `${cat.slug}/${slug}`;
         }
+        seen.add(key);
+        out.push({ categorySlug: cat.slug, hubSlug: slug, item: it });
       }
     }
   }

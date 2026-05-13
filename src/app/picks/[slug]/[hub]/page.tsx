@@ -31,13 +31,18 @@ export function generateMetadata({ params }: { params: Params }): Metadata {
   const entry = getHub(params.slug, params.hub);
   if (!entry) return { title: "주소모음 — 페이지를 찾을 수 없습니다" };
   const url = `${SITE}/picks/${params.slug}/${params.hub}`;
-  const isDetail = !!entry.item.detailContent;
-  const title = isDetail
-    ? `${entry.item.name} 사용법·가격·한국 결제 — 2026 완벽 가이드`
-    : `${entry.item.name} 신청 가능 항목 — ${entry.item.subItems!.length}가지`;
-  const description = isDetail
-    ? `${entry.item.name} 한국 사용 가이드. 무료/유료 가격 플랜 비교, 한국어 사용성, 시작하기 단계, 자주 묻는 질문, 장단점까지 정리.`
-    : `${entry.item.name} 에서 신청·이용할 수 있는 ${entry.item.subItems!.length}가지 주요 서비스를 자격·금액·신청 시기와 함께 정리했습니다.`;
+  const hasSub = entry.item.subItems && entry.item.subItems.length > 0;
+  const hasDetail = !!entry.item.detailContent;
+  const title = hasSub
+    ? `${entry.item.name} 신청 가능 항목 — ${entry.item.subItems!.length}가지`
+    : hasDetail
+      ? `${entry.item.name} 사용법·가격·한국 결제 — 2026 완벽 가이드`
+      : `${entry.item.name} 사용법·가격·대안 — ${entry.item.blurb}`;
+  const description = hasSub
+    ? `${entry.item.name} 에서 신청·이용할 수 있는 ${entry.item.subItems!.length}가지 주요 서비스를 자격·금액·신청 시기와 함께 정리했습니다.`
+    : hasDetail
+      ? `${entry.item.name} 한국 사용 가이드. 무료/유료 가격 플랜 비교, 한국어 사용성, 시작하기 단계, 자주 묻는 질문, 장단점까지 정리.`
+      : `${entry.item.name}: ${entry.item.blurb} 가격·사용 시나리오·대안·실전 팁까지 한 페이지에서.`;
   return {
     title,
     description,
@@ -50,6 +55,7 @@ export function generateMetadata({ params }: { params: Params }): Metadata {
       url,
       locale: "ko_KR",
       siteName: "eloan",
+      images: entry.item.imageUrl ? [entry.item.imageUrl] : undefined,
     },
   };
 }
@@ -138,82 +144,7 @@ function SubItemCard({ sub }: { sub: SubItem }) {
   );
 }
 
-function HubBody({
-  item,
-  subItems,
-}: {
-  item: PickItem;
-  subItems: SubItem[];
-}) {
-  const itemExternal = isExternal(item.url);
-  const itemLinkProps = itemExternal
-    ? { target: "_blank", rel: "noopener noreferrer" as const }
-    : {};
-  const host = itemExternal ? hostname(item.url) : "";
-  return (
-    <>
-      <header className="mt-3 mb-8 flex items-start gap-4">
-        {host && (
-          <SiteLogo
-            host={host}
-            alt={`${item.name} 로고`}
-            size={80}
-            className="shrink-0 w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-3"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
-            {item.name} 신청 가능 항목
-          </h1>
-          <p className="mt-3 text-[15px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-            {item.blurb}
-          </p>
-        </div>
-      </header>
-
-      <section className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-5">
-        <div className="flex flex-wrap items-start gap-3 justify-between">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
-              🏛️ {item.name} 사이트 정보
-            </h2>
-            <p className="mt-2 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
-              {item.details}
-            </p>
-          </div>
-          {itemExternal && (
-            <a
-              href={item.url}
-              {...itemLinkProps}
-              className="shrink-0 inline-flex items-center gap-1 rounded-full border border-brand text-brand bg-white dark:bg-neutral-950 px-3.5 py-1.5 text-sm font-semibold hover:bg-brand hover:text-white transition"
-            >
-              {host} ↗
-            </a>
-          )}
-        </div>
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
-          📋 신청·이용 가능 항목 {subItems.length}가지
-        </h2>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {subItems.map((sub, i) => (
-            <SubItemCard key={i} sub={sub} />
-          ))}
-        </div>
-      </section>
-    </>
-  );
-}
-
-function DetailBody({
-  item,
-  detail,
-}: {
-  item: PickItem;
-  detail: DetailContent;
-}) {
+function HeroSection({ item }: { item: PickItem }) {
   const itemExternal = isExternal(item.url);
   const itemLinkProps = itemExternal
     ? { target: "_blank", rel: "noopener noreferrer" as const }
@@ -229,7 +160,9 @@ function DetailBody({
           className="mt-3 w-full aspect-[1200/630] object-cover rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
         />
       )}
-      <header className="mt-6 mb-8 flex items-start gap-4">
+      <header
+        className={`mt-${item.imageUrl ? "6" : "3"} mb-8 flex items-start gap-4`}
+      >
         {host && (
           <SiteLogo
             host={host}
@@ -266,6 +199,151 @@ function DetailBody({
           )}
         </div>
       </header>
+    </>
+  );
+}
+
+function SiteInfoBox({ item }: { item: PickItem }) {
+  const itemExternal = isExternal(item.url);
+  const itemLinkProps = itemExternal
+    ? { target: "_blank", rel: "noopener noreferrer" as const }
+    : {};
+  const host = itemExternal ? hostname(item.url) : "";
+  return (
+    <section className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-5">
+      <div className="flex flex-wrap items-start gap-3 justify-between">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-100">
+            🏛️ {item.name} 사이트 정보
+          </h2>
+          <p className="mt-2 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+            {item.details}
+          </p>
+        </div>
+        {itemExternal && (
+          <a
+            href={item.url}
+            {...itemLinkProps}
+            className="shrink-0 inline-flex items-center gap-1 rounded-full border border-brand text-brand bg-white dark:bg-neutral-950 px-3.5 py-1.5 text-sm font-semibold hover:bg-brand hover:text-white transition"
+          >
+            {host} ↗
+          </a>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BasicFactsSection({ item }: { item: PickItem }) {
+  return (
+    <section className="mb-10">
+      <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+        📌 기본 정보
+      </h2>
+      <dl className="grid sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+          <dt className="text-[12px] font-semibold text-neutral-500 mb-1">
+            💰 요금
+          </dt>
+          <dd className="text-[14px] text-neutral-800 dark:text-neutral-200">
+            {item.pricingNote ?? pricingLabel(item.pricing)}
+          </dd>
+        </div>
+        {item.founded && (
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+            <dt className="text-[12px] font-semibold text-neutral-500 mb-1">
+              📅 출시
+            </dt>
+            <dd className="text-[14px] text-neutral-800 dark:text-neutral-200">
+              {item.founded}년
+            </dd>
+          </div>
+        )}
+        {item.alternatives && item.alternatives.length > 0 && (
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 sm:col-span-2">
+            <dt className="text-[12px] font-semibold text-neutral-500 mb-1">
+              🔄 비슷한 도구 (대안)
+            </dt>
+            <dd className="text-[14px] text-neutral-800 dark:text-neutral-200">
+              {item.alternatives.join(", ")}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </section>
+  );
+}
+
+function UseCasesSection({ item }: { item: PickItem }) {
+  if (!item.useCases || item.useCases.length === 0) return null;
+  return (
+    <section className="mb-10">
+      <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+        💡 이럴 때 씁니다
+      </h2>
+      <ul className="grid sm:grid-cols-2 gap-2">
+        {item.useCases.map((u, i) => (
+          <li
+            key={i}
+            className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 px-4 py-3 text-[14px] text-neutral-700 dark:text-neutral-300"
+          >
+            {u}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function TipSection({ item }: { item: PickItem }) {
+  if (!item.tip) return null;
+  return (
+    <section className="mb-10 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 p-5">
+      <h2 className="text-base font-bold mb-2 text-amber-700 dark:text-amber-400">
+        💡 실전 팁
+      </h2>
+      <p className="text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+        {item.tip}
+      </p>
+    </section>
+  );
+}
+
+function HubBody({
+  item,
+  subItems,
+}: {
+  item: PickItem;
+  subItems: SubItem[];
+}) {
+  return (
+    <>
+      <HeroSection item={item} />
+      <SiteInfoBox item={item} />
+      <section className="mb-10">
+        <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+          📋 신청·이용 가능 항목 {subItems.length}가지
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {subItems.map((sub, i) => (
+            <SubItemCard key={i} sub={sub} />
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function RichDetailBody({
+  item,
+  detail,
+}: {
+  item: PickItem;
+  detail: DetailContent;
+}) {
+  return (
+    <>
+      <HeroSection item={item} />
 
       <section className="mb-10 space-y-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
         {detail.longIntro.map((p, i) => (
@@ -476,6 +554,20 @@ function DetailBody({
   );
 }
 
+function BasicDetailBody({ item }: { item: PickItem }) {
+  return (
+    <>
+      <HeroSection item={item} />
+      <section className="mb-10 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+        <p>{item.details}</p>
+      </section>
+      <BasicFactsSection item={item} />
+      <UseCasesSection item={item} />
+      <TipSection item={item} />
+    </>
+  );
+}
+
 export default function HubPage({ params }: { params: Params }) {
   const entry = getHub(params.slug, params.hub);
   if (!entry) notFound();
@@ -484,7 +576,8 @@ export default function HubPage({ params }: { params: Params }) {
 
   const { item } = entry;
   const pageUrl = `${SITE}/picks/${params.slug}/${params.hub}`;
-  const isDetail = !!item.detailContent;
+  const hasSub = !!(item.subItems && item.subItems.length > 0);
+  const hasDetail = !!item.detailContent;
   const subItems = item.subItems ?? [];
   const detail = item.detailContent;
 
@@ -492,9 +585,7 @@ export default function HubPage({ params }: { params: Params }) {
     <>
       <JsonLd
         data={collectionPageLd({
-          name: isDetail
-            ? `${item.name} 사용 가이드`
-            : `${item.name} 신청 가능 항목`,
+          name: hasSub ? `${item.name} 신청 가능 항목` : item.name,
           description: item.blurb,
           url: pageUrl,
           dateModified: cat.updatedAt,
@@ -508,7 +599,7 @@ export default function HubPage({ params }: { params: Params }) {
           { name: item.name, url: pageUrl },
         ])}
       />
-      {!isDetail && subItems.length > 0 && (
+      {hasSub && (
         <JsonLd
           data={itemListLd({
             name: `${item.name} 주요 서비스`,
@@ -527,7 +618,7 @@ export default function HubPage({ params }: { params: Params }) {
           })}
         />
       )}
-      {isDetail && detail?.faq && detail.faq.length > 0 && (
+      {hasDetail && detail?.faq && detail.faq.length > 0 && (
         <JsonLd data={faqLd(detail.faq)} />
       )}
 
@@ -556,10 +647,12 @@ export default function HubPage({ params }: { params: Params }) {
           </span>
         </nav>
 
-        {isDetail && detail ? (
-          <DetailBody item={item} detail={detail} />
-        ) : (
+        {hasSub ? (
           <HubBody item={item} subItems={subItems} />
+        ) : hasDetail && detail ? (
+          <RichDetailBody item={item} detail={detail} />
+        ) : (
+          <BasicDetailBody item={item} />
         )}
 
         <section className="mb-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">

@@ -5,6 +5,7 @@ import {
   PICK_CATEGORIES,
   getPickCategory,
   pricingLabel,
+  autoSlug,
   type PickItem,
 } from "@/lib/picks";
 import {
@@ -89,28 +90,20 @@ function ItemCard({
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   const host = external ? hostname(item.url) : "";
+  const slug = autoSlug(item);
   return (
-    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden hover:border-brand transition">
-      {item.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.imageUrl}
-          alt={`${item.name} 미리보기 이미지`}
-          loading="lazy"
-          className="w-full h-36 sm:h-40 object-cover bg-neutral-100 dark:bg-neutral-900"
-        />
-      )}
+    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
       <a
         href={item.url}
         {...linkProps}
         aria-label={`${item.name} 바로가기`}
-        className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-md whitespace-nowrap"
+        className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm whitespace-nowrap"
       >
         바로가기
         <span className="text-[10px]">{external ? "↗" : "→"}</span>
       </a>
-      <div className="p-5">
-        <header className="mb-2.5 pr-24 flex items-start gap-3">
+
+      <header className="mb-2.5 pr-24 flex items-start gap-3">
         <SiteLogo
           host={host}
           alt={`${item.name} 로고`}
@@ -187,26 +180,17 @@ function ItemCard({
           </p>
         )}
 
-        {item.hubSlug && item.subItems && item.subItems.length > 0 && (
-          <Link
-            href={`/picks/${categorySlug}/${item.hubSlug}`}
-            className="mt-1 inline-flex items-center justify-between gap-2 w-full rounded-xl bg-brand/10 hover:bg-brand hover:text-white text-brand border border-brand/30 px-4 py-2.5 text-[13px] font-semibold transition"
-          >
-            <span>📋 신청 가능 항목 {item.subItems.length}가지 보기</span>
-            <span>→</span>
-          </Link>
-        )}
-
-        {item.hubSlug && item.detailContent && !item.subItems && (
-          <Link
-            href={`/picks/${categorySlug}/${item.hubSlug}`}
-            className="mt-1 inline-flex items-center justify-between gap-2 w-full rounded-xl bg-brand/10 hover:bg-brand hover:text-white text-brand border border-brand/30 px-4 py-2.5 text-[13px] font-semibold transition"
-          >
-            <span>📖 사용법·가격·FAQ 자세히 보기</span>
-            <span>→</span>
-          </Link>
-        )}
-        </div>
+        <Link
+          href={`/picks/${categorySlug}/${slug}`}
+          className="mt-1 inline-flex items-center justify-between gap-2 w-full rounded-xl bg-brand/10 hover:bg-brand hover:text-white text-brand border border-brand/30 px-4 py-2.5 text-[13px] font-semibold transition"
+        >
+          <span>
+            {item.subItems && item.subItems.length > 0
+              ? `📋 신청 가능 항목 ${item.subItems.length}가지 보기`
+              : "📖 자세히 보기 — 미리보기·가격·시작 가이드"}
+          </span>
+          <span>→</span>
+        </Link>
       </div>
     </article>
   );

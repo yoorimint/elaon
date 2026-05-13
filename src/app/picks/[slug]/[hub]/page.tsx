@@ -62,8 +62,20 @@ function SubItemCard({ sub }: { sub: SubItem }) {
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   return (
-    <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition flex flex-col">
-      <header className="mb-2">
+    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition flex flex-col">
+      {sub.url && (
+        <a
+          href={sub.url}
+          {...linkProps}
+          aria-label={`${sub.name} 바로가기`}
+          className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm whitespace-nowrap"
+        >
+          바로가기
+          {external && <span className="text-[10px]">↗</span>}
+        </a>
+      )}
+
+      <header className="mb-2 pr-24">
         <h3 className="font-bold text-[16px] text-neutral-800 dark:text-neutral-100">
           {sub.name}
         </h3>
@@ -80,7 +92,7 @@ function SubItemCard({ sub }: { sub: SubItem }) {
         </p>
       )}
 
-      <dl className="space-y-1.5 text-[12px] mb-3">
+      <dl className="space-y-1.5 text-[12px]">
         {sub.amount && (
           <div className="flex gap-2">
             <dt className="shrink-0 w-14 font-semibold text-neutral-500">
@@ -112,17 +124,6 @@ function SubItemCard({ sub }: { sub: SubItem }) {
           </div>
         )}
       </dl>
-
-      {sub.url && (
-        <a
-          href={sub.url}
-          {...linkProps}
-          className="mt-auto inline-flex items-center justify-center gap-1 rounded-full bg-brand text-white px-4 py-2 text-[13px] font-semibold hover:bg-brand-dark transition"
-        >
-          신청·자세히 보기
-          {external && <span className="text-[11px]">↗</span>}
-        </a>
-      )}
     </article>
   );
 }

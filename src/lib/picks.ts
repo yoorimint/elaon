@@ -12853,14 +12853,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Plus 결제 결정", body: "인디케이터 5개 이상 동시 필요·다중 차트 작업이 일상이 되면 Plus($29.95) 결제. 한 달 무료 체험 권장." },
             ],
             faq: [
-              { q: "한국에서 가입·결제 가능한가요?", a: "가능합니다. 한국 IP 로 정상 접속되며 국내·해외 신용카드 모두 결제됩니다. VPN 불필요. 카카오·네이버페이는 지원되지 않으므로 카드 결제를 사용하세요." },
-              { q: "무료 플랜으로 어디까지 쓸 수 있나요?", a: "차트 기능 거의 다 가능. 단점은 인디케이터 동시 2개 제한, 광고 노출, 알람 3개 제한, 1개 디바이스만. 가벼운 차트 분석은 무료로 충분하지만 본격 매매·다중 인디케이터는 Plus 이상이 필요합니다." },
-              { q: "Pine Script 학습 어렵나요?", a: "JavaScript 와 비슷한 문법이라 코딩 경험이 있다면 1~2일에 입문 가능. 비전공자도 공식 문서·유튜브 튜토리얼로 1주일이면 단순 인디케이터·전략 작성할 수 있습니다. 본 사이트(eloan)는 코드 없이 클릭으로 백테스트 가능하므로 코딩이 부담이면 eloan 우선 사용." },
-              { q: "Plus 결제할 가치 있나요?", a: "매일 차트를 보는 트레이더라면 Plus($29.95) 가 가장 효율적. 인디케이터 10개, 차트 8개 동시 보기, 알람 100개라 본격 매매에 충분. 가끔 보는 정도면 Essential($14.95) 또는 무료로 충분." },
-              { q: "한국 주식 실시간 시세 받을 수 있나요?", a: "무료 플랜은 약간 지연된 데이터(보통 15분). 실시간 KRX 데이터는 Pro+ 이상 + 추가 데이터 구독이 필요합니다. 한국 주식만 본다면 네이버 증권의 실시간 데이터 + TradingView 차트 분석 조합이 가성비 좋습니다." },
-              { q: "본인 전략 백테스트는?", a: "Pine Script 의 strategy() 함수로 작성한 코드를 차트에 적용하면 자동으로 백테스트 결과(승률·MDD·총 수익률) 가 계산됩니다. 무료 플랜에서도 백테스트 기능 사용 가능. 단, 슬리피지·체결지연 등 시장 충격을 완벽히 반영하지 않으니 실전 대비 10~20% 할인해서 보세요." },
-              { q: "TradingView 와 eloan 차이는?", a: "eloan 은 한국 KRW 코인 시장 특화·12종 빌트인 전략 무료 백테스트·결과 슬러그 URL 공유. TradingView 는 글로벌 전 시장·본인 전략 코딩 가능·차트 분석 1티어. 코딩 없이 빠른 전략 검증은 eloan, 복잡한 본인 전략 개발과 글로벌 시장 분석은 TradingView." },
-              { q: "환불 가능한가요?", a: "Plus 이상 플랜은 30일 환불 보장 정책이 있습니다(2026년 기준). 결제 후 30일 이내 만족하지 못하면 고객지원에 문의해 환불 신청 가능. Basic 무료는 환불 대상 아님." },
+              {
+                q: "TradingView 한국에서 가입·결제 가능? VPN?",
+                a: "TradingView(tradingview.com) = 글로벌 1위 차트 분석 플랫폼. 한국 가입 가능, VPN 불필요. 가입: Google·Apple·이메일 SSO 1분. 한국어 인터페이스 풀 지원 1티어. 결제: 비자·마스터·아멕스 한국 신용카드·체크카드 정상. USD 결제 — 환율 변동(약 2.1만원/Plus·4.2만원/Pro). 카카오·네이버페이 미지원. 사설 'TradingView 가입 패키지' 업체는 위험 — tradingview.com 공식만. 한국 주식·코인·외환·선물 통합 분석 = 한국 트레이더 누구나 활용 핵심 사이트. 무료 + Plus($30) + Pro($60) + Pro+($120). 글로벌 트레이더 사실상 표준 도구.",
+              },
+              {
+                q: "TradingView 무료 플랜으로 어디까지?",
+                a: "TradingView Basic 무료 = 차트 분석 80% 가능. 무료 기능: ① 차트 풀 기능(이동평균·RSI·MACD·볼린저밴드 등 100+ 지표) ② 200+ 그리기 도구 ③ Pine Script 본인 전략 백테스트 ④ 1개 디바이스. 무료 제한: ① 인디케이터 동시 2개 ② 알람 3개 ③ 광고 노출 ④ 차트 1개 동시 ⑤ 5분·15분·일 데이터(실시간 일부). 추천: ① 가벼운 차트 분석 = 무료 충분 ② 본격 매매·다중 인디케이터 = Plus($30) 필요. 한국 사용자: ① 일반 = 무료 + 한국어 + 한국 주식·KRW 코인 = 가성비 1티어 ② 본격 = Plus 결제. 무료로도 글로벌 차트 1티어 도구 활용.",
+              },
+              {
+                q: "TradingView Plus·Pro·Pro+ 차이?",
+                a: "TradingView 플랜 비교(2026): ① Basic = 무료, 인디케이터 2개, 광고 ② Essential($14.95/월) = 인디케이터 5개, 광고 없음, 알람 20개 ③ Plus($29.95) = 인디케이터 10개, 차트 8개 동시, 알람 100개, 다중 차트 ④ Premium($59.95) = 인디케이터 25개, 알람 400개, 1초 봉, DOM ⑤ Pro+($99.95) = Premium + 초우선 데이터. 추천: ① 가벼운 사용 = 무료 ② 본격 분석 = Plus($30) 가성비 ③ 본격 트레이더 = Premium($60) ④ 데이트레이더 = Pro+. 한국 사용자: ① 일반 = 무료 또는 Plus ② 본격 = Premium. Plus = 한국 트레이더 표준 결제 플랜. 30일 환불 보장.",
+              },
+              {
+                q: "TradingView Pine Script 학습?",
+                a: "Pine Script = TradingView 본인 전략 코딩 언어. 강점: ① JavaScript·Python 와 비슷한 문법 ② 1~2일 입문(코딩 경험자) ③ 1주일 단순 인디케이터·전략 작성 ④ 공식 문서 풍부 ⑤ 유튜브·블로그 한국어 강의 다수 ⑥ Pine Script v6 최신. 활용: ① 본인 매매 전략 코드화 ② 백테스트 = strategy() 함수 ③ 본인 인디케이터 만들기 ④ 본인 알림 설정 ⑤ 커뮤니티 공개 가능. 학습 자료: ① TradingView 공식 문서(영문 + 일부 한국어) ② 인프런·생활코딩 한국어 강의 ③ 유튜브 한국 트레이더 채널. 한국 본격 트레이더 = Pine Script 학습 = 평생 자산. 비코딩자 = eloan 우선.",
+              },
+              {
+                q: "TradingView 한국어·한국 주식?",
+                a: "TradingView 한국어 1티어: ① 인터페이스 한국어 풀 지원 ② 한국 주식 KRX(KOSPI·KOSDAQ) 데이터 무료 ③ KRW 코인(업비트·빗썸·코빗) 데이터 ④ 한국어 커뮤니티 활발 ⑤ Pine Script 한국어 강의 다수. 한국 주식 데이터: ① 무료 = 15분 지연 ② Plus 이상 = 실시간 일부 ③ Pro+ + 추가 구독 = 실시간 KRX 풀. 추천: ① 한국 주식 실시간 = 네이버 증권(15분 지연·무료) + 증권사 HTS(계좌 보유 시 실시간 무료) ② TradingView = 차트 분석 강점 ③ 분담 활용. 한국 트레이더 표준: 네이버 증권(시세) + 증권사 HTS(매매) + TradingView(차트) 3박자.",
+              },
+              {
+                q: "TradingView 백테스트·전략 검증?",
+                a: "TradingView Pine Script 백테스트 = 무료 기능. 활용: ① strategy() 함수로 본인 매매 전략 코드 ② 차트에 적용 = 자동 백테스트 ③ 결과 = 승률·MDD·총 수익률·샤프 비율. 단 ① 슬리피지·체결지연·시장 충격 = 완벽 반영 X ② 실전 대비 10~20% 할인해서 보기 ③ 본인 전략 검증 우선 도구. 백테스트 결과 해석: ① 승률 50%+ + Risk Reward 1.5+ ② MDD 30% 미만 ③ 샤프 비율 1+ = 양호 ④ 1년+ 백테스트 권장. 한국 트레이더: ① TradingView Pine Script 백테스트 + eloan 백테스트 = 다중 검증 ② 실전 적용 = 작은 자금 시작 + 점진 확대.",
+              },
+              {
+                q: "TradingView vs eloan 차이? 백테스트?",
+                a: "TradingView vs eloan 차이: ① TradingView = 글로벌 전 시장·본인 전략 코딩(Pine Script)·차트 분석 1티어 ② eloan = 한국 KRW 코인 시장 특화·12종 빌트인 전략 무료 백테스트·결과 슬러그 URL 공유·코딩 없이 클릭 기반. 추천: ① 코딩 없이 빠른 전략 검증 = eloan 우선 ② 복잡한 본인 전략 개발 = TradingView Pine Script ③ 글로벌 시장 분석 = TradingView ④ 한국 KRW 코인 = eloan 가성비. 한국 본격 트레이더 표준: eloan(한국 KRW 코인 빠른 백테스트) + TradingView Pine Script(본인 전략 + 글로벌). 두 도구 분담 활용 = 평생 자산. eloan = 진입 장벽 1티어 낮음.",
+              },
+              {
+                q: "TradingView 인디케이터·기술적 분석?",
+                a: "TradingView 인디케이터 = 100+ 표준 + 커뮤니티 10,000+. 표준 인디케이터: ① 이동평균(SMA·EMA·VWAP) ② RSI ③ MACD ④ Bollinger Bands ⑤ Stochastic ⑥ Volume ⑦ Fibonacci ⑧ Ichimoku Cloud. 커뮤니티 Pine Script: ① 사용자 공개 인디케이터 = 무료 사용 ② 본인 전략 + 커뮤니티 인디케이터 결합 ③ 인기 인디케이터 = 검증된 표준. 활용: ① 본인 매매 전략 = 2~5개 인디케이터 결합 ② 다중 시간 차트(1분·5분·1시간·일) ③ 본인 학습 + 백테스트. 한국 트레이더 = Pine Script 커뮤니티 인디케이터 활용 = 시간 절약 + 평생 자산.",
+              },
+              {
+                q: "TradingView 알림·푸시 활용?",
+                a: "TradingView 알림 시스템: ① 가격 알림(특정 가격 도달) ② 인디케이터 알림(RSI 30 도달 등) ③ 본인 Pine Script 조건 알림 ④ 이메일·푸시·SMS ⑤ Webhook(외부 시스템 연동). 알림 한도: ① 무료 = 3개 ② Plus = 100개 ③ Premium = 400개 ④ Pro+ = 1000개. 활용: ① 본인 매수 후보 가격 알림 ② 본인 손절선 알림 ③ 인디케이터 신호(RSI 과매도·과매수) ④ 본인 전략 자동 알림. Webhook 활용: ① TradingView 신호 → 외부 자동매매 시스템 ② Binance·Bybit 자동 주문 ③ 본인 텔레그램·디스코드 알림. 한국 본격 트레이더 = TradingView 알림 + 본인 자동매매 = 평생 자산.",
+              },
+              {
+                q: "TradingView 차트 공유·소셜?",
+                a: "TradingView 차트 공유 1티어: ① 본인 차트 분석 = 이미지·URL 공유 ② 본인 아이디어(Ideas) 게시 ③ 다른 트레이더 분석 학습 ④ 본인 팔로워 형성 ⑤ 본인 트레이딩 평판 쌓기. 활용: ① 본인 매매 결정 공유 = 책임감 ② 다른 트레이더 학습 = 영감 ③ 본인 커리어 쌓기 = 인플루언서 ④ 한국 가상자산·주식 커뮤니티(블라인드·디스코드·텔레그램) 공유. 한국 본격 트레이더 = TradingView 차트 공유 + 커뮤니티 토론 = 평생 학습 + 인플루언서 가능. 본인 매매 = 본인 책임. 사기 차트 공유 주의 — 본인 학습 + 검증.",
+              },
+              {
+                q: "TradingView 자동매매·Webhook?",
+                a: "TradingView Webhook(Premium 이상) = 외부 자동매매 시스템 연동. 활용: ① TradingView 신호 발생 → Webhook URL 호출 → 외부 시스템 자동 거래 ② 거래소 API(Binance·Bybit·OKX) 자동 주문 ③ 본인 텔레그램·디스코드 알림 ④ 본인 SaaS·자동매매 봇. 한국 본격 트레이더: ① TradingView Premium($60) + 본인 자동매매 시스템 ② 본인 Pine Script 신호 + Webhook + 거래소 API ③ Python·Node.js 본인 코드 ④ 클라우드 호스팅(AWS·GCP). 단 ① 자동매매 = 손실 가능성 ② 충분한 백테스트 ③ 작게 시작 ④ 본인 학습. 한국 본격 트레이더 표준 워크플로우.",
+              },
+              {
+                q: "TradingView 글로벌 시장 통합?",
+                a: "TradingView 통합 시장: ① 글로벌 주식(NYSE·NASDAQ·LSE·도쿄·홍콩·상하이 등 100+ 거래소) ② 한국 주식(KOSPI·KOSDAQ·KONEX) ③ 가상자산(전 세계 거래소) ④ 외환(Forex) ⑤ 선물 ⑥ 옵션 ⑦ 채권 ⑧ 원자재 ⑨ 인덱스. 강점: ① 단일 화면 전 자산 통합 ② 글로벌 분산 투자자 표준 ③ 본인 포트폴리오 통합 분석. 활용: ① 글로벌 매크로 추적 ② 본인 자산 배분 결정 ③ 다중 자산 차트 동시 비교. 한국 글로벌 분산 투자자 = TradingView 표준. 한국 주식 + 미국 주식 + 가상자산 + 외환 = 통합 분석 = 평생 자산. 본인 학습 + 정기 확인.",
+              },
+              {
+                q: "TradingView 환불·자동 결제?",
+                a: "TradingView 환불 정책: 30일 환불 보장 — Plus 이상 결제 후 30일 이내 환불 가능. 신청: 고객센터 contact + 한국어·영어 처리. 자동 결제 해지: account → cancel 즉시 가능, 결제한 달 끝까지 사용. 한 달만 결제 후 해지 자유. 카드 변경·삭제·인보이스 다운로드 가능. 연 결제 약 17% 할인. 사업자 결제 = 세금계산서 일부. 결제 옵션: 비자·마스터·아멕스. USD 결제. 카카오·네이버페이 미지원. 추천: ① 처음 = 30일 환불 보장 활용 = Plus 체험 ② 본격 = 연 결제 가성비. 한국 본격 트레이더 = 평생 결제 가성비.",
+              },
+              {
+                q: "TradingView 모바일 앱·휴대폰?",
+                a: "TradingView 공식 모바일 앱(iOS·Android) = 글로벌 1티어. 기능: ① 모든 차트 기능 ② 본인 차트 동기화(PC) ③ 알림 푸시 ④ 본인 아이디어 ⑤ Pine Script 일부. 강점: ① 한국어 1티어 ② 모든 기능 모바일 가능 ③ PC + 모바일 동기화 ④ 외출 중 빠른 분석. 단 ① 본격 차트 분석 = PC 큰 화면 ② Pine Script 작성 = PC ③ 본격 자동매매 = PC. 활용: ① 외출 중 빠른 분석·알림 = 모바일 ② 본격 작업 = PC ③ PC + 모바일 동기화. 한국 본격 트레이더 표준: PC + 모바일 + Pine Script + Webhook + 자동매매 = 평생 자산.",
+              },
+              {
+                q: "TradingView 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 차트 분석(가장 많음) — 한국 주식·KRW 코인·미국 주식·외환 ② 본인 Pine Script 전략 + 백테스트 ③ 알림 + 본인 매수·매도 시점 ④ 본인 차트 아이디어 공유 ⑤ Webhook 자동매매 ⑥ 글로벌 매크로 추적. 평생 활용: 매일 TradingView 차트 + 본인 매매 결정 = 평생 자산 형성. 한국 본격 트레이더에게 사실상 표준 도구. 한국어 1티어 + 글로벌 1티어 + Pine Script + 자동매매 통합 = 평생 자산. 본인 학습 + 정기 확인 + 본인 전략 = 평생 트레이더 자산. TradingView + 거래소 HTS + eloan 분담 = 평생 가성비.",
+              },
             ],
             relatedKeywords: [
               "TradingView 한국 사용",
@@ -12940,13 +12992,66 @@ const COIN: PickCategory = {
               { step: 5, title: "실전 배포", body: "Quant 플랜 결제 후 Interactive Brokers·Binance 등에 연동하여 자동매매 시작." },
             ],
             faq: [
-              { q: "TradingView 와 차이?", a: "TradingView = 차트 + Pine Script (간단한 백테스트). QuantConnect = 본격 Python·C# 알고리즘 + 실전 자동매매. 가벼운 인디케이터는 TradingView, 본격 퀀트는 QuantConnect." },
-              { q: "eloan 과 차이?", a: "eloan = 한국 KRW 코인·코드 없는 백테스트·결과 공유. QuantConnect = 글로벌 전 시장·Python/C# 코딩·실전 자동매매. 한국 코인 빠른 검증은 eloan, 글로벌 알고리즘 본격 개발은 QuantConnect." },
-              { q: "Python 몰라도 사용?", a: "어려움. Python 기초 + 매매 개념이 모두 필요. Bootcamp 무료 강의로 1~2주 학습 후 가능. 코딩 없는 백테스트는 eloan 또는 TradingView." },
-              { q: "한국 코인 KRW 마켓?", a: "직접 연동 없음. 업비트·빗썸 데이터를 본인이 별도로 수집해 업로드 필요. KRW 마켓 본격 백테스트는 eloan, 글로벌은 QuantConnect." },
-              { q: "실전 자동매매 안전?", a: "Quant 플랜에서 거래소 연동. 다만 실전 자동매매는 슬리피지·체결지연·시장 충격이 백테스트 대비 차이 있음. 소액으로 충분히 검증 후 본격 운영 권장." },
-              { q: "Cloud Compute 한도?", a: "무료 플랜은 일일 백테스트 횟수 제한. Researcher 이상 결제 시 한도 대폭 증가. 본격 사용 시 결제 거의 필수." },
-              { q: "LEAN 엔진?", a: "QuantConnect 의 오픈소스 백테스트·라이브 트레이딩 엔진. GitHub 에 공개. 본인 서버에 자체 호스팅도 가능." },
+              {
+                q: "QuantConnect 한국에서 가입·사용? VPN?",
+                a: "QuantConnect(quantconnect.com) = 글로벌 1티어 알고리즘 트레이딩 + 백테스트 플랫폼. 한국 가입 가능, VPN 불필요. 가입 = Google·이메일 SSO 1분. 무료 기본 + Researcher($20/월·연 $200) + Quant($100/월·연 $1,000) + Team($600+). 사설 'QuantConnect 강의 패키지' 업체는 위험 — quantconnect.com 공식만. 핵심 강점: Python·C# 본격 알고리즘 트레이딩 + LEAN 오픈소스 엔진 + Interactive Brokers·Binance 실전 연동. 한국 본격 퀀트 트레이더·알고리즘 트레이딩 개발자에게 글로벌 1티어 도구. 본 사이트(eloan) 와 분담 활용 권장.",
+              },
+              {
+                q: "QuantConnect vs TradingView·eloan 차이?",
+                a: "백테스트·알고리즘 트레이딩 도구 비교: ① QuantConnect = 본격 Python·C# 알고리즘·실전 자동매매·글로벌 전 시장·LEAN 엔진 1티어 ② TradingView = 차트 + Pine Script 간단 백테스트·다양 시장·진입 장벽 낮음 ③ eloan = 한국 KRW 코인 시장 특화·코드 없는 12종 빌트인 전략·진입 장벽 1티어 낮음 ④ Backtrader(Python) = 오픈소스 무료 ⑤ Zipline(Python) = 오픈소스. 추천: ① 코딩 없는 빠른 백테스트 = eloan ② 가벼운 차트 + 백테스트 = TradingView ③ 본격 알고리즘 = QuantConnect Python ④ 자체 구축 = Backtrader. 한국 본격 퀀트 트레이더 표준: eloan(한국 KRW) + TradingView(차트) + QuantConnect(글로벌 본격) 분담.",
+              },
+              {
+                q: "QuantConnect Python·C# 학습?",
+                a: "QuantConnect 학습 진입 장벽: ① Python·C# 기초 필수 ② 알고리즘 트레이딩 개념 ③ 매매 전략 이론 ④ LEAN 엔진 API. 학습 자료: ① Bootcamp 무료 강의(공식·영문) ② QuantConnect Docs ③ 유튜브 한국어 강의 일부 ④ 한국 가상자산·주식 알고리즘 커뮤니티(블라인드·디스코드). 학습 기간: ① Python 기초 = 1~2개월 ② QuantConnect 입문 = 2~4주 ③ 본격 알고리즘 = 3~6개월. 추천 학습 순서: ① 인프런·생활코딩 Python 기초 ② QuantConnect Bootcamp ③ 간단한 알고리즘(이동평균 교차) ④ 점진 확대. 코딩 부담 시 = eloan 우선. 한국 본격 트레이더 = 평생 자산 학습.",
+              },
+              {
+                q: "QuantConnect LEAN 엔진·오픈소스?",
+                a: "LEAN 엔진 = QuantConnect 의 오픈소스 백테스트·라이브 트레이딩 엔진. GitHub(github.com/QuantConnect/Lean) 공개. 활용: ① 본인 서버 자체 호스팅 가능 ② 본인 데이터 통합 ③ 본인 거래소 연동 ④ 본인 알고리즘 무료 백테스트. 강점: ① 오픈소스 = 영구 무료 ② Cloud 의존성 X ③ 본인 커스터마이징 가능 ④ Python·C# 지원. 단 ① 자체 호스팅 = 본인 서버 관리 부담 ② 클라우드 = QuantConnect Researcher·Quant 결제 가성비 ③ 본격 개발자 = 자체 호스팅 검토. 한국 본격 퀀트 개발자 = LEAN 엔진 자체 호스팅 + 본인 전략 = 평생 자산. 일반 = QuantConnect 클라우드 가성비.",
+              },
+              {
+                q: "QuantConnect 백테스트·Cloud Compute?",
+                a: "QuantConnect Cloud Compute 백테스트: ① 무료 = 일일 백테스트 횟수 제한 + 단순 알고리즘 ② Researcher($20) = 일일 한도 ↑ + 본격 백테스트 ③ Quant($100) = 무제한 + 실전 자동매매 + Live Trading. 강점: ① 클라우드 = 본인 PC 부담 X ② 빠른 백테스트(클러스터 컴퓨팅) ③ 본인 알고리즘 GitHub 백업. 추천: ① 학습 = 무료 충분 ② 본격 백테스트 = Researcher ③ 실전 자동매매 = Quant. 본 사이트(eloan) 백테스트 + QuantConnect = 한국 KRW + 글로벌 = 종합 검증. 한국 본격 퀀트 트레이더 = QuantConnect Quant + eloan + TradingView 분담 활용 표준.",
+              },
+              {
+                q: "QuantConnect 실전 자동매매·거래소 연동?",
+                a: "QuantConnect Quant($100/월) 실전 자동매매: ① Interactive Brokers(미국 1위 증권사) ② Binance·Bybit·Kraken(가상자산) ③ Tradier·Tradier OAuth ④ OANDA(외환) ⑤ Charles Schwab. 한국 사용자: ① 미국 주식 = Interactive Brokers 추천 ② 가상자산 = Binance·Bybit ③ 한국 주식 = QuantConnect 미지원, 키움 OpenAPI 별도 ④ 한국 KRW 코인 = QuantConnect 미지원, eloan 또는 본인 코드 + 업비트·빗썸 API. 단 ① 실전 자동매매 = 슬리피지·체결지연·시장 충격 = 백테스트 대비 차이 ② 소액 충분 검증 후 본격 ③ 손실 위험 본인 책임. 한국 본격 퀀트 트레이더 = QuantConnect + 거래소 API.",
+              },
+              {
+                q: "QuantConnect 한국 코인 KRW 마켓?",
+                a: "QuantConnect 한국 KRW 코인 직접 연동 = 미지원. 한국 KRW 코인 백테스트 옵션: ① eloan(한국 KRW 코인 특화 1티어) ② 본인 코드 + 업비트·빗썸 API 수집 + QuantConnect 업로드 ③ pyupbit + Backtrader 자체 구축 ④ TradingView Pine Script + 업비트 데이터. 추천: ① 코딩 없는 빠른 백테스트 = eloan ② 본격 Python = pyupbit + Backtrader ③ 글로벌 USDT 페어 = QuantConnect. 한국 본격 퀀트 트레이더 워크플로우: ① 한국 KRW = eloan + 본인 자동매매(업비트 API) ② 글로벌 USDT = QuantConnect + 본인 알고리즘 ③ 분담 활용 = 평생 자산. eloan + QuantConnect 결합 = 한국 + 글로벌 종합 검증.",
+              },
+              {
+                q: "QuantConnect Researcher·Quant 결제 가치?",
+                a: "QuantConnect 플랜 가치: ① Free = 학습·기본 백테스트(일일 한도) ② Researcher($20/월·연 $200) = 본격 백테스트(한도 ↑) + 데이터 풀 + 커뮤니티 ③ Quant($100/월·연 $1,000) = 실전 자동매매 + Live Trading + 거래소 연동 ④ Team($600+) = 팀·기관. 추천: ① 학습 = 무료(2~3개월) ② 본격 알고리즘 학습 = Researcher ③ 실전 자동매매 = Quant ④ 본인 자동매매 회사·헤지펀드 = Team. 한국 사용자: ① 일반 = 무료 학습 ② 본격 = Researcher ③ 실전 = Quant. 한 달만 결제 후 해지 자유. eloan + QuantConnect 결합 = 한국·글로벌 종합 = 평생 자산.",
+              },
+              {
+                q: "QuantConnect 백테스트 정확도·실전 차이?",
+                a: "QuantConnect 백테스트 정확도: ① 슬리피지 모델 자동 적용 ② 거래소 수수료 반영 ③ 시장 충격 일부 반영 ④ 실시간 데이터 vs 과거 데이터. 단 백테스트 vs 실전 차이: ① 슬리피지·체결지연 = 실전 더 큼 ② 시장 충격 = 큰 자금 시 영향 ③ 마켓 메이커 봇 ④ 거래소 다운타임. 추천: ① 백테스트 결과 = 실전 대비 10~30% 할인해서 보기 ② 충분한 백테스트(1~5년) ③ Forward Testing(시뮬레이션) 우선 ④ 작은 자금 실전 후 점진 확대. 한국 본격 퀀트 트레이더 = 백테스트 + Forward + 작은 실전 + 점진 확대 = 평생 자산 보호 워크플로우.",
+              },
+              {
+                q: "QuantConnect 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① Python 알고리즘 트레이딩 학습(가장 많음) ② 글로벌 시장(미국 주식·USDT 코인·외환·선물) 본격 백테스트 ③ 실전 자동매매 = Interactive Brokers·Binance ④ LEAN 엔진 자체 호스팅 = 본인 서버 ⑤ 본인 알고리즘 + 본인 데이터 ⑥ 본 사이트(eloan) + QuantConnect 결합 = 한국·글로벌. 평생 활용: QuantConnect 학습 + 본인 알고리즘 + 실전 자동매매 = 평생 퀀트 트레이더 자산. 한국 본격 퀀트 개발자에게 글로벌 1티어 도구. 단 ① 진입 장벽 = Python + 알고리즘 학습 ② 시간 투자 6~12개월 ③ 본인 학습 + 신중한 실전. 평생 자산 형성.",
+              },
+              {
+                q: "QuantConnect 커뮤니티·전략 공유?",
+                a: "QuantConnect 커뮤니티: ① Algorithm Library = 다른 사용자 알고리즘 공개 + 학습 ② Forum = Q&A + 토론 ③ Tutorials + Bootcamp 무료 강의 ④ Open Source Library. 활용: ① 인기 알고리즘 학습 = 본인 진입 단축 ② 본인 알고리즘 공유 + 피드백 ③ 한국 가상자산·주식 알고리즘 커뮤니티(블라인드·디스코드) 토론. 단 ① 다른 사람 알고리즘 = 100% 검증 X ② 본인 학습 + 검증 ③ 본인 자금 = 본인 책임. 한국 본격 퀀트 트레이더 = QuantConnect 커뮤니티 학습 + 본인 알고리즘 = 평생 자산. 글로벌 알고리즘 트레이딩 표준 커뮤니티.",
+              },
+              {
+                q: "QuantConnect 본인 데이터·외부 데이터 통합?",
+                a: "QuantConnect 본인 데이터 통합: ① Custom Data = 본인 CSV 업로드 ② 외부 API 연동(Alpha Vantage·Quandl 등) ③ Web Scraping 결과 통합 ④ 본인 데이터셋. 활용: ① 한국 KRW 코인 데이터 = 업비트·빗썸 API 수집 → 업로드 ② 한국 주식 데이터 = 키움 OpenAPI + 본인 수집 ③ 본인 ML 모델 입력 데이터. 단 ① 데이터 수집 = 본인 시간 ② 데이터 정확성 = 본인 책임 ③ Custom Data = Researcher 이상 추천. 한국 본격 퀀트 트레이더 = 본인 한국 데이터 + QuantConnect 글로벌 데이터 = 종합 분석 가능. 본인 데이터 = 평생 자산.",
+              },
+              {
+                q: "QuantConnect ML·AI 통합?",
+                a: "QuantConnect ML·AI 활용: ① scikit-learn·TensorFlow·PyTorch 통합 ② 본인 머신러닝 모델 + 트레이딩 알고리즘 ③ 예측 모델 + 매매 결정. 인기 ML 활용: ① 가격 예측 = LSTM·Transformer ② 감정 분석 = 뉴스·소셜 미디어 ③ 패턴 인식 = 차트 이미지 ④ 강화학습 = 본인 매매 정책 학습. 단 ① ML 트레이딩 = 과적합 위험 ② 본인 충분한 검증 ③ 작은 자금 시작 ④ ML 학습 곡선 = 6개월~1년+. 한국 본격 퀀트 + AI 트레이더 = QuantConnect + Python ML = 글로벌 1티어 도구. 본인 학습 + 신중 + 본인 자금 보호.",
+              },
+              {
+                q: "QuantConnect 모바일·휴대폰?",
+                a: "QuantConnect 모바일 브라우저 일부 동작. 전용 모바일 앱 = 제한적. 기능: ① 본인 알고리즘 모니터링 ② 실전 자동매매 상태 확인 ③ 결과 차트. 모바일 한계: ① 본격 코딩·백테스트 = PC 권장 ② Python·C# 코드 작성 = PC + IDE 필수 ③ 알고리즘 개발 = PC 큰 화면. 활용: ① 외출 중 본인 실전 알고리즘 모니터링 ② 본격 작업 = PC ③ 알림 = 본인 텔레그램 봇 + QuantConnect Webhook. 한국 본격 퀀트 트레이더 = PC 본격 + 모바일 모니터링. QuantConnect = 본격 코딩 도구 = PC 중심 활용 표준.",
+              },
+              {
+                q: "QuantConnect 사기·라이선스·주의사항?",
+                a: "QuantConnect 자체 사기 사례 거의 없음 — 글로벌 신뢰 플랫폼. 주의 사례: ① 'QuantConnect Python 강의 패키지' 사설 업체 — 무료 자료 유료 판매 ② 가짜 QuantConnect 사이트 — 본인 정보·악성코드 ③ Quant 무료 평생 가짜 광고 ④ 사설 '퀀트 리딩방' — 거의 모두 사기 ⑤ 다른 사람 알고리즘 무단 도용 → 손실 위험. 주의사항: ① quantconnect.com 공식 도메인만 ② 본인이 직접 학습·사용 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Quant 결제 = 공식 사이트만 ⑤ 사설 리딩방 = 거의 모두 사기 ⑥ 다른 사람 알고리즘 = 100% 검증 X ⑦ 본인 자금 = 본인 책임. 본인 학습 + 신중한 실전 = 평생 자산 보호.",
+              },
             ],
             relatedKeywords: [
               "QuantConnect 사용법",
@@ -14407,13 +14512,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Elite 결제", body: "실시간 데이터·백테스트·고급 차트 필요시 Elite($39.5)." },
             ],
             faq: [
-              { q: "한국 주식 가능?", a: "아니요. 미국 주식·ETF·옵션·외환·암호화폐만 지원. 한국 주식 분석은 네이버 증권·증권사 HTS 사용." },
-              { q: "Elite 결제할 가치?", a: "데이트레이더·옵션 트레이더·본격 미국 주식 투자자에게 가치. 일반 가치 투자자·배당 투자자는 무료로 충분." },
-              { q: "Backtest 기능?", a: "Elite 결제 시 본인 매매 전략을 과거 데이터로 백테스트. TradingView Pine Script 같이 코딩 필요 없이 클릭 기반." },
-              { q: "Insider Trading 추적?", a: "기업 임원·이사회·대주주의 매매 내역 자동 추적. 내부자 매도가 늘면 매도 신호로 해석되기도." },
-              { q: "Yahoo Finance 와 차이?", a: "Yahoo = 시세·과거 데이터·실적 일정. finviz = 스크리닝·히트맵·내부자 매매. 보완 관계, 같이 사용." },
-              { q: "한국어?", a: "미지원. 영문 인터페이스. 기본 영어 + 주식 용어 이해 필요." },
-              { q: "히트맵 어디서?", a: "메인 화면 자동 표시. Maps 메뉴에서 섹터·산업·국가별 다양한 히트맵." },
+              {
+                q: "finviz 정말 무료? Elite 결제 필요?",
+                a: "finviz(finviz.com) = 미국 주식 스크리닝 + 히트맵 무료 사이트. 회원가입 없이 무료 사용 가능(15분 지연 시세). Elite($39.5/월·연 $299.5) = 실시간 데이터 + 백테스트 + 고급 차트. 사설 '스크리너 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. finviz.com 공식 도메인만 이용. 약 9,000+ 미국 주식·ETF 통합 스크리닝. 한국 미국 주식 투자자에게 스크리닝 1티어 도구. 일반 가치·배당 투자자 = 무료 충분, 데이트레이더·본격 = Elite 결제 가치.",
+              },
+              {
+                q: "finviz vs Yahoo Finance·TradingView 차이?",
+                a: "글로벌 주식 도구 비교: ① finviz = 미국 주식 스크리닝·히트맵·내부자 매매 1티어 ② Yahoo Finance = 시세·과거 데이터·실적 일정·yfinance Python ③ TradingView = 차트 분석 1티어, Pine Script 백테스트 ④ Bloomberg = 본격 펀더멘털(매우 비쌈). 추천: ① 스크리닝(가치주·배당주·성장주 발견) = finviz 우선 ② 시세·과거 데이터 = Yahoo Finance ③ 본격 차트 = TradingView ④ Python 백테스트 = Yahoo Finance + yfinance. 한국 미국 주식 투자자 표준: finviz(스크리닝) + Yahoo(데이터) + TradingView(차트) 3박자 분담.",
+              },
+              {
+                q: "finviz 스크리너·필터 활용?",
+                a: "finviz Screener = 약 80+ 필터: ① Fundamental(PER·PBR·ROE·EPS·매출 성장·배당수익률 등) ② Technical(이동평균·RSI·MACD·거래량 등) ③ Descriptive(시총·섹터·산업·국가·거래소) ④ News(분석가 추천 등). 활용: ① 가치주 = PER 15 미만 + ROE 15%+ + 부채비율 100% 미만 ② 배당주 = 배당수익률 3%+ + 배당 성장 5년+ ③ 성장주 = EPS 성장 25%+ + 매출 성장 20%+ ④ 모멘텀 = 거래량 ↑ + 가격 신고가. 본인 투자 스타일에 맞는 필터 5~10개 = 본인 스크리너 저장. 한국 미국 주식 투자자 = finviz 매주 스크리닝 = 평생 자산.",
+              },
+              {
+                q: "finviz 히트맵·시각화?",
+                a: "finviz 히트맵 = 시장 한눈에 시각화. 활용: ① S&P500 히트맵 = 500대 미국 주식 ② 섹터별 = Tech·Health·Financial·Energy 등 ③ 산업별 = 더 세분화 ④ ETF 히트맵 ⑤ 가상자산 히트맵 ⑥ 글로벌 시장. 색상: ① 녹색 = 가격 ↑ ② 빨간색 = 가격 ↓ ③ 크기 = 시총. 활용 시나리오: ① 매일 시장 매크로 빠른 파악 ② 본인 섹터 성과 ③ 트렌딩 종목 발견 ④ 본인 보유 섹터 추적. 한국 미국 주식 투자자 = 매일 finviz 히트맵 5분 확인 = 시장 매크로 인사이트. 무료 + 직관적 = 가성비 1티어.",
+              },
+              {
+                q: "finviz 내부자 매매·Insider Trading?",
+                a: "finviz Insider Trading = 기업 임원·이사회·대주주의 매매 자동 추적. 활용: ① 본인 보유 종목 내부자 매매 추적 ② 내부자 매수 ↑ = 보통 매수 신호 ③ 내부자 매도 ↑ = 주의 신호(단 매도 사유 다양) ④ Form 4 SEC 공시 통합. 단 ① 내부자 매도 = 100% 매도 신호 X(세금·개인 사정 등) ② 매수가 더 강한 신호 ③ 본인 분석과 결합. 한국 투자자: ① 미국 주식 보유 시 내부자 매매 추적 ② 본인 매매 결정 보조 ③ Form 4 공시 = SEC 무료. 본격 미국 주식 투자자에게 핵심 도구. finviz + SEC EDGAR 결합 = 평생 자산.",
+              },
+              {
+                q: "finviz Elite 결제 가치? 백테스트?",
+                a: "finviz Elite($39.5/월·연 $299.5) 추가 가치: ① 실시간 시세(15분 지연 → 실시간) ② Backtest 기능 = 본인 매매 전략 과거 데이터 검증 ③ 고급 차트(다양 기술적 지표) ④ Email Alerts(가격 알림) ⑤ Charts Premium ⑥ 광고 제거 ⑦ Stock Correlations ⑧ Long History(50년+) ⑨ Advanced Screener ⑩ Custom Layouts. Backtest 활용: ① TradingView Pine Script 같이 코딩 X ② 클릭 기반 = 진입 장벽 낮음 ③ 백테스트 결과 + 본인 전략 검증. 추천: ① 일반 투자자 = 무료 충분 ② 데이트레이더·본격 = Elite 가성비 ③ Python 백테스트 = Yahoo Finance + yfinance 무료.",
+              },
+              {
+                q: "finviz 한국 주식 가능? 한국어?",
+                a: "finviz = 미국 주식·ETF·옵션·외환·암호화폐 전용. 한국 주식 미지원. 한국 주식 스크리닝 도구: ① 네이버 증권 = 기본 스크리닝 + 한국어 ② FnGuide = 한국 주식 종합 분석 + 일부 유료 ③ KIS 키움 영웅문 등 증권사 HTS 스크리너 ④ 한경 컨센서스 = 분석가 데이터 ⑤ ZUM·다음 금융 = 일부. 한국어 미지원 — 영문 인터페이스. 한국 미국 주식 투자자: ① 영문 학습 일부 ② 주요 용어(PER·PBR·EPS·ROE·Dividend Yield 등) 이해 ③ Chrome 자동 번역 활용. 한국 투자자 표준: 한국 주식 = 네이버·증권사 + 미국 주식 = finviz·Yahoo Finance.",
+              },
+              {
+                q: "finviz 가치 투자·배당 투자 활용?",
+                a: "finviz 가치·배당 투자 스크리닝 1티어. 가치 투자 필터 예시: ① PER 15 미만 ② PBR 1.5 미만 ③ ROE 15%+ ④ Debt/Equity 100% 미만 ⑤ EPS 성장 양수. 배당 투자 필터 예시: ① 배당수익률 3%+ ② 배당 성장 5년+ ③ Payout Ratio 70% 미만 ④ FCF 양수 ⑤ ROE 15%+. 한국 미국 주식 투자자 표준 가치주: AAPL·MSFT·GOOGL·JPM·V·JNJ·PG 등. 배당주: KO·PEP·JNJ·MMM·MO·VZ·T·PFE·SCHD·VYM 등. finviz 스크리닝 + 본인 분석 + 본인 매매 결정 = 평생 자산. 워런 버핏·피터 린치·벤저민 그레이엄 스타일.",
+              },
+              {
+                q: "finviz API·자동매매?",
+                a: "finviz API = Elite 결제자 한정 + 제한적. 한국 미국 주식 자동매매 도구: ① Yahoo Finance + yfinance(Python·무료) = 표준 ② Alpha Vantage(무료 한도) ③ IEX Cloud(유료) ④ Polygon.io(유료) ⑤ Quandl/Nasdaq Data Link ⑥ FinanceDataReader(파이썬). 활용: ① finviz 스크리닝 = 종목 선정 ② Python yfinance = 데이터 다운로드 + 백테스트 ③ 본인 매매 = 증권사 OpenAPI(키움·미래에셋 해외 주식). 단 ① 미국 주식 자동매매 = 한국 증권사 API 제한 ② Interactive Brokers·TD Ameritrade(미국 증권사) = 본격 자동매매 가능 ③ 한국 사용자 = 일부 우회 필요. eloan 백테스트 활용 가능.",
+              },
+              {
+                q: "finviz 매매 신호·기술적 분석?",
+                a: "finviz Technical Analysis: ① 차트 기본 = 일·주·월 차트 ② 기술적 지표 = 이동평균(MA 20·50·200)·RSI·MACD·Bollinger Bands·Volume ③ 패턴 = Head & Shoulders·Triangle·Channel 자동 인식 ④ 신호 = 상승 추세·하락 추세·과매수·과매도. 활용: ① 골든크로스(MA50 > MA200) = 장기 매수 신호 ② 데드크로스 = 매도 신호 ③ RSI 30 미만 = 과매도(매수 검토) ④ RSI 70 초과 = 과매수(매도 검토). 단 ① 본격 차트 분석 = TradingView 1티어 ② finviz 기술적 분석 = 보조 ③ 본인 학습 + 다중 도구. 추천: finviz(스크리닝) + TradingView(차트) 분담.",
+              },
+              {
+                q: "finviz 미국 ETF·섹터 분석?",
+                a: "finviz ETF·섹터 분석 강점: ① ETF 스크리너 = 운용수수료·AUM·배당수익률 ② 섹터별 히트맵 = Tech·Financial·Health·Energy 등 ③ 산업별 세분화 ④ 본인 ETF 비교. 인기 미국 ETF: ① SPY/VOO = S&P500 ② QQQ = 나스닥100 ③ VTI = 미국 전체 ④ VEA = 선진국 ⑤ VWO = 신흥국 ⑥ BND = 채권 ⑦ GLD = 금 ⑧ SCHD = 배당 ⑨ ARKK = 혁신 ⑩ XLK·XLF·XLV = 섹터별. 한국 투자자: ① 미국 ETF 분산 투자 = finviz 스크리닝 + Yahoo 정보 ② 한국 ETF = 네이버 증권 ③ 환헤지 vs 환노출 = 본인 결정. 글로벌 분산 투자자 표준 도구.",
+              },
+              {
+                q: "finviz 모바일·휴대폰?",
+                a: "finviz 모바일 브라우저(Safari·Chrome) 정상 동작. 단 finviz 전용 모바일 앱 없음 — 모바일 브라우저 사용. 기능: ① 스크리너 ② 히트맵 ③ 본인 관심 종목 ④ 차트. 모바일 한계: ① 스크리너 작은 화면 = PC 권장 ② 히트맵 = 모바일도 직관적 ③ 본격 분석 = PC. 활용: ① 외출 중 히트맵 빠른 확인 ② 본격 스크리닝·분석 = PC ③ Yahoo Finance 앱 + TradingView 앱 + 증권사 앱 = 모바일 보완. 한국 미국 주식 투자자 표준: PC + finviz 본격, 모바일 + Yahoo·TradingView·증권사 보완. 본격 작업 = PC 권장.",
+              },
+              {
+                q: "finviz 미국 주식 양도소득세?",
+                a: "한국 사용자 미국 주식 양도소득세: ① 연 250만원 초과 양도소득 = 22%(20% + 지방세 2%) 과세 ② 본인 신고 의무 ③ 매년 5월 종합소득세 신고. 절차: ① 본인 증권사(키움·미래에셋·삼성 등) 거래내역 다운로드 ② USD → KRW 환율 적용(거래일 기준) ③ 양도소득 계산(매도가 - 매수가 - 수수료) ④ 홈택스 신고 ⑤ 22% 세금. 단 ① 미국 배당소득 = 미국 원천징수 15% + 한국 종합소득 합산 ② 손익 통산(같은 해) ③ 세무사 상담(고액). 추천: ① 매년 거래내역 보관 ② 세무 신고 표준 ③ 본인 자산 보호 = 정기 신고. 본인 매매 = 본인 책임. 한국 미국 주식 투자자 표준.",
+              },
+              {
+                q: "finviz 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 미국 주식 가치주·배당주·성장주 발굴(가장 많음) ② 시장 매크로 히트맵 ③ 본인 보유 종목 내부자 매매 추적 ④ ETF 스크리닝 ⑤ 섹터 분석 ⑥ Elite 결제 = 데이트레이더 ⑦ 미국 주식 본격 학습. 평생 활용: 매주 finviz 스크리닝 + 본인 분석 + 매매 결정 = 평생 자산 형성. 한국 미국 주식 투자자에게 사실상 표준 스크리닝 도구. 무료 + 직관적 + 미국 주식 1티어 = 가성비. 단 ① 영문 학습 ② 본격 차트 = TradingView ③ Python 백테스트 = Yahoo Finance + yfinance. finviz + Yahoo + TradingView 3박자 분담 = 평생 자산.",
+              },
+              {
+                q: "finviz 사기·라이선스·주의사항?",
+                a: "finviz 자체 사기 사례 거의 없음 — 글로벌 신뢰 사이트. 주의 사례: ① '미국 주식 스크리너 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 finviz 사이트 — 본인 정보·악성코드 ③ Elite 무료 평생 가짜 광고 ④ 사설 '미국 주식 리딩방' — 거의 모두 사기. 주의사항: ① finviz.com 공식 도메인만 ② 본인이 직접 사용 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Elite 결제 = 공식 사이트만 ⑤ 사설 리딩방·텔레그램 = 거의 모두 사기. 시세·스크리닝 = 무료, 매매 결정 = 본인 책임. 본인 학습 + 신중한 매매 = 평생 자산 보호.",
+              },
             ],
             relatedKeywords: [
               "finviz 사용법",
@@ -14497,13 +14655,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Advanced 결제", body: "본격 매크로 분석·실시간 + 고급 지표 필요시 Advanced($39)." },
             ],
             faq: [
-              { q: "SOPR 가 뭐?", a: "Spent Output Profit Ratio. 코인이 이동될 때 매수가 대비 손익을 보여주는 지표. 1 초과 = 이익 실현, 1 미만 = 손실 실현. 시장 심리 측정 핵심 지표." },
-              { q: "MVRV 는?", a: "Market Value to Realized Value. 시장 가치 / 실현 가치. 1 초과 = 시장 평균 이익, 3 이상 = 과열, 0.8 이하 = 바닥 신호. BTC 사이클 거시 위치 표준." },
-              { q: "무료로 충분?", a: "매크로 사이클 분석에는 24시간 지연 무료 데이터로 충분. 데이트레이딩·실시간 매매에는 Advanced 필수." },
-              { q: "CryptoQuant 와 차이?", a: "Glassnode = 학술적·BTC·ETH 위주·온체인 표준. CryptoQuant = 한국 스타트업·거래소 데이터 강점. 둘 같이 쓰면 다양한 관점." },
-              { q: "DefiLlama 와 다른가?", a: "Glassnode = BTC·ETH 매크로 사이클. DefiLlama = DeFi TVL·체인별 자금. 분석 영역이 달라 보완 관계." },
-              { q: "한국어?", a: "미지원. 차트 데이터 위주라 영어 부담 적지만 지표 설명·리포트 영문." },
-              { q: "초보자도?", a: "지표 학습 곡선 있음. 처음 SOPR·MVRV·HODL Waves 만 익히면 80% 활용 가능. Glassnode Academy 무료 강의 활용." },
+              {
+                q: "Glassnode 정말 무료? Advanced 결제?",
+                a: "Glassnode(glassnode.com) = 온체인 분석 글로벌 1티어. 무료(Standard) = 24시간 지연 기본 지표 일부 + 주간 Insights 리포트. Advanced($39/월·연 $396) = 실시간 + 100+ 고급 지표. Professional($799/월) = 기관용. 무료 = 매크로 사이클 분석에 충분 — 대부분 한국 투자자 충분. 사설 '온체인 분석 패키지' 업체는 위험 — glassnode.com 공식만 이용. 한국 BTC·ETH 매크로 투자자 누구나 활용 핵심 사이트. 학술적 + 표준 온체인 지표 1티어. 본격 트레이더만 Advanced 결제 검토.",
+              },
+              {
+                q: "Glassnode SOPR·MVRV 지표 활용?",
+                a: "Glassnode 핵심 지표: ① SOPR(Spent Output Profit Ratio) = 코인 이동 시 매수가 대비 손익. 1 초과 = 이익 실현, 1 미만 = 손실 실현 ② MVRV(Market Value to Realized Value) = 시장 가치/실현 가치. 1 초과 = 평균 이익, 3+ = 과열, 0.8 미만 = 바닥 ③ NUPL(Net Unrealized Profit/Loss) = 미실현 손익 ④ HODL Waves = 보유 기간 분포 ⑤ Realized Cap = 실현 시총. 활용: ① BTC 사이클 거시 위치 ② 매수·매도 시점 결정 ③ 시장 심리 측정. SOPR < 1 + MVRV < 1 = 강한 매수 신호(2018·2022 사이클 바닥). MVRV > 3 + NUPL Euphoria = 과열 매도 검토.",
+              },
+              {
+                q: "Glassnode vs CryptoQuant vs Santiment 차이?",
+                a: "온체인 분석 사이트 비교: ① Glassnode = 학술적·표준 온체인 지표·BTC·ETH 매크로·글로벌 1티어 ② CryptoQuant = 한국 스타트업·거래소 데이터(거래소 입출금·고래 추적) 1티어 ③ Santiment = 소셜·심리 지표 ④ Nansen = NFT·DeFi·고래 지갑 ⑤ Arkham = 지갑 라벨링. 추천: ① BTC·ETH 매크로 사이클 = Glassnode 우선 ② 거래소 자금 흐름 = CryptoQuant ③ 소셜 = Santiment ④ NFT·DeFi 고래 = Nansen ⑤ 본인 분석 = 다중 결합. 한국 가상자산 투자자 표준: Glassnode + CryptoQuant 분담 = BTC 매크로 + 거래소 흐름.",
+              },
+              {
+                q: "Glassnode 매크로 사이클 분석?",
+                a: "Glassnode 매크로 사이클 분석: ① BTC 4년 사이클 추적 — 반감기 기준 ② 사이클 위치 = MVRV + NUPL + SOPR 결합 ③ Realized Cap = 실제 자금 유입 ④ HODL Waves = 장기·단기 보유자 행동 ⑤ Coin Days Destroyed = 장기 보유자 매도. 사이클 단계: ① Capitulation(항복·바닥) = MVRV 0.8 미만, SOPR 1 미만 ② Recovery(회복) = 점진 상승 ③ Euphoria(과열·고점) = MVRV 3+, NUPL Euphoria ④ Distribution(매도 분배) = 장기 보유자 매도. 한국 BTC 매크로 투자자 = Glassnode 사이클 분석 = 매수·매도 시점 결정. 단기 매매 X — 매크로 1~4년 사이클.",
+              },
+              {
+                q: "Glassnode 한국어·진입 장벽?",
+                a: "Glassnode 한국어 미지원. 영문 인터페이스 + 영문 리포트. 단 ① 차트 데이터 위주 = 영어 부담 적음 ② 지표 이해 = Glassnode Academy 무료 강의(영문) ③ 한국 가상자산 커뮤니티(블라인드·디스코드) 학습 자료 풍부. 진입 장벽: ① 온체인 지표 학습 곡선 = 1~3개월 ② 처음 SOPR·MVRV·HODL Waves 만 익히면 80% 활용 ③ Glassnode Academy 활용 권장. 추천 학습 순서: ① 무료 Insights 리포트 정기 구독 ② 기본 지표 5개 학습 ③ 본인 매크로 결정 보조 ④ 점진 확대. 본인 자산 보호 = 매크로 사이클 인식. 한국 가상자산 본격 투자자 필수 학습.",
+              },
+              {
+                q: "Glassnode 본격 트레이더·Advanced 가치?",
+                a: "Glassnode Advanced($39/월) 가치: ① 실시간 데이터(24시간 지연 → 실시간) ② 100+ 고급 지표 ③ Studio 대시보드 ④ API 액세스 ⑤ 본인 알림 설정. 추천: ① 매크로 사이클 분석 = 무료 충분(24시간 지연 OK) ② 데이트레이더·스캘퍼 = Advanced 가치(실시간) ③ 본격 온체인 트레이더 = Professional 검토 ④ 일반 투자자 = 무료 + Insights 리포트. 한국 사용자: ① 일반 BTC 투자자 = 무료 + Insights 충분 ② 본격 분석가 = Advanced 결제 ③ 기관 = Professional. 무료 = 가성비 1티어. Advanced 결제 전 = 무료 3~6개월 학습 후 본인 가치 평가 권장.",
+              },
+              {
+                q: "Glassnode 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① BTC 매크로 사이클 추적(가장 많음) — SOPR·MVRV·HODL Waves ② 매수·매도 시점 결정 ③ 시장 심리 측정 ④ 거래소 입출금 흐름 ⑤ 장기 보유자 행동 ⑥ ETH 온체인 분석 ⑦ Insights 리포트 정기 구독. 평생 활용: 매주 Glassnode 매크로 확인 + 본인 학습 + 매수·매도 결정 = 평생 자산 형성. 한국 가상자산 본격 투자자에게 사실상 표준 온체인 도구. 무료 + 학술적 + BTC·ETH 1티어 = 가성비. 본인 학습(영문) + 정기 확인 = 평생 매크로 투자자 자산. Glassnode + CryptoQuant + Nansen 분담 = 종합 온체인 분석.",
+              },
+              {
+                q: "Glassnode Insights 리포트·뉴스레터?",
+                a: "Glassnode Insights = 주간 무료 리포트 + 매크로 분석 뉴스레터. 활용: ① 주간 1회 BTC 매크로 동향 ② 시장 사이클 위치 ③ 주요 지표 변화 ④ 분석가 의견 ⑤ 본인 매매 결정 보조. 구독: ① glassnode.com → Insights → 이메일 입력 ② 매주 1~2회 이메일 ③ 무료 ④ 영문 + 차트 풍부 = 영어 약점 보완. 한국 사용자: ① 매주 정기 구독 = 본인 학습 시간 절약 ② 본인 분석 + Insights 결합 ③ 한국 가상자산 커뮤니티 토론. Glassnode Insights = 한국 BTC 매크로 투자자 학습의 핵심 자원. 무료 + 정기 + 영문 = 평생 학습 도구.",
+              },
+              {
+                q: "Glassnode 기본 지표·초보자 시작?",
+                a: "Glassnode 초보자 시작 핵심 지표: ① SOPR — 손익 실현 ② MVRV — 사이클 위치 ③ NUPL — 미실현 손익 ④ HODL Waves — 보유 기간 분포 ⑤ Realized Cap — 실제 자금 유입 ⑥ Coin Days Destroyed — 장기 보유자 매도 ⑦ Exchange Flow — 거래소 입출금. 학습 순서: ① 무료 Insights 리포트 정기 구독 ② Glassnode Academy 영문 강의 ③ YouTube 한국어 강의(블라인드·디스코드 추천) ④ 본인 매크로 분석 시도 ⑤ 본인 학습 결과 = 매매 결정. 한국 가상자산 본격 투자자: ① 1~3개월 학습 곡선 ② 매크로 사이클 인식 ③ 평생 학습 = 평생 자산. 기본 5개 지표 익히면 80% 활용.",
+              },
+              {
+                q: "Glassnode Studio 대시보드·본인 분석?",
+                a: "Glassnode Studio = 본인 대시보드 제작 도구. 활용: ① 본인 관심 지표 묶음 ② 본인 분석 시각화 ③ 본인 매크로 모니터링 ④ 본인 리포트 작성. Advanced 결제자 풀 사용 가능. 무료 사용자도 기본 사용. 활용 시나리오: ① 본인 BTC 매크로 대시보드 = SOPR + MVRV + HODL + Exchange Flow ② ETH 대시보드 = ETH 전용 지표 ③ 본인 매수·매도 신호 대시보드. 추천 워크플로우: ① Glassnode Insights 학습 ② 본인 대시보드 = 5~10개 핵심 지표 ③ 매일·매주 확인 ④ 본인 분석 + 매매 결정. 본격 매크로 투자자 = Studio 대시보드 = 평생 자산.",
+              },
+              {
+                q: "Glassnode API·자동매매 활용?",
+                a: "Glassnode API = Advanced·Professional 결제자 + 일부 무료(제한적). 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 매크로 분석 자동화. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적 ③ 본인 자동매매 = API 비용 + 정확성 = 가성비 평가. 대안: ① CoinGecko API = 무료 + 시세 데이터 ② Coin Metrics = 일부 무료 ③ TradingView = 차트 기반 알림 ④ Python on-chain 라이브러리. 한국 본격 트레이더: Glassnode 학습 + CoinGecko API + 본인 전략 = 평생 자산. eloan 백테스트 활용 가능.",
+              },
+              {
+                q: "Glassnode ETH·알트 코인 분석?",
+                a: "Glassnode ETH·알트 분석: ① ETH 온체인 지표 = BTC 와 비슷한 SOPR·MVRV·NUPL ② ETH 2.0 스테이킹 데이터 ③ DeFi 활동 ④ ERC-20 토큰 일부 ⑤ Gas 사용·네트워크 활동. 알트 코인 한계: ① BTC·ETH 데이터 1티어 ② 알트 = 일부 메이저(LINK·UNI·AAVE 등) ③ DeFi 토큰 = DefiLlama·Nansen 우위 ④ 신규 알트 = 데이터 부족. 추천: ① BTC·ETH 매크로 = Glassnode 우선 ② DeFi 토큰 = DefiLlama·Token Terminal ③ NFT = Nansen ④ 신규 알트 = CoinGecko + 본인 학습. 한국 가상자산 매크로 투자자 = Glassnode + 다중 분담 = 종합 분석.",
+              },
+              {
+                q: "Glassnode 모바일·휴대폰?",
+                a: "Glassnode 모바일 브라우저(Safari·Chrome) 정상 동작. 전용 모바일 앱 = 제한적. 기능: ① 차트 조회 ② Insights 리포트 ③ 본인 대시보드. 모바일 한계: ① 본격 분석 = PC 권장 ② 복잡한 차트·대시보드 = PC 효율적 ③ 학습 자료 = PC + 외부 모니터. 활용: ① 외출 중 매크로 빠른 확인 ② 본인 대시보드 빠른 점검 ③ 본격 분석 = PC. 한국 가상자산 매크로 투자자: ① PC 본격 분석 ② 모바일 빠른 확인 ③ Insights 리포트 = 모바일 이메일 확인. Glassnode = 본격 분석 도구 = PC 중심 활용.",
+              },
+              {
+                q: "Glassnode 한국 가상자산 매크로 투자자 활용?",
+                a: "한국 BTC 매크로 투자자 표준 활용: ① BTC 4년 사이클 추적 = MVRV·SOPR·NUPL ② 매크로 매수·매도 시점 결정 ③ 본인 장기 투자 매크로 결정 ④ Insights 리포트 정기 구독 ⑤ 본인 대시보드 = 5~10개 핵심 지표 ⑥ 한국 가상자산 커뮤니티 토론 + 본인 학습 ⑦ ETH 매크로 추가 추적. 평생 활용: BTC 4년 사이클 = 인생 2~5회 = 매크로 사이클 활용 = 평생 자산 형성. 한국 본격 투자자 = Glassnode 학습 + 사이클 인식 = 다른 한국 투자자 대비 매크로 우위. 무료 + 영문 학습 + 본인 분석 = 평생 자산. Glassnode + CryptoQuant + Nansen + 본인 학습 = 평생 매크로 우위.",
+              },
+              {
+                q: "Glassnode 사기·라이선스·주의사항?",
+                a: "Glassnode 자체 사기 사례 거의 없음 — 글로벌 학술 신뢰 사이트. 주의 사례: ① '온체인 분석 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Glassnode 사이트 — 본인 정보·악성코드 ③ Advanced 무료 평생 가짜 광고 ④ 사설 '온체인 리딩방' — 거의 모두 사기. 주의사항: ① glassnode.com 공식 도메인만 ② 본인이 직접 사용·학습 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Advanced 결제 = 공식 사이트만 ⑤ 사설 리딩방·텔레그램 = 거의 모두 사기 ⑥ 본인 학습 + 신중한 매매. 매크로 분석 도구 = 평생 본인 자산. 본인 매매 결정 = 본인 책임. 평생 학습 = 평생 자산 보호.",
+              },
             ],
             relatedKeywords: [
               "Glassnode 사용법",
@@ -14578,12 +14789,66 @@ const COIN: PickCategory = {
               { step: 5, title: "API 활용", body: "api.llama.fi 무료 API → 본인 분석·자동매매 통합." },
             ],
             faq: [
-              { q: "정말 100% 무료?", a: "예. 광고도 없고 결제 안내도 없는 비영리 운영. 0xngmi 와 커뮤니티가 운영. 후원으로 비용 충당." },
-              { q: "TVL 정확?", a: "오픈소스라 계산 공식 공개. 정확도는 업계 표준. 단, 일부 프로토콜은 자체 보고 데이터라 100% 정확 보장 어려움." },
-              { q: "Glassnode 와 차이?", a: "Glassnode = BTC·ETH 매크로 사이클·온체인 지표. DefiLlama = DeFi TVL·수익률·체인별 자금. 영역이 달라 보완 관계." },
-              { q: "Yield 농사 안전?", a: "TVL 큰 메이저 프로토콜(Aave·Compound·Curve·Lido 등) 은 비교적 안전. 신규·소규모 프로토콜은 러그풀(자금 도주) 위험. 본인 책임." },
-              { q: "API 한도?", a: "기본적으로 무제한이지만 적정 사용 권장 (분당 수십 회). 과도한 호출 시 차단 가능. 본격 사용은 GitHub Issues 에서 협의." },
-              { q: "한국어?", a: "미지원. 차트·숫자 위주라 영어 부담 적음. 메뉴는 간단한 영어." },
+              {
+                q: "DefiLlama 정말 100% 무료? 회원가입?",
+                a: "DefiLlama(defillama.com) = 100% 무료 DeFi(탈중앙 금융) 데이터 사이트. 회원가입 없이 즉시 사용. 광고 없음. 0xngmi 와 커뮤니티가 비영리 운영 — 후원으로 운영. 사설 'DeFi 분석 패키지' 업체는 위험 — defillama.com 공식만. 글로벌 1티어 DeFi 데이터: ① TVL(Total Value Locked) 1티어 ② 200+ 체인 자금 흐름 ③ 3,000+ DeFi 프로토콜 ④ Yield Farming APR ⑤ Stablecoin 발행량. 한국 DeFi 투자자 누구나 활용 핵심 사이트. 무료 + 비영리 + 글로벌 1티어 = 평생 자산. 본인 학습 시작점.",
+              },
+              {
+                q: "DefiLlama TVL·DeFi 자금 흐름 분석?",
+                a: "DefiLlama TVL(Total Value Locked) = DeFi 프로토콜에 예치된 총 자산. 활용: ① 본인 DeFi 프로토콜 안전성 평가 — TVL 큰 = 신뢰 ② 시장 사이클 추적 — TVL 늘면 DeFi 강세 ③ 체인별 자금 흐름 — 이더리움·솔라나·아발란체·BNB·폴리곤·아비트럼 ④ 본인 투자 결정 보조. TVL 사이클: ① 2021년 피크 = 약 $180B ② 2022년 베어마켓 = $35B ③ 2024+ 회복 = $100B+. 한국 DeFi 투자자: ① 본인 사용 프로토콜 TVL 추적 ② 체인별 분산 결정 ③ DeFi 사이클 인식. 매주 1회 TVL 확인 = DeFi 매크로 흐름 인식 = 평생 자산.",
+              },
+              {
+                q: "DefiLlama vs Glassnode·CoinGecko 차이?",
+                a: "온체인·가상자산 데이터 사이트 비교: ① DefiLlama = DeFi 특화·TVL·Yield 1티어 ② Glassnode = BTC·ETH 매크로 사이클·온체인 지표 ③ CoinGecko = 종합 시세·시총 ④ CryptoQuant = 거래소 데이터 ⑤ Token Terminal = 펀더멘털 데이터. 추천: ① DeFi TVL·Yield = DefiLlama 우선 ② BTC·ETH 매크로 = Glassnode ③ 시세·시총 = CoinGecko ④ 거래소 자금 = CryptoQuant ⑤ 펀더멘털 = Token Terminal. 한국 가상자산 본격 투자자 표준: DefiLlama(DeFi) + Glassnode(매크로) + CoinGecko(시세) + Nansen(NFT·고래) 분담 = 종합 분석.",
+              },
+              {
+                q: "DefiLlama Yield Farming·수익률 분석?",
+                a: "DefiLlama Yield 페이지 = DeFi 수익률 비교. 활용: ① 본인 토큰 예치 시 최고 APR 발견 ② 안전 vs 고수익 균형 ③ 체인별·프로토콜별 비교 ④ Stablecoin Yield(USDC·USDT) = 안전 + 5~15% APR. 인기 Yield 프로토콜: ① Aave = 대출 = 안전 1티어 ② Compound = 대출 ③ Curve = 스테이블 풀 ④ Lido = ETH 스테이킹 ⑤ Pendle = 수익률 트레이딩. 단 ① 신규·소규모 = 러그풀(자금 도주) 위험 ② 본인 학습 + 검증된 프로토콜 ③ 스마트컨트랙트 위험. 한국 DeFi 입문자 표준: 메이저 프로토콜(TVL $1B+) 우선 + 작은 자금 시작.",
+              },
+              {
+                q: "DefiLlama 한국 DeFi 투자자 활용?",
+                a: "한국 DeFi 투자자 표준 활용: ① 본인 사용 프로토콜 TVL 추적(안전성) ② Stablecoin Yield Farming(USDC·USDT 5~15% APR) ③ ETH 스테이킹 안전 수익 ④ DEX 거래량 추적 ⑤ 체인별 자금 흐름 분석 ⑥ DeFi 사이클 인식. 한국 DeFi 진입 워크플로우: ① OKX·Binance 거래소에서 USDT·ETH 매수 ② OKX Wallet 또는 메타마스크 송금 ③ DefiLlama 에서 안전 + 고수익 프로토콜 검색 ④ 작은 자금 시작(스마트컨트랙트 위험 인지) ⑤ 본인 학습 + 점진 확대. 평생 활용: DefiLlama 매주 확인 = 평생 DeFi 자산. 한국 가상자산 진보 투자자 = DeFi 학습 = 평생 자산.",
+              },
+              {
+                q: "DefiLlama 체인별 분석·이더리움 vs 솔라나?",
+                a: "DefiLlama 체인별 분석: ① 이더리움 = TVL 1위, DeFi 표준, 가스비 ↑($5~50) ② 솔라나 = 빠른 + 저가스($0.01) ③ BNB Chain = 빠른 + 저가스 ④ 아비트럼·옵티미즘 = L2(이더리움 확장) ⑤ 폴리곤 = L2 + 저가스 ⑥ 아발란체·코스모스. 활용: ① 큰 자금 = 이더리움 안전 ② 작은 자금 = 폴리곤·아비트럼 가스비 절약 ③ 빠른 거래 = 솔라나 ④ 다체인 분산 = 본인 리스크 분산. 한국 DeFi 투자자: ① 초보 = 이더리움 메이저(Aave·Compound·Lido) ② 가스비 절약 = L2(아비트럼·옵티미즘) ③ 본인 학습 + 점진 확대. 다체인 인식 = 평생 자산.",
+              },
+              {
+                q: "DefiLlama Stablecoin 분석·USDT·USDC?",
+                a: "DefiLlama Stablecoin 페이지 = Stablecoin 발행량·시장 점유율 추적. 주요 Stablecoin: ① USDT(Tether) = 1위, $80B+ 시총 ② USDC(Circle) = 2위, $30B+, 미국 규제 친화 ③ DAI(MakerDAO) = 탈중앙, 암호화폐 담보 ④ FDUSD ⑤ TUSD. 활용: ① Stablecoin 시총 ↑ = DeFi 자금 유입 ② USDC vs USDT 점유율 = 미국 규제·신뢰 변화 ③ Stablecoin Yield Farming 안전 도구 ④ 한국 가상자산 진입 = USDT·USDC 위주. 단 ① UST·TerraUSD 같은 알고리즘 Stablecoin = 2022년 붕괴 사례 ② 본인 학습 + 메이저 우선 ③ 본격 = USDC + USDT 분산. 한국 DeFi 진입자 = Stablecoin 학습 필수.",
+              },
+              {
+                q: "DefiLlama API·자동매매?",
+                a: "DefiLlama API(api.llama.fi) = 무료 + 무제한 + 인증 불필요. 활용: ① 본인 DeFi 분석 자동화 ② TVL·Yield 데이터 본인 PC ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 DeFi 백테스트. 한도: 분당 수십 회 적정 사용 권장. 라이브러리: Python·Node.js·기타. 활용 시나리오: ① 본인 DeFi 포트폴리오 추적 ② Yield 변화 알림 ③ 본인 매매 결정 보조 ④ DeFi 사이클 분석. 한국 가상자산 개발자: DefiLlama API + CoinGecko API + 본인 전략 = 평생 자산. eloan 백테스트도 DeFi 데이터 일부 활용 가능. 비영리 운영 = 영구 무료 보장.",
+              },
+              {
+                q: "DefiLlama 안전 vs 고수익 프로토콜?",
+                a: "DefiLlama 안전 프로토콜 선별: ① TVL $1B+ = 메이저, 비교적 안전 ② Aave·Compound·Lido·Curve·Uniswap = 검증된 1티어 ③ Audit(스마트컨트랙트 감사) 보고서 확인 ④ 운영 기간 = 2년+ ⑤ 팀 투명성. 위험 프로토콜: ① TVL 작음(<$100M) = 러그풀 위험 ② 신규(<6개월) ③ Audit 없음 ④ 팀 익명·불투명 ⑤ 비현실적 APR(100%+) = 폰지·러그풀 신호. 추천 한국 입문자: ① Aave·Compound = 대출(USDC·USDT 5~10% APR) ② Lido = ETH 스테이킹(4% APR) ③ Curve = 스테이블 풀. 본인 자금 작게 시작 = 평생 자산 보호 첫 단계. DefiLlama = 안전성 평가 1티어 도구.",
+              },
+              {
+                q: "DefiLlama DEX·Uniswap·PancakeSwap 활용?",
+                a: "DefiLlama DEX 페이지 = 탈중앙 거래소 거래량·수수료 추적. 주요 DEX: ① Uniswap = 이더리움 1위 ② PancakeSwap = BNB Chain ③ Curve = 스테이블 풀 1티어 ④ SushiSwap = 다체인 ⑤ Balancer = 풀 커스터마이징. 활용: ① 본인 토큰 거래량 추적 ② 슬리피지 평가 ③ 신규 토큰 발견 ④ Liquidity Mining 기회. 한국 DeFi 진입자: ① OKX Wallet 또는 메타마스크 ② Uniswap 통해 토큰 매매 ③ 가스비 + 슬리피지 인지 ④ 작은 자금 시작. 단 ① CEX 거래소 미상장 토큰 = 사기 위험 ② 본인 학습 + 검증된 토큰 ③ 충분한 학습 후 진입.",
+              },
+              {
+                q: "DefiLlama 본인 포트폴리오·DeFi 추적?",
+                a: "DefiLlama Portfolio 기능: ① 본인 지갑 주소 입력(공개 데이터) ② 본인 DeFi 포지션 자동 추적 ③ 본인 Yield 수익률 모니터링 ④ 다중 체인·프로토콜 통합. 활용: ① 본인 DeFi 자산 한눈에 ② 본인 Yield Farming 수익 추적 ③ 본인 토큰 가치 변화 ④ 본인 분산 평가. 단 ① 본인 지갑 주소 공개 데이터 = 본인 거래 = 익명성 약함 ② 본인 메인 지갑 vs 분리 지갑 분리 권장. 한국 DeFi 투자자: ① 본인 DeFi 포트폴리오 매주 확인 ② 본인 자산 추적 ③ Yield 변화 ④ 본인 매매 결정. DeBank·Zapper 같은 보완 도구도 활용 권장.",
+              },
+              {
+                q: "DefiLlama 한국 양도소득세·DeFi?",
+                a: "한국 DeFi 양도소득세: ① 2025+ 가상자산 양도소득 250만원 초과 = 22% 과세 ② DeFi 거래 = 매도 시점 과세 대상 ③ Yield Farming 수익 = 과세 대상(소득 분류 모호) ④ 본인 신고 의무. DeFi 신고 어려움: ① 거래소 거래내역 자동 X ② 본인 지갑 주소 기반 수동 추적 ③ 다중 체인 = 복잡 ④ Yield 보상 시점·금액 = 세무사 검토 필요. 추천: ① 본인 DeFi 거래내역 본인 PC 영구 보관 ② 세무사 상담(DeFi 사용자) ③ 손익 통산 ④ 정기 신고. 한국 DeFi 투자자 = 매년 5월 신고 + 본인 자산 보호. 정책 변화 인지 = 평생 자산.",
+              },
+              {
+                q: "DefiLlama 한국어 미지원? 진입 장벽?",
+                a: "DefiLlama 한국어 미지원. 영문 인터페이스. 단 ① 차트·숫자 위주 = 영어 부담 적음 ② 메뉴 간단한 영어 ③ Chrome 자동 번역 활용 ④ 본인 학습 시간 투자. 진입 장벽: ① DeFi 자체 = 학습 곡선 큼(1~6개월) ② 스마트컨트랙트·가스비 학습 ③ 본인 지갑 보안 ④ 영문 자료 학습. 추천 학습 순서: ① 한국 거래소(업비트·빗썸) 가상자산 매수 ② OKX Wallet 또는 메타마스크 설치 ③ DefiLlama 학습 + Stablecoin Yield 시작 ④ 작은 자금 + 점진 확대. 한국 DeFi 진입자 = 6개월~1년 학습 + 작은 자금 = 평생 DeFi 자산 형성.",
+              },
+              {
+                q: "DefiLlama 모바일·휴대폰?",
+                a: "DefiLlama 모바일 브라우저(Safari·Chrome) 정상 동작. 전용 모바일 앱 = 제한적. 기능: ① TVL 차트 ② Yield 검색 ③ 본인 지갑 추적 ④ Stablecoin 데이터. 모바일 한계: ① 본격 분석 = PC 권장 ② 복잡한 차트 = PC 효율적 ③ 본인 DeFi 거래(메타마스크) = 모바일 메타마스크 앱. 활용: ① 외출 중 빠른 확인 = 모바일 ② 본인 DeFi 거래 = 메타마스크 모바일 ③ 본격 분석 = PC. 한국 DeFi 투자자: PC 본격 + 모바일 보완 + 메타마스크 모바일. DefiLlama = 분석 도구 = PC 중심.",
+              },
+              {
+                q: "DefiLlama 사기·러그풀·주의사항?",
+                a: "DefiLlama 자체 사기 사례 거의 없음 — 비영리 운영. DeFi 자체 사기: ① 러그풀(개발자 자금 도주) — 신규 토큰 빈번 ② 폰지·피라미드 = 비현실적 APR ③ 가짜 토큰 ④ 가짜 DEX 사이트 ⑤ Twitter·Discord 사기 링크. 주의사항: ① defillama.com 공식 도메인만 ② 본인 지갑 시드 절대 노출 X ③ 본인이 직접 학습·거래 ④ 메이저 프로토콜(TVL $1B+) 우선 ⑤ Audit 보고서 확인 ⑥ 작은 자금 시작 ⑦ 비현실적 APR(100%+) = 사기 신호 ⑧ 사설 'DeFi 리딩방' 절대 금지. 본인 자산 보호 = 본인 학습 + 신중 + 분산. DefiLlama = 안전성 평가 도구.",
+              },
             ],
             relatedKeywords: [
               "DefiLlama 사용법",
@@ -14662,12 +14927,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Dune Wand AI", body: "베타 기능 — 자연어로 'Uniswap 일일 거래량 알려줘' → AI 가 SQL 자동 작성." },
             ],
             faq: [
-              { q: "SQL 몰라도 사용?", a: "커뮤니티 대시보드 열람은 SQL 없이도 OK. 본인 쿼리·맞춤 분석은 SQL 학습 필요. Dune Wand AI 베타가 자연어 → SQL 자동 작성 도와줌." },
-              { q: "Plus $390 가치?", a: "데이터 분석가·리서치 회사·DeFi 펀드에 가치. 일반 사용자는 무료 + 커뮤니티 대시보드로 충분." },
-              { q: "Flipside·Footprint 와 차이?", a: "Dune 이 가장 큰 커뮤니티·대시보드 양. Flipside Crypto 는 학습 보상·SQL 학습 지원. Footprint Analytics 는 노코드 GUI 강점. 단순 열람은 Dune, SQL 학습은 Flipside." },
-              { q: "BTC 데이터?", a: "Dune 은 이더리움 위주. BTC 온체인은 Glassnode·CryptoQuant 이 우위." },
-              { q: "Dune Wand AI 정확?", a: "베타라 완벽하지는 않지만 단순 쿼리는 매우 잘 처리. 복잡한 분석은 본인 SQL 수정 필요." },
-              { q: "팀 사용?", a: "Plus 이상 플랜에서 팀 협업·공유·감사 로그. 리서치 회사·DeFi 펀드 단위 도입." },
+              {
+                q: "Dune Analytics 정말 무료? 회원가입?",
+                a: "Dune Analytics(dune.com) = 온체인 SQL 분석 글로벌 1티어. 무료 = 커뮤니티 대시보드 열람·기본 쿼리. 회원가입 무료. Plus($390/월) = 본격 사용·팀. 사설 'Dune 분석 패키지' 업체는 위험 — dune.com 공식만. 약 200,000+ 커뮤니티 대시보드 + 50+ 체인 온체인 데이터. 한국 가상자산 분석가·DeFi 투자자·개발자 누구나 활용 핵심 사이트. 글로벌 1위 온체인 SQL 분석. 무료 + 커뮤니티 대시보드 = 일반 사용자 충분. 본인 분석가 = SQL 학습 + Plus 결제 검토.",
+              },
+              {
+                q: "Dune SQL 몰라도 사용 가능?",
+                a: "Dune 사용 모드: ① 커뮤니티 대시보드 열람 = SQL 없이 OK(가장 보편) ② 본인 쿼리 작성 = SQL 학습 필요 ③ Dune Wand AI(베타) = 자연어 → SQL 자동 작성 ④ 본인 대시보드 = SQL + 시각화. 활용: ① 일반 사용자 = 커뮤니티 대시보드 열람만 충분 ② 본인 분석가 = SQL 학습(1~3개월) ③ 본격 = Plus 결제. Dune Wand AI: ① '우니스왑 일일 거래량 보여줘' = SQL 자동 작성 ② 단순 쿼리 매우 잘 처리 ③ 복잡한 분석 = 본인 SQL 수정. 한국 가상자산 분석가 = Dune SQL 학습 = 평생 자산. 본인 학습 + Dune Wand AI 활용.",
+              },
+              {
+                q: "Dune vs Flipside vs Footprint 차이?",
+                a: "온체인 SQL 분석 플랫폼 비교: ① Dune = 가장 큰 커뮤니티·대시보드 양·이더리움·솔라나·다체인 1티어 ② Flipside Crypto = 학습 보상·SQL 학습 지원·무료 친화 ③ Footprint Analytics = 노코드 GUI 강점·시각화 우위 ④ Nansen = 고래·NFT 라벨링 ⑤ The Graph = 인덱싱 프로토콜. 추천: ① 일반 분석 = Dune 우선(커뮤니티 1티어) ② SQL 학습 = Flipside(학습 보상) ③ 노코드 = Footprint ④ NFT·고래 = Nansen. 한국 가상자산 분석가 표준: Dune + Flipside + Nansen 분담 활용 = 종합 분석. Dune = 표준 + 커뮤니티 강점.",
+              },
+              {
+                q: "Dune 인기 대시보드·활용 예시?",
+                a: "Dune 인기 대시보드: ① Uniswap V3 — DEX 거래량·수수료·풀별 데이터 ② Lido — ETH 스테이킹 분석 ③ NFT 컬렉션(BAYC·CryptoPunks) ④ DeFi 프로토콜 분석 ⑤ MEV(Maximum Extractable Value) ⑥ Airdrop 추적 ⑦ Stablecoin 발행·소각 ⑧ Bridge(체인 간 송금). 활용: ① 본인 관심 프로토콜 대시보드 열람 ② 본인 매매 결정 보조 ③ 시장 트렌드 분석 ④ Airdrop 농사 추적. 본인 학습: 인기 대시보드 SQL 코드 = 본인 학습 자료. 한국 가상자산 분석가·DeFi 투자자 = 매주 Dune 대시보드 확인 = 평생 자산. 본인 SQL 작성 = 평생 분석가 자산.",
+              },
+              {
+                q: "Dune Wand AI·자연어 SQL?",
+                a: "Dune Wand AI(베타) = 자연어 → SQL 자동 작성 도구. 활용: ① '우니스왑 일일 거래량' → SQL 자동 ② 'Aave 대출 시장 점유율' → SQL ③ 'NFT 일일 거래' → SQL. 강점: ① SQL 학습 곡선 단축 ② 본인 분석 자동화 ③ 본인 영어 SQL → 한국어 자연어 진입 가능 ④ 복잡한 SQL 시작점. 단 ① 베타 = 완벽하지 않음 ② 단순 쿼리 매우 잘 ③ 복잡한 분석 = 본인 SQL 수정 ④ 본인 SQL 학습 = 평생 자산. 추천: ① Dune Wand AI = 진입 도구 ② 본인 SQL 학습 + Wand 보조 = 평생 분석가 자산. 한국 가상자산 분석가 = 영어 + SQL + Wand 조합.",
+              },
+              {
+                q: "Dune 본인 SQL 학습·SpellBook?",
+                a: "Dune SQL 학습 자료: ① Dune Spellbook = 복잡한 SQL 단순화 라이브러리 ② Dune Docs = 공식 가이드 ③ 커뮤니티 대시보드 SQL = 본인 학습 자료 ④ Dune Wand AI = 자연어 SQL ⑤ Flipside Crypto = SQL 학습 보상 프로그램. 학습 순서: ① SQL 기초(SELECT·WHERE·JOIN) ② Dune SQL 문법 ③ Dune 인기 대시보드 SQL 분석 ④ 본인 대시보드 작성 ⑤ SpellBook 활용. 학습 기간: ① 기초 SQL = 2주~1개월 ② Dune 활용 = 1~3개월 ③ 본격 분석가 = 6개월+. 한국 가상자산 분석가 = SQL 학습 = 평생 자산. Dune Spellbook = 시간 절약 도구.",
+              },
+              {
+                q: "Dune 이더리움·솔라나·다체인 분석?",
+                a: "Dune 지원 체인(2026): ① 이더리움(가장 보편) ② 솔라나 ③ Polygon ④ Arbitrum ⑤ Optimism ⑥ Base ⑦ BNB Chain ⑧ Avalanche ⑨ Fantom ⑩ Gnosis ⑪ 기타 50+ 체인. 활용: ① 본인 관심 체인 분석 ② 다체인 비교 ③ Bridge(체인 간 송금) 분석 ④ Layer 2 추적. 단 ① 이더리움 데이터 = 가장 풍부 ② 솔라나 = 빠르게 성장 ③ 기타 체인 = 일부 데이터 제한. 추천: ① 본인 사용 체인 우선 ② 다체인 비교 = 본인 분산 결정 ③ 본인 학습 + 본인 매매 결정 보조. 한국 가상자산 다체인 투자자 = Dune 분석 = 평생 자산.",
+              },
+              {
+                q: "Dune BTC 데이터·온체인 분석?",
+                a: "Dune BTC 분석 = 제한적. Dune 은 이더리움·솔라나 위주. BTC 온체인 분석 도구: ① Glassnode = BTC 매크로 사이클·온체인 지표 1티어 ② CryptoQuant = 거래소 자금 흐름·고래 추적 ③ Coin Metrics = 학술적 데이터 ④ BitInfoCharts = 기본 통계. 추천: ① BTC 매크로 = Glassnode 우선 ② BTC 거래소 흐름 = CryptoQuant ③ ETH·DeFi·NFT = Dune ④ 종합 분석 = Glassnode + CryptoQuant + Dune 분담. 한국 가상자산 분석가 = 코인별 분담 도구 활용 = 종합 인사이트. 본인 학습 + 다중 도구 = 평생 자산.",
+              },
+              {
+                q: "Dune Plus 결제 가치? 일반 사용자?",
+                a: "Dune Plus($390/월·연 약 510만원) 가치: ① Private Queries(본인 SQL 공개 안 함) ② Private Dashboards ③ Team Collaboration ④ Larger Query Limits ⑤ Premium Support ⑥ Custom Branding ⑦ Advanced Features. 추천: ① 일반 사용자 = 무료 + 커뮤니티 대시보드 충분 ② 본인 분석가(취미) = 무료로도 학습 ③ 데이터 분석가(직업) = Plus ④ 리서치 회사·DeFi 펀드·기관 = Plus ⑤ 본인 대시보드 공개 OK = 무료 ⑥ 본인 대시보드 비공개 = Plus. 한국 사용자: 일반 = 무료 + 커뮤니티, 본격 직업·기관 = Plus. 무료 = 가성비 1티어 학습 도구.",
+              },
+              {
+                q: "Dune API·자동매매?",
+                a: "Dune API = Plus 결제자 한정 + 일부 무료. 활용: ① 본인 SQL 결과 자동 다운로드 ② 본인 분석 자동화 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 백테스트 데이터. 추천: ① 일반 사용자 = 웹 인터페이스 ② 본인 분석가·자동화 = Plus + API ③ 본격 SaaS·기관 = Plus. 한국 가상자산 개발자: ① 본인 학습 = 웹 인터페이스 ② 본인 SaaS·서비스 통합 = Plus API ③ 본인 자동매매 = Dune + Glassnode + 본인 전략. eloan 백테스트 = Dune 데이터 일부 활용 가능. DefiLlama API(무료) 와 Dune API(Plus) 분담 활용.",
+              },
+              {
+                q: "Dune 한국어·진입 장벽?",
+                a: "Dune 한국어 미지원. 영문 인터페이스 + 영문 SQL + 영문 커뮤니티. 진입 장벽: ① 영문 + SQL 학습 곡선 = 1~6개월 ② 처음 커뮤니티 대시보드 열람 = 진입 쉬움 ③ 본인 SQL = 본격 학습 필요. 추천 학습 순서: ① SQL 기초 학습(생활코딩·인프런 한국어 강의) ② Dune Wand AI 자연어 시도 ③ 인기 대시보드 SQL 분석 ④ 본인 대시보드 작성 ⑤ 한국 가상자산 커뮤니티(블라인드·디스코드) 토론. 한국 가상자산 분석가 = 영어 + SQL 학습 = 평생 자산. 본인 학습 시간 투자 = 평생 분석가 가치 형성.",
+              },
+              {
+                q: "Dune 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 커뮤니티 대시보드 열람(가장 많음) — Uniswap·Lido·NFT 등 ② 본인 SQL 학습 → 본격 분석가 ③ Airdrop 추적 ④ 본인 매매 결정 보조 ⑤ DeFi 트렌드 분석 ⑥ NFT 시장 분석. 평생 활용: 매주 Dune 대시보드 확인 + 본인 SQL 학습 + 본인 매매 결정 = 평생 분석가 자산. 한국 가상자산 본격 투자자·분석가·개발자에게 사실상 표준 도구. 무료 + 글로벌 커뮤니티 1티어 = 평생 자산. 단 ① 영문 + SQL 학습 ② 본인 학습 시간 투자 ③ Glassnode + CryptoQuant + Nansen 분담. 본인 학습 = 평생 가상자산 분석가 자산.",
+              },
+              {
+                q: "Dune 팀·기관·리서치 회사 사용?",
+                a: "Dune 팀·기관 활용: ① Plus 이상 = 팀 협업 ② 본인 분석가 팀 공유 ③ 비공개 SQL·대시보드 ④ 감사 로그 ⑤ Custom Branding. 활용 시나리오: ① DeFi 펀드 = 본인 투자 분석 + 비공개 ② 리서치 회사(Messari·Delphi·a16z) = 본격 분석가 도구 ③ 거래소·DEX 운영팀 ④ 가상자산 개발 회사. 한국 기관 사용: ① 가상자산 펀드 ② 리서치 회사 ③ 거래소 분석팀 ④ 본인 가상자산 SaaS. 추천: 본인 회사·팀 단위 = Plus 결제 가성비. 비공개 SQL + 팀 공유 + 감사 로그 = 본격 기관용 도구. 한국 가상자산 본격 분석 시장 = Dune 표준.",
+              },
+              {
+                q: "Dune 모바일·휴대폰?",
+                a: "Dune 모바일 브라우저(Safari·Chrome) 정상 동작. 전용 모바일 앱 = 제한적. 기능: ① 커뮤니티 대시보드 열람 ② 본인 대시보드 확인 ③ 시각화. 모바일 한계: ① 본격 SQL 작성 = PC 권장(외장 키보드 필요) ② 복잡한 대시보드 = PC 큰 화면 효율 ③ 본격 분석가 작업 = PC. 활용: ① 외출 중 빠른 대시보드 확인 = 모바일 ② 본격 SQL·분석 = PC ③ 본인 학습 = PC + 외장 모니터. 한국 가상자산 분석가 = PC 본격 + 모바일 보완. Dune = 분석 도구 = PC 중심 활용 표준.",
+              },
+              {
+                q: "Dune 사기·라이선스·주의사항?",
+                a: "Dune 자체 사기 사례 거의 없음 — 글로벌 신뢰 분석 플랫폼. 주의 사례: ① '온체인 SQL 강의 패키지' 사설 업체 — 무료 자료 유료 판매 ② 가짜 Dune 사이트 — 본인 정보·악성코드 ③ Plus 무료 평생 가짜 광고 ④ 사설 '가상자산 분석 리딩방' — 거의 모두 사기 ⑤ 다른 사람 대시보드 SQL 무단 도용. 주의사항: ① dune.com 공식 도메인만 ② 본인이 직접 학습·사용 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Plus 결제 = 공식 사이트만 ⑤ 사설 리딩방 = 거의 모두 사기 ⑥ 다른 사람 SQL 영감 OK + 무단 도용 X(SQL 저작권 일부). 본인 학습 + 신중한 매매 = 평생 자산 보호.",
+              },
             ],
             relatedKeywords: [
               "Dune Analytics",
@@ -14746,12 +15065,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Pro 결제", body: "실시간 + 고급 지표 필요시 Pro($39). 한국 결제 가능." },
             ],
             faq: [
-              { q: "Glassnode 와 차이?", a: "Glassnode = 학술 표준 지표(SOPR·MVRV·HODL)·BTC·ETH 매크로. CryptoQuant = 거래소 데이터·스테이블코인·한국어. 둘 같이 쓰는 사용자 많음." },
-              { q: "한국어 정말?", a: "예. 인터페이스 + 분석 리포트 + 블로그 모두 한국어. 영어 부담 없이 글로벌 온체인 데이터 접근." },
-              { q: "거래소 입출금 어떻게 활용?", a: "거래소로 BTC 가 대량 유입 = 매도 압력 (가격 하락 선행). 거래소에서 BTC 유출 = HODL 신호 (가격 상승 가능). 일종의 선행 지표." },
-              { q: "Pro 결제 가치?", a: "본격 트레이더·매크로 투자자에게 가치. 일일 지연 무료 데이터로는 단기 매매 어려움. 실시간 데이터 + 고급 지표가 핵심." },
-              { q: "한국 결제수단?", a: "신용카드·체크카드. 카카오·네이버페이 일부 가능. 한국 사용자 친화적." },
-              { q: "초보자 어떻게 시작?", a: "Quicktake 한국어 리포트부터 읽기. 매주 매크로 흐름 + 핵심 지표 해설. 학습 곡선 완만." },
+              {
+                q: "CryptoQuant 한국 운영? 한국어 1티어?",
+                a: "CryptoQuant(cryptoquant.com) = 한국 스타트업(주영빈 대표 운영) 가상자산 온체인 분석 글로벌 1티어. 한국어 풀 지원: ① 인터페이스 한국어 ② 분석 리포트 한국어(Quicktake) ③ 블로그 한국어 ④ 한국 고객지원. 영어 부담 없이 글로벌 온체인 데이터 접근 = 한국 가상자산 투자자 진입 장벽 1티어 낮음. 무료(24시간 지연) + Pro($29~99/월) + Premium($499/월). 사설 '온체인 패키지' 업체는 위험 — cryptoquant.com 공식만. 한국 가상자산 투자자에게 사실상 표준 온체인 도구. 한국 스타트업 자긍심 + 글로벌 1티어.",
+              },
+              {
+                q: "CryptoQuant vs Glassnode 차이?",
+                a: "온체인 분석 사이트 비교: ① CryptoQuant = 한국 운영, 한국어 1티어, 거래소 데이터(입출금·고래 추적) 1티어, 스테이블코인 ② Glassnode = 학술적 표준 지표(SOPR·MVRV·NUPL·HODL Waves)·BTC·ETH 매크로 1티어, 영문. 추천: ① 거래소 자금 흐름 = CryptoQuant 우선 ② 학술적 매크로 지표 = Glassnode ③ 한국어 진입 = CryptoQuant ④ 영문 학술 = Glassnode. 한국 가상자산 투자자 표준: CryptoQuant + Glassnode 둘 다 = 종합 온체인 분석. CryptoQuant 거래소 데이터 + Glassnode 매크로 지표 = 종합 인사이트. 본인 학습 + 다중 도구 = 평생 자산.",
+              },
+              {
+                q: "CryptoQuant 거래소 입출금 활용?",
+                a: "CryptoQuant 거래소 입출금(Exchange Flow) 분석 = 핵심 강점. 활용: ① 거래소로 BTC 대량 유입 = 매도 압력(가격 하락 선행 지표) ② 거래소에서 BTC 유출 = HODL 신호(가격 상승 가능) ③ 거래소 보유량 감소 추세 = 강세 ④ 거래소 보유량 증가 = 약세. 단 ① 절대적 신호 X ② 다른 지표 결합 ③ 본인 학습 + 본인 매매 결정. 활용 시나리오: ① 거래소 입출금 + 가격 추세 = 매수·매도 시점 보조 ② 고래 지갑(Whale Wallets) 추적 ③ 본인 매크로 결정. 한국 가상자산 본격 투자자 = CryptoQuant 거래소 데이터 = 평생 자산.",
+              },
+              {
+                q: "CryptoQuant Quicktake 한국어 리포트?",
+                a: "CryptoQuant Quicktake = 한국어 전문가 분석 리포트. 활용: ① 매주 1~2회 발행 ② 한국어 매크로 분석 ③ 본인 매매 결정 보조 ④ 한국 가상자산 투자자 친화. 강점: ① 영어 부담 없이 글로벌 분석 ② 한국 시간대 발행 ③ 한국 가상자산 시장 관점 ④ 무료 + 프리미엄 일부. 추천: ① 매주 정기 구독 = 본인 학습 시간 절약 ② 본인 분석 + Quicktake 결합 ③ 한국 가상자산 커뮤니티 토론. CryptoQuant Quicktake = 한국 BTC 매크로 투자자 학습의 핵심 자원. 한국어 + 정기 + 무료 = 평생 학습 도구. 한국 가상자산 진입자 필수.",
+              },
+              {
+                q: "CryptoQuant 스테이블코인 분석?",
+                a: "CryptoQuant 스테이블코인 분석 강점: ① 거래소로 USDT·USDC 유입 = 매수 압력(가격 상승 선행) ② Stablecoin Supply Ratio(SSR) = BTC 시총 ÷ Stablecoin 시총, 낮을수록 매수 압력 ③ 거래소 Stablecoin 보유량 추적 ④ Tether 발행·소각 추적. 활용: ① 거래소 USDT 유입 ↑ + BTC 가격 = 매수 시점 ② SSR 낮음 = 매수 압력 강함 ③ Stablecoin 매크로 흐름 추적. 단 ① 절대적 신호 X ② 다른 지표 결합 ③ 본인 학습. 한국 가상자산 본격 투자자 = CryptoQuant Stablecoin 분석 = 매수 시점 보조. CryptoQuant + Glassnode 결합 = 종합 매크로.",
+              },
+              {
+                q: "CryptoQuant Pro·Premium 결제 가치?",
+                a: "CryptoQuant 플랜: ① 무료 = 24시간 지연 일부 지표 + 무료 Quicktake ② Pro($29/월·연 $290) = 실시간 + 100+ 지표 ③ Pro+($99/월) = 더 고급 지표 ④ Premium($499/월) = 기관용. 추천: ① 일반 BTC 매크로 투자자 = 무료 + Quicktake 충분 ② 본격 매크로 트레이더 = Pro($29) 가성비 ③ 단기 트레이더 = Pro+($99) ④ 기관·펀드 = Premium. 한국 사용자: ① 일반 = 무료 + Quicktake 한국어 ② 본격 = Pro 결제 가치 ③ Glassnode Advanced($39) vs CryptoQuant Pro($29) = CryptoQuant 가성비. 한국어 지원 + 거래소 데이터 = CryptoQuant 강점.",
+              },
+              {
+                q: "CryptoQuant 한국 결제·세금?",
+                a: "CryptoQuant 한국 결제: ① 한국 신용카드·체크카드 정상 ② 카카오·네이버페이 일부 ③ USD 결제(약 4만원/월·Pro) ④ 회사 결제 가능. 환불: 결제 후 14일 이내 + 사용량 적음 = 케이스별. 자동 결제 해지: account → cancel 즉시. 한 달만 결제 후 해지 자유. 사업자 결제 = 세금계산서 일부. 한국 운영 = 한국어 고객지원 + 한국 결제 + 한국 사용자 친화 = 글로벌 1티어 중 가장 한국 진입 장벽 낮음. 한국 가상자산 본격 투자자 = CryptoQuant Pro 결제 = 평생 자산. 한국 스타트업 응원 = 한국 가상자산 분석 생태계.",
+              },
+              {
+                q: "CryptoQuant 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 거래소 BTC 입출금 흐름(가장 많음) — 매수·매도 시점 보조 ② Stablecoin 흐름 분석 ③ 매주 Quicktake 한국어 리포트 구독 ④ 고래 지갑 추적 ⑤ 본인 매크로 매수·매도 결정 ⑥ Glassnode 와 분담 활용. 평생 활용: 매일 CryptoQuant 거래소 데이터 + 매주 Quicktake = 평생 매크로 자산. 한국 가상자산 본격 투자자에게 사실상 표준. 한국어 + 거래소 데이터 1티어 + 한국 스타트업 = 가성비 1티어. 본인 학습 + 정기 확인 = 평생 매크로 투자자 자산. 한국 가상자산 분석 1티어 도구.",
+              },
+              {
+                q: "CryptoQuant 초보자 시작·학습?",
+                a: "CryptoQuant 초보자 시작 가이드: ① cryptoquant.com 가입(무료) ② 한국어 인터페이스 설정 ③ Quicktake 한국어 리포트 정기 구독 ④ 기본 지표 학습 — Exchange Flow·Stablecoin·SSR ⑤ 본인 매크로 매수·매도 결정 보조. 학습 기간: ① 기본 = 1~2주 ② 본격 = 1~3개월 ③ 매크로 사이클 인식 = 6개월~1년. 강점: 한국어 진입 장벽 1티어 낮음 = 글로벌 온체인 분석 가장 빠른 진입 도구. 한국 가상자산 본격 투자자 = CryptoQuant 부터 시작 → Glassnode 학습 → 종합 매크로 인식. 본인 학습 + 한국 가상자산 커뮤니티 + Quicktake = 평생 자산.",
+              },
+              {
+                q: "CryptoQuant API·자동매매?",
+                a: "CryptoQuant API = Pro+ 이상 결제자 + 일부 무료. 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적. 대안: ① CoinGecko API = 무료 + 시세 ② Glassnode API = 일부 무료 ③ DefiLlama API = 무료 + DeFi. 한국 본격 트레이더: CryptoQuant Pro+ API + 본인 전략 = 평생 자산. eloan 백테스트 = CryptoQuant 데이터 일부 활용 가능. 본인 자동매매 = CryptoQuant + Python + 본인 전략 + 충분한 백테스트. 본격 개발자 = Pro+ API 가성비.",
+              },
+              {
+                q: "CryptoQuant 고래 지갑·온체인 추적?",
+                a: "CryptoQuant 고래 추적: ① Whale Wallets 추적 ② 대형 거래 알림 ③ 거래소 입출금 = 고래 매도·매수 ④ Net Position Change ⑤ 본인 고래 지갑 모니터링. 활용: ① 고래 매도 = 가격 하락 선행 ② 고래 매수 = 가격 상승 선행 ③ 본인 매매 결정 보조. 단 ① 고래 신호 = 100% 정확 X ② 본인 학습 + 다중 지표 ③ 단기 매매 = 어려움. 추천: ① 매크로 사이클 + 고래 흐름 결합 ② 본인 학습 ③ 한국 가상자산 커뮤니티 토론. 한국 가상자산 본격 투자자 = 고래 추적 = 평생 자산. Nansen + CryptoQuant 결합 = 종합 고래 분석.",
+              },
+              {
+                q: "CryptoQuant 모바일·휴대폰?",
+                a: "CryptoQuant 모바일 브라우저(Safari·Chrome) 정상 동작. 전용 모바일 앱 = 제한적. 기능: ① 차트 조회 ② Quicktake 리포트 ③ 본인 대시보드. 모바일 한계: ① 본격 분석 = PC 권장 ② 복잡한 차트·대시보드 = PC 효율적 ③ 학습 자료 = PC + 외부 모니터. 활용: ① 외출 중 매크로 빠른 확인 ② Quicktake 모바일 이메일 확인 ③ 본격 분석 = PC. 한국 가상자산 매크로 투자자: ① PC 본격 분석 ② 모바일 빠른 확인 ③ Quicktake = 모바일 이메일. CryptoQuant = 본격 분석 도구 = PC 중심.",
+              },
+              {
+                q: "CryptoQuant 한국 가상자산 커뮤니티·토론?",
+                a: "한국 CryptoQuant 사용자 커뮤니티: ① 한국 가상자산 블로그(블라인드·디스코드·텔레그램) ② 본인 분석 + Quicktake 결합 토론 ③ 한국 가상자산 유튜브 채널(CryptoQuant 데이터 인용) ④ 본인 학습 자료 공유. 추천 활용: ① CryptoQuant 정기 확인 → 본인 분석 ② 한국 가상자산 커뮤니티 토론 ③ 다양 의견 비교 ④ 본인 매크로 결정. 한국 가상자산 본격 투자자 = CryptoQuant 학습 + 커뮤니티 토론 = 평생 자산. 한국 가상자산 분석 생태계 = CryptoQuant 중심. 본인 학습 + 한국 가상자산 진보 사용자 네트워크 형성.",
+              },
+              {
+                q: "CryptoQuant 사기·라이선스·주의사항?",
+                a: "CryptoQuant 자체 사기 사례 거의 없음 — 한국 스타트업 신뢰 사이트. 주의 사례: ① '온체인 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 CryptoQuant 사이트 — 본인 정보·악성코드 ③ Pro 무료 평생 가짜 광고 ④ 사설 '가상자산 리딩방' — 거의 모두 사기 ⑤ Quicktake 사칭 가짜 리포트. 주의사항: ① cryptoquant.com 공식 도메인만 ② 본인이 직접 사용·학습 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Pro 결제 = 공식 사이트만 ⑤ 사설 리딩방·텔레그램 = 거의 모두 사기. 매크로 분석 도구 = 본인 자산 보호. 본인 매매 결정 = 본인 책임.",
+              },
+              {
+                q: "CryptoQuant 한국 가상자산 분석 시장 위치?",
+                a: "CryptoQuant 한국 가상자산 분석 시장 위치: ① 한국 스타트업 글로벌 1티어 = 자긍심 ② 한국어 진입 장벽 1티어 낮음 ③ 거래소 데이터 글로벌 1티어 ④ 한국 가상자산 분석 생태계 중심 ⑤ Bloomberg 보도 + 글로벌 신뢰. 한국 사용자 표준: ① 가장 먼저 CryptoQuant 학습 ② Glassnode 영문 학습 추가 ③ DefiLlama·Dune·Nansen 종합 ④ 본인 매크로 결정 = 평생 자산. 한국 가상자산 시장 진입 = CryptoQuant 부터 → 글로벌 도구 확장 = 표준 워크플로우. 한국 가상자산 본격 투자자에게 평생 자산 형성의 핵심 진입 도구.",
+              },
             ],
             relatedKeywords: [
               "CryptoQuant 사용법",
@@ -14828,12 +15201,66 @@ const COIN: PickCategory = {
               { step: 5, title: "Pro 결제 (선택)", body: "본격 기관 투자·VC 분석 시 Pro. 개인 투자자는 무료로 충분." },
             ],
             faq: [
-              { q: "코인을 주식처럼 분석하는 게 맞나?", a: "프로토콜 매출·이익은 실제 측정 가능한 펀더멘털. 토큰 인센티브 차감 후 진짜 이익도 계산. 주식 분석 프레임을 코인에 적용한 거의 유일한 도구." },
-              { q: "DefiLlama 와 차이?", a: "DefiLlama = TVL·DEX 거래량 중심. Token Terminal = 매출·이익·P/S·P/E 같은 재무 지표 중심. 둘 보완 관계." },
-              { q: "Pro $349 가치?", a: "기관·VC·전문 트레이더에게 가치. 개인 투자자는 무료 플랜으로 충분. 실시간 데이터 + 리포트 다운로드가 핵심." },
-              { q: "어떤 프로토콜 커버?", a: "메이저 체인(이더·솔라나·BNB·아발란체 등) + 메이저 DeFi(Uniswap·Aave·MakerDAO 등) + 메이저 NFT 마켓플레이스. 알트·신생 프로토콜은 약함." },
-              { q: "한국어 지원?", a: "미지원. 단 숫자·차트·약어(P/S·P/E·DAU) 위주라 영어 부담 적음." },
-              { q: "초보자 어떻게 시작?", a: "이더리움 · 솔라나 P/S 비교부터. 매출 대비 어느 체인이 저평가인지 한눈에 확인. 펀더멘털 투자 사고방식 학습에 우수." },
+              {
+                q: "Token Terminal 정말 무료? 회원가입?",
+                a: "Token Terminal(tokenterminal.com) = 가상자산 펀더멘털·재무 분석 글로벌 1티어. 무료 기본 + Pro($349/월) 본격. 회원가입 = Google·이메일 SSO. 광고 없음. 사설 '코인 펀더멘털 패키지' 업체는 위험 — tokenterminal.com 공식만. 핵심 강점: 가상자산을 주식처럼 분석 = 매출·이익·P/S·P/E·DAU·MAU. 한국 가상자산 본격 투자자·VC·기관에게 핵심 사이트. 무료 = 매크로 펀더멘털 분석 충분. 본격 = Pro 가성비. 한국 가상자산 가치 투자자 학습 도구 1티어.",
+              },
+              {
+                q: "Token Terminal 가상자산 펀더멘털 분석?",
+                a: "Token Terminal 핵심 지표(가상자산 = 주식 분석): ① Revenue(매출) = 프로토콜이 사용자에게 받는 수수료 ② Earnings(이익) = 매출 - 토큰 인센티브 - 운영비 ③ P/S(Price/Sales) = 시총 / 매출 — 매출 대비 저평가·고평가 ④ P/E(Price/Earnings) = 시총 / 이익 — 이익 대비 ⑤ DAU·MAU = 사용자 ⑥ TVL = 예치 자산. 활용: ① 본인 보유 코인 P/S 비교 ② 저평가 발견 ③ 매출 성장 + 사용자 증가 = 매수 신호 ④ 매출 감소 + 사용자 ↓ = 매도 검토. 워런 버핏 스타일 가치 투자 = 가상자산 적용. 한국 가상자산 본격 투자자 = 펀더멘털 학습 = 평생 자산.",
+              },
+              {
+                q: "Token Terminal vs DefiLlama 차이?",
+                a: "DeFi 분석 사이트 비교: ① Token Terminal = 매출·이익·P/S·P/E·재무 지표 1티어, 펀더멘털 ② DefiLlama = TVL·DEX 거래량·체인별 자금·Yield 1티어 ③ Dune Analytics = SQL 분석 ④ Nansen = 고래·NFT. 추천: ① 본인 가상자산 가치 평가 = Token Terminal 우선 ② DeFi 자금 흐름 = DefiLlama ③ 본인 SQL 분석 = Dune ④ 고래 추적 = Nansen. 한국 가상자산 본격 투자자 표준: Token Terminal + DefiLlama + Glassnode 분담 = 종합 분석. 펀더멘털 + DeFi + 매크로 = 종합 인사이트. 본인 학습 + 다중 도구 = 평생 자산.",
+              },
+              {
+                q: "Token Terminal P/S·P/E 가치 평가?",
+                a: "Token Terminal P/S·P/E 비교 = 가상자산 저평가·고평가 평가. 활용: ① 이더리움 P/S = $5~50 변동 ② 솔라나 P/S = 매출 성장 따라 ③ 동종 체인 비교 = 저평가 발견 ④ 동종 DeFi(Uniswap·Aave·MakerDAO) 비교. 가치 투자 사고: ① P/S 낮음 + 매출 성장 ↑ = 매수 신호 ② P/S 높음 + 매출 감소 = 매도 검토 ③ P/E 음수 = 적자(주의) ④ 매출 1년+ 추세. 단 ① 가상자산 = 주식과 100% 동일하지 않음 ② 토큰 인센티브 차감 후 진짜 이익 ③ 본인 학습 + 다중 지표. 한국 가상자산 가치 투자자 = Token Terminal = 평생 자산.",
+              },
+              {
+                q: "Token Terminal 메이저 프로토콜 커버?",
+                a: "Token Terminal 커버 프로토콜(2026): ① L1 체인 = 이더리움·솔라나·BNB Chain·아발란체·코스모스·니어·아비트럼·옵티미즘 등 ② DeFi = Uniswap·Aave·MakerDAO·Compound·Curve·Lido·dYdX·GMX 등 ③ NFT 마켓플레이스 = OpenSea·Blur ④ 거래소 토큰 = BNB·OKB ⑤ Stablecoin = USDT·USDC·DAI. 단 ① 메이저 위주 = 알트·신생 부족 ② 검증된 프로토콜만 ③ 본인 관심 프로토콜 누락 시 다른 도구. 추천: ① Token Terminal 커버 프로토콜 위주 ② 미커버 = DefiLlama·Dune 보완 ③ 본인 학습 + 다중 도구. 한국 가상자산 본격 투자자 = 메이저 프로토콜 가치 평가 = 평생 자산.",
+              },
+              {
+                q: "Token Terminal Pro 결제 가치?",
+                a: "Token Terminal Pro($349/월·연 $3,499) 가치: ① 실시간 데이터 ② 모든 지표 풀 액세스 ③ 리포트 PDF 다운로드 ④ 본인 대시보드 ⑤ Excel·CSV 다운로드 ⑥ API 액세스. 추천: ① 개인 투자자 = 무료 충분 ② 본격 가치 투자자 = 무료 + 정기 학습 ③ VC·기관·펀드 = Pro 필수 ④ 본인 리서치 회사·SaaS = Pro. 한국 사용자: ① 일반 = 무료 + 학습 ② 본격 = 매년 4~5만원 학습 도구 가성비 평가 ③ 기관·VC·DeFi 펀드 = Pro 결제. 무료 = 가성비 1티어 학습 도구. 본격 본인 직업 분석가 = Pro 결제 검토.",
+              },
+              {
+                q: "Token Terminal 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 본인 보유 가상자산 펀더멘털 평가(가장 많음) — P/S·P/E ② 저평가 발견 = 매수 후보 ③ 매출 성장 추적 = 매수·매도 결정 ④ 동종 프로토콜 비교 ⑤ 매크로 사이클 + 펀더멘털 결합 ⑥ VC 학습 = 가상자산 가치 투자 사고. 평생 활용: 매주 Token Terminal 펀더멘털 확인 + 본인 분석 + 본인 매매 결정 = 평생 가치 투자자 자산. 한국 가상자산 본격 투자자에게 펀더멘털 분석 1티어. 무료 + 글로벌 표준 = 가성비. 본인 학습(영문) + 정기 확인 = 평생 가상자산 가치 투자자 자산.",
+              },
+              {
+                q: "Token Terminal 한국어·진입 장벽?",
+                a: "Token Terminal 한국어 미지원. 영문 인터페이스. 단 ① 숫자·차트·약어(P/S·P/E·DAU·MAU·TVL) 위주 = 영어 부담 적음 ② 주식 분석 용어와 동일 ③ 본인 학습 시간 일부 투자. 진입 장벽: ① 가상자산 펀더멘털 학습 = 1~3개월 ② 주식 분석 경험자 = 빠른 진입 ③ 처음 사용자 = 워런 버핏·피터 린치 책 학습 후 적용. 추천 학습 순서: ① 주식 가치 투자 책 학습(현명한 투자자·증권 분석) ② Token Terminal 무료 사용 ③ 본인 보유 코인 P/S 분석 ④ 점진 확대. 한국 가상자산 가치 투자자 = 평생 학습 = 평생 자산.",
+              },
+              {
+                q: "Token Terminal 워런 버핏·가치 투자?",
+                a: "Token Terminal = 가상자산 워런 버핏·피터 린치 스타일 가치 투자 적용 도구. 활용: ① 본인 보유 코인 진짜 이익 계산 ② 토큰 인센티브 차감 후 = 실제 가치 ③ 매출 성장 + 사용자 증가 = 매수 신호 ④ P/S·P/E 저평가 = 매수 후보. 가치 투자 원칙: ① 본인 이해 가능 프로토콜만 ② 매출·이익 견고 + 성장 ③ 적정 가격 ④ 장기 보유 ⑤ 시장 광풍 시 매도 검토. 단 ① 가상자산 = 변동성 매우 큼 ② 가치 투자 시간 = 1~5년 ③ 본인 학습 + 인내. 한국 가상자산 본격 투자자 = Token Terminal + 가치 투자 책 학습 = 평생 자산. 워런 버핏 스타일 가상자산 진입.",
+              },
+              {
+                q: "Token Terminal 매크로 사이클·펀더멘털?",
+                a: "Token Terminal + 매크로 결합 활용: ① 매크로 사이클(Glassnode·CryptoQuant) + 펀더멘털(Token Terminal) = 종합 인사이트 ② 매크로 베어마켓 + 펀더멘털 견고 = 매수 기회(컨트래리언) ③ 매크로 불마켓 + 펀더멘털 광풍 = 매도 검토 ④ 매크로 + 펀더멘털 일치 = 강한 신호. 활용 시나리오: ① 2022년 베어마켓 = Glassnode MVRV<0.8 + Token Terminal 매출 견고 ETH·SOL = 매수 기회 ② 2024년 불마켓 = Token Terminal 매출 성장 + 매크로 강세 = 보유 유지. 한국 가상자산 본격 투자자 = 매크로 + 펀더멘털 결합 = 평생 자산. 본인 학습 + 다중 도구.",
+              },
+              {
+                q: "Token Terminal 인기 분석·체인 비교?",
+                a: "Token Terminal 인기 분석: ① 이더리움 vs 솔라나 P/S 비교 — 어느 체인이 저평가 ② Uniswap vs SushiSwap vs PancakeSwap DEX 비교 ③ Aave vs Compound 대출 시장 점유율 ④ Lido vs Rocket Pool ETH 스테이킹 ⑤ MakerDAO·Compound 매출 추적 ⑥ NFT 마켓플레이스(OpenSea·Blur) 거래량. 활용: ① 본인 보유 코인 동종 비교 ② 저평가 발견 ③ 신규 진입 후보. 한국 가상자산 본격 투자자 = 매주 동종 프로토콜 비교 = 평생 자산 형성. Token Terminal 인사이트 + 본인 분석 + 매매 결정 = 평생 가치 투자자 자산.",
+              },
+              {
+                q: "Token Terminal 데이터 정확도·신뢰?",
+                a: "Token Terminal 데이터 정확도: ① 글로벌 1티어 가상자산 펀더멘털 데이터 ② Bloomberg·CoinDesk·Messari 등 기관 사용 ③ 학술적 표준 ④ 투명한 계산 공식 공개. 신뢰: ① 글로벌 VC(a16z·Paradigm·Multicoin) 사용 ② 가상자산 기관 표준 ③ 한국 가상자산 분석가 사용. 단 ① 매출·이익 계산 = 일부 추정 ② 토큰 인센티브 차감 정확도 = 학습 필요 ③ 100% 정확 X — 본인 분석 + 다중 검증. 추천: Token Terminal + DefiLlama + Dune 데이터 교차 검증. 한국 가상자산 본격 투자자 = 다중 도구 검증 = 평생 안전.",
+              },
+              {
+                q: "Token Terminal API·자동 분석?",
+                a: "Token Terminal API = Pro 결제자 한정. 활용: ① 본인 가상자산 펀더멘털 자동 추적 ② 본인 알림 봇(매출 변화·P/S 변화) ③ 본인 SaaS·블로그 통합 ④ 본인 백테스트 데이터. 추천: ① 일반 투자자 = 웹 인터페이스 ② 본격 분석가·VC·기관 = Pro API ③ 본인 자동매매 = Token Terminal + 매크로 + 본인 전략. 대안 무료 API: ① DefiLlama API(무료) ② CoinGecko API(무료) ③ The Graph(인덱싱). 한국 가상자산 본격 개발자 = Token Terminal Pro API + 본인 전략. eloan 백테스트 = Token Terminal 데이터 일부 활용 가능.",
+              },
+              {
+                q: "Token Terminal 모바일·휴대폰?",
+                a: "Token Terminal 모바일 브라우저(Safari·Chrome) 정상 동작. 전용 모바일 앱 = 제한적. 기능: ① 매출·이익 차트 ② P/S·P/E 비교 ③ 본인 대시보드 ④ 인사이트 리포트. 모바일 한계: ① 본격 분석 = PC 권장 ② 복잡한 차트 = PC 효율적 ③ 펀더멘털 학습 = PC + 외장 모니터. 활용: ① 외출 중 빠른 매출 확인 = 모바일 ② 본인 보유 코인 P/S 체크 ③ 본격 분석 = PC. 한국 가상자산 가치 투자자: PC 본격 + 모바일 빠른 확인. Token Terminal = 본격 분석 도구 = PC 중심.",
+              },
+              {
+                q: "Token Terminal 사기·라이선스·주의사항?",
+                a: "Token Terminal 자체 사기 사례 거의 없음 — 글로벌 가상자산 분석 신뢰 사이트. 주의 사례: ① '가상자산 펀더멘털 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Token Terminal 사이트 — 본인 정보·악성코드 ③ Pro 무료 평생 가짜 광고 ④ 사설 '가치 투자 리딩방' — 거의 모두 사기. 주의사항: ① tokenterminal.com 공식 도메인만 ② 본인이 직접 사용·학습 ③ 사설 업체에 카드·정보 절대 알려주지 말기 ④ Pro 결제 = 공식 사이트만 ⑤ 사설 리딩방 = 거의 모두 사기. 본인 학습 + 신중한 매매 = 평생 가치 투자자 자산 보호.",
+              },
             ],
             relatedKeywords: [
               "Token Terminal 사용법",

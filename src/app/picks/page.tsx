@@ -13,6 +13,9 @@ const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks`;
 const TODAY = "2026-05-13";
 
+// 정적 빌드 캐시 강제 무효화.
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "주소모음 — AI·정부지원금·무료리소스·코인 도구 디렉토리",
   description:

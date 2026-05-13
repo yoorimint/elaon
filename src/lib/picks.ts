@@ -51,6 +51,7 @@ export type PickItem = {
   hubSlug?: string;     // 있으면 /picks/{cat}/{hub} 별도 페이지 생성 (sub-카드 또는 상세)
   subItems?: SubItem[]; // 통합 포털 sub-항목 (hub 모드)
   detailContent?: DetailContent; // 도구 상세 페이지 (detail 모드)
+  imageUrl?: string;    // 큰 미리보기 이미지 (OG image 등, 16:9 비율 권장)
 };
 
 export type PickGroup = { title: string; items: PickItem[] };
@@ -136,6 +137,7 @@ const AI: PickCategory = {
           alternatives: ["Claude", "Gemini", "뤼튼"],
           founded: "2022",
           korean: true,
+          imageUrl: "https://cdn.openai.com/chatgpt/share-og.png",
           hubSlug: "chatgpt",
           detailContent: {
             longIntro: [
@@ -323,6 +325,8 @@ const AI: PickCategory = {
           alternatives: ["ChatGPT", "Claude"],
           founded: "2023",
           korean: true,
+          imageUrl:
+            "https://www.gstatic.com/lamda/images/gemini_aurora_thumbnail_4g_e74822ff0ca4259beb718.png",
         },
         {
           name: "Perplexity",
@@ -591,6 +595,7 @@ const AI: PickCategory = {
           alternatives: ["Udio", "AIVA"],
           founded: "2023",
           korean: true,
+          imageUrl: "https://cdn-o.suno.com/meta-preview.jpg",
         },
         {
           name: "Udio",
@@ -625,6 +630,7 @@ const AI: PickCategory = {
           alternatives: ["Naver Cloud Voice", "Typecast"],
           founded: "2022",
           korean: true,
+          imageUrl: "https://elevenlabs.io/cover.png",
         },
         {
           name: "Clovanote (네이버)",
@@ -684,6 +690,7 @@ const AI: PickCategory = {
           tip: ".cursorrules 파일에 프로젝트 규칙과 코딩 컨벤션을 정의해두면 결과물의 일관성이 유지됩니다.",
           alternatives: ["Copilot", "Windsurf", "Claude Code"],
           founded: "2022",
+          imageUrl: "https://cursor.com/public/opengraph-image.png",
         },
         {
           name: "GitHub Copilot",
@@ -811,6 +818,8 @@ const AI: PickCategory = {
           alternatives: ["ChatGPT", "Claude Projects"],
           founded: "2023",
           korean: true,
+          imageUrl:
+            "https://www.notion.com/front-static/meta/custom-agents-og.png",
         },
         {
           name: "Gamma",
@@ -2388,6 +2397,7 @@ const FREE: PickCategory = {
           alternatives: ["공유마당 폰트", "폰트프리"],
           founded: "2017",
           korean: true,
+          imageUrl: "https://noonnu.cc/noonnu_og.png",
         },
         {
           name: "공유마당 폰트",
@@ -2693,6 +2703,7 @@ const FREE: PickCategory = {
           alternatives: ["Canva", "망고보드"],
           founded: "2018",
           korean: true,
+          imageUrl: "https://resource.miricanvas.com/2_0/image/og/OG_en.png",
         },
         {
           name: "Canva",
@@ -2711,6 +2722,8 @@ const FREE: PickCategory = {
           alternatives: ["미리캔버스", "Adobe Express"],
           founded: "2013",
           korean: true,
+          imageUrl:
+            "https://content-management-files.canva.com/c37135f6-6d9a-4920-b659-4f5e12698b8d/og-image-global-1200x630.jpg",
         },
         {
           name: "망고보드",
@@ -2991,6 +3004,8 @@ const COIN: PickCategory = {
           alternatives: ["eloan", "QuantConnect"],
           founded: "2011",
           korean: true,
+          imageUrl:
+            "https://s.tradingview.com/static/images/illustrations/main-page.jpg",
         },
         {
           name: "QuantConnect",
@@ -3031,6 +3046,7 @@ const COIN: PickCategory = {
           alternatives: ["빗썸", "코빗"],
           founded: "2017",
           korean: true,
+          imageUrl: "https://static.upbit.com/upbit-pc/seo/upbit_facebook.png",
         },
         {
           name: "빗썸",

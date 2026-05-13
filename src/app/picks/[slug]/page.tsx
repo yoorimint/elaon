@@ -4,8 +4,18 @@ import { notFound } from "next/navigation";
 import {
   PICK_CATEGORIES,
   getPickCategory,
+  pricingLabel,
   type PickItem,
 } from "@/lib/picks";
+import {
+  JsonLd,
+  breadcrumbLd,
+  itemListLd,
+  faqLd,
+  collectionPageLd,
+} from "@/components/JsonLd";
+
+const SITE = "https://www.eloan.kr";
 
 type Params = { slug: string };
 
@@ -16,14 +26,24 @@ export function generateStaticParams(): Params[] {
 export function generateMetadata({ params }: { params: Params }): Metadata {
   const cat = getPickCategory(params.slug);
   if (!cat) return { title: "주소모음 — 페이지를 찾을 수 없습니다" };
+  const url = `${SITE}/picks/${cat.slug}`;
   return {
-    title: cat.title,
+    title: cat.metaTitle,
     description: cat.description,
-    alternates: { canonical: `https://www.eloan.kr/picks/${cat.slug}` },
+    alternates: { canonical: url },
+    keywords: cat.relatedKeywords,
     openGraph: {
+      type: "article",
       title: cat.title,
       description: cat.description,
-      url: `https://www.eloan.kr/picks/${cat.slug}`,
+      url,
+      locale: "ko_KR",
+      siteName: "eloan",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: cat.metaTitle,
+      description: cat.description,
     },
   };
 }
@@ -32,48 +52,119 @@ function isExternal(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-function ItemRow({ item }: { item: PickItem }) {
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function PricingBadge({ item }: { item: PickItem }) {
+  const color =
+    item.pricing === "free"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+      : item.pricing === "freemium"
+        ? "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+        : "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300";
+  return (
+    <span
+      className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${color}`}
+    >
+      {pricingLabel(item.pricing)}
+    </span>
+  );
+}
+
+function ItemCard({ item }: { item: PickItem }) {
   const external = isExternal(item.url);
   const linkProps = external
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   return (
-    <li className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand transition">
-      <a
-        href={item.url}
-        {...linkProps}
-        className="block group"
-      >
+    <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
+      <header className="mb-2.5">
         <div className="flex flex-wrap items-baseline gap-2">
-          <span className="font-bold text-[15px] group-hover:text-brand transition">
-            {item.name}
-          </span>
+          <h3 className="font-bold text-[17px]">
+            <a
+              href={item.url}
+              {...linkProps}
+              className="hover:text-brand transition"
+            >
+              {item.name}
+            </a>
+          </h3>
+          <PricingBadge item={item} />
           {item.korean && (
-            <span className="text-[10px] font-semibold rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 px-1.5 py-0.5">
+            <span className="text-[10px] font-semibold rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 px-1.5 py-0.5">
               KR
             </span>
           )}
-          {item.free && (
-            <span className="text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5">
-              무료
+          {external && (
+            <a
+              href={item.url}
+              {...linkProps}
+              className="text-[11px] text-neutral-400 hover:text-brand"
+            >
+              {hostname(item.url)} ↗
+            </a>
+          )}
+        </div>
+        <p className="mt-1.5 text-[14px] font-medium text-neutral-700 dark:text-neutral-300 leading-snug">
+          {item.blurb}
+        </p>
+      </header>
+
+      <div className="space-y-2.5 text-[13px] leading-relaxed">
+        <p className="text-neutral-600 dark:text-neutral-400">{item.details}</p>
+
+        {item.useCases.length > 0 && (
+          <div>
+            <div className="text-[11px] font-semibold text-neutral-500 mb-1">
+              이럴 때 씁니다
+            </div>
+            <ul className="grid grid-cols-1 gap-y-0.5 list-disc pl-4 text-neutral-700 dark:text-neutral-300">
+              {item.useCases.map((u, i) => (
+                <li key={i}>{u}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-neutral-500">
+          {item.pricingNote && (
+            <span>
+              <strong className="text-neutral-700 dark:text-neutral-300">
+                요금
+              </strong>{" "}
+              · {item.pricingNote}
             </span>
           )}
-          {external && (
-            <span className="text-[11px] text-neutral-400">
-              {new URL(item.url).hostname.replace(/^www\./, "")}
+          {item.founded && (
+            <span>
+              <strong className="text-neutral-700 dark:text-neutral-300">
+                출시
+              </strong>{" "}
+              · {item.founded}
+            </span>
+          )}
+          {item.alternatives && item.alternatives.length > 0 && (
+            <span>
+              <strong className="text-neutral-700 dark:text-neutral-300">
+                대안
+              </strong>{" "}
+              · {item.alternatives.join(", ")}
             </span>
           )}
         </div>
-        <p className="mt-1.5 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-          {item.blurb}
-        </p>
+
         {item.tip && (
-          <p className="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-            💡 {item.tip}
+          <p className="mt-1 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 px-3 py-2 text-neutral-700 dark:text-neutral-300">
+            💡 <strong>실전 팁</strong> · {item.tip}
           </p>
         )}
-      </a>
-    </li>
+      </div>
+    </article>
   );
 }
 
@@ -83,11 +174,44 @@ export default function PickCategoryPage({ params }: { params: Params }) {
 
   const totalItems = cat.groups.reduce((s, g) => s + g.items.length, 0);
   const otherCats = PICK_CATEGORIES.filter((c) => c.slug !== cat.slug);
+  const pageUrl = `${SITE}/picks/${cat.slug}`;
+  const allItems = cat.groups.flatMap((g) => g.items);
 
   return (
-    <main className="mx-auto max-w-4xl px-5 py-10 sm:py-14">
-      <div className="mb-8">
-        <div className="text-sm text-neutral-500">
+    <>
+      {/* JSON-LD: 검색 엔진용 구조화 데이터 */}
+      <JsonLd
+        data={collectionPageLd({
+          name: cat.title,
+          description: cat.description,
+          url: pageUrl,
+          dateModified: cat.updatedAt,
+        })}
+      />
+      <JsonLd
+        data={breadcrumbLd([
+          { name: "홈", url: `${SITE}/` },
+          { name: "주소모음", url: `${SITE}/picks` },
+          { name: cat.shortTitle, url: pageUrl },
+        ])}
+      />
+      <JsonLd
+        data={itemListLd({
+          name: cat.title,
+          description: cat.description,
+          url: pageUrl,
+          items: allItems.map((it) => ({
+            name: it.name,
+            url: isExternal(it.url) ? it.url : `${SITE}${it.url}`,
+            description: it.blurb,
+          })),
+        })}
+      />
+      <JsonLd data={faqLd(cat.faq)} />
+
+      <main className="mx-auto max-w-4xl px-5 py-10 sm:py-14">
+        {/* Breadcrumb */}
+        <nav className="text-sm text-neutral-500">
           <Link href="/" className="hover:text-neutral-900 dark:hover:text-white">
             홈
           </Link>
@@ -102,78 +226,151 @@ export default function PickCategoryPage({ params }: { params: Params }) {
           <span className="text-neutral-700 dark:text-neutral-300">
             {cat.shortTitle}
           </span>
-        </div>
-        <h1 className="mt-3 text-2xl sm:text-3xl font-bold leading-tight">
-          {cat.emoji} {cat.title}
-        </h1>
-        <p className="mt-3 text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          {cat.intro}
-        </p>
-        <div className="mt-3 text-xs text-neutral-500">
-          총 {totalItems}개 · 마지막 업데이트 {cat.updatedAt}
-        </div>
-      </div>
-
-      {/* 목차 */}
-      {cat.groups.length > 1 && (
-        <nav className="mb-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-4 text-sm">
-          <div className="font-semibold mb-2 text-neutral-700 dark:text-neutral-200">
-            📑 목차
-          </div>
-          <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
-            {cat.groups.map((g, i) => (
-              <li key={i}>
-                <a
-                  href={`#g-${i}`}
-                  className="text-brand hover:underline"
-                >
-                  {g.title}{" "}
-                  <span className="text-neutral-400">({g.items.length})</span>
-                </a>
-              </li>
-            ))}
-          </ul>
         </nav>
-      )}
 
-      {/* 그룹별 카드 */}
-      {cat.groups.map((g, i) => (
-        <section key={i} id={`g-${i}`} className="mb-8 scroll-mt-24">
-          <h2 className="text-lg font-bold mb-3 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
-            {g.title}
+        {/* Hero */}
+        <header className="mt-3 mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+            {cat.emoji} {cat.title}
+          </h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+            <span>총 {totalItems}개 정리</span>
+            <span>·</span>
+            <span>
+              마지막 업데이트{" "}
+              <time dateTime={cat.updatedAt}>{cat.updatedAt}</time>
+            </span>
+            <span>·</span>
+            <span>매월 1회 점검</span>
+          </div>
+        </header>
+
+        {/* 긴 인트로 본문 */}
+        <section className="mb-10 space-y-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+          {cat.longIntro.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </section>
+
+        {/* 선정 기준 */}
+        <section className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 p-5">
+          <h2 className="text-base font-bold mb-2 text-neutral-800 dark:text-neutral-100">
+            🎯 선정 기준
           </h2>
-          <ul className="grid sm:grid-cols-2 gap-3">
-            {g.items.map((it) => (
-              <ItemRow key={it.url} item={it} />
+          <ul className="list-disc pl-5 space-y-1 text-[14px] text-neutral-700 dark:text-neutral-300">
+            {cat.selectionCriteria.map((c, i) => (
+              <li key={i}>{c}</li>
             ))}
           </ul>
         </section>
-      ))}
 
-      {/* 다른 카테고리 안내 */}
-      <section className="mt-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
-        <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">
-          🔗 다른 주소모음
-        </div>
-        <div className="grid sm:grid-cols-3 gap-2">
-          {otherCats.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/picks/${c.slug}`}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-sm hover:border-brand hover:text-brand transition"
-            >
-              <span className="mr-1.5">{c.emoji}</span>
-              {c.shortTitle}
-            </Link>
-          ))}
-        </div>
-      </section>
+        {/* 목차 */}
+        {cat.groups.length > 1 && (
+          <nav className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 text-sm">
+            <div className="font-semibold mb-2 text-neutral-700 dark:text-neutral-200">
+              📑 목차
+            </div>
+            <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1">
+              {cat.groups.map((g, i) => (
+                <li key={i}>
+                  <a href={`#g-${i}`} className="text-brand hover:underline">
+                    {g.title}{" "}
+                    <span className="text-neutral-400">({g.items.length})</span>
+                  </a>
+                </li>
+              ))}
+              <li>
+                <a href="#faq" className="text-brand hover:underline">
+                  자주 묻는 질문 ({cat.faq.length})
+                </a>
+              </li>
+            </ul>
+          </nav>
+        )}
 
-      <p className="mt-8 text-xs text-neutral-500 leading-relaxed">
-        외부 사이트 링크는 <code>noopener noreferrer</code> 로 처리되며, 본 사이트는
-        등록 사이트와 어떠한 제휴 관계도 없습니다. 라이선스·이용약관은 각 사이트의
-        정책을 따라주세요.
-      </p>
-    </main>
+        {/* 그룹별 카드 */}
+        {cat.groups.map((g, i) => (
+          <section key={i} id={`g-${i}`} className="mb-10 scroll-mt-24">
+            <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+              {g.title}
+            </h2>
+            <div className="space-y-3">
+              {g.items.map((it) => (
+                <ItemCard key={it.url + it.name} item={it} />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        {/* FAQ */}
+        <section id="faq" className="mb-10 scroll-mt-24">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">
+            ❓ 자주 묻는 질문
+          </h2>
+          <div className="space-y-3">
+            {cat.faq.map((f, i) => (
+              <details
+                key={i}
+                className="group rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 open:border-brand transition"
+              >
+                <summary className="cursor-pointer font-semibold text-[15px] text-neutral-800 dark:text-neutral-100 list-none flex items-start gap-2">
+                  <span className="text-brand shrink-0">Q.</span>
+                  <span className="flex-1">{f.q}</span>
+                  <span className="text-neutral-400 group-open:rotate-180 transition shrink-0">
+                    ▾
+                  </span>
+                </summary>
+                <p className="mt-3 pl-6 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                  {f.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        {/* 관련 검색어 */}
+        <section className="mb-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+          <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">
+            🔎 관련 검색어
+          </div>
+          <ul className="flex flex-wrap gap-2 text-[13px]">
+            {cat.relatedKeywords.map((k, i) => (
+              <li
+                key={i}
+                className="rounded-full bg-neutral-100 dark:bg-neutral-800/60 px-3 py-1 text-neutral-700 dark:text-neutral-300"
+              >
+                {k}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 다른 카테고리 안내 */}
+        <section className="mb-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+          <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">
+            🔗 다른 주소모음
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {otherCats.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/picks/${c.slug}`}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-sm hover:border-brand hover:text-brand transition"
+              >
+                <span className="mr-1.5">{c.emoji}</span>
+                {c.shortTitle}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <p className="mt-8 text-xs text-neutral-500 leading-relaxed">
+          외부 사이트 링크는 <code>noopener noreferrer</code> 로 처리되며, 본
+          사이트는 등록 사이트와 어떠한 제휴 관계도 없습니다. 라이선스·이용약관·
+          요금 정보는 작성 시점 기준이며, 최신 내용은 각 사이트의 공식 페이지에서
+          반드시 다시 확인하세요.
+        </p>
+      </main>
+    </>
   );
 }

@@ -779,7 +779,8 @@ const MONEY: PickCategory = {
             {
               name: "주민등록등본·초본 발급",
               blurb: "온라인 무료, 즉시 PDF·프린트",
-              details: "본인·세대 주민등록표 등본·초본을 PDF 로 즉시 발급. 인쇄 또는 전자문서 보관 가능. 발급 수수료 무료.",
+              details:
+                "본인·세대 주민등록표 등본·초본을 PDF 로 즉시 발급할 수 있습니다. 인쇄 또는 전자문서 보관이 가능하며 오프라인 발급 수수료가 면제됩니다.",
               amount: "무료 (오프라인 수수료 400원 → 온라인 0원)",
               eligibility: "본인 또는 세대원",
               applyWhen: "24시간",
@@ -788,27 +789,108 @@ const MONEY: PickCategory = {
             {
               name: "가족관계증명서",
               blurb: "본인·가족 발급 무료",
+              details:
+                "기본증명서·가족관계·혼인관계·입양관계·친양자입양관계 등 5종 증명서를 발급합니다. 전자문서로 즉시 발급 가능합니다.",
+              amount: "무료",
+              eligibility: "본인 또는 직계존비속·배우자",
+              applyWhen: "24시간",
               url: "https://www.gov.kr/portal/main",
             },
             {
               name: "보조금24",
               blurb: "받을 수 있는 보조금 자동 매칭",
+              details:
+                "1,400개 이상의 중앙·지방 정부 보조금을 본인 정보에 맞춰 자동 매칭합니다. 청년·신혼·소상공인 평균 5~10개 항목이 매칭됩니다.",
+              amount: "지원금별 상이",
+              eligibility: "전 국민 (자격별 차등)",
+              applyWhen: "수시",
               url: "https://www.gov.kr/portal/subsidy24/cmm/main",
             },
             {
               name: "민원·증명서 발급",
               blurb: "300+ 증명서 통합 발급",
+              details:
+                "주민등록·가족관계·인감·납세·건축물대장·토지대장 등 300종 이상의 증명서를 한 포털에서 발급합니다.",
+              amount: "대부분 무료",
+              eligibility: "본인 또는 자격자",
+              applyWhen: "24시간",
               url: "https://www.gov.kr/portal/civilService",
             },
             {
-              name: "나의 혜택",
-              blurb: "본인 자격 정부지원금 자동 진단",
+              name: "출산 원스톱 서비스",
+              blurb: "출생신고 + 첫만남이용권 + 아동수당 일괄",
+              details:
+                "한 번의 신청으로 출생신고, 첫만남이용권, 아동수당, 부모급여, 양육수당 등을 일괄 처리합니다. 출생 후 60일 이내 진행해야 합니다.",
+              amount: "첫만남이용권 200만원 등 포함",
+              eligibility: "출생아 보호자",
+              applyWhen: "출생 후 60일 이내",
+              url: "https://www.gov.kr/portal/onestopSvc",
+            },
+            {
+              name: "안심상속 원스톱 서비스",
+              blurb: "사망자 재산·채무 일괄 조회",
+              details:
+                "사망자의 금융재산·부동산·자동차·세금·연금·국세·지방세·4대 사회보험 가입 내역 등을 한 번에 조회합니다. 사망일 다음 달 말일까지 신청 가능합니다.",
+              eligibility: "상속인 또는 후견인",
+              applyWhen: "사망일 다음 달 말일까지",
+              url: "https://www.gov.kr/portal/onestopSvc",
+            },
+            {
+              name: "전입신고",
+              blurb: "이사 시 온라인 신고 + 우편물 이전",
+              details:
+                "이사 후 14일 이내 전입신고를 진행합니다. 우편물 주거이전, 자동차 주소 변경 등도 함께 처리할 수 있습니다.",
+              eligibility: "이사한 본인",
+              applyWhen: "이사 후 14일 이내",
               url: "https://www.gov.kr/portal/main",
             },
             {
-              name: "정부 서비스 검색",
-              blurb: "부처별·키워드별 검색",
-              url: "https://www.gov.kr",
+              name: "혼인신고·이혼신고",
+              blurb: "온라인 혼인·이혼 신고",
+              details:
+                "혼인신고는 본인과 배우자 양쪽 + 증인 2인 정보로 진행합니다. 협의 이혼은 가정법원 확인서가 필요합니다.",
+              eligibility: "당사자",
+              applyWhen: "24시간",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "인감증명서·본인서명사실확인서",
+              blurb: "부동산·금융 거래 필수 증명",
+              details:
+                "부동산 매매, 자동차 양도, 금융 거래 등에 필요한 인감증명서와 본인서명사실확인서를 발급합니다.",
+              amount: "통당 600원",
+              eligibility: "본인",
+              applyWhen: "24시간",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "건축물대장 발급",
+              blurb: "주택·상가 건축물 정보 확인",
+              details:
+                "건축물의 위치·구조·면적·소유자·용도 등을 확인합니다. 매매·임대·대출 시 필수 서류입니다.",
+              amount: "무료",
+              eligibility: "전 국민",
+              applyWhen: "24시간",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "납세증명서 (국세·지방세)",
+              blurb: "체납·납부 여부 확인",
+              details:
+                "국세납세증명서와 지방세납세증명서를 발급합니다. 정부 입찰, 대출, 부동산 매매 등에 사용됩니다.",
+              amount: "무료",
+              eligibility: "본인 또는 사업자",
+              applyWhen: "24시간",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "나의 혜택 (자격 자동 진단)",
+              blurb: "받을 수 있는 정부 지원금 일괄 표시",
+              details:
+                "로그인 후 본인의 나이·소득·가족 정보 기반으로 받을 수 있는 정부 지원금이 자동 표시됩니다. 보조금24 와 연동됩니다.",
+              eligibility: "정부24 로그인 사용자",
+              applyWhen: "수시",
+              url: "https://www.gov.kr/portal/main",
             },
           ],
         },
@@ -848,54 +930,119 @@ const MONEY: PickCategory = {
             {
               name: "복지서비스 모의계산",
               blurb: "받을 수 있는 급여 금액 시뮬레이션",
-              details: "본인의 소득·재산·가구원 정보를 입력하면 받을 수 있는 복지급여 항목과 예상 금액이 자동 표시됩니다. 신청 전 자격 확인 도구.",
+              details:
+                "본인의 소득·재산·가구원 정보를 입력하면 받을 수 있는 복지급여 항목과 예상 금액이 자동 표시됩니다. 신청 전 자격 확인 도구로 활용됩니다.",
               eligibility: "전 국민",
               applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
             {
-              name: "청년월세 한시 특별지원",
-              blurb: "월 최대 20만원 × 12개월",
-              details: "만 19~34세 무주택 청년에게 월세를 최대 12개월간 지원합니다. 본인 중위소득 60% 이하 + 원가구 중위소득 100% 이하 조건.",
-              amount: "월 최대 20만원 × 12개월 (총 240만원)",
-              eligibility: "만 19~34세, 본인 중위소득 60% 이하",
-              applyWhen: "수시 (예산 소진 시 종료)",
+              name: "기초생활보장 (생계급여)",
+              blurb: "기준 중위소득 32% 이하 생계 지원",
+              details:
+                "기준 중위소득 32% 이하 가구의 생활을 직접 지원합니다. 본인 소득과 가구 규모에 따라 차등 지급되며 매월 지급됩니다.",
+              amount: "4인 가구 최대 약 195만원/월 (2026 기준)",
+              eligibility: "기준 중위소득 32% 이하 가구",
+              applyWhen: "수시 (주민센터·복지로)",
               url: "https://www.bokjiro.go.kr",
             },
             {
-              name: "기초생활보장",
-              blurb: "생계·의료·주거·교육 4대 급여",
-              details: "기준 중위소득 30~50% 이하 가구에 생계급여(중위 32%), 의료급여(중위 40%), 주거급여(중위 48%), 교육급여(중위 50%)를 차등 지원합니다.",
-              amount: "4인 가구 생계급여 최대 약 195만원/월 (2026 기준)",
-              eligibility: "기준 중위소득 30~50% 이하",
+              name: "기초생활보장 (의료급여)",
+              blurb: "의료비 거의 전액 지원",
+              details:
+                "1종(기초생활수급자 중 근로무능력)·2종(근로능력) 으로 구분되어 외래·입원·약제비 본인부담을 대폭 경감합니다.",
+              amount: "1종 외래 1,000원/입원 0원, 2종 외래 1,000~1,500원",
+              eligibility: "기준 중위소득 40% 이하 등",
+              applyWhen: "수시",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "기초생활보장 (주거급여)",
+              blurb: "임차료·자가 수선비 지원",
+              details:
+                "임차 가구는 지역·가구원 수별로 정해진 기준임대료를 지원받고, 자가 가구는 노후 정도에 따라 수선 비용을 지원받습니다.",
+              amount: "임차 기준임대료 (서울 1인 약 36만원~)",
+              eligibility: "기준 중위소득 48% 이하",
               applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
             {
               name: "긴급복지 지원",
-              blurb: "위기 가구 단기 생계비",
-              details: "주소득자 사망·실직, 중한 질병, 가정폭력 등 위기 사유 발생 시 생계·주거·의료·교육비를 신속 지원합니다. 사후 조사로 자격 확인.",
-              amount: "4인 가구 생계지원 약 162만원/월 (최대 6회)",
-              eligibility: "위기 사유 + 소득·재산 기준",
+              blurb: "위기 가구 단기 생계·주거·의료비",
+              details:
+                "주소득자 사망·실직, 중한 질병, 가정폭력, 화재 등 위기 사유 발생 시 생계·주거·의료비를 신속 지원합니다. 사후 조사로 자격 확인합니다.",
+              amount: "4인 가구 생계 약 162만원/월 (최대 6회)",
+              eligibility: "위기 사유 + 중위소득 75% 이하",
               applyWhen: "긴급 시 즉시",
               url: "https://www.bokjiro.go.kr",
             },
             {
               name: "한부모가족 지원",
-              blurb: "양육비·교육비·주거 지원",
-              details: "한부모·조손 가구에 아동양육비, 학용품비, 한부모가족 시설 입소, 무이자 자녀 학자금 등을 지원합니다.",
+              blurb: "아동양육비·시설·학자금",
+              details:
+                "한부모·조손 가구의 자녀에게 아동양육비, 학용품비, 한부모가족 시설 입소, 무이자 학자금 등을 지원합니다.",
               amount: "아동양육비 월 21만원 (만 18세 미만)",
-              eligibility: "한부모·조손 가구, 중위소득 63~100% 이하",
+              eligibility: "한부모·조손, 중위소득 63~100% 이하",
               applyWhen: "수시",
               url: "https://www.bokjiro.go.kr",
             },
             {
               name: "장애인 활동지원",
               blurb: "활동지원사 시간제 파견",
-              details: "만 6~65세 등록 장애인을 대상으로 활동지원사가 신변보호·가사·이동 등을 시간 단위로 지원합니다. 장애 정도에 따라 월 지원 시간 차등.",
-              amount: "월 최대 480시간 (장애 등급별)",
+              details:
+                "만 6~65세 등록 장애인을 대상으로 활동지원사가 신변보호·가사·이동·사회참여 등을 시간 단위로 지원합니다.",
+              amount: "월 최대 480시간 (장애 정도별 차등)",
               eligibility: "만 6~65세 등록 장애인",
               applyWhen: "수시",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "노인맞춤돌봄서비스",
+              blurb: "안전·말벗·가사 지원",
+              details:
+                "독거·취약 노인을 대상으로 안부 확인, 가사 지원, 외출 동행, 사회참여 등을 맞춤 제공합니다. 일반·중점·특화 군으로 구분됩니다.",
+              eligibility: "만 65세 이상 취약 노인",
+              applyWhen: "수시 (동 주민센터)",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "기초연금",
+              blurb: "월 최대 33.5만원, 만 65세 이상",
+              details:
+                "만 65세 이상 + 소득 하위 70% 노인에게 기초연금이 매월 지급됩니다. 부부 동시 수령 시 20% 감액 후 합산 지급됩니다.",
+              amount: "월 최대 33.5만원 (2026 기준)",
+              eligibility: "만 65세 이상, 소득 하위 70%",
+              applyWhen: "만 65세 도래 1개월 전부터",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "부모급여",
+              blurb: "0세 월 100만원 / 1세 월 50만원",
+              details:
+                "출생일~만 24개월 영아를 둔 가구에 부모급여를 지급합니다. 어린이집·종일제 아이돌봄 이용 시 보육료 바우처로 대체 지급됩니다.",
+              amount: "0세 월 100만원 / 1세 월 50만원 (2026)",
+              eligibility: "0~23개월 영아 보호자",
+              applyWhen: "출생 후 60일 이내 (정부24·복지로)",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "아동수당",
+              blurb: "월 10만원, 0~7세 보편 지원",
+              details:
+                "대한민국 국적의 0~7세(만 8세 미만) 아동에게 보편적으로 월 10만원이 지급됩니다. 출생신고와 함께 신청 가능합니다.",
+              amount: "월 10만원 (만 8세 미만)",
+              eligibility: "0~7세 아동",
+              applyWhen: "출생 후 60일 이내",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "청년월세 한시 특별지원",
+              blurb: "월 최대 20만원 × 12개월",
+              details:
+                "만 19~34세 무주택 청년에게 월세를 최대 12개월 지원합니다. 본인 중위소득 60% 이하 + 원가구 중위소득 100% 이하 조건입니다.",
+              amount: "월 최대 20만원 × 12개월 (총 240만원)",
+              eligibility: "만 19~34세, 본인 중위소득 60% 이하",
+              applyWhen: "수시 (예산 소진 시 종료)",
               url: "https://www.bokjiro.go.kr",
             },
           ],
@@ -979,32 +1126,92 @@ const MONEY: PickCategory = {
           subItems: [
             {
               name: "내 계좌 한눈에",
-              blurb: "전 은행·증권·저축은행 통합",
+              blurb: "전 은행·증권·저축은행 통합 조회",
+              details:
+                "본인 명의의 모든 은행·증권·저축은행·우체국 계좌와 잔액을 한 번에 조회합니다. 1년 이상 거래 없는 비활동 계좌의 잔액을 본인 주거래 계좌로 일괄 이체·해지할 수 있습니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
             {
               name: "내 카드 한눈에",
-              blurb: "발급 카드·한도·연회비",
+              blurb: "발급 카드·한도·연회비 일괄 조회",
+              details:
+                "본인 명의로 발급된 모든 신용카드와 체크카드의 발급사, 한도, 연회비, 결제일을 조회합니다. 본인 모르게 발급된 카드 확인에도 활용됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
             {
               name: "잠자는 내 돈 찾기",
-              blurb: "휴면예금·휴면보험금",
+              blurb: "휴면예금·휴면보험금 통합 조회",
+              details:
+                "10년 이상 거래 없는 휴면예금과 3년 이상 청구 없는 휴면보험금을 한 번에 조회합니다. 평균 환급액은 5~30만원 수준입니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
             {
               name: "내 연금 한눈에",
-              blurb: "국민·퇴직·개인연금 통합",
+              blurb: "국민·퇴직·개인연금 통합 시뮬레이션",
+              details:
+                "국민연금, 퇴직연금, 개인연금의 가입 현황과 예상 수령액을 통합 조회합니다. 노후 자금 시뮬레이션 도구로 활용됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "내 보험 한눈에",
+              blurb: "본인 명의 보험 통합 + 숨은보험금",
+              details:
+                "본인 명의의 모든 보험 가입 내역과 미수령 만기·중도·휴면 보험금을 한 번에 조회합니다. 가족 사후 미신청 보험금 확인에 유용합니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
             {
               name: "자동이체 통합관리",
               blurb: "자동이체·납부 일괄 조회·해지",
+              details:
+                "본인 계좌에서 빠져나가는 모든 자동이체와 자동납부 내역을 한 번에 조회하고 일괄 해지할 수 있습니다. 사용 안 하는 구독 정리에 활용됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "금융주소 한번에",
+              blurb: "전 금융사 주소 일괄 변경",
+              details:
+                "이사 후 모든 금융사에 주소를 일괄 변경할 수 있습니다. 은행, 카드사, 보험사, 증권사 등 등록된 금융사의 주소가 한 번에 갱신됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "이사 후 수시",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "상속인 금융거래 조회",
+              blurb: "사망자 금융재산 일괄 조회",
+              details:
+                "사망자의 예금, 보험, 증권, 대출, 보증, 카드 등 모든 금융거래 정보를 상속인이 한 번에 조회합니다. 안심상속 원스톱 서비스와 연동됩니다.",
+              eligibility: "상속인",
+              applyWhen: "사망 후 1년 이내 (정부24 원스톱과 함께)",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
             {
               name: "신용정보 조회",
-              blurb: "신용평점·신용정보 무료",
+              blurb: "신용평점·연체정보 무료 조회",
+              details:
+                "본인의 신용평점, 신용정보, 신용카드 발급 내역, 대출 내역, 연체 정보를 무료로 조회합니다. 연 3회 무료, 추가 조회는 NICE·KCB 등에서 가능합니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "금융상품 한눈에 비교",
+              blurb: "정기예금·적금·연금·대출 금리 비교",
+              details:
+                "전 금융사의 정기예금, 적금, 연금저축, 펀드, 대출 상품을 한 화면에서 금리·조건별로 비교합니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
             },
           ],
@@ -1068,31 +1275,114 @@ const MONEY: PickCategory = {
             {
               name: "환급금 조회·신청",
               blurb: "미수령 환급금 자동 표시",
+              details:
+                "본인 또는 사업자의 미수령 국세 환급금이 자동 표시됩니다. 발생 5년 이내라면 청구할 수 있고, 본인 계좌로 직접 환급됩니다.",
+              eligibility: "전 국민·사업자",
+              applyWhen: "수시 (5년 이내)",
               url: "https://www.hometax.go.kr",
             },
             {
               name: "5월 종합소득세 신고",
-              blurb: "프리랜서·사업자·이중소득",
+              blurb: "프리랜서·사업자·다중 소득 통합 신고",
+              details:
+                "전년도 모든 소득을 합산해 종합소득세를 신고합니다. 프리랜서, 사업자, 임대소득자, 다중 소득자가 대상입니다. 신고 후 환급 또는 추가 납부가 결정됩니다.",
+              applyWhen: "매년 5월 1~31일",
+              eligibility: "종합소득이 있는 개인",
               url: "https://www.hometax.go.kr",
             },
             {
               name: "1월 연말정산 간소화",
-              blurb: "소득·세액공제 증빙 자동",
+              blurb: "소득·세액공제 증빙 자료 자동 수집",
+              details:
+                "의료비, 교육비, 신용카드, 기부금 등 연말정산 자료가 자동 수집되어 회사에 제출할 수 있는 PDF·xml 로 출력됩니다.",
+              applyWhen: "매년 1월 15일~",
+              eligibility: "근로소득자",
               url: "https://www.hometax.go.kr",
             },
             {
               name: "경정청구 (과거 5년)",
-              blurb: "누락된 공제 재신청·환급",
+              blurb: "누락된 공제 재신청 + 환급",
+              details:
+                "과거 5년 이내의 연말정산·종합소득세에서 누락된 의료비·기부금·월세·교육비 공제 등을 재신청해 환급받을 수 있습니다.",
+              amount: "공제 항목별 상이",
+              eligibility: "과거 5년 내 신고자",
+              applyWhen: "수시 (5년 이내)",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "근로장려금·자녀장려금 신청",
+              blurb: "최대 330만원 + 자녀 1명당 100만원",
+              details:
+                "근로장려금 최대 330만원, 자녀장려금 자녀 1명당 100만원이 지급됩니다. 단독·홑벌이·맞벌이 소득 기준이 다릅니다.",
+              amount: "근로 최대 330만원 + 자녀 1명당 100만원",
+              eligibility: "소득·재산 기준 충족자",
+              applyWhen: "5월 정기 + 9월 반기",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "양도소득세 신고",
+              blurb: "부동산·주식 양도 시",
+              details:
+                "부동산, 주식, 파생상품 양도 시 양도소득세를 신고합니다. 1세대 1주택 비과세, 장기보유특별공제 등 절세 요건을 함께 확인합니다.",
+              applyWhen: "양도일이 속한 달의 말일부터 2개월 이내",
+              eligibility: "양도자",
               url: "https://www.hometax.go.kr",
             },
             {
               name: "부가가치세 신고",
-              blurb: "사업자 1·7월",
+              blurb: "사업자 1·7월 신고",
+              details:
+                "일반과세자는 1월·7월, 간이과세자는 1월에 부가가치세를 신고합니다. 매입세액 공제와 환급도 함께 처리됩니다.",
+              applyWhen: "일반 1·7월 / 간이 1월",
+              eligibility: "사업자",
               url: "https://www.hometax.go.kr",
             },
             {
-              name: "현금영수증 조회",
-              blurb: "본인·가족 사용 내역",
+              name: "사업자등록 신청·정정",
+              blurb: "온라인 사업자 등록",
+              details:
+                "개인사업자 등록을 온라인으로 신청합니다. 일반과세·간이과세·면세사업자 선택과 업종 코드 입력이 필요합니다.",
+              amount: "무료",
+              eligibility: "사업 개시자",
+              applyWhen: "사업 시작 20일 이내",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "현금영수증 조회·등록",
+              blurb: "본인·가족 현금 사용 내역",
+              details:
+                "현금영수증 사용 내역을 조회하고 휴대폰 번호·카드를 등록해 자동 발급되도록 설정합니다. 연말정산 소득공제 자료로 사용됩니다.",
+              amount: "무료",
+              eligibility: "전 국민",
+              applyWhen: "24시간",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "전자세금계산서 발급",
+              blurb: "사업자 간 세금계산서",
+              details:
+                "사업자가 발행하는 전자세금계산서를 발급·수취·관리합니다. 발급액 일정 규모 이상 사업자는 전자세금계산서 발급이 의무입니다.",
+              eligibility: "사업자",
+              applyWhen: "수시",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "세금 모의계산",
+              blurb: "양도·증여·상속세 미리 계산",
+              details:
+                "양도소득세, 증여세, 상속세, 종합부동산세 등을 시뮬레이션할 수 있습니다. 매매·증여 의사결정 전 절세 시뮬레이션 도구입니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "납세증명서 발급",
+              blurb: "체납·납부 여부 확인 증명",
+              details:
+                "정부 입찰, 부동산 매매, 대출 등에 필요한 국세 납세증명서를 발급합니다. 지방세는 위택스에서 별도 발급합니다.",
+              amount: "무료",
+              eligibility: "전 국민·사업자",
+              applyWhen: "24시간",
               url: "https://www.hometax.go.kr",
             },
           ],
@@ -1154,31 +1444,116 @@ const MONEY: PickCategory = {
             {
               name: "실업급여 (구직급여)",
               blurb: "퇴직 후 월 평균임금 60%",
+              details:
+                "비자발적 퇴직자가 적극적인 재취업 활동을 하는 동안 평균임금의 60% 를 지급합니다. 고용보험 가입 기간과 연령에 따라 지급 기간이 달라집니다.",
+              amount: "평균임금의 60%, 일 최대 약 6.6만원",
+              eligibility: "비자발적 퇴직 + 고용보험 180일 이상",
+              applyWhen: "퇴직 후 12개월 이내",
               url: "https://www.work24.go.kr",
             },
             {
               name: "국민내일배움카드",
               blurb: "연 500만원 직업훈련비",
+              details:
+                "재직자·구직자 모두에게 연 500만원 한도의 직업훈련비를 지원합니다. HRD-Net 의 인증 훈련과정에서 자율적으로 선택해 수강 가능합니다.",
+              amount: "5년간 최대 500만원",
+              eligibility: "만 75세 이하 (공무원·일부 제외)",
+              applyWhen: "수시",
               url: "https://www.work24.go.kr",
             },
             {
               name: "국민취업지원제도",
-              blurb: "월 50만원 × 6개월",
+              blurb: "월 50만원 × 6개월 구직촉진수당",
+              details:
+                "저소득 구직자에게 월 50만원 × 6개월의 구직촉진수당과 취업활동 지원을 제공합니다. I 유형(중위소득 60% 이하), II 유형(특정계층) 으로 구분됩니다.",
+              amount: "월 50만원 × 6개월 (총 300만원)",
+              eligibility: "중위소득 60% 이하 등",
+              applyWhen: "수시",
               url: "https://www.work24.go.kr",
             },
             {
-              name: "청년구직활동지원금",
-              blurb: "구직 청년 활동 지원",
+              name: "청년도전지원사업",
+              blurb: "구직 단념 청년 단계별 지원",
+              details:
+                "구직 단념 또는 NEET 청년에게 단계별(맞춤형·집중) 프로그램과 수당을 제공합니다. 자기탐색, 진로설정, 취업 연계가 포함됩니다.",
+              amount: "프로그램별 수당 + 이수 시 인센티브",
+              eligibility: "만 18~34세 구직 단념 청년",
+              applyWhen: "수시",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "출산전후휴가급여",
+              blurb: "90일 유급 (다태아 120일)",
+              details:
+                "출산 전후 휴가 기간에 통상임금을 지급합니다. 우선지원대상기업은 90일 전액을 고용보험에서 지원하고, 대규모 기업은 첫 60일은 회사, 나머지를 고용보험이 부담합니다.",
+              amount: "통상임금 (상한 일 23만원 안팎)",
+              eligibility: "고용보험 가입 + 출산 여성 근로자",
+              applyWhen: "휴가 종료일로부터 12개월 이내",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "육아휴직급여",
+              blurb: "최대 1년 6개월, 통상임금의 80%",
+              details:
+                "만 12세 이하 또는 초등 6학년 이하 자녀의 육아를 위해 휴직하는 근로자에게 통상임금의 80% (상한 월 250만원) 를 지급합니다. 부모 모두 사용 시 6+6 부모육아휴직제로 가산이 적용됩니다.",
+              amount: "월 최대 250만원 (2026 기준)",
+              eligibility: "고용보험 6개월 이상 + 자녀 요건",
+              applyWhen: "휴직 30일 이상 사용 후",
               url: "https://www.work24.go.kr",
             },
             {
               name: "워크넷 구인구직",
-              blurb: "공식 구직 매칭",
+              blurb: "고용부 공식 매칭 + 인공지능 추천",
+              details:
+                "전국 구인·구직 정보가 한곳에 통합되어 있습니다. 본인 이력 기반 AI 매칭, 청년·중장년·여성·외국인 맞춤 정보가 제공됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "24시간",
               url: "https://www.work24.go.kr",
             },
             {
-              name: "직업훈련 (HRD-Net)",
-              blurb: "내일배움카드로 신청 가능",
+              name: "직업훈련 검색 (HRD-Net)",
+              blurb: "내일배움카드로 신청 가능한 훈련 검색",
+              details:
+                "정부 인증 직업훈련과정 수만 건을 지역·분야·기간별로 검색합니다. 내일배움카드 사용 가능한 과정과 자비 부담 과정이 함께 표시됩니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "산재보험 신청·조회",
+              blurb: "업무상 재해·질병 보상",
+              details:
+                "업무상 부상·질병·사망·장애 시 요양급여, 휴업급여, 장해급여, 유족급여 등을 신청합니다. 근로복지공단 연계로 자동 처리됩니다.",
+              eligibility: "산재 근로자·유족",
+              applyWhen: "재해 발생 즉시",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "일자리도약장려금 (기업)",
+              blurb: "청년 정규직 채용 시 월 60만원",
+              details:
+                "취업 취약 청년을 정규직으로 채용한 중소·중견기업에 인건비를 지원합니다. 청년 1인당 월 60만원, 최대 2년 지급됩니다.",
+              amount: "월 60만원 × 24개월 (기업 지원)",
+              eligibility: "중소·중견기업",
+              applyWhen: "수시",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "중장년 일자리지원",
+              blurb: "40세 이상 재취업 지원",
+              details:
+                "만 40세 이상 중장년의 재취업·전직을 지원합니다. 중장년 전직지원서비스, 채용박람회, 재취업 패키지가 포함됩니다.",
+              eligibility: "만 40세 이상",
+              applyWhen: "수시",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "고용보험 가입이력 조회",
+              blurb: "전 직장 고용보험 가입 확인",
+              details:
+                "본인의 고용보험 가입 이력, 피보험 기간, 평균임금을 조회합니다. 실업급여 신청 자격 확인에 필수입니다.",
+              eligibility: "근로자",
+              applyWhen: "24시간",
               url: "https://www.work24.go.kr",
             },
           ],
@@ -1452,32 +1827,100 @@ const MONEY: PickCategory = {
           subItems: [
             {
               name: "예비창업패키지",
-              blurb: "최대 1억원, 예비창업자",
+              blurb: "예비창업자 최대 1억원",
+              details:
+                "사업자 등록 전의 예비창업자를 대상으로 사업화 자금과 멘토링을 제공합니다. 일반·청년·여성 등 분야별 트랙으로 운영됩니다.",
+              amount: "최대 1억원 사업화 자금",
+              eligibility: "사업자 미등록 예비창업자",
+              applyWhen: "매년 2~3월 공고",
               url: "https://www.k-startup.go.kr",
             },
             {
               name: "초기창업패키지",
               blurb: "창업 3년 이내, 최대 1억원",
-              url: "https://www.k-startup.go.kr",
-            },
-            {
-              name: "청년창업사관학교",
-              blurb: "만 39세 이하, 최대 1억원",
-              url: "https://www.k-startup.go.kr",
-            },
-            {
-              name: "TIPS (딥테크 팁스)",
-              blurb: "기술창업 R&D 최대 5억원",
+              details:
+                "사업자 등록 3년 이내 초기창업자에게 사업화 자금, 멘토링, 시제품 제작 비용을 지원합니다. 전국 주관기관에서 운영합니다.",
+              amount: "최대 1억원",
+              eligibility: "창업 3년 이내",
+              applyWhen: "매년 2~3월 공고",
               url: "https://www.k-startup.go.kr",
             },
             {
               name: "창업도약패키지",
               blurb: "창업 3~7년, 최대 3억원",
+              details:
+                "창업 3~7년 이내 도약기 기업을 대상으로 사업화 자금과 스케일업을 지원합니다. 사업화·마케팅·R&D 자금이 통합 지원됩니다.",
+              amount: "최대 3억원",
+              eligibility: "창업 3~7년",
+              applyWhen: "매년 공고",
               url: "https://www.k-startup.go.kr",
             },
             {
-              name: "정부지원 사업 공고",
-              blurb: "전체 사업 일정 통합",
+              name: "청년창업사관학교",
+              blurb: "만 39세 이하, 최대 1억원 + 입주",
+              details:
+                "만 39세 이하 청년 창업자에게 사업화 자금과 입주공간, 전담 멘토링을 1년간 제공합니다. 중기부 직속 사업으로 인지도 높음.",
+              amount: "최대 1억원 + 입주공간",
+              eligibility: "만 39세 이하, 창업 3년 이내",
+              applyWhen: "매년 1~2월 공고",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "TIPS (팁스)",
+              blurb: "기술창업 R&D 최대 5억원",
+              details:
+                "민간 운영사가 발굴·투자한 기술창업기업에 정부가 R&D 자금을 매칭 지원합니다. 시드 1억 + R&D 최대 5억 + 사업화 자금이 패키지로 제공됩니다.",
+              amount: "민간 1억 + R&D 5억 + 사업화",
+              eligibility: "민간 운영사 추천 기술창업기업",
+              applyWhen: "수시 (운영사 발굴)",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "딥테크 팁스",
+              blurb: "딥테크 분야 최대 15억원",
+              details:
+                "AI, 바이오, 반도체, 양자, 우주 등 딥테크 분야 기업에 대규모 R&D 자금을 지원합니다. TIPS 상위 트랙입니다.",
+              amount: "최대 15억원",
+              eligibility: "딥테크 분야 기술창업기업",
+              applyWhen: "수시 (운영사 발굴)",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "재도전 성공패키지",
+              blurb: "재창업자 최대 1억원",
+              details:
+                "사업 실패 경험이 있는 재창업자를 대상으로 사업화 자금과 멘토링을 제공합니다. 채무 조정과 연계된 트랙도 운영됩니다.",
+              amount: "최대 1억원",
+              eligibility: "재창업자",
+              applyWhen: "매년 공고",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "글로벌 진출 지원",
+              blurb: "해외 진출 IR·법인 설립",
+              details:
+                "스타트업의 해외 진출을 위해 글로벌 IR, 현지 법인 설립, 해외 액셀러레이팅 프로그램 등을 지원합니다.",
+              eligibility: "해외 진출 의향 스타트업",
+              applyWhen: "매년 공고",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "사회적기업가 육성사업",
+              blurb: "사회적기업 창업 최대 5천만원",
+              details:
+                "사회 문제 해결형 창업을 지원합니다. 사업화 자금, 멘토링, 후속 연계까지 1년간 제공됩니다.",
+              amount: "최대 5천만원",
+              eligibility: "사회적 가치 창업 팀",
+              applyWhen: "매년 공고",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "정부지원 사업 공고 통합",
+              blurb: "전 부처 창업 사업 일정",
+              details:
+                "중기부, 과기정통부, 산업부, 문체부 등 전 부처의 창업 지원 사업 공고와 신청 일정을 한 화면에서 확인합니다.",
+              eligibility: "전 국민",
+              applyWhen: "수시",
               url: "https://www.k-startup.go.kr",
             },
           ],
@@ -1524,31 +1967,95 @@ const MONEY: PickCategory = {
             {
               name: "무료 건강검진 대상 조회",
               blurb: "일반검진 2년 1회 + 암검진",
+              details:
+                "본인의 건강검진 대상 여부와 받을 수 있는 검진 항목(일반·암·구강·영유아·생애전환기 등) 을 조회합니다. 검진 기관 예약도 함께 가능합니다.",
+              amount: "본인 부담금 0원 또는 10%",
+              eligibility: "국민건강보험 가입자",
+              applyWhen: "연중 (출생연도 끝자리에 따라)",
               url: "https://www.nhis.or.kr",
             },
             {
               name: "본인부담상한제 환급금",
               blurb: "초과 의료비 자동 환급",
+              details:
+                "1년간 본인부담 의료비가 소득 구간별 상한액을 초과하면 차액이 본인 계좌로 환급됩니다. 매년 8월경 자동 안내됩니다.",
+              eligibility: "건강보험 가입자",
+              applyWhen: "초과 발생 시 (5년 내 청구)",
               url: "https://www.nhis.or.kr",
             },
             {
               name: "건강보험료 조회·정정",
               blurb: "본인 부담액·정정 신청",
+              details:
+                "본인이 부담하는 건강보험료를 조회하고 소득·재산 변동에 따른 정정을 신청합니다. 지역가입자는 소득 감소 시 보험료 인하 신청이 가능합니다.",
+              eligibility: "건강보험 가입자",
+              applyWhen: "수시",
               url: "https://www.nhis.or.kr",
             },
             {
               name: "피부양자 등록·확인",
-              blurb: "가족 피부양자 자격",
+              blurb: "가족 피부양자 자격 등록",
+              details:
+                "직장가입자의 가족(배우자·직계존비속·형제자매 일부) 을 피부양자로 등록합니다. 소득·재산 기준이 적용되며 자격 변동 시 자동 박탈됩니다.",
+              eligibility: "직장가입자의 가족",
+              applyWhen: "자격 발생 시",
               url: "https://www.nhis.or.kr",
             },
             {
               name: "임신·출산 진료비 지원",
               blurb: "100만원 바우처 (다태아 140만원)",
+              details:
+                "임신·출산 진료비로 사용할 수 있는 국민행복카드 바우처를 지급합니다. 분만 후 2년까지 산모·아동의 진료에 사용할 수 있습니다.",
+              amount: "100만원 (다태아 140만원)",
+              eligibility: "임신 확인 가입자",
+              applyWhen: "임신 확인 후 ~ 분만 후 2년",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "산정특례 (희귀·중증질환)",
+              blurb: "본인부담 5% (외래·입원)",
+              details:
+                "암, 희귀질환, 중증난치질환, 중증치매 환자에게 본인부담률을 5% (외래·입원 동일) 로 경감합니다. 등록 후 5년간 적용됩니다.",
+              amount: "본인부담 5% (일반 20~30%)",
+              eligibility: "암·희귀·중증난치·중증치매",
+              applyWhen: "진단 후 30일 이내",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "건강보험 자격득실확인서",
+              blurb: "취업·이직·대출에 필요한 증명",
+              details:
+                "본인의 건강보험 자격 취득·상실 이력을 증명하는 서류를 발급합니다. 취업, 이직, 대출, 비자 발급 등에 사용됩니다.",
+              amount: "무료",
+              eligibility: "전 국민",
+              applyWhen: "24시간",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "보험료 환급 신청",
+              blurb: "소득 변동·중복 납부 환급",
+              details:
+                "소득·재산 변동에 따른 보험료 정정 결과 발생한 과오납금을 환급받습니다. 본인 계좌로 직접 입금됩니다.",
+              eligibility: "건강보험 가입자",
+              applyWhen: "수시",
               url: "https://www.nhis.or.kr",
             },
             {
               name: "건강iN (마이헬스뱅크)",
-              blurb: "본인 건강검진 결과·진료 이력",
+              blurb: "건강검진 결과·진료 이력",
+              details:
+                "본인의 건강검진 결과, 처방·진료 이력, 예방접종 이력 등을 한 곳에서 조회합니다. PDF 다운로드와 가족 공유도 가능합니다.",
+              eligibility: "건강보험 가입자",
+              applyWhen: "24시간",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "외국인 건강보험",
+              blurb: "장기체류 외국인 가입·납부",
+              details:
+                "6개월 이상 국내 체류 외국인을 대상으로 건강보험 가입과 보험료 납부를 안내합니다. 자격 취득과 보험료 조회가 가능합니다.",
+              eligibility: "외국인 장기체류자",
+              applyWhen: "체류 6개월 도래 시",
               url: "https://www.nhis.or.kr",
             },
           ],

@@ -17,6 +17,7 @@ import {
   collectionPageLd,
   faqLd,
 } from "@/components/JsonLd";
+import { SiteLogo } from "@/components/SiteLogo";
 
 const SITE = "https://www.eloan.kr";
 
@@ -149,20 +150,15 @@ function HubBody({
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   const host = itemExternal ? hostname(item.url) : "";
-  const faviconUrl = host
-    ? `https://www.google.com/s2/favicons?domain=${host}&sz=128`
-    : "";
   return (
     <>
       <header className="mt-3 mb-8 flex items-start gap-4">
-        {faviconUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={faviconUrl}
+        {host && (
+          <SiteLogo
+            host={host}
             alt={`${item.name} 로고`}
-            width={64}
-            height={64}
-            className="shrink-0 w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-2 object-contain"
+            size={80}
+            className="shrink-0 w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-3"
           />
         )}
         <div className="flex-1 min-w-0">
@@ -223,20 +219,15 @@ function DetailBody({
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   const host = itemExternal ? hostname(item.url) : "";
-  const faviconUrl = host
-    ? `https://www.google.com/s2/favicons?domain=${host}&sz=128`
-    : "";
   return (
     <>
       <header className="mt-3 mb-8 flex items-start gap-4">
-        {faviconUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={faviconUrl}
+        {host && (
+          <SiteLogo
+            host={host}
             alt={`${item.name} 로고`}
-            width={64}
-            height={64}
-            className="shrink-0 w-16 h-16 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-2 object-contain"
+            size={80}
+            className="shrink-0 w-20 h-20 rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-3"
           />
         )}
         <div className="flex-1 min-w-0">

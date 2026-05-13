@@ -11841,12 +11841,62 @@ const FREE: PickCategory = {
               { step: 5, title: "Creator 결제", body: "출처 표시 면제 + 유튜브 수익화 안전화 위해 Creator($9/월)." },
             ],
             faq: [
-              { q: "YouTube 오디오 보관함과 차이?", a: "YouTube 오디오 보관함 = 콘텐츠 ID 클레임 절대 없음, 100% 안전. Bensound = 가끔 클레임 발생하지만 톤 일관성 + 장르 다양성. 안전 1순위는 YouTube, 톤 다양성은 Bensound." },
-              { q: "콘텐츠 ID 클레임 위험?", a: "낮지만 가끔 발생. 다른 채널이 같은 Bensound 음원을 본인 채널에 등록해 ID 시스템에 등록된 경우. Creator 라이선스로 사후 처리 가능하지만 번거로움." },
-              { q: "출처 표시 어떻게?", a: "'Music: Bensound.com' 또는 작곡가명 포함 형태. 유튜브 영상 설명란 또는 영상 끝 크레딧에 표시. Creator 결제 시 면제." },
-              { q: "Creator $9 vs YouTube?", a: "YouTube 오디오 보관함은 무료라 비용 측면에선 YouTube 우위. Bensound Creator 는 톤 일관성·장르 다양성·Custom 의뢰가 가치. 본업 유튜버라면 둘 다 사용." },
-              { q: "상업 광고 사용?", a: "Pro 라이선스 결제 시 광고·TV·라디오 같은 본격 상업 사용 허용. 단순 유튜브 BGM 은 Creator 로 충분." },
-              { q: "Custom Track 가격?", a: "별도 협의. Benjamin Tissot 에게 직접 의뢰. 회사 광고·기업 영상에 맞춤 곡 제작." },
+              {
+                q: "Bensound 정말 무료? 회원가입?",
+                a: "Bensound(bensound.com) = 무료 + Creator 유료 음원 사이트. 회원가입 없이 무료 음원 다운로드 가능. 광고 일부. Benjamin Tissot 작곡가 개인 운영 — 음원 톤 일관성 1티어. 사설 'BGM 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. bensound.com 공식 도메인만 이용. 약 500+ 음원 — Cinematic·Jazz·Rock·Electronic·Lofi·Acoustic·Classical 다양 장르. 한국 유튜버·콘텐츠 제작자 누구나 활용 핵심 사이트. YouTube 오디오 보관함과 함께 글로벌 유튜브 BGM 1티어 사이트입니다.",
+              },
+              {
+                q: "Bensound vs YouTube 오디오 보관함 차이?",
+                a: "한국 유튜버 BGM 사이트 차이: ① YouTube 오디오 보관함 = 100% 무료, 콘텐츠 ID 클레임 절대 없음, 수익 창출 1티어 ② Bensound = 무료(출처 표시) + Creator 유료, 톤 일관성·장르 다양성 1티어, 가끔 클레임 발생 ③ Pixabay Music = 무료, 양 풍부 ④ Mixkit = 영상 + 음악 통합 ⑤ Suno·Udio = AI 음악 생성. 추천: ① 수익 창출 1순위 = YouTube 오디오 보관함 ② 톤 다양성·시네마틱 = Bensound ③ 양·다양성 = Pixabay Music ④ 본업 유튜버 = YouTube + Bensound + AI 생성 결합. 한국 유튜버 표준: YouTube 우선 + Bensound 보조 + AI 생성 (본인 톤).",
+              },
+              {
+                q: "Bensound 콘텐츠 ID 클레임 위험?",
+                a: "Bensound 음원 = 가끔 유튜브 콘텐츠 ID 클레임 발생. 원인: ① 다른 채널이 같은 Bensound 음원을 본인 채널 음원으로 등록 → ID 시스템에 잘못 등록 ② AdRev 같은 음원 라이선스 회사가 등록한 경우. 위험: ① 광고 수익 차감(클레이머에게) ② 영상 차단 가능 ③ 다중 클레임 시 채널 경고. 해결: ① Bensound Creator($9/월) 라이선스 PDF 받기 → 클레임 시 사후 제출 ② 유튜브 'Dispute' 신청 ③ 시간 + 번거로움 발생. 추천: ① 수익화 영상 = YouTube 오디오 보관함 우선 ② Bensound = 라이선스 명확하게 + 클레임 대응 준비. 사전 라이선스 확보가 핵심입니다.",
+              },
+              {
+                q: "Bensound 출처 표시 어떻게? 무료 라이선스?",
+                a: "Bensound 무료 라이선스(Standard Tier) 출처 표시 의무: ① 형식 — 'Music: Bensound.com' 또는 작곡가명 포함 ② 표시 위치 — 유튜브 영상 설명란 또는 영상 끝 크레딧 ③ 영상 콘텐츠에 출처 명시. 출처 표시 안 하면 약관 위반 + 사후 분쟁. Creator 결제($9/월) 시 출처 표시 면제. 활용: ① 가벼운 사용·취미 = 무료 + 출처 표시 ② 본업 유튜버 = Creator 결제 ③ 회사 광고·CF = Pro 라이선스. 출처 표시 누락 사례 흔함 → 사후 분쟁 위험. 다운로드 시 음원 페이지의 출처 표시 텍스트 그대로 복사·붙여넣기 권장.",
+              },
+              {
+                q: "Bensound Creator·Pro 라이선스 차이?",
+                a: "Bensound 라이선스 종류(2026): ① 무료(Standard Tier) — 출처 표시 의무, 비상업 + 가벼운 상업 ② Creator($9/월·연 $99) — 출처 표시 면제, 유튜브·SNS·블로그 상업 사용 ③ Pro($29/월·연 $299) — 광고·CF·TV·라디오 본격 상업 + Custom 의뢰 가능 ④ Enterprise — 별도 협의. 추천: ① 가벼운 사용 = 무료 + 출처 표시 ② 본업 유튜버 = Creator($9) ③ 회사·광고 회사 = Pro ④ 대형 캠페인 = Enterprise. Creator 가성비 가장 좋음 — 한 달 $9 = 한국 약 1.3만원, 출처 표시 면제 + 클레임 대응 라이선스 PDF + 평생 자산. 한 달만 결제 후 해지 자유.",
+              },
+              {
+                q: "Bensound 인기 장르·음원 추천?",
+                a: "Bensound 인기 장르(2026): ① Cinematic — 영화·다큐·시네마틱 영상 1티어 ② Jazz — 카페·재즈·라운지 ③ Lofi — 학습·집중·일상 브이로그 ④ Acoustic — 따뜻·자연·여행 ⑤ Electronic — IT·기술·미래 ⑥ Rock — 강렬·스포츠·운동 ⑦ Classical — 클래식·우아·교육 ⑧ Pop — 트렌디·SNS. 인기 음원: ① 'Memories' — 시네마틱 ② 'Once Again' — 잔잔 피아노 ③ 'Sunny' — 밝은 어쿠스틱 ④ 'Energy' — 강렬 일렉트로닉 ⑤ 'Ukulele' — 친근 우쿨렐레. 한국 유튜버 활용: ① 브이로그 = Acoustic·Lofi ② 다큐·여행 = Cinematic ③ 게임 = Electronic·Rock ④ 카페·요리 = Jazz·Acoustic.",
+              },
+              {
+                q: "Bensound 한국에서 결제·환불?",
+                a: "Bensound 결제: ① 비자·마스터·아멕스 한국 신용카드·체크카드 정상 ② USD 결제 — Creator $9/월(약 1.3만원), Pro $29(약 4만원) ③ 카카오·네이버페이 미지원 — 카드 등록 필수 ④ 회사 결제 가능. 환불: 결제 후 14일 이내 + 사용량 적음 = 케이스별 가능. 신청: contact@bensound.com 영문·한국어 작성 처리. 자동 결제 해지: account → cancel 즉시 가능. 한 달만 결제 후 해지 자유, 페널티 없음. 카드 변경·삭제·인보이스 다운로드 가능. 연 결제 약 17% 할인 — Creator 연 $99(약 13.5만원), Pro 연 $299(약 41만원). 본격 사용자 = 연 결제 효율적.",
+              },
+              {
+                q: "Bensound 한국 유튜버 활용 시나리오?",
+                a: "한국 유튜버 표준 활용: ① 시네마틱 다큐·여행·VLOG = Bensound Cinematic 1티어 ② 학습·집중·일상 브이로그 = Lofi ③ 카페·요리·라이프스타일 = Jazz·Acoustic ④ IT·기술·게임 = Electronic·Rock ⑤ 클래식·교육 = Classical ⑥ 본인 채널 톤 일관성 = Bensound 가 작곡가 1인 운영이라 일관성 1티어. 평생 활용: 매월 영상 양산 시 Bensound 활용 = 매년 50~300만원 음원 비용 절약(유료 음원 대비), 평생 누적 500만~3,000만원. 한국 본업 유튜버 = YouTube 오디오 보관함(수익화 안전) + Bensound(시네마틱 톤) + AI 생성(본인 곡) 분담 활용 표준입니다.",
+              },
+              {
+                q: "Bensound 다운로드 형식·해상도?",
+                a: "Bensound 다운로드 형식: ① MP3 = 표준, 320kbps 정도, 일반 영상에 충분 ② WAV = Creator·Pro 플랜, 무손실 고음질, 본격 영상 편집 ③ 음원 길이 = 1~5분, 다양. 활용: ① 유튜브 = MP3 충분 ② 광고·CF = WAV 권장 ③ 영상 편집 = MP3·WAV 모두 호환. 다운로드 즉시 본인 PC 보관 + 정리 권장. 회사·유튜버 자주 쓰는 음원 30~100곡 다운로드 + 분류(장르·길이·분위기) = 평생 자산. 외장 SSD 또는 클라우드 백업. 본인 영상 편집 도구(Premiere·Final Cut·DaVinci·CapCut) 모두 호환.",
+              },
+              {
+                q: "Bensound 영상 편집 도구 통합?",
+                a: "Bensound 영상 편집 도구 통합: ① Adobe Premiere Pro — MP3·WAV import ② After Effects — 음악·효과음 import ③ Final Cut Pro — MP3·WAV ④ DaVinci Resolve — 호환 ⑤ CapCut(모바일·PC) — MP3 import ⑥ iMovie — MP3 ⑦ 기타 모든 영상 편집 도구. 활용: ① 본인 편집 도구에서 Bensound 음원 import ② 본인 영상 길이에 맞게 편집·페이드 ③ 다중 음원 결합. 통합 = 작업 효율 큰 폭 향상. 한국 유튜버 표준: Bensound 다운로드 + Premiere·CapCut 편집 = 빠른 영상 양산. Creator 결제자 = 매월 신규 음원 정기 다운로드 + 본인 라이브러리 갱신.",
+              },
+              {
+                q: "Bensound Custom Track 의뢰 가격?",
+                a: "Bensound Custom Track = Benjamin Tissot 작곡가에게 직접 맞춤 곡 의뢰. 활용: ① 회사 광고·CF 맞춤 곡 ② 기업 영상 인트로·아웃트로 ③ 게임 OST ④ 영화·드라마 OST ⑤ 본인 회사 BGM. 가격: 별도 협의(보통 곡당 수백~수천 달러), Pro 라이선스 결제자 우선. 의뢰: contact@bensound.com 직접 연락. 활용 시나리오: ① 한국 회사 광고 = 글로벌 시네마틱 톤 + 본인 회사 BI ② 글로벌 진출 = 영문 광고 + Custom 곡 ③ 기업 IR·홍보 영상. 외주 작곡가 한국 시세 = 곡당 100~500만원 — Bensound Custom 비슷 수준. 본인 회사 글로벌 톤 + 시네마틱 분위기 = Bensound Custom 권장.",
+              },
+              {
+                q: "Bensound vs Suno·Udio AI 음악?",
+                a: "사람 작곡가(Bensound) vs AI 음악(Suno·Udio) 차이: ① Bensound = 사람 작곡, 톤 일관성, 라이선스 명확, 콘텐츠 ID 일부 위험, 장르 다양 ② Suno·Udio = AI 생성, 본인 가사·톤 자유, 라이선스 명확, 콘텐츠 ID 거의 없음, 무한 양산. 추천: ① 시네마틱·완성된 BGM = Bensound 우선(전문성) ② 본인 채널 전용 톤·무한 양산 = Suno·Udio ③ 가성비 = Suno($10/월 무한) > Bensound Creator($9/월 + Bensound 라이브러리만) ④ 안전성 = Suno·Udio 가 콘텐츠 ID 더 안전. 한국 유튜버 표준: Bensound(시네마틱) + Suno·Udio(본인 톤) + YouTube 오디오 보관함(안전) 분담 활용. AI 음악이 빠르게 시장 잠식 중입니다.",
+              },
+              {
+                q: "Bensound 모바일·휴대폰?",
+                a: "Bensound 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 음원 검색·미리듣기 ② 다운로드 ③ Creator 결제. 모바일 한계: ① 본격 영상 편집 = PC 권장 ② MP3 다운로드 = 모바일도 가능 ③ CapCut(모바일) 와 결합 활용. 활용: ① 외출 중 빠른 음원 검색 + 즐겨찾기 ② 모바일에서 MP3 다운로드 → CapCut 편집 ③ PC 본격 작업. 한국 유튜버 = PC + Premiere(본격) + 모바일 + CapCut(빠른) 분담. Bensound 한 계정으로 PC·모바일 동기화. 외출 중 = 빠른 검색 + 영감 + 즐겨찾기 위주.",
+              },
+              {
+                q: "Bensound 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '무료 BGM 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Bensound 사이트 — 본인 정보·악성코드 ③ 출처 표시 누락 → 약관 위반 + 사후 분쟁 ④ 음원 자체 재배포 = 약관 위반 ⑤ 본인 음원 가장 → 저작권 분쟁 ⑥ 콘텐츠 ID 클레임 발생 시 무대응. 주의사항: ① bensound.com 공식 도메인만 ② 본인이 직접 다운로드 ③ 무료 사용 시 출처 표시 명시 ④ 본업 유튜버 = Creator 결제 + 라이선스 PDF 보관 ⑤ 음원 자체 재배포 절대 금지 ⑥ 클레임 발생 시 라이선스 PDF 사후 제출. 본인 자산 보호 = 라이선스 보관 + 출처 표시 명확 인지.",
+              },
             ],
             relatedKeywords: [
               "Bensound 사용법",
@@ -11920,13 +11970,62 @@ const FREE: PickCategory = {
               { step: 5, title: "출처 표시 (필요 시)", body: "CC-BY 라이선스는 저작자 표시 의무. 'Sound by [작가명], Freesound, CC-BY' 형태로 표시." },
             ],
             faq: [
-              { q: "음악 BGM 도 있나?", a: "있지만 양이 적음. 효과음·환경음 위주. BGM 은 YouTube 오디오 보관함·Bensound·Pixabay Music 이 더 적합. Freesound 는 효과음·사운드 디자인 전문." },
-              { q: "라이선스 어떻게 구분?", a: "CC0 = 완전 자유 (저작자 표시 의무 X). CC-BY = 저작자 표시 필요. CC-BY-NC = 저작자 표시 + 비상업 사용만. 각 사운드 페이지에 라이선스 명시." },
-              { q: "상업 사용 가능?", a: "CC0·CC-BY 는 상업 사용 OK (CC-BY 는 출처 표시 필요). CC-BY-NC 는 비상업만. 광고·유튜브 수익 창출은 CC0·CC-BY 위주로 사용." },
-              { q: "게임 사운드에 적합?", a: "예. 게임 개발자에게 1순위 사운드 소스. UI 클릭·발걸음·무기 소리·환경음 등 게임 사운드 디자인의 거의 모든 요소가 Freesound 에 있음." },
-              { q: "API 사용?", a: "freesound.org/apiv2 무료 API. 본인 앱·게임에서 키워드 기반 사운드 동적 다운로드. 학습 데이터 수집에도 사용." },
-              { q: "한국어 검색?", a: "약함. 영문 키워드 권장 ('비'보다 'rain', '발걸음'보다 'footstep')." },
-              { q: "회원가입 꼭 필요?", a: "다운로드는 회원가입 필수. 미리듣기는 가입 없이도 가능. 비영리 운영이라 광고·결제 없음." },
+              {
+                q: "Freesound 정말 100% 무료? 회원가입?",
+                a: "Freesound(freesound.org) = 100% 무료 효과음·환경음 사이트. 다운로드 = 회원가입 필수(무료). 미리듣기는 가입 없이도 가능. 광고 없음 — 비영리 단체 운영. 사설 '효과음 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. freesound.org 공식 도메인만 이용. 약 60만+ 효과음·환경음·필드 레코딩 — 글로벌 효과음 사이트 1티어. 한국 유튜버·게임 개발자·영상 편집자·사운드 디자이너 누구나 활용 핵심 사이트. 비영리 + 사용자 기여 = 평생 무료 보장.",
+              },
+              {
+                q: "Freesound vs YouTube 오디오 보관함 효과음?",
+                a: "글로벌 무료 효과음 사이트 차이: ① Freesound = 약 60만+ 효과음·환경음·필드 레코딩 1티어, CC 라이선스 ② YouTube 오디오 보관함 = 약 1만+ 효과음, 100% 안전(콘텐츠 ID 없음), 저작자 표시 없음 ③ Pixabay = 효과음 일부 종합 ④ Mixkit = 영상 + 음악 + 효과음 통합 ⑤ Zapsplat = 다양 효과음. 추천: ① 효과음 양·다양성 = Freesound 우선 ② 수익 창출 영상·100% 안전 = YouTube 오디오 보관함 ③ 게임 사운드 = Freesound 1티어 ④ 일반 영상 = YouTube 오디오 보관함 + Freesound 분담. 한국 유튜버·게임 개발자 = Freesound + YouTube 오디오 보관함 + Pixabay 분담 활용 표준입니다.",
+              },
+              {
+                q: "Freesound 라이선스 종류·구분?",
+                a: "Freesound 라이선스 종류: ① CC0(Creative Commons Zero) = 완전 자유, 저작자 표시 의무 X, 가장 안전 ② CC-BY = 저작자 표시 필수, 상업 사용 OK ③ CC-BY-NC = 저작자 표시 + 비상업 사용만 ④ CC-BY-SA = 저작자 표시 + 같은 라이선스 공유 ⑤ Sampling+ = 샘플링 가능. 활용: ① 광고·유튜브 수익화 = CC0·CC-BY 위주 ② 비상업 = 모든 라이선스 ③ 게임·앱 임베드 = CC0 가장 안전. 다운로드 전 사운드 페이지 라이선스 라벨 확인 필수. 본인 자산 보호 = CC0 우선 사용 + LICENSE 보관. 라이선스 분쟁 사례 = 라이선스 미확인 후 사용 시.",
+              },
+              {
+                q: "Freesound 상업 사용·유튜브 수익 창출?",
+                a: "Freesound 상업 사용 라이선스별: ① CC0 = 100% 자유, 광고·유튜브 수익화·게임 자유 ② CC-BY = 상업 OK + 저작자 표시 필수(영상 설명란·앱 크레딧) ③ CC-BY-NC = 비상업만, 유튜브 수익화 X ④ CC-BY-SA = 상업 OK + 같은 라이선스. 활용 시나리오: ① 유튜브 수익화 영상 = CC0·CC-BY 만 ② 본업 게임 개발 = CC0 우선 ③ 회사 광고·CF = CC0 + 라이선스 PDF 보관. 위험: ① CC-BY-NC 를 수익화 영상 사용 → 약관 위반 ② 라이선스 미확인 사용 → 사후 분쟁. 한국 유튜버·게임 개발자 = CC0 우선 사용 + 출처 표시 명확 = 평생 안전.",
+              },
+              {
+                q: "Freesound 게임 사운드 디자인 활용?",
+                a: "Freesound = 게임 사운드 디자인 1티어 무료 사이트. 활용: ① UI 클릭·전환 효과음 ② 발걸음·무기·아이템 소리 ③ 환경음(바람·비·새·도시) ④ 캐릭터 소리(점프·공격·스킬) ⑤ BGM 일부 ⑥ 분위기·앰비언트. 강점: ① 약 60만+ 양 압도 ② 사운드 디자이너·필드 레코더 작품 ③ CC0 라이선스 양 풍부 ④ 게임 개발자 표준 도구. 활용 워크플로우: ① 본인 게임 사운드 카테고리 정리 ② Freesound 검색·다운로드 ③ Audacity·FL Studio·Reaper 편집 ④ 게임 엔진(Unity·Unreal) import. 한국 인디 게임 개발자에게 외주 사운드 디자인 비용 평균 100~500만원 절약 효과.",
+              },
+              {
+                q: "Freesound 회원가입 절차·기여?",
+                a: "Freesound 회원가입 절차: ① freesound.org 접속 ② Sign Up 클릭 ③ 이메일·비밀번호 입력 ④ 이메일 인증 ⑤ 즉시 다운로드 가능. 비영리 운영 — 광고·결제 없음. 추가 기여 옵션: ① 본인 사운드 업로드 = 다른 사용자 기여 + CC 라이선스 명시 ② 사운드 평점·코멘트 ③ 좋아요·컬렉션 ④ 기부(Patreon 등) — 운영 지원. 활용: ① 본인 컬렉션 만들기 — 자주 쓰는 사운드 폴더 ② 본인 사운드 업로드 — 사회 기여 + 본인 인지도 ③ 다른 사용자 평점 — 양질 사운드 식별. 한 계정으로 PC·모바일 동기화. 비영리 + 사용자 기여 운영 = 평생 무료 보장.",
+              },
+              {
+                q: "Freesound API·자체 서비스 통합?",
+                a: "Freesound API(freesound.org/apiv2) = 무료 + 100% 자유. 활용: ① 본인 앱·게임에서 키워드 기반 사운드 동적 다운로드 ② SaaS·웹 서비스 통합 ③ AI 학습 데이터 수집 ④ 효과음 라이브러리 자동화 ⑤ 게임 엔진 통합. 신청: freesound.org/apiv2/apply 무료 신청. 한도: 시간당 60회 호출(무료) — 본격 사용 시 추가 협의. 활용 사례: ① 한국 게임 개발자 = Unity·Unreal 플러그인 통합 ② SaaS = 사용자가 사운드 검색·삽입 ③ AI 음악 도구 = 학습 데이터. 개발자에게 강력한 무료 도구. 단 ① 라이선스 자동 적용 ② CC0 우선 필터링 권장.",
+              },
+              {
+                q: "Freesound 한국어 검색·한국 사운드?",
+                a: "Freesound 한국어 검색 = 매우 약함, 영어 키워드 필수. 검색 팁: ① '비' → 'rain' ② '발걸음' → 'footstep' ③ '바람' → 'wind' ④ '폭발' → 'explosion' ⑤ '클릭' → 'click'. 영어 키워드 결과 100배. 한국 사운드 비중: ① 한국 음식·문화 사운드 = 거의 없음 ② 한국 도시·자연 = 매우 적음 ③ 한국어 음성·말소리 = 매우 적음 ④ 글로벌 효과음·환경음 = 1티어. 한국 콘셉트 = ① Freesound 영어 검색 + ② 본인 직접 녹음 ③ 한국 효과음 사이트 분담. 한국 게임 개발자 = 글로벌 사운드 = Freesound 우선 + 한국 특화 사운드 = 본인 녹음.",
+              },
+              {
+                q: "Freesound 다운로드 형식·해상도?",
+                a: "Freesound 다운로드 형식: ① WAV = 무손실 고음질, 본격 사운드 작업 우선 ② MP3 = 압축, 가벼운 사용 ③ FLAC = 무손실 압축 일부 ④ OGG = 일부. 음질: ① WAV 16/24bit 44.1/48kHz = 표준 ② WAV 32bit 96kHz = 고품질 ③ MP3 320kbps. 활용: ① 게임 사운드 = WAV 우선(품질 + 편집) ② 유튜브 효과음 = MP3 충분 ③ 영상 편집 = WAV 또는 MP3. 다운로드 즉시 본인 PC 보관 + 분류 정리 권장. 게임 개발자·사운드 디자이너 = WAV 라이브러리 구축 = 평생 자산. 외장 SSD 또는 클라우드 백업.",
+              },
+              {
+                q: "Freesound 사운드 편집 도구 통합?",
+                a: "Freesound 사운드 편집 도구 통합: ① Audacity(무료) — WAV·MP3 import + 편집 ② Adobe Audition — 호환 ③ FL Studio — 음악 제작 ④ Reaper — 본격 DAW ⑤ Logic Pro — Mac ⑥ Premiere·After Effects — 영상 편집 + 효과음 ⑦ Unity·Unreal — 게임 엔진. 활용: ① Audacity(무료) + Freesound = 가벼운 편집 ② Adobe Audition + Freesound = 본격 편집 ③ Premiere + Freesound = 영상 편집 ④ Unity + Freesound = 게임 사운드. 한국 사용자 표준: 무료 사용자 = Audacity, 본업 = Adobe Audition·FL Studio, 게임 개발자 = Unity·Unreal. 다운로드 → 본인 도구 import → 편집·합성.",
+              },
+              {
+                q: "Freesound 한국 유튜버·게임 개발자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 유튜버 = 영상 효과음(전환·강조·웃음·박수) ② 게임 개발자 = UI·캐릭터·무기·환경음(가장 많은 활용) ③ 인디 영화·다큐 제작자 = 환경음·앰비언트 ④ ASMR 채널 = 자연 소리 ⑤ 팟캐스트 = 인트로·아웃트로·전환 ⑥ 광고 제작자 = 효과음 ⑦ 학습 영상 = 강조 효과음. 평생 활용: 매월 영상·게임 작업 시 Freesound 활용 = 매년 100~500만원 사운드 비용 절약(외주 사운드 디자인 평균), 평생 누적 1,000만~5,000만원. 한국 인디 게임·유튜버에게 사실상 표준 도구. CC0 + 양 1티어 = 평생 자산.",
+              },
+              {
+                q: "Freesound 비영리 운영·기부?",
+                a: "Freesound = Universitat Pompeu Fabra(스페인 바르셀로나 음악 기술 그룹) 운영 비영리 단체. 운영 모델: ① 사용자 기부(Patreon) ② 학술 연구 자금 ③ 사용자 기여(사운드 업로드). 광고 없음 + 결제 없음 = 평생 무료. 강점: ① 비영리 = 영구 운영 보장 ② 학술 기관 운영 = 라이선스 안전 ③ 사용자 기여 모델 = 다양성. 사용자 기여: ① 본인 사운드 업로드(CC 라이선스) ② Patreon 기부 운영 지원 ③ 평점·코멘트. 한국 유튜버·게임 개발자 = 매월 무료 활용 + 가능 시 기부 = 평생 자산 + 사회 기여. 비영리 운영 = 평생 안정성 1티어.",
+              },
+              {
+                q: "Freesound 모바일·휴대폰?",
+                a: "Freesound 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 사운드 검색·미리듣기 ② 다운로드 ③ 컬렉션. 모바일 한계: ① 본격 사운드 편집 = PC 권장 ② WAV 다운로드 = 데이터·저장공간 ③ Audacity 등 편집 도구 = PC 필수. 활용: ① PC 본격 작업 + 모바일 빠른 검색 분담 ② 모바일에서 영감 → PC 다운로드·편집. 한 계정으로 PC·모바일 동기화. 게임 개발자·유튜버 = PC 본격 + 모바일 빠른 검색. 모바일 = 영감 + 즐겨찾기 위주.",
+              },
+              {
+                q: "Freesound 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '효과음 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Freesound 사이트 — 본인 정보·악성코드 ③ CC-BY 사운드 출처 표시 누락 → 약관 위반 ④ CC-BY-NC 를 수익화 영상 사용 → 약관 위반 ⑤ 사운드 자체 재배포 = 약관 위반 ⑥ 본인 사운드 가장 → 저작권 분쟁. 주의사항: ① freesound.org 공식 도메인만 ② 본인이 직접 다운로드 ③ 라이선스 라벨 사전 확인 + LICENSE 보관 ④ 수익화 영상 = CC0·CC-BY 만 ⑤ CC-BY 출처 표시 명확 ⑥ 사운드 자체 재배포 절대 금지. 본인 자산 보호 = 라이선스 명확 인지 + LICENSE 보관 = 평생 분쟁 0.",
+              },
             ],
             relatedKeywords: [
               "Freesound 사용법",
@@ -12008,13 +12107,62 @@ const FREE: PickCategory = {
               { step: 5, title: "사진 → 팔레트", body: "Tools → Image Picker. 본인 이미지 업로드 → 주요 색 추출." },
             ],
             faq: [
-              { q: "Adobe Color 와 차이?", a: "Coolors = 빠른 인터랙션·실험적 탐색·다양한 export. Adobe Color = 색상 휠 기반 이론적 조합·접근성 체크 강력. 감각적 탐색은 Coolors, 이론적 조합은 Adobe Color." },
-              { q: "Pro $3 가치?", a: "광고 제거 + 사진→팔레트·그라데이션·라이브러리 풀 사용. 한 달 4천원이라 부담 적음. 본격 디자인 작업 시 결제 권장." },
-              { q: "Tailwind 에 적용?", a: "Export → Tailwind config 형식 다운로드 → 본인 tailwind.config.js 의 colors 에 붙여넣기. 즉시 모든 컴포넌트에 컬러 적용." },
-              { q: "Contrast Checker?", a: "WCAG AA·AAA 접근성 기준에 따라 두 색의 대비비 자동 계산. 시각장애·색맹 대응 디자인에 필수." },
-              { q: "사진→팔레트 정확?", a: "이미지의 주요 색을 자동 추출. 디자인 시안에 본인 사진의 톤을 그대로 적용할 때 유용." },
-              { q: "모바일 앱?", a: "iOS·안드로이드 앱. 외부에서 영감받은 사진 즉시 팔레트로 변환·저장." },
-              { q: "회원가입 필수?", a: "팔레트 영구 저장·라이브러리는 회원가입 후. 가입 없이 생성·내보내기는 가능." },
+              {
+                q: "Coolors 정말 무료? Pro 가치?",
+                a: "Coolors(coolors.co) = 무료 + Pro 유료 색상 팔레트 사이트. 무료 = 팔레트 생성·내보내기·기본 기능 가능. Pro($3/월·연 $33) = 광고 제거 + 사진→팔레트·그라데이션·라이브러리 풀 + 무제한 저장. 한 달 4천원 = 본격 디자인 작업 시 가성비. 사설 '컬러 팔레트 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. coolors.co 공식 도메인만 이용. 한국 디자이너·개발자·블로거 누구나 활용 핵심 사이트. 글로벌 컬러 팔레트 1티어 — Spacebar 키 한 번에 즉시 새 팔레트 생성.",
+              },
+              {
+                q: "Coolors vs Adobe Color 차이?",
+                a: "글로벌 컬러 도구 차이: ① Coolors = 빠른 인터랙션·실험적 탐색·다양한 export(Tailwind·SCSS·CSS·JSON), $3/월 ② Adobe Color = 색상 휠 기반 이론적 조합·접근성 체크 강력·CC 통합, CC 구독자 무료 ③ Khroma = AI 학습 기반 본인 취향 ④ Realtime Colors = 본인 사이트에 실시간 적용. 추천: ① 감각적·빠른 탐색 = Coolors 우선 ② 이론적 색상 휠·접근성 = Adobe Color ③ 본인 취향 학습 = Khroma ④ 본인 웹사이트 직접 적용 = Realtime Colors. 한국 디자이너 표준: Coolors(빠른 영감) + Adobe Color(이론·접근성) + Realtime Colors(웹 적용) 분담 활용.",
+              },
+              {
+                q: "Coolors Pro 결제 가치? 한국 결제?",
+                a: "Coolors Pro 결제 가치: ① $3/월·연 $33(약 4.6만원) — 가성비 1티어 ② 광고 제거(가장 큰 가치) ③ 사진→팔레트 무제한 ④ 그라데이션 풀 사용 ⑤ 무제한 라이브러리 ⑥ Coolors AI(컬러 추천) ⑦ 본인 컬러 분류·태그. 한국 결제: ① 비자·마스터·아멕스 한국 신용카드·체크카드 정상 ② USD 결제 — $3/월(약 4천원) ③ 카카오·네이버페이 미지원 ④ 회사 결제 가능. 추천: ① 가벼운 사용 = 무료 충분 ② 본업 디자이너·웹 개발자 = Pro 가성비 1티어 ③ 본격 디자인 시스템 구축 = Pro. 한 달만 결제 후 해지 자유.",
+              },
+              {
+                q: "Coolors 팔레트 생성·Spacebar?",
+                a: "Coolors 핵심 강점 = Spacebar 키 한 번에 즉시 새 팔레트 생성. 활용: ① 5색 팔레트 자동 생성 ② Spacebar 누를 때마다 새 조합 ③ 마음에 드는 색 클릭으로 'Lock' 고정 ④ 다른 색만 변경 ⑤ 본인 디자인 톤 빠른 발견. 추가 기능: ① Generate from Image — 사진→팔레트 ② Picker — HEX·RGB·HSL 직접 입력 ③ Trending Palettes — 인기 팔레트 둘러보기 ④ Collage — 팔레트 모음. 한국 디자이너 표준 워크플로우: Spacebar 빠른 영감 → 본인 회사 색상 적용 → Tailwind config export → 본인 디자인 시스템. 시간 큰 폭 절약.",
+              },
+              {
+                q: "Coolors Tailwind·SCSS export 활용?",
+                a: "Coolors Export 형식: ① Tailwind config (가장 보편) — `tailwind.config.js` 의 colors 에 직접 붙여넣기 ② SCSS 변수 ③ CSS 변수 ④ JSON ⑤ PNG 이미지 ⑥ Procreate 팔레트(iPad 디자이너) ⑦ Adobe Swatch. 활용: ① 본인 회사 디자인 시스템 = Tailwind config 통합 → 모든 컴포넌트에 즉시 적용 ② SCSS 프로젝트 = SCSS 변수 import ③ CSS 변수 = 다크 모드·테마 지원 ④ 디자이너 → 개발자 인계 = JSON. 한국 웹 개발자 표준: Coolors → Tailwind config → 본인 회사 디자인 시스템 = 평생 자산. 디자인 일관성 + 시간 절약 1티어.",
+              },
+              {
+                q: "Coolors Contrast Checker·접근성?",
+                a: "Coolors Contrast Checker = WCAG(Web Content Accessibility Guidelines) 접근성 기준 자동 계산. 활용: ① 두 색 입력 → 대비비 자동 계산 ② WCAG AA(4.5:1)·AAA(7:1) 통과 여부 표시 ③ 본인 디자인 접근성 체크. 활용 시나리오: ① 본인 사이트 텍스트 + 배경 색 = 대비 충분 확인 ② 시각장애·색맹 대응 ③ 정부·공공 사이트 = WCAG AA 의무 ④ 글로벌 진출 사이트 = 접근성 표준. WCAG 등급: ① AA = 표준(대부분 사이트 권장) ② AAA = 높은 접근성. 한국 사이트 = WCAG AA 기준 권장(법적 의무 일부). Coolors + Adobe Color + 본인 디자인 시스템 = 평생 접근성 안전.",
+              },
+              {
+                q: "Coolors 사진→팔레트·이미지 컬러 추출?",
+                a: "Coolors Generate from Image 기능: ① 본인 사진·이미지 업로드 ② 자동 주요 색 5~10개 추출 ③ 팔레트 생성 ④ 본인 디자인에 적용. 활용: ① 본인 회사 로고 → 팔레트 추출 → 디자인 시스템 ② 영감 받은 사진 → 톤 분석 ③ 클라이언트 의뢰 작품 → 클라이언트 사진 → 톤 추출 ④ 본인 작품 톤 일관성. 정확도: ① 단순 사진 = 매우 정확 ② 복잡한 사진 = 주요 색 추출 정확 ③ 추출 후 색 미세 조정 가능. Pro 결제 시 무제한 사용. 한국 디자이너 표준: 본인 회사 로고·사진 → 팔레트 추출 → 디자인 시스템 통합 = 디자인 일관성 + 시간 절약.",
+              },
+              {
+                q: "Coolors AI·트렌딩 팔레트?",
+                a: "Coolors 추가 기능: ① Coolors AI(Pro) — 본인 입력에 따라 AI 컬러 추천(예: '봄 카페 분위기') ② Trending Palettes — 인기 팔레트 둘러보기 + 영감 ③ Featured Palettes — 큐레이션 ④ Collections — 주제별 모음(자연·도시·음식·디지털). 활용: ① 본인 디자인 톤 막힐 때 = AI 추천 또는 Trending ② 영감 받기 = 다양한 팔레트 둘러보기 ③ 본인 컬렉션 만들기 ④ 회사 BI 시즌별 변경. 한국 디자이너 표준: ① 본인 디자인 시작 시 Trending Palettes 영감 ② 본인 팔레트 생성 후 Pro 라이브러리 저장 ③ 본인 회사 디자인 시스템 갱신.",
+              },
+              {
+                q: "Coolors 회사 BI·디자인 시스템 활용?",
+                a: "Coolors 회사 BI·디자인 시스템 활용: ① 본인 회사 BI 색상 결정 — 5색 팔레트(Primary·Secondary·Accent·Neutral·Background) ② Tailwind config 통합 → 모든 컴포넌트에 적용 ③ Contrast Checker → 접근성 안전 ④ 다크 모드 색상 결정 ⑤ 시즌별·캠페인별 색상 변형 ⑥ 본인 디자인 시스템(Figma·Webflow) 통합. 워크플로우: ① 본인 회사 톤 분석(로고·사진) ② Coolors 사진→팔레트 ③ AI 추천 또는 Trending 영감 ④ 본인 5색 결정 ⑤ Tailwind export ⑥ 디자인 시스템 통합 + 디자이너 가이드 ⑦ 사용자 테스트. 한국 스타트업·디자인 회사·1인 사업자 표준 도구.",
+              },
+              {
+                q: "Coolors 모바일 앱·휴대폰?",
+                a: "Coolors 공식 모바일 앱(iOS·Android) 제공. 기능: ① 팔레트 생성·저장 ② 사진 즉시 팔레트 변환 ③ 라이브러리 동기화 ④ 푸시 알림. 모바일 강점: ① 외부에서 영감받은 사진 즉시 팔레트로 변환·저장 ② 외출 중 빠른 영감 ③ 카메라 촬영 → 즉시 팔레트. 모바일 한계: ① 본격 디자인 = PC 권장 ② Tailwind export = PC 효율적 ③ Contrast Checker = PC 화면. 활용: ① 외출·영감 = 모바일 ② 본격 디자인 = PC ③ PC + 모바일 동기화. 한국 디자이너 = PC + 모바일 분담 활용 표준. 외출 시 영감 즉시 캡처 + 본인 PC 에서 본격 작업.",
+              },
+              {
+                q: "Coolors 디자인 도구 통합?",
+                a: "Coolors 디자인 도구 통합: ① Figma — 'Coolors' 플러그인 = 직접 검색·삽입 ② Adobe Photoshop·Illustrator — Adobe Swatch export → import ③ Sketch — 팔레트 import ④ Webflow — CSS 변수 ⑤ Procreate(iPad) — Procreate 팔레트 export ⑥ Tailwind CSS — config 직접 통합. 활용: ① Figma 디자인 시안 = Coolors 플러그인 즉시 사용 ② 본인 회사 디자인 시스템 = 모든 도구에 동일 색상 ③ 디자이너 → 개발자 인계 = JSON 또는 Tailwind config. 한국 웹 디자이너 표준: Figma + Coolors 플러그인 + Tailwind config = 디자인-개발 통합 워크플로우.",
+              },
+              {
+                q: "Coolors 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 디자이너 = 회사 BI·웹사이트 색상 결정 ② UI/UX 디자이너 = SaaS·앱 디자인 시스템 ③ 1인 사업자 = 회사 BI 색상 결정 ④ 블로거 = 헤더·본문 색상 ⑤ 마케터 = SNS 카드뉴스 색상 ⑥ 학생·디자이너 = 학습·포트폴리오 ⑦ 본인 회사 디자인 시스템 구축. 평생 활용: 매월 디자인 작업 시 Coolors 활용 = 매년 50~300만원 컬러 컨설팅 비용 절약, 평생 누적 500만~3,000만원. 한국 디자이너에게 사실상 표준 도구. Spacebar 빠른 탐색 + Tailwind 통합 + 접근성 = 평생 자산.",
+              },
+              {
+                q: "Coolors 환불·해지·자동 결제?",
+                a: "Coolors 환불: 결제 후 14일 이내 + 사용량 적음 = 케이스별 가능. 신청: account → cancel + contact. 한국어 작성 처리. 자동 결제 해지: 같은 메뉴 'Cancel' 즉시 가능, 결제한 달 끝까지 사용. 한 달만 결제 후 해지 자유, 페널티 없음. 카드 변경·삭제·인보이스 다운로드 가능. 연 결제 약 8~10% 할인 — Pro 연 $33(약 4.6만원). 사업자 결제 = 세금계산서 일부. 결제 옵션: 비자·마스터·아멕스 한국 카드 정상. USD 결제 — 환율 변동(약 4천원/월). 카카오·네이버페이 미지원. 본격 디자이너 = 연 결제 가성비.",
+              },
+              {
+                q: "Coolors 사기·라이선스·주의사항?",
+                a: "최근 늘어나는 주의 사례: ① '컬러 팔레트 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Coolors 사이트 — 본인 정보·악성코드 ③ 다른 사람 팔레트 무단 도용 → 윤리적 문제 ④ Pro 무료 평생 가짜 광고. 주의사항: ① coolors.co 공식 도메인만 ② 본인이 직접 사용 ③ 사설 업체에 카드·OTP 절대 알려주지 말기 ④ 의심 시 Coolors 고객센터 직접 확인 ⑤ 본인 팔레트 = 본인 자산 — Pro 라이브러리 보관 ⑥ 다른 사람 팔레트 영감 OK + 무단 도용 X. 색상 자체 = 저작권 없음(법적). 본인 디자인 시스템 = 본인 자산. 평생 자산 보호 = 본인 라이브러리 + 본인 회사 BI 차별화.",
+              },
             ],
             relatedKeywords: [
               "Coolors 사용법",
@@ -12089,12 +12237,66 @@ const FREE: PickCategory = {
               { step: 5, title: "Adobe CC 동기화", body: "Save 버튼으로 팔레트 라이브러리에 저장 → Photoshop·Illustrator 에서 자동 인식." },
             ],
             faq: [
-              { q: "Coolors 와 차이?", a: "Coolors = 감각적·빠른 인터랙션. Adobe Color = 색상 휠 이론·접근성 체크. 디자이너는 Adobe Color, 빠른 시안은 Coolors. 둘 다 무료라 같이 사용." },
-              { q: "Adobe CC 안 써도 사용?", a: "예. Adobe 계정만 있으면 무료. CC 구독은 Adobe 앱 사용에만 필요하고 Adobe Color 자체는 무료." },
-              { q: "WCAG 가 뭐?", a: "Web Content Accessibility Guidelines. 시각장애·색약 대응 웹 접근성 표준. AA·AAA 등급으로 대비비 기준. 한국 공공기관 웹사이트도 WCAG 준수 의무." },
-              { q: "색맹 시뮬레이션 정확?", a: "Protanopia(적색맹)·Deuteranopia(녹색맹)·Tritanopia(청색맹) 시뮬레이션. 포용적 디자인 검토용으로 충분히 정확. 다만 실제 색맹 사용자 테스트 보완 권장." },
-              { q: "Tailwind config 내보내기?", a: "공식 지원 없음. 색상 hex 코드를 수동으로 Tailwind config 에 입력 필요. Tailwind 친화 export 가 필요하면 Coolors 사용." },
-              { q: "팀 공유?", a: "Adobe CC Team 또는 Enterprise 플랜에서 라이브러리 공유 가능. 회사 브랜드 팔레트 통일." },
+              {
+                q: "Adobe Color 정말 100% 무료? Adobe CC 필요?",
+                a: "Adobe Color(color.adobe.com) = 100% 무료 컬러 도구. Adobe 계정만 있으면 무료(CC 구독 불필요). 회원가입 = Adobe 계정(Google·이메일·Apple SSO). 광고 없음. 사설 '컬러 도구 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. color.adobe.com 공식 도메인만 이용. Adobe CC 안 써도 100% 자유 활용. CC 구독자는 Photoshop·Illustrator·InDesign 등 도구와 라이브러리 자동 동기화 = 추가 가치. 한국 디자이너·웹 개발자·블로거 누구나 활용 핵심 사이트. 글로벌 컬러 휠 도구 1티어.",
+              },
+              {
+                q: "Adobe Color vs Coolors 차이?",
+                a: "글로벌 컬러 도구 차이: ① Adobe Color = 색상 휠 기반 이론적 조합·접근성 체크·CC 통합 1티어, 디자이너 표준 ② Coolors = 빠른 인터랙션·Spacebar 즉시 생성·Tailwind export, 웹 개발자 친화 ③ Khroma = AI 학습 기반 본인 취향 ④ Realtime Colors = 본인 사이트 실시간 적용. 추천: ① 디자이너·전문 작업·접근성 = Adobe Color ② 빠른 영감·웹 개발 = Coolors ③ AI 추천 = Khroma. 한국 디자이너 표준: Adobe Color(이론·접근성) + Coolors(빠른 영감 + Tailwind) + Realtime Colors(웹 적용) 분담 활용. 둘 다 무료라 같이 사용 권장.",
+              },
+              {
+                q: "Adobe Color 색상 휠·이론적 조합?",
+                a: "Adobe Color 색상 휠 = 색상 이론 기반 5가지 조합: ① Analogous(유사색) — 색상 휠에서 인접한 색, 조화 ② Monochromatic(단색) — 한 색의 명도·채도 변화 ③ Triad(삼색) — 색상 휠에서 120도 간격, 균형 ④ Complementary(보색) — 정반대 색, 대비 ⑤ Compound(분할 보색) — 보색 + 인접 색 ⑥ Shades — 한 색의 어두운/밝은 변화 ⑦ Custom — 본인 자유. 활용: ① 본인 회사 BI 결정 — Monochromatic 또는 Triad ② SaaS UI — Analogous 또는 Triad ③ 광고 강조 — Complementary ④ 미니멀 디자인 — Shades. 색상 이론 기반 = 디자인 시안의 안정감·전문성 1티어.",
+              },
+              {
+                q: "Adobe Color WCAG 접근성 체크?",
+                a: "Adobe Color 접근성 도구 강력: ① Contrast Checker — 두 색 입력 → WCAG AA(4.5:1)·AAA(7:1) 대비비 자동 계산 ② Color Blind Safe — 색맹(Protanopia·Deuteranopia·Tritanopia) 시뮬레이션 ③ 본인 디자인이 시각장애·색약 사용자에게 어떻게 보이는지 미리보기. 활용: ① 본인 사이트 텍스트 + 배경 = 대비 충분 ② 시각장애·색맹 대응 = Color Blind Safe 통과 ③ 정부·공공 사이트 = WCAG AA 의무 ④ 글로벌 진출 = 접근성 표준. WCAG 등급: AA = 표준, AAA = 높은 접근성. 한국 공공기관 사이트 = WCAG 준수 의무(웹 접근성 인증마크) — Adobe Color 필수 도구입니다.",
+              },
+              {
+                q: "Adobe Color Adobe CC 통합?",
+                a: "Adobe Color + Adobe CC 통합: ① Photoshop — Window → Libraries → Adobe Color 라이브러리 자동 동기화 ② Illustrator — 동일 ③ InDesign — 동일 ④ Premiere·After Effects — 디자인 일관성 ⑤ XD — 디자인 시스템 ⑥ Fresco·Capture — 모바일·iPad 연동. 활용: ① Adobe Color 에서 팔레트 생성 ② Library 저장 ③ Photoshop·Illustrator 즉시 사용 ④ 디자이너·개발자 협업. CC 구독자 강점: ① 라이브러리 자동 동기화 ② 모든 Adobe 도구 통합 ③ 팀 공유(Team·Enterprise). Adobe CC 사용자에게 Adobe Color 는 사실상 표준 도구. 디자인 일관성 + 시간 절약 1티어.",
+              },
+              {
+                q: "Adobe Color 이미지 컬러 추출·트렌드?",
+                a: "Adobe Color 추가 기능: ① Extract Theme — 본인 사진 업로드 → 자동 5색 추출 ② Extract Gradient — 사진→그라데이션 ③ Explore — 다른 사용자 팔레트 둘러보기 + 영감 ④ Color Trends — 분기별 컬러 트렌드 큐레이션 ⑤ Themes — 본인 라이브러리. 활용: ① 본인 회사 로고·사진 → 자동 팔레트 ② 영감 받기 = Explore ③ 트렌드 반영 = Color Trends ④ 본인 라이브러리 구축. 한국 디자이너: ① 본인 회사 톤 분석 — Extract Theme ② 글로벌 트렌드 — Color Trends ③ 영감 — Explore. Pinterest·Behance 와 유사한 발견 기능 = 디자인 영감의 핵심.",
+              },
+              {
+                q: "Adobe Color 색맹 시뮬레이션 정확?",
+                a: "Adobe Color Color Blind Safe 정확도: ① Protanopia(적색맹·약 1% 남성) ② Deuteranopia(녹색맹·약 5% 남성, 가장 흔함) ③ Tritanopia(청색맹·매우 드뭄). 활용: ① 본인 디자인 색맹 사용자 시뮬레이션 ② 텍스트·아이콘·차트 구분 가능 여부 확인 ③ 데이터 시각화 = 색맹 안전 ④ 안내·경고·에러 색상 = 색맹 안전. 정확도: ① 시뮬레이션 알고리즘 = 의학적 표준 ② 디자인 검토용 충분 ③ 실제 색맹 사용자 테스트 보완 권장. 한국 한국 남성 약 5% 색약·색맹 — 글로벌 사이트 운영 시 색맹 안전 디자인 필수. 정부 사이트·SaaS 표준 도구.",
+              },
+              {
+                q: "Adobe Color Tailwind·CSS export?",
+                a: "Adobe Color Tailwind·CSS export: ① Adobe Color 자체 = Tailwind 직접 export 미지원 ② 색상 HEX 코드 복사 → Tailwind config 수동 입력 ③ CC 통합 = Library → Photoshop·Illustrator 사용 ④ 본인 사이트 코드에 hex 직접 입력. 활용: ① Adobe Color 팔레트 생성 → HEX 복사 → 본인 tailwind.config.js 의 colors 에 수동 입력 ② Tailwind 친화 export 필요 시 Coolors 보완. 한국 웹 개발자: ① Adobe Color(이론·접근성) + Coolors(Tailwind export) 분담 ② 본인 디자인 시스템 = 두 도구 결합. 디자이너 표준 = Adobe Color, 웹 개발자 표준 = Coolors + Tailwind.",
+              },
+              {
+                q: "Adobe Color 팀·회사 공유?",
+                a: "Adobe Color 팀 공유: ① Adobe CC Team·Enterprise 플랜 = Library 팀 공유 ② 본인 회사 BI 팔레트 통일 ③ 디자이너·마케터·개발자 동일 색상 사용 ④ Adobe XD·Photoshop·Illustrator 자동 동기화. 활용: ① 회사 BI 표준 팔레트 만들기 ② Library 팀 공유 ③ 직원 모두 동일 색상 사용 ④ 디자인 일관성. 가격: Adobe CC Team = 사용자 1인당 약 $35/월(약 4.9만원), Enterprise = 별도. 한국 디자인 회사·마케팅 에이전시·콘텐츠 제작팀 표준. 회사 BI 일관성 + 디자인 시간 절약. 5명+ 회사 = 가성비 1티어.",
+              },
+              {
+                q: "Adobe Color 디자인 도구 통합?",
+                a: "Adobe Color 디자인 도구 통합: ① Adobe Photoshop — Library 자동 ② Adobe Illustrator — Library 자동 ③ Adobe InDesign — Library 자동 ④ Adobe Premiere·After Effects — Library 자동 ⑤ Adobe XD — Library + Plugin ⑥ Figma — 'Adobe Color' Figma 플러그인 ⑦ Sketch — 플러그인 ⑧ Webflow — HEX 수동. 활용: ① Adobe CC 사용자 = 라이브러리 자동 동기화 ② Figma 사용자 = 플러그인 통합 ③ 다른 도구 = HEX 수동 입력. 한국 디자이너 표준: Adobe Color + Figma Plugin = 디자인 시안 통합. Adobe CC 사용자에게 사실상 표준 도구.",
+              },
+              {
+                q: "Adobe Color 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 웹 디자이너·UI/UX 디자이너 = 색상 이론·접근성 체크(가장 많은 활용) ② Adobe CC 사용자 = Library 자동 동기화 ③ 정부·공공기관 사이트 디자이너 = WCAG 접근성 ④ 1인 사업자 = 회사 BI 색상 ⑤ 마케터 = SNS 카드뉴스 색상 ⑥ 글로벌 진출 회사 = 색맹 안전 디자인 ⑦ SaaS 디자인 시스템. 평생 활용: 매월 디자인 작업 시 Adobe Color 활용 = 매년 50~300만원 컬러 컨설팅 비용 절약, 평생 누적 500만~3,000만원. 한국 디자이너에게 사실상 표준 도구. 색상 휠 + 접근성 + CC 통합 = 평생 자산.",
+              },
+              {
+                q: "Adobe Color 모바일 앱·휴대폰?",
+                a: "Adobe Capture(모바일 앱) = Adobe Color 모바일 통합. iOS·Android 제공. 기능: ① 카메라로 사진 촬영 → 즉시 팔레트 자동 추출 ② Library 자동 동기화 ③ 본인 디자인 영감 즉시 캡처. 모바일 강점: ① 외부에서 영감 받은 사진 즉시 팔레트 ② 카메라로 즉시 캡처 ③ Adobe CC 라이브러리 자동 동기화. 활용: ① 외출·영감 = 모바일 ② 본격 디자인 = PC ③ PC + 모바일 + CC 자동 동기화. 한국 디자이너 표준: Adobe Capture(모바일) + Adobe Color(PC) + Photoshop·Illustrator(편집) = 평생 자산. Adobe CC 사용자에게 압도적 가성비.",
+              },
+              {
+                q: "Adobe Color 트렌드 컬러·시즌별?",
+                a: "Adobe Color Trends 기능: ① 분기별·시즌별 트렌드 컬러 큐레이션 ② 본인 디자인에 글로벌 트렌드 반영 ③ 산업별(IT·패션·식음료·자동차) 트렌드 ④ Pantone 컬러 트렌드 연동. 활용: ① 본인 회사 BI 시즌별 변경 ② 마케팅 캠페인 컬러 ③ 광고·CF 트렌드 반영 ④ SNS 카드뉴스 트렌드. 분기별 1회 Color Trends 확인 = 본인 디자인 트렌드 갱신. 한국 디자이너·마케터 = 글로벌 트렌드 반영 = 디자인 신선함 유지. 한국 트렌드 = 본인 한국 시장 조사 + 글로벌 트렌드 결합 = 본인 회사 차별화.",
+              },
+              {
+                q: "Adobe Color 회사 BI·디자인 시스템 활용?",
+                a: "Adobe Color 회사 BI·디자인 시스템 활용: ① 본인 회사 BI 색상 결정 — 색상 휠 기반 5색 팔레트(Primary·Secondary·Accent·Neutral·Background) ② Contrast Checker = 텍스트·배경 접근성 ③ Color Blind Safe = 시각장애·색맹 대응 ④ Adobe CC Library 통합 → 모든 도구 동일 색상 ⑤ 디자인 시스템(Figma·Webflow) 통합 ⑥ 시즌별 트렌드 반영. 워크플로우: ① 회사 톤 분석(로고·사진 → Extract Theme) ② 색상 휠 5가지 조합 시도 ③ 본인 5색 결정 + Contrast 검증 ④ Library 저장 ⑤ 디자인 시스템 통합 ⑥ 디자이너 가이드. 한국 스타트업·디자인 회사·1인 사업자 표준 도구.",
+              },
+              {
+                q: "Adobe Color 사기·라이선스·주의사항?",
+                a: "Adobe Color 자체 사기 사례 거의 없음 — Adobe 공식 운영. 주의 사례: ① '컬러 도구 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Adobe Color 사이트 — 본인 정보·악성코드 ③ 다른 사람 팔레트 무단 도용 ④ Adobe CC 사칭 보이스피싱. 주의사항: ① color.adobe.com 공식 도메인만 ② Adobe 공식 계정 로그인 ③ 사설 업체에 정보 절대 알려주지 말기 ④ 다른 사람 팔레트 영감 OK + 무단 도용 X(색상 자체는 저작권 없으나 디자인 작품은 별개). 색상 자체 = 저작권 없음(법적). 본인 디자인 시스템 = 본인 자산. 평생 자산 보호 = 본인 라이브러리 + 본인 회사 BI 차별화.",
+              },
             ],
             relatedKeywords: [
               "Adobe Color 사용법",
@@ -12169,12 +12371,66 @@ const FREE: PickCategory = {
               { step: 5, title: "저장·라이브러리", body: "마음에 든 조합 저장. 라이브러리에서 정리·재사용." },
             ],
             faq: [
-              { q: "Coolors 와 차이?", a: "Coolors = 알고리즘 기반 무작위·실험적 탐색. Khroma = AI 가 본인 취향 학습 후 맞춤 추천. 본인 톤 일관성 유지는 Khroma, 다양한 탐색은 Coolors." },
-              { q: "초기 학습 꼭 필요?", a: "예. 50색 선택이 핵심. 이게 없으면 AI 가 무작위 추천하므로 가치 떨어짐. 5~10분 투자할 가치 있음." },
-              { q: "재학습 가능?", a: "계정 초기화 또는 새 계정 생성 필요. 한 계정은 한 톤. 다양한 톤이 필요하면 계정 분리 또는 라이브러리 활용." },
-              { q: "100% 무료?", a: "예. 회원가입만 하면 모든 기능 무료. 광고도 거의 없음." },
-              { q: "Adobe Color 와 같이 써?", a: "가능. Khroma 로 본인 톤의 추천 받고, Adobe Color 의 WCAG 대비비 체크로 접근성 확인하는 식. 두 도구가 보완 관계." },
-              { q: "내보내기?", a: "Hex·RGB·HSL 코드 복사 가능. Tailwind config 같은 자동 변환은 수동 입력 필요." },
+              {
+                q: "Khroma 정말 100% 무료? 회원가입?",
+                a: "Khroma(khroma.co) = 100% 무료 AI 학습 기반 컬러 추천 사이트. 회원가입 필수(무료, 1분). 광고 거의 없음. 개인 디자이너가 만든 사이드 프로젝트 — 비영리 운영. 사설 'AI 컬러 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. khroma.co 공식 도메인만 이용. AI 가 본인 취향 학습 후 맞춤 컬러 추천 — 다른 컬러 도구와 차별화된 강점. 한국 디자이너·블로거·웹 개발자 누구나 활용 핵심 사이트. 본인 톤 일관성 유지에 1티어.",
+              },
+              {
+                q: "Khroma vs Coolors vs Adobe Color 차이?",
+                a: "글로벌 컬러 도구 차이: ① Khroma = AI 학습 기반 본인 취향 추천, 톤 일관성 1티어 ② Coolors = 알고리즘 기반 빠른 인터랙션, Spacebar ③ Adobe Color = 색상 휠 이론·접근성, 디자이너 표준 ④ Realtime Colors = 본인 사이트 실시간 적용. 추천: ① 본인 취향 학습 = Khroma 우선 ② 빠른 영감 = Coolors ③ 이론·접근성 = Adobe Color ④ 본인 사이트 적용 = Realtime Colors. 한국 디자이너 표준: ① 본인 톤 일관성 = Khroma 우선 ② 빠른 탐색 = Coolors 보완 ③ 접근성 검증 = Adobe Color 보완. 4개 도구 분담 = 평생 자산.",
+              },
+              {
+                q: "Khroma AI 학습 절차? 50색 선택?",
+                a: "Khroma 초기 학습 절차: ① khroma.co 가입 ② AI 학습 시작 ③ 약 50개 색상 카드 표시 ④ 본인이 좋아하는 색 'Like' / 싫어하는 색 'Dislike' ⑤ 5~10분 투자 ⑥ AI 가 본인 취향 학습 ⑦ 맞춤 컬러 추천 시작. 학습 핵심: ① 본인 취향 정확히 표현 = AI 정확도 ↑ ② 직관적 선택 — 본인 디자인 톤 ③ 50색 학습이 가장 중요 — 이 단계 건너뛰면 가치 0. 학습 후: ① 무한 새 컬러 추천 ② 본인 톤에 맞는 팔레트 ③ 그라데이션 자동 생성 ④ 라이브러리 저장. 한국 디자이너 표준: 5~10분 투자 = 평생 본인 톤 자산 형성.",
+              },
+              {
+                q: "Khroma 재학습·다양한 톤?",
+                a: "Khroma 재학습: 한 계정 = 한 톤만 학습. 재학습 옵션: ① 계정 초기화(설정 → Reset Training) — 처음부터 50색 재학습 ② 새 계정 생성(다른 이메일) — 다른 톤 분리 ③ 본인 라이브러리 활용. 활용 시나리오: ① 본업 = 본인 디자인 톤 = 메인 계정 ② 클라이언트 작업 = 다른 톤 = 별도 계정 ③ 시즌별 변경 = 라이브러리 분류 ④ 회사 BI vs 본인 작품 = 별도 계정. 추천: ① 1인 디자이너 = 본인 톤 1계정 ② 디자인 회사 = 클라이언트별 계정 ③ 1인 사업 = 본인 회사 BI 계정. 본인 톤 1티어 일관성이 Khroma 의 핵심 가치입니다.",
+              },
+              {
+                q: "Khroma 추천 컬러 활용?",
+                a: "Khroma 추천 컬러 활용 모드: ① Type — 본문 텍스트 색상 추천 ② Poster — 포스터·BI 디자인 ③ Image — 본인 취향 이미지에 컬러 적용 ④ Gradient — 그라데이션 자동 생성 ⑤ Palette — 5색 팔레트. 활용: ① 본인 디자인 시안에 적용 = 톤 일관성 ② 본인 회사 BI 결정 ③ 블로그·SNS 카드뉴스 ④ 디자인 시스템. 강점: ① AI 가 본인 취향 학습 = 본인이 좋아할 컬러만 추천 ② 무한 새 추천 ③ 본인 톤 일관성 자동 유지. 한국 디자이너 = 본인 톤 결정의 핵심 도구. 디자인 영감 막힐 때 Khroma 활용 = 본인 취향 컬러 자동 발견.",
+              },
+              {
+                q: "Khroma 라이브러리·즐겨찾기?",
+                a: "Khroma 라이브러리 기능: ① Like 한 컬러 자동 라이브러리 저장 ② 즐겨찾기 컬러 분류 ③ 본인 컬렉션 만들기(예: '회사 BI', '봄 캠페인', '블로그 헤더') ④ 본인 톤 라이브러리 영구 보관 ⑤ Hex·RGB·HSL 코드 복사. 활용: ① 본인 톤 라이브러리 구축 ② 회사 BI 컬러 영구 보관 ③ 프로젝트별 폴더 관리 ④ 디자인 시스템 통합. 라이브러리 = 평생 자산. 매월 디자인 작업 시 Khroma 라이브러리에서 본인 톤 컬러 즉시 활용 = 시간 절약. 본인 디자이너로서 평생 본인 컬러 시그니처 구축 가능.",
+              },
+              {
+                q: "Khroma Adobe Color·Coolors 같이 활용?",
+                a: "Khroma + Adobe Color + Coolors 보완 활용: ① Khroma = 본인 톤 자동 추천(시작점) ② Adobe Color = WCAG 대비비·접근성 검증(중간 단계) ③ Coolors = Tailwind config export(개발자 인계). 워크플로우: ① Khroma 에서 본인 취향 컬러 추천 받기 ② 5색 팔레트 결정 ③ Adobe Color Contrast Checker = 접근성 검증 ④ Coolors export = Tailwind config ⑤ 본인 회사 디자인 시스템 통합. 한국 디자이너 표준: 4개 도구 분담 = 본인 톤 + 접근성 + 개발자 인계 모두 충족. 평생 디자인 자산 형성. 모두 무료 = 부담 없이 활용 가능합니다.",
+              },
+              {
+                q: "Khroma 컬러 코드 export?",
+                a: "Khroma export 형식: ① Hex 코드 — 가장 보편 ② RGB 코드 ③ HSL 코드 ④ CMYK(인쇄용) 일부. 활용: ① Hex 코드 복사 → Photoshop·Illustrator·Figma 입력 ② Tailwind config = 수동으로 hex 입력 ③ CSS 변수 = 수동 입력 ④ 본인 디자인 시스템. 자동 export 한계: ① Tailwind config 자동 변환 X — Coolors 보완 ② SCSS 변수 자동 X — 수동 입력 ③ JSON export 미지원. 한국 디자이너: ① Khroma 본인 톤 추천 ② Hex 코드 → Coolors 입력 ③ Coolors → Tailwind config export ④ 본인 디자인 시스템. Khroma + Coolors 결합 = 본인 톤 + 자동 export.",
+              },
+              {
+                q: "Khroma 본인 톤 일관성·디자이너 시그니처?",
+                a: "Khroma 핵심 가치 = 본인 톤 일관성 자동 유지. 활용 시나리오: ① 1인 디자이너 = 본인 시그니처 컬러 형성 → 클라이언트가 본인 작품 인지 ② 1인 사업자 = 회사 BI 일관성 → 브랜드 인지도 ③ 블로거·인플루언서 = 본인 채널 톤 ④ 콘텐츠 크리에이터 = 본인 인스타·블로그 톤 일관성 ⑤ 디자인 회사 = 클라이언트별 계정 분리. 평생 자산 효과: 본인 톤 1티어 일관성 = 본인 디자이너 가치 ↑ + 외주 단가 ↑ + 평생 차별화. 한국 디자이너에게 Khroma 는 본인 시그니처 구축의 핵심 도구입니다.",
+              },
+              {
+                q: "Khroma 한국 디자이너 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 1인 디자이너 = 본인 시그니처 컬러 결정·평생 자산 ② 1인 사업자 = 회사 BI 색상 ③ 블로거 = 본인 블로그 톤 ④ 인플루언서 = 인스타·SNS 톤 일관성 ⑤ 웹 디자이너 = 클라이언트 톤 분석 ⑥ UI/UX 디자이너 = SaaS 디자인 시스템 ⑦ 학생·디자이너 = 본인 포트폴리오 톤. 평생 활용: 매월 디자인 작업 시 Khroma 활용 = 매년 50~300만원 컬러 컨설팅 비용 절약, 평생 누적 500만~3,000만원. 한국 디자이너에게 본인 톤 일관성 = 평생 자산. 5~10분 학습 = 평생 본인 시그니처 구축.",
+              },
+              {
+                q: "Khroma 개인 운영·신뢰도?",
+                a: "Khroma 개인 디자이너 운영(George Hastings) 사이드 프로젝트. 신뢰도: ① 디자이너 사이 입소문 ② 글로벌 디자이너 사용 ③ 100% 무료 + 광고 거의 없음 ④ 비영리 운영. 단 ① 개인 운영 = 영구 운영 보장 X ② 운영 종료 시 본인 라이브러리 손실 가능 ③ 본인 라이브러리 정기 백업(Hex 코드 본인 PC 보관) 권장. 활용: ① Khroma 사용 + 본인 PC 에 Hex 코드 백업 ② Coolors·Adobe Color 라이브러리에 동일 컬러 저장(이중 백업). 한국 디자이너 = Khroma + Coolors + Adobe Color 분담 활용 = 영구 자산 보호. 평생 본인 컬러 시그니처 보호.",
+              },
+              {
+                q: "Khroma 모바일·휴대폰?",
+                a: "Khroma 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 본인 학습 결과 추천 컬러 확인 ② 좋아요·라이브러리 ③ Hex 코드 복사. 모바일 한계: ① 50색 학습 = PC 화면 효율적 ② 본격 디자인 = PC 권장 ③ 본인 디자인 도구 통합 = PC 필수. 활용: ① 외출 중 빠른 컬러 영감 = 모바일 ② 본격 학습·작업 = PC ③ Hex 코드 모바일 복사 → PC 디자인 도구. 한 계정으로 PC·모바일 동기화. 외출 중 영감 + 본인 PC 작업 분담 = 평생 자산.",
+              },
+              {
+                q: "Khroma 디자인 도구 통합?",
+                a: "Khroma 디자인 도구 통합: ① Figma — 공식 플러그인 일부 + Hex 코드 수동 입력 ② Adobe Photoshop·Illustrator — Hex 코드 수동 ③ Sketch — Hex 코드 수동 ④ Webflow — Hex 코드 수동 ⑤ Tailwind config — Hex 코드 수동. 자동 통합 = Coolors·Adobe Color 대비 약함. 활용 워크플로우: ① Khroma 본인 톤 추천 ② Hex 코드 복사 ③ 본인 디자인 도구에 수동 입력 ④ 본인 회사 디자인 시스템 라이브러리 저장. 단점 보완: Coolors·Adobe Color 와 결합 = 자동 export. 한국 디자이너 = Khroma(영감) + Coolors(export) 결합 활용 표준.",
+              },
+              {
+                q: "Khroma 회사 BI·디자인 시스템 활용?",
+                a: "Khroma 회사 BI·디자인 시스템 활용: ① 본인 회사 톤 분석 — 50색 학습으로 본인 회사 취향 학습 ② 본인 회사 BI 5색 결정 — Khroma 추천 + 본인 결정 ③ Hex 코드 → Coolors → Tailwind config ④ 본인 디자인 시스템(Figma·Webflow) 통합 ⑤ Adobe Color Contrast Checker = 접근성 검증 ⑥ 본인 라이브러리 영구 저장. 워크플로우: ① Khroma 50색 학습 ② 본인 회사 톤 발견 ③ 5색 팔레트 결정 ④ 접근성 검증 ⑤ 디자인 시스템 통합 ⑥ 디자이너 가이드. 한국 1인 사업자·스타트업 = Khroma + Coolors + Adobe Color = 본인 회사 BI 평생 자산.",
+              },
+              {
+                q: "Khroma 사기·라이선스·주의사항?",
+                a: "Khroma 자체 사기 사례 거의 없음 — 비영리 개인 운영. 주의 사례: ① 'AI 컬러 도구 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Khroma 사이트 — 본인 정보·악성코드 ③ 운영 종료 가능성 — 본인 라이브러리 정기 백업 ④ 다른 사람 톤 무단 도용. 주의사항: ① khroma.co 공식 도메인만 ② 본인이 직접 학습·사용 ③ 사설 업체에 정보 절대 알려주지 말기 ④ 본인 라이브러리 = Hex 코드 본인 PC 또는 다른 도구(Coolors·Adobe Color) 에 백업 ⑤ 본인 톤 = 본인 자산 — 다른 사람 무단 도용 X. 색상 자체 = 저작권 없음(법적). 본인 디자인 시스템 = 본인 자산. 평생 본인 시그니처 보호.",
+              },
             ],
             relatedKeywords: [
               "Khroma AI 컬러",
@@ -12249,12 +12505,66 @@ const FREE: PickCategory = {
               { step: 5, title: "프로젝트에 적용", body: "Tailwind config 다운로드 → 본인 tailwind.config.ts 의 colors 에 붙여넣기 → 즉시 모든 컴포넌트 적용." },
             ],
             faq: [
-              { q: "Coolors·Khroma 와 차이?", a: "Realtime Colors = 실시간 미리보기 + Tailwind/CSS export + 시맨틱 컬러 시스템. Coolors·Khroma = 5색 팔레트 영감. 디자인 시스템 결정은 Realtime Colors, 영감은 Coolors·Khroma." },
-              { q: "Tailwind 만 지원?", a: "Tailwind config 가 가장 잘 정리되지만 CSS 변수·Figma 토큰·JSON 등 다양한 형식 export. 다른 프레임워크도 CSS 변수로 가져가면 됨." },
-              { q: "시맨틱 컬러가 뭐?", a: "Background·Text·Primary·Secondary·Accent 처럼 용도별로 정의된 컬러. '파란색' 이 아니라 '주요 액션 컬러' 같은 의미. 디자인 시스템·다크 모드·테마 변환에 필수." },
-              { q: "다크 모드?", a: "라이트·다크 모드 컬러를 동시에 작업. 같은 시맨틱 컬러가 라이트/다크에서 다른 hex 값을 갖도록 설정 가능." },
-              { q: "Tailwind 4 호환?", a: "Tailwind 4 의 @theme 디렉티브 형식 export 지원. 최신 Tailwind 프로젝트에 즉시 적용." },
-              { q: "Figma 토큰은?", a: "Figma 의 Variables 기능 호환 형식. Figma 디자이너가 받아 그대로 임포트 가능. 디자인↔코드 일관성 유지." },
+              {
+                q: "Realtime Colors 정말 100% 무료? 회원가입?",
+                a: "Realtime Colors(realtimecolors.com) = 100% 무료 시맨틱 컬러 시스템 도구. 회원가입 없이 즉시 사용. 광고 없음. 사설 '디자인 시스템 패키지' 업체는 ① 무료 사이트 모르는 사람 대상 ② 수수료 명목 ③ 본인이 무료 가능. realtimecolors.com 공식 도메인만 이용. 핵심 강점: 본인 사이트 디자인을 미리 적용해 실시간 미리보기 + Tailwind·CSS·Figma 토큰 export. 한국 웹 개발자·UI/UX 디자이너·SaaS 디자인 시스템 구축자 누구나 활용 핵심 사이트. 본격 디자인 시스템 결정에 1티어 도구입니다.",
+              },
+              {
+                q: "Realtime Colors vs Coolors·Khroma·Adobe Color 차이?",
+                a: "글로벌 컬러 도구 차이: ① Realtime Colors = 실시간 본인 사이트 미리보기 + Tailwind 4·CSS 변수·Figma 토큰 export 1티어 ② Coolors = 빠른 5색 팔레트 영감, Tailwind config ③ Khroma = AI 학습 본인 톤 ④ Adobe Color = 색상 휠 이론·접근성. 추천: ① 본격 디자인 시스템 결정 + 본인 사이트 적용 = Realtime Colors 우선 ② 5색 팔레트 영감 = Coolors·Khroma ③ 이론·접근성 = Adobe Color. 워크플로우: ① 영감 = Coolors·Khroma ② 본인 사이트 미리보기 + 결정 = Realtime Colors ③ 접근성 검증 = Adobe Color ④ 본인 디자인 시스템 통합. 4개 도구 분담 = 평생 자산.",
+              },
+              {
+                q: "Realtime Colors 시맨틱 컬러 시스템?",
+                a: "시맨틱 컬러 = 용도별 정의된 컬러(파란색 X, 주요 액션 컬러 O). Realtime Colors 시맨틱 컬러: ① Background — 배경 ② Text — 본문 텍스트 ③ Primary — 주요 액션·강조 ④ Secondary — 보조 강조 ⑤ Accent — 액센트·하이라이트. 강점: ① 디자인 시스템 표준 ② 다크 모드·라이트 모드 자동 변환 ③ 테마 변경 쉬움 ④ 디자이너↔개발자 인계 명확 ⑤ 본인 회사 BI 일관성. 활용: ① 본인 5색 시맨틱 결정 → CSS 변수 또는 Tailwind config 정의 → 모든 컴포넌트에 적용. Realtime Colors = 시맨틱 컬러 시스템 결정의 핵심 도구.",
+              },
+              {
+                q: "Realtime Colors 본인 사이트 실시간 미리보기?",
+                a: "Realtime Colors 핵심 강점 = 본인 디자인을 실시간 미리보기. 활용: ① 본인 사이트 모형 표시(헤더·본문·버튼·카드) ② 5가지 시맨틱 컬러 입력 ③ 실시간 본인 사이트에 적용된 모습 미리보기 ④ 색상 변경 즉시 반영 ⑤ 본인 사이트 톤 결정. 강점: ① 본인 사이트 시각화 = 결정 정확도 ↑ ② 본인 회사 톤 미리 확인 ③ 디자인 시스템 시각적 결정. 활용 시나리오: ① 본인 회사 BI 결정 — 5색 시맨틱 + 본인 사이트 미리보기 ② SaaS 디자인 시스템 — 다크/라이트 모드 동시 결정 ③ 본인 블로그 톤 — 실시간 시각화. 디자인 결정의 핵심 단계.",
+              },
+              {
+                q: "Realtime Colors Tailwind 4·CSS·Figma export?",
+                a: "Realtime Colors export 형식: ① Tailwind 4 (@theme 디렉티브) — 최신 Tailwind 프로젝트 ② Tailwind 3 config — 기존 Tailwind ③ CSS 변수(--background, --text, --primary 등) — 모든 프레임워크 호환 ④ Figma 토큰(Variables) — 디자이너 인계 ⑤ JSON ⑥ SCSS 변수 ⑦ JS 객체. 활용: ① Tailwind 4 사용자 = @theme 직접 export → 즉시 적용 ② React·Vue·Svelte 등 = CSS 변수 ③ Figma 디자이너 = 토큰 import → 디자이너↔개발자 일관성. 한국 웹 개발자 표준: Realtime Colors → Tailwind config → 본인 회사 디자인 시스템 = 평생 자산. 디자인-개발 통합 워크플로우.",
+              },
+              {
+                q: "Realtime Colors 다크 모드·라이트 모드?",
+                a: "Realtime Colors 다크/라이트 모드 동시 작업: ① 라이트 모드 5색 시맨틱 입력 ② 다크 모드 5색 시맨틱 입력 ③ 같은 시맨틱 컬러가 모드별 다른 hex 값 ④ 본인 사이트 모형에서 동시 미리보기 ⑤ export 시 두 모드 모두 포함. 활용: ① 본인 SaaS·앱 다크 모드 지원 ② CSS prefers-color-scheme 자동 적용 ③ 사용자 토글 다크 모드 ④ 본인 회사 BI 다크 모드 톤. 워크플로우: ① 라이트 모드 톤 결정 ② 다크 모드 = 라이트 모드 색상 어둡게 변형 ③ 두 모드 동시 검증 ④ export. 한국 SaaS·앱 표준: 다크 모드 지원 = 사용자 만족도 ↑.",
+              },
+              {
+                q: "Realtime Colors 디자인 시스템 결정?",
+                a: "Realtime Colors 디자인 시스템 결정 워크플로우: ① 영감 — Coolors·Khroma 에서 본인 톤 발견 ② Realtime Colors 5가지 시맨틱(Background·Text·Primary·Secondary·Accent) 입력 ③ 본인 사이트 모형 실시간 미리보기 ④ 다크/라이트 모드 동시 결정 ⑤ Adobe Color Contrast Checker = 접근성 검증 ⑥ Tailwind 4 또는 CSS 변수 export ⑦ 본인 회사 디자인 시스템 통합. 한국 웹 개발자·디자이너 표준: 4개 컬러 도구(Coolors·Khroma·Adobe Color·Realtime Colors) + Realtime Colors 가 결정 단계의 핵심. 본인 회사 디자인 시스템 = 평생 자산. 30분 시간 투자 = 평생 시간 절약.",
+              },
+              {
+                q: "Realtime Colors Figma 토큰 활용?",
+                a: "Realtime Colors Figma 토큰 export = Figma Variables 기능 호환. 활용: ① Realtime Colors 시맨틱 컬러 결정 ② Figma 토큰 export(JSON) ③ Figma 에서 Variables import ④ Figma 디자이너 = 본인 시안에 즉시 적용 ⑤ 디자이너↔개발자 일관성. 강점: ① 디자인-개발 통합 ② 시맨틱 컬러 자동 적용 ③ 다크 모드 자동 전환 ④ Figma 디자이너에게 디자인 시스템 인계 표준. 활용 사례: ① 본인 디자이너 + 개발자 협업 = Figma 토큰 = 일관성 ② 디자인 회사 = 클라이언트 디자인 시스템 결정. 한국 웹 디자이너·개발자 표준 워크플로우: Realtime Colors + Figma + Tailwind = 디자인 시스템 평생 자산.",
+              },
+              {
+                q: "Realtime Colors 회사 BI·SaaS 활용?",
+                a: "Realtime Colors 회사 BI·SaaS 활용: ① 본인 회사 BI 5가지 시맨틱 결정 ② 본인 SaaS·웹사이트 실시간 미리보기 ③ 다크/라이트 모드 결정 ④ Tailwind config export → 본인 코드 통합 ⑤ Figma 토큰 = 디자이너 시안 일관성 ⑥ Adobe Color Contrast = 접근성 검증. 추천 활용: ① 스타트업 SaaS = Realtime Colors + Tailwind 4 = 빠른 디자인 시스템 ② 1인 사업자 = 회사 BI 결정 ③ 디자인 회사 = 클라이언트 디자인 시스템 인계 ④ 회사 BI 갱신 = 시즌별 변경. 한국 SaaS·스타트업·디자인 회사 표준 도구. 평생 자산 형성 + 디자인-개발 일관성.",
+              },
+              {
+                q: "Realtime Colors 한국 웹 개발자·디자이너 활용?",
+                a: "한국 사용자 표준 활용: ① 웹 개발자(React·Vue·Svelte + Tailwind) = SaaS 디자인 시스템(가장 많은 활용) ② UI/UX 디자이너 = Figma 토큰 통합 ③ 스타트업 = 빠른 디자인 시스템 결정 ④ 1인 사업자 = 회사 BI ⑤ 본인 사이트·블로그 = 톤 결정 ⑥ 다크 모드 지원 = SaaS·앱 표준. 평생 활용: 본인 회사 BI 결정·갱신 시 Realtime Colors 활용 = 매년 50~300만원 디자인 컨설팅 비용 절약. 본인 디자인 시스템 = 평생 자산. 한국 SaaS·스타트업에 사실상 표준 도구. Tailwind 4 사용자에게 압도적 가성비.",
+              },
+              {
+                q: "Realtime Colors Tailwind 4 호환?",
+                a: "Realtime Colors Tailwind 4 호환 = 핵심 강점: ① Tailwind 4 의 @theme 디렉티브 형식 export ② CSS 변수 기반 새 시스템 ③ 즉시 본인 Tailwind 4 프로젝트 적용 ④ 다크/라이트 모드 자동. Tailwind 3 vs 4 차이: ① Tailwind 4 = CSS 기반 + @theme + 빠른 빌드 ② Tailwind 3 = JS config. 활용: ① Tailwind 4 사용자 = @theme 직접 export ② Tailwind 3 사용자 = config 형식 export ③ React·Vue·Svelte 모두 호환. 한국 웹 개발자 = Tailwind 4 + Realtime Colors = 최신 디자인 시스템 표준. Next.js·Remix·Vite 모두 호환.",
+              },
+              {
+                q: "Realtime Colors 모바일·휴대폰?",
+                a: "Realtime Colors 모바일 브라우저(Safari·Chrome) 정상 동작. 기능: ① 시맨틱 컬러 입력 ② 본인 사이트 미리보기 ③ export. 모바일 한계: ① 본격 디자인 시스템 결정 = PC 화면 효율적 ② 코드 export·통합 = PC 필수 ③ 작은 화면 미리보기 한계. 활용: ① 외출 중 빠른 영감 = 모바일 ② 본격 결정·통합 = PC ③ Coolors·Khroma 모바일 영감 + Realtime Colors PC 결정. 본격 디자인 시스템 작업 = PC 권장. 모바일 = 영감 + 즐겨찾기 위주. 한국 웹 디자이너·개발자 표준: PC 본격 + 모바일 빠른 검색 분담.",
+              },
+              {
+                q: "Realtime Colors 운영자·신뢰도?",
+                a: "Realtime Colors 운영: ① 개인 디자이너 운영 사이드 프로젝트 ② 디자이너·개발자 사이 입소문 ③ 100% 무료 + 광고 없음 ④ Tailwind 4 출시 후 빠르게 인기. 신뢰도: ① 디자이너 사이 신뢰 ② 글로벌 SaaS 디자이너 사용 ③ Tailwind 공식 추천 일부. 단 ① 개인 운영 = 영구 운영 보장 X ② 운영 종료 시 본인 시스템 손실 가능 ③ 본인 디자인 시스템 = 본인 PC + 코드 저장소(GitHub) 영구 백업 권장. 활용: Realtime Colors + 본인 코드 저장소(GitHub) 백업 = 영구 자산. 한국 웹 개발자 = Realtime Colors 사용 + 본인 시스템 영구 보관 = 안전.",
+              },
+              {
+                q: "Realtime Colors 디자인 도구 통합?",
+                a: "Realtime Colors 디자인 도구 통합: ① Tailwind CSS — config·@theme 직접 export ② React·Vue·Svelte — CSS 변수 ③ Webflow — CSS 변수 ④ Figma — Variables 토큰 import ⑤ Sketch — JSON 변환 ⑥ Adobe Photoshop·Illustrator — Hex 코드 수동. 활용: ① Tailwind 사용자 = 직접 export 1티어 ② Figma 디자이너 = Variables 토큰 ③ 다른 도구 = CSS 변수 또는 Hex 수동. 한국 웹 디자이너 표준: Realtime Colors + Tailwind 4 + Figma Variables = 디자인-개발 통합 워크플로우. 평생 자산 형성. 본인 회사 디자인 시스템의 표준 도구.",
+              },
+              {
+                q: "Realtime Colors 사기·라이선스·주의사항?",
+                a: "Realtime Colors 자체 사기 사례 거의 없음 — 비영리 개인 운영. 주의 사례: ① '디자인 시스템 패키지' 사설 업체 — 무료 사이트를 유료 판매 ② 가짜 Realtime Colors 사이트 — 본인 정보·악성코드 ③ 운영 종료 가능성 — 본인 시스템 정기 백업 ④ 다른 사람 디자인 시스템 무단 도용. 주의사항: ① realtimecolors.com 공식 도메인만 ② 본인이 직접 사용 ③ 사설 업체에 정보 절대 알려주지 말기 ④ 본인 디자인 시스템 = 본인 코드 저장소(GitHub) 영구 백업 ⑤ 본인 회사 BI 차별화. 색상 자체 = 저작권 없음(법적). 본인 디자인 시스템 = 본인 자산. 평생 본인 회사 BI 보호.",
+              },
             ],
             relatedKeywords: [
               "Realtime Colors 사용법",
@@ -12740,14 +13050,62 @@ const COIN: PickCategory = {
               { step: 5, title: "백테스트 활용 (선택)", body: "본인 매매 전략을 실전 진입 전 eloan 백테스트에서 검증. 업비트 데이터 그대로 사용하므로 결과 신뢰도 높음." },
             ],
             faq: [
-              { q: "다른 은행 계좌로 사용 가능?", a: "아니요. 업비트는 케이뱅크 계좌 1개와만 연동됩니다. 카카오뱅크·신한·국민 등 다른 은행은 빗썸·코빗에서 사용 가능합니다. 업비트를 쓰려면 케이뱅크 계좌를 먼저 만들어야 합니다." },
-              { q: "수수료 얼마?", a: "거래 수수료 0.05% (메이커·테이커 동일). 입금 무료, 출금 수수료 코인별 차등(BTC 0.0009, ETH 0.018 등). 시중 카드 결제 같은 추가 비용 없음." },
-              { q: "공개 API 진짜 무료?", a: "예. 인증 없이 분당 1만 회 호출 가능. 본인 자동매매를 만들거나 백테스트 데이터를 받는 데 충분한 한도. API 문서: api.upbit.com 에서 공개." },
-              { q: "빗썸·코빗과 비교?", a: "거래량과 KRW 마켓 깊이는 업비트 압승. 빗썸은 수수료 0.04% 로 미세하게 저렴 + 일부 알트 빠른 상장. 코빗은 신한금융 인수로 법적 안정성. 보통 업비트 메인 + 빗썸/코빗 보조 구도." },
-              { q: "글로벌 거래소 같이 쓰는 게 좋나?", a: "추천. Binance·Bybit·OKX 같은 해외 거래소를 KYC 만 해두면 한국 미상장 알트나 선물 거래에 대응 가능. KRW 입출금은 업비트, 글로벌 알트는 Binance·OKX 조합이 일반적." },
-              { q: "스테이킹 수익률은?", a: "이더리움 3~4%, 솔라나 5~6%, 폴카닷 8~12% 수준 (시장 상황에 따라 변동). 별도 수수료 없이 보상이 매일·주별 자동 지급. 단, 락업 기간 동안 거래 불가." },
-              { q: "세금 신고는 어떻게?", a: "업비트 마이페이지 → 거래내역 다운로드 → 엑셀 형식으로 받기. 2025년부터 가상자산 양도소득세(연 250만원 초과 시 22%) 가 시행되어 직접 신고 필요. 업비트는 거래내역만 제공하고 세금 계산은 본인이 해야 함." },
-              { q: "본 사이트(eloan)와 어떻게 같이 쓰나?", a: "eloan 백테스트가 업비트 API 의 데이터를 그대로 사용하므로, eloan 에서 검증한 전략을 업비트에서 실전 거래로 옮기는 흐름이 자연스럽습니다. 백테스트 결과는 슬리피지·체결지연 때문에 실전 대비 10~20% 할인해서 보는 게 안전합니다." },
+              {
+                q: "업비트 한국에서 가입·이용 절차? 케이뱅크 필수?",
+                a: "업비트(upbit.com·두나무 운영) = 한국 1위 가상자산 거래소. 가입 절차: ① 케이뱅크 계좌 개설 — 업비트 전용, 비대면 10분 ② 업비트 가입 — 휴대폰 본인인증 + KYC 신분증 인증 ③ 1~3영업일 거래 가능 ④ 케이뱅크 → 업비트 입금. 케이뱅크 필수 이유: 한국 금융위 가상자산 거래소 실명계좌 발급 정책 — 업비트는 케이뱅크 1개 연동만. 다른 은행 사용 불가. 사설 '업비트 인증' 업체는 ① 본인 정보 탈취 위험 ② 본인이 무료로 직접 인증 가능 ③ upbit.com 공식 도메인만. 한국 가상자산 투자자 약 80%+ 가 업비트 사용. 1위 거래소.",
+              },
+              {
+                q: "업비트 수수료·입출금 비용?",
+                a: "업비트 수수료 구조: ① 거래 수수료 = 0.05%(메이커·테이커 동일) ② KRW 입금 = 무료(케이뱅크 연동) ③ KRW 출금 = 1,000원 ④ 코인 출금 = 코인별 차등(BTC 0.0009, ETH 0.018, USDT 1 등) ⑤ 코인 입금 = 무료. 시중 카드 결제 같은 추가 비용 없음. 비교: ① 빗썸 = 0.04% 거래 수수료(미세 우위) ② 바이낸스 = 0.1% ③ OKX = 0.1%. 업비트 0.05% = 한국 거래소 중 빗썸 다음 저렴. 1억 거래 시: 업비트 5만원 vs 바이낸스 10만원. 거래량 큰 사용자 = 수수료 비교 필수. 단 KRW 직거래·유동성·한국어 지원 = 업비트 압도적 우위.",
+              },
+              {
+                q: "업비트 KYC·실명계좌 본인인증 절차?",
+                a: "업비트 KYC 절차: ① 휴대폰 본인인증(SKT·KT·LG U+) ② 신분증 사진 업로드(주민등록증·운전면허·여권) ③ 본인 얼굴 사진(셀카) ④ 본인 영상 인증(특정 문구 읽기) ⑤ 케이뱅크 실명계좌 연동 ⑥ 1~3영업일 심사 ⑦ 거래 가능. 필요 서류: 신분증·휴대폰·케이뱅크 계좌. 단 ① 외국인 = 외국인등록번호 + 한국 거주 증명 + 케이뱅크 외국인 계좌 ② 단기 체류 외국인 = 일부 제한 ③ 미성년자(만 19세 미만) = 가입 불가. KYC 안전: 정부 가상자산 규제 + 자금세탁방지법(AMLA) 의무. 사설 KYC 대행 = 본인 정보 탈취 위험, 절대 금지.",
+              },
+              {
+                q: "업비트 vs 빗썸·코빗 한국 거래소 비교?",
+                a: "한국 가상자산 거래소 비교(2026): ① 업비트 = 1위, 거래량 80%+, 케이뱅크, KRW 마켓 200+ 코인, 한국어 지원 1티어 ② 빗썸 = 2위, NH농협은행, 수수료 0.04%(미세 우위), 일부 알트 빠른 상장 ③ 코빗 = 3위, 신한은행, 신한금융 인수로 법적 안정성 ④ 코인원 = 4위, 카카오뱅크, 카카오 결합. 추천: ① 메인 = 업비트(거래량·유동성) ② 보조 = 빗썸(수수료) 또는 코빗(보안) ③ 신규 알트 = 빗썸·코빗 빠른 상장 시 ④ 한국어 지원 = 모두 1티어. 한국 투자자 표준: 업비트 메인 + 빗썸 또는 코빗 보조. 케이뱅크 외 은행 사용자 = 빗썸·코빗·코인원 선택.",
+              },
+              {
+                q: "업비트 공개 API 어떻게 활용?",
+                a: "업비트 공개 API(api.upbit.com) = 무료 + 인증 없이 분당 1만 회 호출. 활용: ① 시세·호가·체결 데이터 다운로드 ② 본인 백테스트 데이터 ③ 자동매매 시스템 구축 ④ 본인 포트폴리오 트래커 ⑤ 알림 봇(텔레그램·디스코드). 인증 API(거래용) = API 키 발급(보안 등급 별로). 활용 사례: ① Python 백테스트 — pyupbit 라이브러리 ② 자동매매 — REST·WebSocket API ③ 본인 대시보드 = React + 업비트 API. 한국 가상자산 개발자 = 업비트 API 우선 + Binance·CoinGecko 보조. 본 사이트(eloan) 백테스트도 업비트 API 데이터 1차 사용 — 신뢰도 1티어.",
+              },
+              {
+                q: "업비트 스테이킹·예치·DeFi?",
+                a: "업비트 스테이킹 서비스: ① 이더리움 = 연 3~4% APR ② 솔라나 = 연 5~6% ③ 폴카닷 = 연 8~12% ④ 코스모스 = 연 10~15% ⑤ 카르다노 = 연 4~5%. 강점: ① 본인 거래소 안에서 즉시 ② 별도 수수료 없음 ③ 보상 매일·주별 자동 지급 ④ 락업 기간 동안 거래 불가(단점). 단 ① 시장 상황 따라 변동 ② 글로벌 DeFi 비교 시 수익률 낮음(글로벌 = 더 높지만 리스크 ↑) ③ 슬래싱(부정 행위 시 자산 손실) 가능. 추천: ① 안정 = 업비트 스테이킹(이더리움·솔라나) ② 본격 DeFi = Aave·Compound(글로벌, 리스크↑·수익↑) ③ 본인 리스크 허용에 따라 선택.",
+              },
+              {
+                q: "업비트 세금 신고·양도소득세?",
+                a: "한국 가상자산 양도소득세(2025+): ① 연 250만원 초과 양도소득 = 22%(20% + 지방세 2%) 과세 ② 본인 신고 의무 ③ 매년 5월 종합소득세 신고. 절차: ① 업비트 마이페이지 → 거래내역 다운로드(엑셀) ② 본인 양도소득 계산(매도 - 매수 - 수수료) ③ 홈택스 신고 ④ 22% 세금 납부. 활용 팁: ① 거래내역 정기 백업(매년) ② 세무사 상담(고액 사용자) ③ 손실 통산(같은 해 손실 + 이익 통산) ④ 장기 보유 = 1년+ 시 일부 우대 가능성. 한국 가상자산 투자자 = 거래내역 보관 + 매년 5월 신고 표준입니다. 무신고 시 과태료 + 추가 세금. 본인 자산 보호 = 정기 신고.",
+              },
+              {
+                q: "업비트 글로벌 거래소(Binance·OKX) 같이 쓰기?",
+                a: "한국 투자자 표준 거래소 활용: ① 업비트(메인) — KRW 직거래·한국어·세무 ② 빗썸·코빗(보조) — 한국 미상장 알트 빠른 상장 ③ Binance·Bybit·OKX(글로벌) — 한국 미상장 알트·선물·파생 상품 ④ KuCoin·Gate.io — 신규 코인. 워크플로우: ① 업비트 = KRW 입금 → BTC·USDT 매수 ② 글로벌 거래소 송금 → 알트·선물 거래 ③ 수익 → USDT·BTC → 업비트 송금 → KRW 출금 → 케이뱅크. 단 ① 글로벌 거래소 한국 사용자 약관 변경 빈번(특정 알트 제외 등) ② 송금 시 수수료·시간(10분~1시간) ③ 글로벌 거래소 = KYC 영문 + 본인 신분증.",
+              },
+              {
+                q: "업비트 자동매매·트레이딩 봇 활용?",
+                a: "업비트 자동매매 활용: ① 업비트 공개 API + 본인 Python·Node.js 스크립트 ② 인증 API = 거래 자동 실행 ③ pyupbit(Python)·node-upbit(Node.js) 라이브러리 ④ 본인 전략 백테스트 → 실전 적용. 인기 전략: ① 그리드 트레이딩 ② 이동평균선 교차(MA Cross) ③ RSI 과매도/과매수 ④ 변동성 돌파(Larry Williams) ⑤ DCA(Dollar Cost Averaging) — 정기 자동 매수. 단 ① 자동매매 = 손실 가능성 큼 ② 본인 전략 충분한 백테스트 필수 ③ 실전 자금 = 작게 시작 ④ 슬리피지 고려 ⑤ 시장 급변 대응. eloan 백테스트로 사전 검증 권장.",
+              },
+              {
+                q: "업비트 본 사이트(eloan) 백테스트 활용?",
+                a: "eloan 백테스트 + 업비트 통합 워크플로우: ① eloan 에서 본인 매매 전략 백테스트 ② 업비트 API 데이터 1차 사용 = 신뢰도 1티어 ③ 백테스트 결과 검증 ④ 업비트 실전 거래로 옮기기. 활용: ① 다양 전략 비교(이동평균·RSI·MACD·볼린저밴드 등) ② 본인 자산·기간 시뮬레이션 ③ 손익·MDD(최대 낙폭)·승률 분석. 백테스트 결과 해석: ① 슬리피지·체결지연 = 실전 대비 10~20% 할인 ② 수수료 포함 계산 ③ 1년+ 검증 권장. 한국 가상자산 투자자 = eloan 백테스트 → 업비트 실전 = 검증된 전략으로 손실 최소화. 본인 자산 보호의 핵심 워크플로우.",
+              },
+              {
+                q: "업비트 환불·해지·계정 정리?",
+                a: "업비트 = 무료 회원가입, 환불 개념 없음. 해지·계정 정리: ① 마이페이지 → 회원 탈퇴 ② 본인 잔액 모두 출금 후 탈퇴 가능 ③ 탈퇴 후 데이터 일정 기간(가상자산법) 보관. 자산 정리 절차: ① 모든 코인 매도 → KRW ② KRW 케이뱅크 출금 ③ 거래내역 다운로드(세무용) ④ API 키 모두 삭제 ⑤ 본인인증 해제 ⑥ 회원 탈퇴. 추천: ① 탈퇴 전 거래내역 영구 보관(세무 신고용) ② 세금 신고 완료 후 탈퇴 ③ 본인 자산 모두 정리 후 ④ 사망 시 상속인 절차 = 가족관계증명서 + 사망진단서 + 상속인 신분증. 카드 사기·피싱 사례 늘어나니 공식 채널만 이용.",
+              },
+              {
+                q: "업비트 모바일 앱·휴대폰?",
+                a: "업비트 공식 모바일 앱(iOS·Android) = 한국 1위 가상자산 앱. 기능: ① 거래·입출금 ② 시세·차트 ③ 호가·체결 ④ 푸시 알림(가격·체결) ⑤ 본인 자산 관리. 강점: ① 한국어 1티어 ② 빠른 응답 ③ 직관적 UI ④ 모든 기능 모바일 가능. 단 ① 본격 자동매매 = PC API ② 복잡한 차트 분석 = PC + TradingView ③ 세무 자료 다운로드 = PC + 엑셀. 활용: ① 일상 거래 = 모바일 ② 본격 분석·자동매매 = PC ③ 푸시 알림 = 가격 알림 설정. 한국 가상자산 투자자 90%+ 가 모바일 앱 활용. PC + 모바일 동기화.",
+              },
+              {
+                q: "업비트 보안·사기·피싱 주의?",
+                a: "최근 늘어나는 업비트 사기 사례: ① '업비트 인증' 사설 업체 — 본인 정보 탈취 ② 가짜 업비트 사이트 — 본인 자산·인증 정보 탈취 ③ 보이스피싱 — 업비트 사칭 + OTP 요구 ④ 가짜 코인 추천 — 손실 유도 ⑤ 코인 사기(스캠) — 신규 알트·신규 거래소. 보안 팁: ① upbit.com 공식 도메인만 ② 본인이 직접 가입·거래 ③ OTP 2단계 인증 필수 ④ API 키 관리 — 거래 권한만, 출금 권한 X ⑤ 본인 케이뱅크 계좌만 출금 ⑥ 의심 시 업비트 고객센터 1666-8814 ⑦ 사설 '코인 리딩방' 절대 금지. 본인 자산 보호 = 보안 의식 1티어. 업비트 자체는 한국 1위 거래소 + 보안 강력.",
+              },
+              {
+                q: "업비트 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 일반 투자자 = KRW 직거래(BTC·ETH·SOL 등 메인 코인) — 가장 많은 활용 ② 본격 트레이더 = 자동매매·백테스트 + 업비트 API ③ 장기 투자자 = DCA(정기 자동 매수) + 스테이킹 ④ 알트코인 투자자 = 업비트(메인) + 빗썸·코빗·글로벌 ⑤ 사업자 = 본인 사업 자산 일부 가상자산 ⑥ 세무 관리 = 매년 거래내역 보관. 평생 활용: 매월 거래 + 정기 신고 + 본인 전략 백테스트 = 평생 자산 형성. 한국 가상자산 투자자에게 사실상 표준 거래소. 케이뱅크 + 업비트 = 한국 가상자산 시장 진입의 핵심 인프라.",
+              },
             ],
             relatedKeywords: [
               "업비트 가입",
@@ -12823,13 +13181,62 @@ const COIN: PickCategory = {
               { step: 5, title: "업비트와 같이 사용", body: "업비트에 없는 알트 빗썸에서 매수 → 출금 → 업비트로 송금 같은 차익·종목 다양화." },
             ],
             faq: [
-              { q: "업비트와 차이?", a: "업비트 = 거래량 1위·KRW 마켓 가장 큼·케이뱅크 필수. 빗썸 = 한국 2위·수수료 0.01% 저렴·농협 계좌. 메인 거래소는 업비트가 일반적, 빗썸은 보조 + 업비트 미상장 알트용." },
-              { q: "농협 계좌 꼭 필요?", a: "예. 빗썸은 농협은행 또는 NH투자증권 계좌와만 연동. 다른 은행은 사용 불가. 농협 계좌 없으면 농협 앱에서 비대면 개설 가능." },
-              { q: "수수료 차이 큰가?", a: "1억 거래 시 1만원 정도 차이. 단기 매매가 많으면 누적될 수 있지만 일반 사용자에게는 미미. 거래량·호가 깊이가 업비트가 더 좋아 슬리피지 측면에서는 업비트가 유리할 수도." },
-              { q: "공개 API?", a: "빗썸도 공개 REST API 제공. api.bithumb.com 문서. 본인 자동매매·백테스트 가능." },
-              { q: "선물·옵션?", a: "없음. 빗썸은 현물 거래만. 코인 선물은 Binance·Bybit·OKX 같은 해외 거래소 사용." },
-              { q: "안전성?", a: "한국 라이센스·KYC 인증·소비자보호법 적용. 다만 거래량이 업비트의 1/3 수준이라 시장 변동성 시 슬리피지 큼." },
-              { q: "코빗과 비교?", a: "빗썸 > 코빗 거래량. 코빗은 신한금융 인수로 법적 안정성 강점. 보조 거래소는 빗썸 또는 코빗 본인 주거래 은행에 맞춰 선택." },
+              {
+                q: "빗썸 한국에서 가입·이용? 농협 계좌 필수?",
+                a: "빗썸(bithumb.com·빗썸코리아 운영) = 한국 2위 가상자산 거래소. 가입 절차: ① 농협은행 또는 NH투자증권 계좌 개설 — 빗썸 전용 ② 빗썸 가입 — 휴대폰 본인인증 + KYC 신분증 인증 ③ 1~3영업일 거래 가능 ④ 농협 → 빗썸 입금. 농협 계좌 필수 이유: 한국 금융위 가상자산 거래소 실명계좌 발급 정책 — 빗썸은 농협 1개 연동만. 다른 은행 사용 불가. 농협 계좌 없으면 농협 앱에서 비대면 개설(10분). 사설 '빗썸 인증' 업체는 ① 본인 정보 탈취 위험 ② 본인이 무료로 직접 인증 가능. bithumb.com 공식 도메인만 이용. 업비트 다음으로 한국 2위.",
+              },
+              {
+                q: "빗썸 vs 업비트 차이?",
+                a: "한국 가상자산 거래소 차이: ① 업비트 = 1위, 거래량 80%+, 케이뱅크, KRW 마켓 200+, 한국어 1티어 ② 빗썸 = 2위, 거래량 15%+, NH농협, 수수료 0.04%(미세 우위), 일부 알트 빠른 상장 ③ 코빗 = 3위, 신한은행 ④ 코인원 = 4위, 카카오뱅크. 추천: ① 메인 = 업비트(거래량 1티어) ② 농협·NH 사용자 = 빗썸 우선 ③ 빗썸 빠른 알트 상장 = 신규 코인 매수 기회 ④ 보조 = 빗썸·코빗 분담. 한국 투자자 표준: 업비트 메인 + 빗썸 보조 + 글로벌(Binance·OKX·Bybit) 추가. 본인 은행 = 케이뱅크 시 업비트, 농협 시 빗썸 우선 선택. 둘 다 활용 시 = 가입 + 케이뱅크 + 농협 둘 다.",
+              },
+              {
+                q: "빗썸 수수료·거래 비용?",
+                a: "빗썸 수수료 구조: ① 거래 수수료 = 0.04%(메이커·테이커 동일, 한국 거래소 중 가장 저렴) ② KRW 입금 = 무료(농협 연동) ③ KRW 출금 = 1,000원 ④ 코인 출금 = 코인별 차등(BTC 0.0009, ETH 0.018 등) ⑤ 코인 입금 = 무료. 비교: ① 업비트 = 0.05% ② 빗썸 = 0.04% ③ 코빗 = 0.05~0.2% ④ 바이낸스 = 0.1% ⑤ OKX = 0.1%. 1억 거래 시: 업비트 5만원 vs 빗썸 4만원 = 1만원 차이. 단기 매매·고빈도 트레이더 = 빗썸 가성비. 일반 사용자 = 거의 무시 가능 수준. 빗썸 수수료 = 한국 거래소 1티어 저렴. 본격 단타 트레이더 = 빗썸 우선 검토.",
+              },
+              {
+                q: "빗썸 알트코인·신규 상장?",
+                a: "빗썸 알트코인 강점: ① 업비트 미상장 신규 알트 빠른 상장 ② 한국 시장 진입 신규 코인 = 빗썸 우선 ③ 약 200+ KRW 마켓 코인 ④ 한국 인기 알트 풍부. 신규 상장 시기 활용: ① 신규 상장 = 보통 빗썸이 업비트보다 1~7일 빠름 ② 신규 코인 매수 후 업비트 상장 시 가격 상승 효과 ③ 단 신규 코인 = 변동성 매우 큼, 리스크 ↑ ④ 본인 리스크 허용 수준에 따라. 추천: ① 본격 알트 투자자 = 빗썸 + 업비트 동시 ② 메인 코인(BTC·ETH·SOL) = 업비트 유동성 우위 ③ 신규 알트 = 빗썸 빠른 진입. 신규 알트 = 사기·스캠 코인 주의 필수.",
+              },
+              {
+                q: "빗썸 공개 API·자동매매?",
+                a: "빗썸 공개 API(api.bithumb.com) = 무료 + 인증 없이 시세·호가·체결 데이터. 인증 API = 거래 자동 실행. 활용: ① 시세·차트 데이터 ② 자동매매 시스템 ③ 본인 백테스트 ④ 알림 봇 ⑤ 본인 대시보드. 라이브러리: ① Python = pybithumb ② Node.js = node-bithumb ③ REST API + WebSocket 모두 지원. 활용 시나리오: ① 그리드 트레이딩 ② 이동평균 교차 ③ RSI 전략 ④ 정기 자동 매수(DCA) ⑤ 차익거래(업비트-빗썸 가격 차). 단 ① 자동매매 = 손실 가능성 큼 ② 충분한 백테스트 ③ 작게 시작 ④ 슬리피지 고려. eloan 백테스트로 사전 검증 권장.",
+              },
+              {
+                q: "빗썸 KYC·실명계좌 본인인증?",
+                a: "빗썸 KYC 절차: ① 휴대폰 본인인증(SKT·KT·LG U+) ② 신분증 사진 업로드 ③ 본인 얼굴 사진(셀카) ④ 본인 영상 인증 ⑤ NH농협 실명계좌 연동 ⑥ 1~3영업일 심사 ⑦ 거래 가능. 필요 서류: 신분증·휴대폰·농협 계좌. 단 ① 외국인 = 외국인등록번호 + 한국 거주 증명 + 농협 외국인 계좌 ② 단기 체류 외국인 = 일부 제한 ③ 미성년자 = 가입 불가. KYC 안전: 정부 가상자산 규제 + 자금세탁방지법(AMLA) 의무. 사설 KYC 대행 = 본인 정보 탈취 위험, 절대 금지. NH농협 = 한국 1위 은행 + 빗썸 전용. 농협 계좌 없으면 농협 앱 비대면 개설 10분.",
+              },
+              {
+                q: "빗썸 안전성·법적 보호?",
+                a: "빗썸 안전성 평가: ① 한국 라이센스(금융위 ISMS·VASP) 보유 ② KYC·AML 인증 ③ 소비자보호법 적용 ④ 빗썸코리아 운영 — 한국 법인 ⑤ 농협 실명계좌 연동 — 자금 안전. 단 ① 거래량 = 업비트 1/5~1/6 수준 = 변동성 시 슬리피지 큼 ② 과거 해킹 사례(2017·2018) = 일부 자산 손실 후 보상 ③ 현재 보안 강화 — 콜드 월렛 + 다중 인증. 본인 자산 보호: ① 큰 자산 = 업비트 분산 + 콜드 월렛(Ledger·Trezor) ② 빗썸 = 거래용·보조 ③ 본인 OTP 2단계 인증 ④ API 키 보안. 한국 2위 거래소 = 비교적 안전, 단 글로벌 1위(바이낸스) 대비 거래량 ↓.",
+              },
+              {
+                q: "빗썸 글로벌 거래소·업비트 차익거래?",
+                a: "한국 투자자 차익거래(김치 프리미엄) 전략: ① 한국 거래소(업비트·빗썸) = 글로벌 대비 5~20% 프리미엄 ② 글로벌 거래소(Binance·OKX) = 정상 가격. 차익거래 워크플로우: ① 글로벌 거래소에서 USDT·BTC 매수 ② 한국 거래소(업비트·빗썸) 로 송금 ③ KRW 매도 → 프리미엄 수익 ④ KRW → 농협·케이뱅크 출금. 단 ① 송금 시간(10분~1시간) = 가격 변동 리스크 ② 송금 수수료(약 0.5~1%) ③ 세금(양도소득세 22%) ④ 외환 송금 한도(연 5만 달러). 본격 차익거래 = 자동매매 시스템 + 큰 자본. 일반 투자자 = 김치 프리미엄 활용한 매수 시점 결정 권장.",
+              },
+              {
+                q: "빗썸 스테이킹·예치 수익률?",
+                a: "빗썸 스테이킹 서비스: ① 이더리움 = 연 3~4% APR ② 솔라나 = 연 5~6% ③ 폴카닷 = 연 8~12% ④ 코스모스 = 연 10~15% ⑤ 카르다노 = 연 4~5% ⑥ 트론 = 연 3~5%. 강점: ① 본인 거래소 안에서 즉시 ② 별도 수수료 없음 ③ 보상 자동 지급 ④ 락업 기간 동안 거래 불가(단점) ⑤ 업비트와 비슷한 수익률. 추천: ① 안정 = 빗썸 스테이킹(이더리움·솔라나) ② 본격 DeFi = Aave·Compound(글로벌, 리스크↑·수익↑) ③ 빗썸 vs 업비트 = 본인 주거래 거래소 선택. 본인 리스크 허용에 따라 선택. 스테이킹 = 장기 보유 자산에 적합.",
+              },
+              {
+                q: "빗썸 세금 신고·양도소득세?",
+                a: "한국 가상자산 양도소득세(2025+): ① 연 250만원 초과 양도소득 = 22%(20% + 지방세 2%) 과세 ② 본인 신고 의무 ③ 매년 5월 종합소득세 신고. 빗썸 절차: ① 마이페이지 → 거래내역 다운로드(엑셀) ② 본인 양도소득 계산 ③ 홈택스 신고 ④ 22% 세금 납부. 업비트 + 빗썸 동시 사용 시: ① 거래소별 거래내역 모두 다운로드 ② 본인 통합 양도소득 계산 ③ 모든 거래소 합산 신고 ④ 손익 통산 가능(같은 해). 활용 팁: ① 거래내역 정기 백업 ② 세무사 상담(고액 사용자) ③ 손실 통산 ④ 장기 보유 우대 일부 가능성. 본인 자산 보호 = 정기 신고.",
+              },
+              {
+                q: "빗썸 모바일 앱·휴대폰?",
+                a: "빗썸 공식 모바일 앱(iOS·Android) = 한국 2위 가상자산 앱. 기능: ① 거래·입출금 ② 시세·차트 ③ 호가·체결 ④ 푸시 알림(가격·체결) ⑤ 본인 자산 관리. 강점: ① 한국어 1티어 ② 빠른 응답 ③ 직관적 UI ④ 알트코인 빠른 검색. 단 ① 본격 자동매매 = PC API ② 복잡한 차트 분석 = PC + TradingView ③ 세무 자료 = PC + 엑셀. 활용: ① 일상 거래 = 모바일 ② 본격 분석·자동매매 = PC ③ 가격 알림 = 푸시 ON. 한국 가상자산 투자자 = 업비트 앱 + 빗썸 앱 둘 다 설치 활용 표준. PC + 모바일 동기화.",
+              },
+              {
+                q: "빗썸 환불·해지·계정 정리?",
+                a: "빗썸 = 무료 회원가입, 환불 개념 없음. 해지·계정 정리: ① 마이페이지 → 회원 탈퇴 ② 본인 잔액 모두 출금 후 탈퇴 가능 ③ 탈퇴 후 데이터 일정 기간(가상자산법) 보관. 자산 정리 절차: ① 모든 코인 매도 → KRW ② KRW 농협 출금 ③ 거래내역 다운로드(세무용) ④ API 키 모두 삭제 ⑤ 본인인증 해제 ⑥ 회원 탈퇴. 추천: ① 탈퇴 전 거래내역 영구 보관(세무 신고용) ② 세금 신고 완료 후 탈퇴 ③ 본인 자산 모두 정리 후. 본인 사망 시 상속 = 가족관계증명서 + 사망진단서 + 상속인 신분증. 보이스피싱·사기 주의 — 공식 채널만.",
+              },
+              {
+                q: "빗썸 보안·사기·피싱 주의?",
+                a: "빗썸 사기 사례: ① '빗썸 인증' 사설 업체 — 본인 정보 탈취 ② 가짜 빗썸 사이트 — 본인 자산·인증 정보 탈취 ③ 보이스피싱 — 빗썸 사칭 + OTP 요구 ④ 가짜 코인 추천 — 손실 유도 ⑤ 신규 코인 사기(스캠) — 빗썸 빠른 상장으로 신규 알트 빈번 = 사기 코인 주의. 보안 팁: ① bithumb.com 공식 도메인만 ② 본인이 직접 가입·거래 ③ OTP 2단계 인증 필수 ④ API 키 관리 — 거래 권한만, 출금 권한 X ⑤ 본인 농협 계좌만 출금 ⑥ 의심 시 빗썸 고객센터 1661-5566 ⑦ 사설 '코인 리딩방' 절대 금지. 본인 자산 보호 = 보안 의식 1티어.",
+              },
+              {
+                q: "빗썸 한국 사용자 활용 시나리오?",
+                a: "한국 사용자 표준 활용: ① 농협·NH 사용자 = 빗썸 메인(케이뱅크 없는 경우) ② 단타·고빈도 트레이더 = 빗썸 수수료 우위 활용 ③ 알트코인 투자자 = 빗썸 신규 상장 빠른 진입 ④ 업비트 + 빗썸 동시 사용 = 메인 + 보조 ⑤ 차익거래(김치 프리미엄) = 빗썸 + 글로벌 거래소 ⑥ 본인 자동매매 = 빗썸 API ⑦ 장기 투자자 = 스테이킹. 평생 활용: 매월 거래 + 정기 신고 + 본인 전략 백테스트 = 평생 자산 형성. 한국 가상자산 투자자에게 업비트와 함께 핵심 거래소. 농협 + 빗썸 = 한국 가상자산 시장 진입의 또 다른 핵심 인프라. 본 사이트(eloan) 백테스트도 빗썸 데이터 활용 가능.",
+              },
             ],
             relatedKeywords: [
               "빗썸 가입",

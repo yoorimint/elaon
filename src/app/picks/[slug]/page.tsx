@@ -134,25 +134,25 @@ function ItemCard({ item }: { item: PickItem }) {
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-neutral-500">
           {item.pricingNote && (
             <span>
-              <strong className="text-neutral-700 dark:text-neutral-300">
+              <span className="text-neutral-700 dark:text-neutral-300 font-medium">
                 요금
-              </strong>{" "}
+              </span>{" "}
               · {item.pricingNote}
             </span>
           )}
           {item.founded && (
             <span>
-              <strong className="text-neutral-700 dark:text-neutral-300">
+              <span className="text-neutral-700 dark:text-neutral-300 font-medium">
                 출시
-              </strong>{" "}
+              </span>{" "}
               · {item.founded}
             </span>
           )}
           {item.alternatives && item.alternatives.length > 0 && (
             <span>
-              <strong className="text-neutral-700 dark:text-neutral-300">
+              <span className="text-neutral-700 dark:text-neutral-300 font-medium">
                 대안
-              </strong>{" "}
+              </span>{" "}
               · {item.alternatives.join(", ")}
             </span>
           )}
@@ -160,7 +160,7 @@ function ItemCard({ item }: { item: PickItem }) {
 
         {item.tip && (
           <p className="mt-1 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 px-3 py-2 text-neutral-700 dark:text-neutral-300">
-            💡 <strong>실전 팁</strong> · {item.tip}
+            💡 <span className="font-medium">팁</span> · {item.tip}
           </p>
         )}
       </div>

@@ -14,6 +14,7 @@ import {
   faqLd,
   collectionPageLd,
 } from "@/components/JsonLd";
+import { SiteLogo } from "@/components/SiteLogo";
 
 const SITE = "https://www.eloan.kr";
 
@@ -88,9 +89,6 @@ function ItemCard({
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   const host = external ? hostname(item.url) : "";
-  const faviconUrl = host
-    ? `https://www.google.com/s2/favicons?domain=${host}&sz=64`
-    : "";
   return (
     <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
       <a
@@ -104,21 +102,12 @@ function ItemCard({
       </a>
 
       <header className="mb-2.5 pr-24 flex items-start gap-3">
-        {faviconUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={faviconUrl}
-            alt=""
-            width={36}
-            height={36}
-            loading="lazy"
-            className="shrink-0 w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1 object-contain"
-          />
-        ) : (
-          <div className="shrink-0 w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center text-base">
-            🔗
-          </div>
-        )}
+        <SiteLogo
+          host={host}
+          alt={`${item.name} 로고`}
+          size={44}
+          className="shrink-0 w-11 h-11 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1.5"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-2">
             <h3 className="font-bold text-[17px] text-neutral-800 dark:text-neutral-100">

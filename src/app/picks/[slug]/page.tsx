@@ -234,14 +234,7 @@ export default function PickCategoryPage({ params }: { params: Params }) {
             {cat.emoji} {cat.title}
           </h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
-            <span>총 {totalItems}개 정리</span>
-            <span>·</span>
-            <span>
-              마지막 업데이트{" "}
-              <time dateTime={cat.updatedAt}>{cat.updatedAt}</time>
-            </span>
-            <span>·</span>
-            <span>매월 1회 점검</span>
+            <span>총 {totalItems}개</span>
           </div>
         </header>
 
@@ -365,10 +358,7 @@ export default function PickCategoryPage({ params }: { params: Params }) {
         </section>
 
         <p className="mt-8 text-xs text-neutral-500 leading-relaxed">
-          외부 사이트 링크는 <code>noopener noreferrer</code> 로 처리되며, 본
-          사이트는 등록 사이트와 어떠한 제휴 관계도 없습니다. 라이선스·이용약관·
-          요금 정보는 작성 시점 기준이며, 최신 내용은 각 사이트의 공식 페이지에서
-          반드시 다시 확인하세요.
+          본 디렉토리는 등록 사이트와 제휴 관계가 없습니다. 라이선스·이용약관·요금 정보는 작성 시점 기준이며, 최신 내용은 각 사이트의 공식 페이지에서 다시 확인해주세요.
         </p>
       </main>
     </>

@@ -187,7 +187,7 @@ PickItem 0개로 확인된 토픽들. 우선순위 = (검색 의도 강도) × (
 
 ## 진행 상태 (다음 세션이 이어받을 때 체크)
 
-- [ ] Phase 1.1 JOBS
+- [~] Phase 1.1 JOBS — 골격 + 잡코리아·사람인 2/6 완료 (commit 3135ea2). 남은 항목: 원티드·인크루트·리멤버·점핏 4개 (그룹 "IT·개발 특화" 와 "경력·헤드헌팅" 의 items 배열이 현재 빈 배열 `[]` 임)
 - [ ] Phase 1.2 REALESTATE
 - [ ] Phase 1.3 TRAVEL
 - [ ] Phase 1.4 STUDY
@@ -199,3 +199,12 @@ PickItem 0개로 확인된 토픽들. 우선순위 = (검색 의도 강도) × (
 - [ ] Phase 2.2 COIN 보강 (+4)
 - [ ] Phase 2.3 FREE 보강 (+4)
 - [ ] Phase 2.4 MONEY 보강 (+3)
+
+## 다음 세션 이어받는 방법
+
+1. `git checkout claude/improve-address-search-engagement-HMBcH` 후 `git pull`
+2. `npm install` (node_modules 없을 시)
+3. 이 파일 위 "측정 표준" 과 "Phase 1.X 카테고리 큐" 참조
+4. 가장 빠른 진입점: `src/lib/picks.ts` 의 `const JOBS: PickCategory` 안 그룹 "💻 IT·개발 특화" 와 "👔 경력·헤드헌팅" 의 빈 `items: []` 배열에 원티드/인크루트/점핏/리멤버 PickItem 추가
+5. 빌드 검증: `NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder SUPABASE_SERVICE_ROLE_KEY=placeholder SUPABASE_URL=https://placeholder.supabase.co npm run build`
+6. 각 카테고리 또는 2~3개 항목 단위로 커밋·푸시

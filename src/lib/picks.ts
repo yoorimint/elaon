@@ -5,6 +5,12 @@ export type PickCategorySlug = "ai" | "money" | "free" | "coin";
 
 export type Pricing = "free" | "freemium" | "paid";
 
+export type SubItem = {
+  name: string;
+  blurb?: string;
+  url?: string;
+};
+
 export type PickItem = {
   name: string;
   url: string;
@@ -17,6 +23,7 @@ export type PickItem = {
   alternatives?: string[];
   korean?: boolean;
   founded?: string;
+  subItems?: SubItem[];
 };
 
 export type PickGroup = { title: string; items: PickItem[] };
@@ -762,6 +769,38 @@ const MONEY: PickCategory = {
           tip: "로그인 후 '나의 혜택' 결과를 캡처해두면 1년 후 재확인할 때 비교가 쉽습니다.",
           founded: "2015",
           korean: true,
+          subItems: [
+            {
+              name: "주민등록등본·초본 발급",
+              blurb: "온라인 무료, 즉시 PDF·프린트",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "가족관계증명서",
+              blurb: "본인·가족 발급 무료",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "보조금24",
+              blurb: "받을 수 있는 보조금 자동 매칭",
+              url: "https://www.gov.kr/portal/subsidy24/cmm/main",
+            },
+            {
+              name: "민원·증명서 발급",
+              blurb: "300+ 증명서 통합 발급",
+              url: "https://www.gov.kr/portal/civilService",
+            },
+            {
+              name: "나의 혜택",
+              blurb: "본인 자격 정부지원금 자동 진단",
+              url: "https://www.gov.kr/portal/main",
+            },
+            {
+              name: "정부 서비스 검색",
+              blurb: "부처별·키워드별 검색",
+              url: "https://www.gov.kr",
+            },
+          ],
         },
         {
           name: "보조금24",
@@ -794,6 +833,38 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2010",
           korean: true,
+          subItems: [
+            {
+              name: "복지서비스 모의계산",
+              blurb: "받을 수 있는 급여 금액 시뮬레이션",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "기초생활보장 신청",
+              blurb: "생계·의료·주거·교육급여",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "청년월세 한시 특별지원",
+              blurb: "월 최대 20만원 × 12개월",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "한부모가족 지원",
+              blurb: "양육비·교육비·주거 지원",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "긴급복지 지원",
+              blurb: "위기 가구 긴급 생계비",
+              url: "https://www.bokjiro.go.kr",
+            },
+            {
+              name: "장애인·노인 돌봄",
+              blurb: "활동지원·돌봄서비스",
+              url: "https://www.bokjiro.go.kr",
+            },
+          ],
         },
         {
           name: "온통청년",
@@ -870,6 +941,38 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2016",
           korean: true,
+          subItems: [
+            {
+              name: "내 계좌 한눈에",
+              blurb: "전 은행·증권·저축은행 통합",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "내 카드 한눈에",
+              blurb: "발급 카드·한도·연회비",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "잠자는 내 돈 찾기",
+              blurb: "휴면예금·휴면보험금",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "내 연금 한눈에",
+              blurb: "국민·퇴직·개인연금 통합",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "자동이체 통합관리",
+              blurb: "자동이체·납부 일괄 조회·해지",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+            {
+              name: "신용정보 조회",
+              blurb: "신용평점·신용정보 무료",
+              url: "https://fine.fss.or.kr/main/fin_lf/lf01_intro.do",
+            },
+          ],
         },
         {
           name: "카드포인트 통합조회",
@@ -925,6 +1028,38 @@ const MONEY: PickCategory = {
           tip: "5월 종합소득세 기간에 '환급금 조회' 메뉴를 먼저 확인하면 과거 미수령 환급금이 표시됩니다.",
           founded: "2002",
           korean: true,
+          subItems: [
+            {
+              name: "환급금 조회·신청",
+              blurb: "미수령 환급금 자동 표시",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "5월 종합소득세 신고",
+              blurb: "프리랜서·사업자·이중소득",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "1월 연말정산 간소화",
+              blurb: "소득·세액공제 증빙 자동",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "경정청구 (과거 5년)",
+              blurb: "누락된 공제 재신청·환급",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "부가가치세 신고",
+              blurb: "사업자 1·7월",
+              url: "https://www.hometax.go.kr",
+            },
+            {
+              name: "현금영수증 조회",
+              blurb: "본인·가족 사용 내역",
+              url: "https://www.hometax.go.kr",
+            },
+          ],
         },
         {
           name: "위택스",
@@ -978,6 +1113,38 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "1998",
           korean: true,
+          subItems: [
+            {
+              name: "실업급여 (구직급여)",
+              blurb: "퇴직 후 월 평균임금 60%",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "국민내일배움카드",
+              blurb: "연 500만원 직업훈련비",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "국민취업지원제도",
+              blurb: "월 50만원 × 6개월",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "청년구직활동지원금",
+              blurb: "구직 청년 활동 지원",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "워크넷 구인구직",
+              blurb: "공식 구직 매칭",
+              url: "https://www.work24.go.kr",
+            },
+            {
+              name: "직업훈련 (HRD-Net)",
+              blurb: "내일배움카드로 신청 가능",
+              url: "https://www.work24.go.kr",
+            },
+          ],
         },
         {
           name: "국민취업지원제도",
@@ -1244,6 +1411,38 @@ const MONEY: PickCategory = {
           pricing: "free",
           founded: "2010",
           korean: true,
+          subItems: [
+            {
+              name: "예비창업패키지",
+              blurb: "최대 1억원, 예비창업자",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "초기창업패키지",
+              blurb: "창업 3년 이내, 최대 1억원",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "청년창업사관학교",
+              blurb: "만 39세 이하, 최대 1억원",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "TIPS (딥테크 팁스)",
+              blurb: "기술창업 R&D 최대 5억원",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "창업도약패키지",
+              blurb: "창업 3~7년, 최대 3억원",
+              url: "https://www.k-startup.go.kr",
+            },
+            {
+              name: "정부지원 사업 공고",
+              blurb: "전체 사업 일정 통합",
+              url: "https://www.k-startup.go.kr",
+            },
+          ],
         },
         {
           name: "서민금융진흥원 (KINFA)",
@@ -1282,6 +1481,38 @@ const MONEY: PickCategory = {
           tip: "본인부담상한제 초과 환급금은 매년 8월경 자동 안내되며 미신청 시 5년 내 청구 가능합니다.",
           founded: "2000",
           korean: true,
+          subItems: [
+            {
+              name: "무료 건강검진 대상 조회",
+              blurb: "일반검진 2년 1회 + 암검진",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "본인부담상한제 환급금",
+              blurb: "초과 의료비 자동 환급",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "건강보험료 조회·정정",
+              blurb: "본인 부담액·정정 신청",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "피부양자 등록·확인",
+              blurb: "가족 피부양자 자격",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "임신·출산 진료비 지원",
+              blurb: "100만원 바우처 (다태아 140만원)",
+              url: "https://www.nhis.or.kr",
+            },
+            {
+              name: "건강iN (마이헬스뱅크)",
+              blurb: "본인 건강검진 결과·진료 이력",
+              url: "https://www.nhis.or.kr",
+            },
+          ],
         },
         {
           name: "노인장기요양보험",

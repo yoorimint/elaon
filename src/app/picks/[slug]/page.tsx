@@ -163,6 +163,52 @@ function ItemCard({ item }: { item: PickItem }) {
             💡 <span className="font-medium">팁</span> · {item.tip}
           </p>
         )}
+
+        {item.subItems && item.subItems.length > 0 && (
+          <details className="mt-1 group/sub">
+            <summary className="cursor-pointer list-none flex items-center gap-1.5 text-[13px] font-semibold text-brand hover:underline select-none">
+              <span>주요 메뉴 {item.subItems.length}개 살펴보기</span>
+              <span className="text-neutral-400 group-open/sub:rotate-180 transition">
+                ▾
+              </span>
+            </summary>
+            <div className="mt-2.5 grid sm:grid-cols-2 gap-2">
+              {item.subItems.map((sub, i) => {
+                const subExternal = sub.url ? /^https?:\/\//i.test(sub.url) : false;
+                const subLinkProps = subExternal
+                  ? { target: "_blank", rel: "noopener noreferrer" as const }
+                  : {};
+                const card = (
+                  <div className="h-full rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 px-3 py-2.5 hover:border-brand hover:bg-white dark:hover:bg-neutral-950 transition">
+                    <div className="font-semibold text-[13px] text-neutral-800 dark:text-neutral-100 leading-snug">
+                      {sub.name}
+                      {sub.url && (
+                        <span className="ml-1 text-[10px] text-neutral-400">↗</span>
+                      )}
+                    </div>
+                    {sub.blurb && (
+                      <div className="text-[12px] text-neutral-500 mt-0.5 leading-snug">
+                        {sub.blurb}
+                      </div>
+                    )}
+                  </div>
+                );
+                return sub.url ? (
+                  <a
+                    key={i}
+                    href={sub.url}
+                    {...subLinkProps}
+                    className="block"
+                  >
+                    {card}
+                  </a>
+                ) : (
+                  <div key={i}>{card}</div>
+                );
+              })}
+            </div>
+          </details>
+        )}
       </div>
     </article>
   );

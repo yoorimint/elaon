@@ -2,7 +2,7 @@
 
 // 주소모음(picks) 페이지 전용 우측 하단 플로팅 버튼.
 // 위: 화면 상단 바로가기 (스크롤 일정 이상 내려갔을 때만 표시)
-// 아래: 사주데이 홈으로 이동 (항상 표시, 새 탭, sponsored nofollow)
+// 아래: 사주데이 홈으로 이동 (항상 표시, 새 탭) — 같은 운영자 사이트 간 링크
 
 import Link from "next/link";
 import Image from "next/image";
@@ -58,8 +58,8 @@ export function PicksFab() {
       <Link
         href={SAJUDAY_URL}
         target="_blank"
-        rel="sponsored noopener noreferrer"
-        aria-label="사주데이 (광고)"
+        rel="noopener noreferrer"
+        aria-label="사주데이"
         className="group relative w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-rose-400 shadow-lg flex items-center justify-center overflow-hidden hover:scale-105 transition active:scale-95"
       >
         <Image
@@ -70,9 +70,6 @@ export function PicksFab() {
           className="w-full h-full object-cover scale-110"
           unoptimized
         />
-        <span className="absolute -top-1 -right-1 text-[8px] font-semibold bg-neutral-900 text-white rounded-full px-1.5 py-0.5 leading-none">
-          AD
-        </span>
       </Link>
     </div>
   );

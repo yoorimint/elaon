@@ -15,6 +15,27 @@ export type SubItem = {
   url?: string;         // 외부 deep link
 };
 
+export type DetailFeature = { title: string; body: string };
+export type DetailPricingPlan = {
+  name: string;
+  price: string;
+  features: string[];
+  recommended?: boolean;
+};
+export type DetailGuideStep = { step: number; title: string; body: string };
+
+export type DetailContent = {
+  longIntro: string[];
+  features: DetailFeature[];
+  pricingPlans?: DetailPricingPlan[];
+  pros?: string[];
+  cons?: string[];
+  koreanContext?: string;
+  startingGuide?: DetailGuideStep[];
+  faq?: { q: string; a: string }[];
+  relatedKeywords?: string[];
+};
+
 export type PickItem = {
   name: string;
   url: string;
@@ -27,8 +48,9 @@ export type PickItem = {
   alternatives?: string[];
   korean?: boolean;
   founded?: string;
-  hubSlug?: string;     // 있으면 /picks/{cat}/{hub} 별도 페이지 생성
-  subItems?: SubItem[];
+  hubSlug?: string;     // 있으면 /picks/{cat}/{hub} 별도 페이지 생성 (sub-카드 또는 상세)
+  subItems?: SubItem[]; // 통합 포털 sub-항목 (hub 모드)
+  detailContent?: DetailContent; // 도구 상세 페이지 (detail 모드)
 };
 
 export type PickGroup = { title: string; items: PickItem[] };
@@ -114,6 +136,155 @@ const AI: PickCategory = {
           alternatives: ["Claude", "Gemini", "뤼튼"],
           founded: "2022",
           korean: true,
+          hubSlug: "chatgpt",
+          detailContent: {
+            longIntro: [
+              "ChatGPT 는 OpenAI 가 운영하는 GPT-5 기반 챗봇입니다. 2022년 11월 출시 이후 2026년 현재 전 세계 월 활성 사용자 7억 명 이상으로 범용 챗봇 시장 점유율 1위를 유지하고 있습니다.",
+              "한국에서 가입·결제·이용이 모두 정상적으로 동작하며 한국어 답변 품질도 모든 AI 중 가장 안정적입니다. 무료 플랜에서도 GPT-5 일부 사용량과 이미지 생성, 웹 검색, 파이썬 코드 실행, 파일 분석 같은 핵심 기능이 모두 제공됩니다.",
+              "유료 플랜은 Plus($20/월) 와 Pro($200/월) 두 가지로, 한국 사용자도 신용카드·체크카드로 가입할 수 있습니다. Plus 와 Pro 는 사용량 한도, 응답 속도, Sora 영상 생성 옵션, 심층 리서치 모드에서 차이가 납니다.",
+            ],
+            features: [
+              { title: "GPT-5 모델", body: "OpenAI 최신 모델. 추론, 코딩, 창작 능력 1티어. 답변 정확도와 한국어 자연스러움이 가장 안정적입니다." },
+              { title: "이미지 생성 (DALL·E 3)", body: "한국어 프롬프트 한 줄로 이미지를 즉시 생성합니다. 캐릭터 일관성과 이미지 안 한글·영문 텍스트 합성이 다른 AI 대비 안정적입니다." },
+              { title: "웹 검색", body: "실시간 웹 검색 결과를 출처와 함께 답변에 포함합니다. 최신 뉴스, 가격, 통계 확인에 유용합니다." },
+              { title: "코드 인터프리터", body: "파이썬 코드를 실행해 엑셀·CSV·PDF 분석, 차트 생성, 데이터 전처리를 처리합니다." },
+              { title: "음성 모드 (Advanced Voice)", body: "한국어 자연 대화 + 동시통역 수준 발음. 영어 회화 연습 도구로도 사용됩니다." },
+              { title: "Custom Instructions", body: "직업·말투·자주 쓰는 표현을 사전 입력해 매 대화에서 같은 톤이 유지됩니다." },
+              { title: "프로젝트 (Projects)", body: "관련 자료를 폴더처럼 묶어 같은 컨텍스트로 반복 대화합니다. 무료 플랜에서도 사용 가능합니다." },
+              { title: "GPT Store", body: "특정 용도로 만들어진 사용자 GPT 수십만 개를 검색·사용합니다." },
+              { title: "파일 업로드", body: "PDF, Word, Excel, 이미지를 분석해 요약·번역·표 추출이 가능합니다." },
+              { title: "Sora 영상 생성 (Plus 이상)", body: "최대 20초·1080p 영상을 텍스트나 이미지에서 생성합니다. Plus 플랜에 포함되어 있습니다." },
+            ],
+            pricingPlans: [
+              {
+                name: "무료 (Free)",
+                price: "0원",
+                features: [
+                  "GPT-5 일일 한도 (4~5시간 리셋)",
+                  "이미지 생성 일일 한도",
+                  "웹 검색 일일 한도",
+                  "파이썬 코드 실행",
+                  "파일 업로드",
+                  "음성 모드 (제한적)",
+                ],
+              },
+              {
+                name: "Plus",
+                price: "$20/월 (약 2.7만원)",
+                recommended: true,
+                features: [
+                  "GPT-5 사용량 거의 무제한",
+                  "응답 속도 빠름",
+                  "Sora 영상 생성 포함",
+                  "음성 모드 무제한",
+                  "GPT Store 풀 액세스",
+                  "심층 리서치 모드 제한적",
+                ],
+              },
+              {
+                name: "Pro",
+                price: "$200/월 (약 27만원)",
+                features: [
+                  "GPT-5 무제한 + 추론 강화 모델",
+                  "최우선 응답 (트래픽 무관)",
+                  "Sora 영상 고급 옵션",
+                  "심층 리서치 모드 풀 사용",
+                  "Operator (에이전트) 액세스",
+                  "API 크레딧 일부 포함",
+                ],
+              },
+            ],
+            pros: [
+              "한국어 답변 품질 최상위. 어색함 가장 적음",
+              "이미지·검색·코드·음성 통합 (단일 도구로 거의 모든 용도)",
+              "한국 가입·결제 전부 정상 동작 (VPN 불필요)",
+              "무료 플랜만으로도 핵심 기능 사용 가능",
+              "GPT Store 등 생태계 풍부",
+              "음성 모드의 한국어 발음·동시통역 수준",
+            ],
+            cons: [
+              "월 $20 결제 부담 (해외 결제, USD)",
+              "민감 콘텐츠 검열 강함 (창작 시 거절 자주 발생)",
+              "긴 PDF·코드베이스 분석은 Claude 대비 약함",
+              "응답 시간이 트래픽에 따라 길어짐 (Plus 도)",
+              "Pro 가격($200) 은 일반 사용자에게 부담",
+            ],
+            koreanContext:
+              "한국 IP 로 가입·접속·결제 모두 정상 동작합니다. 한국 신용카드(국내·해외 결제 모두) 와 체크카드로 결제 가능하지만 카카오페이·네이버페이 등 간편결제는 직접 지원되지 않습니다. 회사·학교 이메일로 가입 시 SSO 도 지원됩니다. 한국어 음성 모드는 동시통역 수준이며 이미지 생성 시 한글 텍스트 합성도 안정적입니다.",
+            startingGuide: [
+              {
+                step: 1,
+                title: "가입",
+                body: "chat.openai.com 에 접속해 구글, MS, 애플 계정 또는 이메일로 가입합니다. 한국 IP 정상 접근, VPN 불필요.",
+              },
+              {
+                step: 2,
+                title: "Custom Instructions 설정",
+                body: "설정 → Personalization → Custom Instructions 에 직업·전문 분야·선호하는 말투(존댓말/반말, 격식/캐주얼) 를 입력해두면 매 대화에서 같은 톤이 유지됩니다.",
+              },
+              {
+                step: 3,
+                title: "무료로 충분히 테스트",
+                body: "이미지 생성, 웹 검색, 파일 분석을 무료로 모두 사용해보고 일일 한도가 부족하다고 느낄 때 Plus 결제를 검토합니다.",
+              },
+              {
+                step: 4,
+                title: "Plus 결제 (선택)",
+                body: "신용카드·체크카드로 $20/월 결제. 영수증은 이메일로 자동 발송됩니다. 환불은 14일 이내 미사용 시 정책에 따라 가능합니다.",
+              },
+              {
+                step: 5,
+                title: "프로젝트 활용",
+                body: "자주 쓰는 자료(이력서, 회사 정보, 문체 가이드 등) 를 Projects 안에 미리 등록해 두면 같은 컨텍스트로 반복 대화할 수 있습니다.",
+              },
+            ],
+            faq: [
+              {
+                q: "한국에서 가입·결제 가능한가요?",
+                a: "가능합니다. 한국 IP 로 정상 접속되며 국내·해외 신용카드 모두 결제됩니다. VPN 은 필요 없습니다. 카카오페이·네이버페이 같은 한국 간편결제는 지원되지 않으므로 카드 결제를 사용해야 합니다.",
+              },
+              {
+                q: "Plus($20/월) 결제할 가치가 있나요?",
+                a: "GPT-5 를 매일 1시간 이상 사용하면 Plus 가 효율적입니다. 한 달 약 2.7만원으로 한도가 거의 무제한이 되며 응답 속도도 빨라집니다. 가벼운 사용자는 무료 플랜으로 충분합니다.",
+              },
+              {
+                q: "Pro($200/월) 는 누구에게 필요한가요?",
+                a: "전문 리서치, 코딩 자동화, Sora 영상 생성을 매일 사용하는 파워유저나 업무용 사용자에게 적합합니다. 일반 사용자는 Plus 면 충분하며, Pro 는 심층 리서치와 Operator 같은 고급 기능을 필요로 할 때 검토합니다.",
+              },
+              {
+                q: "회사 자료를 업로드해도 되나요?",
+                a: "위험합니다. 무료와 Plus 는 입력 데이터가 학습에 사용될 수 있습니다. 설정 → Data Controls 에서 학습 거부를 활성화하면 학습에 사용되지 않습니다. 회사 기밀과 고객 개인정보는 가명화 후 사용하거나 Team·Enterprise 플랜의 No-train 약관을 활용하는 방법이 안전합니다.",
+              },
+              {
+                q: "Claude·Gemini 와 비교하면 어떤가요?",
+                a: "범용성과 이미지·음성·검색 통합은 ChatGPT 가 우위에 있습니다. 긴 PDF·계약서·코드베이스 분석은 Claude 가 강하고, Google 워크스페이스(Gmail·Docs·Drive) 통합은 Gemini 가 가장 자연스럽습니다. 무료 플랜이 모두 있으니 같은 질문을 양쪽에 던져 비교해 보는 방법이 빠릅니다.",
+              },
+              {
+                q: "이미지 생성 시 상업적 이용 가능한가요?",
+                a: "Plus 이상 결제 시 생성된 이미지의 상업적 이용이 약관상 허용됩니다. 무료 플랜에서 생성한 이미지도 일부 상업 이용이 가능하지만 약관이 변동되므로 광고·브랜드 자료 사용 전에는 OpenAI 약관 페이지를 확인해야 합니다.",
+              },
+              {
+                q: "한국어 답변이 어색한 경우 어떻게 개선하나요?",
+                a: "Custom Instructions 에 '한국어 모국어 사용자처럼 자연스럽게', 직업과 선호 말투를 입력하면 즉시 개선됩니다. 전문 용어가 많은 분야에서는 Claude 가 더 자연스러운 결과를 주는 경우가 있어 같이 비교해 보는 방법도 효과적입니다.",
+              },
+              {
+                q: "환불 가능한가요?",
+                a: "구독 시작 후 14일 이내이고 사용량이 적다면 OpenAI 정책에 따라 환불 가능한 경우가 있습니다. 자세한 사항은 help.openai.com 에서 확인하거나 고객 지원으로 문의해야 합니다.",
+              },
+            ],
+            relatedKeywords: [
+              "ChatGPT 한국 결제",
+              "ChatGPT Plus 가격",
+              "ChatGPT 무료 한도",
+              "ChatGPT 사용법",
+              "ChatGPT 이미지 생성",
+              "ChatGPT 음성 모드",
+              "ChatGPT 한국어",
+              "GPT-5 사용법",
+              "ChatGPT 대안",
+              "Claude vs ChatGPT",
+            ],
+          },
         },
         {
           name: "Claude",
@@ -3307,7 +3478,10 @@ export function listHubs(): HubEntry[] {
   for (const cat of PICK_CATEGORIES) {
     for (const g of cat.groups) {
       for (const it of g.items) {
-        if (it.hubSlug && it.subItems && it.subItems.length > 0) {
+        if (
+          it.hubSlug &&
+          ((it.subItems && it.subItems.length > 0) || it.detailContent)
+        ) {
           out.push({ categorySlug: cat.slug, hubSlug: it.hubSlug, item: it });
         }
       }

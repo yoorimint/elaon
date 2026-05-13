@@ -16,7 +16,6 @@ import {
   collectionPageLd,
 } from "@/components/JsonLd";
 import { SiteLogo } from "@/components/SiteLogo";
-import { PicksFloatingButtons } from "@/components/PicksFloatingButtons";
 
 const SITE = "https://www.eloan.kr";
 
@@ -398,7 +397,6 @@ export default function PickCategoryPage({ params }: { params: Params }) {
           본 디렉토리는 등록 사이트와 제휴 관계가 없습니다. 라이선스·이용약관·요금 정보는 작성 시점 기준이며, 최신 내용은 각 사이트의 공식 페이지에서 다시 확인해주세요.
         </p>
       </main>
-      <PicksFloatingButtons />
     </>
   );
 }

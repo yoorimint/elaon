@@ -7,7 +7,6 @@ import {
   faqLd,
   collectionPageLd,
 } from "@/components/JsonLd";
-import { PicksFloatingButtons } from "@/components/PicksFloatingButtons";
 
 const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks`;
@@ -150,7 +149,6 @@ export default function PicksHubPage() {
           </div>
         </section>
       </main>
-      <PicksFloatingButtons />
     </>
   );
 }

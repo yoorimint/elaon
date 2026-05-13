@@ -7,14 +7,15 @@ import {
   faqLd,
   collectionPageLd,
 } from "@/components/JsonLd";
-import { PicksFab } from "@/components/PicksFab";
+import { PicksFloatingButtons } from "@/components/PicksFloatingButtons";
 
 const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks`;
 const TODAY = "2026-05-13";
 
-// 정적 빌드 캐시 강제 무효화.
+// 정적 빌드 캐시 강제 무효화 — SSR 매번 새로.
 export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "주소모음 — AI·정부지원금·무료리소스·코인 도구 디렉토리",
@@ -149,7 +150,7 @@ export default function PicksHubPage() {
           </div>
         </section>
       </main>
-      <PicksFab />
+      <PicksFloatingButtons />
     </>
   );
 }

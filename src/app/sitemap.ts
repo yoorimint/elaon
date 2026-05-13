@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createServerClient } from "@/lib/supabase-server";
+import { PICK_CATEGORIES } from "@/lib/picks";
 
 const SITE = "https://www.eloan.kr";
 
@@ -17,6 +18,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE}/login`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE}/signup`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE}/picks`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    ...PICK_CATEGORIES.map((c) => ({
+      url: `${SITE}/picks/${c.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
   ];
 
   // 공개 공유 백테스트 + 커뮤니티 글도 색인에 노출

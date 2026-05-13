@@ -88,17 +88,21 @@ function ItemCard({
     ? { target: "_blank", rel: "noopener noreferrer" as const }
     : {};
   return (
-    <article className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
-      <header className="mb-2.5">
+    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
+      <a
+        href={item.url}
+        {...linkProps}
+        aria-label={`${item.name} 바로가기`}
+        className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm whitespace-nowrap"
+      >
+        바로가기
+        <span className="text-[10px]">{external ? "↗" : "→"}</span>
+      </a>
+
+      <header className="mb-2.5 pr-24">
         <div className="flex flex-wrap items-baseline gap-2">
-          <h3 className="font-bold text-[17px]">
-            <a
-              href={item.url}
-              {...linkProps}
-              className="hover:text-brand transition"
-            >
-              {item.name}
-            </a>
+          <h3 className="font-bold text-[17px] text-neutral-800 dark:text-neutral-100">
+            {item.name}
           </h3>
           <PricingBadge item={item} />
           {item.korean && (
@@ -107,13 +111,9 @@ function ItemCard({
             </span>
           )}
           {external && (
-            <a
-              href={item.url}
-              {...linkProps}
-              className="text-[11px] text-neutral-400 hover:text-brand"
-            >
-              {hostname(item.url)} ↗
-            </a>
+            <span className="text-[11px] text-neutral-400">
+              {hostname(item.url)}
+            </span>
           )}
         </div>
         <p className="mt-1.5 text-[14px] font-medium text-neutral-700 dark:text-neutral-300 leading-snug">

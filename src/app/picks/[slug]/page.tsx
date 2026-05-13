@@ -90,18 +90,27 @@ function ItemCard({
     : {};
   const host = external ? hostname(item.url) : "";
   return (
-    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition">
+    <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden hover:border-brand transition">
+      {item.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={`${item.name} 미리보기 이미지`}
+          loading="lazy"
+          className="w-full h-36 sm:h-40 object-cover bg-neutral-100 dark:bg-neutral-900"
+        />
+      )}
       <a
         href={item.url}
         {...linkProps}
         aria-label={`${item.name} 바로가기`}
-        className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-sm whitespace-nowrap"
+        className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-brand text-white px-3 py-1.5 text-[12px] font-bold hover:bg-brand-dark hover:scale-105 transition shadow-md whitespace-nowrap"
       >
         바로가기
         <span className="text-[10px]">{external ? "↗" : "→"}</span>
       </a>
-
-      <header className="mb-2.5 pr-24 flex items-start gap-3">
+      <div className="p-5">
+        <header className="mb-2.5 pr-24 flex items-start gap-3">
         <SiteLogo
           host={host}
           alt={`${item.name} 로고`}
@@ -197,6 +206,7 @@ function ItemCard({
             <span>→</span>
           </Link>
         )}
+        </div>
       </div>
     </article>
   );

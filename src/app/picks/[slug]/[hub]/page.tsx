@@ -221,7 +221,15 @@ function DetailBody({
   const host = itemExternal ? hostname(item.url) : "";
   return (
     <>
-      <header className="mt-3 mb-8 flex items-start gap-4">
+      {item.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={`${item.name} 공식 미리보기`}
+          className="mt-3 w-full aspect-[1200/630] object-cover rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
+        />
+      )}
+      <header className="mt-6 mb-8 flex items-start gap-4">
         {host && (
           <SiteLogo
             host={host}

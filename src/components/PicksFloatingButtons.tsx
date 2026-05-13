@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const SAJUDAY_URL = "https://sajuday.kr";
+const SAJUDAY_URL = "https://sajuday.kr/money";
 
 export function PicksFloatingButtons() {
   const [showTop, setShowTop] = useState(false);
@@ -57,11 +57,10 @@ export function PicksFloatingButtons() {
         href={SAJUDAY_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="사주보기"
-        className="group relative w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg flex flex-col items-center justify-center text-white font-bold leading-tight hover:scale-105 transition active:scale-95"
+        aria-label="내 재물운은?"
+        className="group relative h-12 px-4 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg flex items-center justify-center text-white text-sm font-bold whitespace-nowrap hover:scale-105 transition active:scale-95"
       >
-        <span className="text-[13px]">사주</span>
-        <span className="text-[13px]">보기</span>
+        내 재물운은?
       </Link>
     </div>
   );

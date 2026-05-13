@@ -6,9 +6,11 @@ import {
   getHub,
   getPickCategory,
   pricingLabel,
+  autoSlug,
   type SubItem,
   type DetailContent,
   type PickItem,
+  type PickCategory,
 } from "@/lib/picks";
 import {
   JsonLd,
@@ -554,7 +556,73 @@ function RichDetailBody({
   );
 }
 
-function BasicDetailBody({ item }: { item: PickItem }) {
+function RelatedItemsSection({
+  item,
+  category,
+}: {
+  item: PickItem;
+  category: PickCategory;
+}) {
+  // 같은 그룹 안의 다른 항목을 자동 추천
+  let related: PickItem[] = [];
+  let groupTitle = "";
+  for (const g of category.groups) {
+    if (g.items.includes(item)) {
+      related = g.items.filter((i) => i !== item).slice(0, 6);
+      groupTitle = g.title;
+      break;
+    }
+  }
+  if (related.length === 0) return null;
+  return (
+    <section className="mb-10">
+      <h2 className="text-xl font-bold mb-1 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+        🔗 같은 카테고리의 다른 도구
+      </h2>
+      <p className="mb-4 text-[13px] text-neutral-500 pl-4">
+        {groupTitle}
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {related.map((r) => {
+          const rSlug = autoSlug(r);
+          const rHost = isExternal(r.url) ? hostname(r.url) : "";
+          return (
+            <Link
+              key={r.name}
+              href={`/picks/${category.slug}/${rSlug}`}
+              className="flex items-start gap-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand transition"
+            >
+              {rHost && (
+                <SiteLogo
+                  host={rHost}
+                  alt=""
+                  size={36}
+                  className="shrink-0 w-9 h-9 rounded-lg bg-neutral-100 dark:bg-neutral-900 p-1"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-[14px] text-neutral-800 dark:text-neutral-100 mb-0.5">
+                  {r.name}
+                </div>
+                <p className="text-[12px] text-neutral-600 dark:text-neutral-400 leading-snug">
+                  {r.blurb}
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function BasicDetailBody({
+  item,
+  category,
+}: {
+  item: PickItem;
+  category: PickCategory;
+}) {
   return (
     <>
       <HeroSection item={item} />
@@ -564,6 +632,7 @@ function BasicDetailBody({ item }: { item: PickItem }) {
       <BasicFactsSection item={item} />
       <UseCasesSection item={item} />
       <TipSection item={item} />
+      <RelatedItemsSection item={item} category={category} />
     </>
   );
 }
@@ -652,7 +721,7 @@ export default function HubPage({ params }: { params: Params }) {
         ) : hasDetail && detail ? (
           <RichDetailBody item={item} detail={detail} />
         ) : (
-          <BasicDetailBody item={item} />
+          <BasicDetailBody item={item} category={cat} />
         )}
 
         <section className="mb-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">

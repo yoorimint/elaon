@@ -197,7 +197,7 @@ PickItem 0개로 확인된 토픽들. 우선순위 = (검색 의도 강도) × (
 - [x] Phase 1.8 DEV — 6/6 완료 (MDN·Stack Overflow / Figma·Photopea / remove.bg·TinyPNG). 그룹 3개 모두 채워짐. **Phase 1 전체 완료**.
 - [x] Phase 2.1 AI 보강 (+4) — Microsoft Copilot·Mistral Le Chat (챗봇 그룹) / Luma Dream Machine (영상) / NotebookLM (번역·문서). 챗봇 7개·영상 5개·번역 6개로 확장.
 - [x] Phase 2.2 COIN 보강 (+4) — Messari (시세) / Nansen·Arkham·Lookonchain (온체인). 시세 그룹 6개·온체인 그룹 8개로 확장.
-- [ ] Phase 2.3 FREE 보강 (+4)
+- [x] Phase 2.3 FREE 보강 (+4) — Iconfinder (아이콘) / SlidesCarnival (PPT) / Color Hunt (색상) / Burst (사진). PLAN 원안의 Figma·Photopea·remove.bg·TinyPNG 는 DEV 와 중복이라 다른 항목으로 대체.
 - [ ] Phase 2.4 MONEY 보강 (+3)
 
 ## 다음 세션 이어받는 방법

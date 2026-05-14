@@ -191,7 +191,7 @@ PickItem 0개로 확인된 토픽들. 우선순위 = (검색 의도 강도) × (
 - [x] Phase 1.2 REALESTATE — 6/6 완료 (호갱노노·아실·부동산플래닛 / 직방·다방·네이버 부동산). 그룹 2개 모두 채워짐.
 - [x] Phase 1.3 TRAVEL — 6/6 완료 (스카이스캐너·구글 플라이트 / 호텔스컴바인·트리바고 / 마이리얼트립·와그). 그룹 3개 모두 채워짐.
 - [x] Phase 1.4 STUDY — 6/6 완료 (인프런·패스트캠퍼스·클래스101 / K-MOOC·EBS / Coursera). 그룹 3개 모두 채워짐.
-- [ ] Phase 1.5 DATA
+- [x] Phase 1.5 DATA — 5/5 완료 (KOSIS·공공데이터포털·통계청 통계로·e-나라지표 / 한국은행 ECOS). 그룹 2개 모두 채워짐.
 - [ ] Phase 1.6 LAW
 - [ ] Phase 1.7 HEALTH
 - [ ] Phase 1.8 DEV

@@ -5,6 +5,7 @@ export type ComparisonSide = {
   name: string;
   blurb: string;
   emoji?: string;
+  iconUrl?: string;
   pickRef?: { category: string; hub: string };
   recommendedFor: string[];
   pros: string[];
@@ -86,6 +87,7 @@ const CHATGPT_VS_CLAUDE: Comparison = {
     name: "ChatGPT",
     blurb: "OpenAI 가 만든 가장 대중적인 AI. 이미지 생성·웹 검색·음성 대화·플러그인까지 다목적.",
     emoji: "💬",
+    iconUrl: "https://www.google.com/s2/favicons?domain=openai.com&sz=128",
     pickRef: { category: "ai", hub: "chatgpt" },
     recommendedFor: [
       "이미지 생성 (DALL-E) 을 자주 쓰는 사람",
@@ -110,6 +112,7 @@ const CHATGPT_VS_CLAUDE: Comparison = {
     name: "Claude",
     blurb: "Anthropic 이 만든 AI. 코딩·긴 문서 분석·기밀 처리에 강함.",
     emoji: "🧠",
+    iconUrl: "https://www.google.com/s2/favicons?domain=claude.ai&sz=128",
     pickRef: { category: "ai", hub: "claude" },
     recommendedFor: [
       "코드를 자주 작성하거나 디버깅하는 사람",

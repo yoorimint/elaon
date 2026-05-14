@@ -136,6 +136,10 @@ export default function ChecklistDetailPage({
           ))}
         </section>
 
+        <p className="mt-6 text-[12.5px] text-neutral-500 dark:text-neutral-500 leading-relaxed">
+          최종 검토 {c.updatedAt} · 정부 정책·금액·기한은 매년 변동될 수 있으므로 신청 시점에 공식 사이트에서 최신 정보를 재확인하시기 바랍니다.
+        </p>
+
         <ChecklistRunner checklist={c} />
 
         <section className="mt-12">

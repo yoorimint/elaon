@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { COMPARISONS, totalComparisonCount } from "@/lib/comparisons";
 import {
@@ -99,10 +100,18 @@ export default function ComparisonsHubPage() {
               className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand hover:shadow-md transition"
             >
               <div className="flex items-start gap-4">
-                <div className="text-3xl shrink-0">
-                  <span aria-hidden>{c.a.emoji ?? "▪"}</span>
-                  <span className="text-xl text-neutral-400 mx-1">vs</span>
-                  <span aria-hidden>{c.b.emoji ?? "▪"}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {c.a.iconUrl ? (
+                    <Image src={c.a.iconUrl} alt={`${c.a.name} 아이콘`} width={32} height={32} unoptimized className="rounded-md bg-white object-contain" />
+                  ) : (
+                    <span className="text-3xl leading-none" aria-hidden>{c.a.emoji ?? "▪"}</span>
+                  )}
+                  <span className="text-sm text-neutral-400 font-bold">vs</span>
+                  {c.b.iconUrl ? (
+                    <Image src={c.b.iconUrl} alt={`${c.b.name} 아이콘`} width={32} height={32} unoptimized className="rounded-md bg-white object-contain" />
+                  ) : (
+                    <span className="text-3xl leading-none" aria-hidden>{c.b.emoji ?? "▪"}</span>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg sm:text-xl font-extrabold text-neutral-900 dark:text-neutral-100">

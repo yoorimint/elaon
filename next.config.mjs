@@ -10,6 +10,12 @@ const nextConfig = {
         hostname: "sajuday.kr",
         pathname: "/static/images/**",
       },
+      // 비교 페이지 브랜드 아이콘 (구글 favicon 서비스)
+      {
+        protocol: "https",
+        hostname: "www.google.com",
+        pathname: "/s2/favicons**",
+      },
     ],
   },
 };

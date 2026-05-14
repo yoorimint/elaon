@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COMPARISONS, getComparison } from "@/lib/comparisons";
@@ -86,10 +87,10 @@ export default function ComparisonDetailPage({
         </nav>
 
         <header className="mt-3 mb-6">
-          <div className="text-4xl sm:text-5xl flex items-center gap-3">
-            <span>{c.a.emoji ?? "▪"}</span>
+          <div className="flex items-center gap-3">
+            <BrandIcon side={c.a} size={56} />
             <span className="text-2xl text-neutral-400 font-bold">VS</span>
-            <span>{c.b.emoji ?? "▪"}</span>
+            <BrandIcon side={c.b} size={56} />
           </div>
           <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold leading-tight text-neutral-900 dark:text-neutral-100">
             {c.title}
@@ -283,6 +284,37 @@ export default function ComparisonDetailPage({
 // 시각 컴포넌트
 // ===========================================================================
 
+function BrandIcon({
+  side,
+  size,
+}: {
+  side: import("@/lib/comparisons").ComparisonSide;
+  size: number;
+}) {
+  if (side.iconUrl) {
+    return (
+      <Image
+        src={side.iconUrl}
+        alt={`${side.name} 아이콘`}
+        width={size}
+        height={size}
+        unoptimized
+        className="rounded-lg bg-white object-contain shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <span
+      className="shrink-0 leading-none"
+      style={{ fontSize: size * 0.85 }}
+      aria-hidden="true"
+    >
+      {side.emoji ?? "▪"}
+    </span>
+  );
+}
+
 function SideCard({
   side,
   tone,
@@ -295,8 +327,8 @@ function SideCard({
     : "border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-900/10";
   return (
     <div className={`rounded-2xl border p-5 ${accent}`}>
-      <div className="flex items-center gap-2">
-        <span className="text-3xl">{side.emoji ?? "▪"}</span>
+      <div className="flex items-center gap-3">
+        <BrandIcon side={side} size={40} />
         <h3 className="text-xl font-extrabold text-neutral-900 dark:text-neutral-100">
           {side.name}
         </h3>

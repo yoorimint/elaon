@@ -18,7 +18,7 @@ const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks/checklist`;
 const TODAY = "2026-05-14";
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "체크리스트 — 부수입·세금·환급금 빠뜨림 방지 인터랙티브 가이드",
@@ -144,10 +144,10 @@ export default function ChecklistHubPage() {
             앞으로 추가될 체크리스트
           </h2>
           <ul className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5 list-disc list-inside">
-            <li>AI 도구 + 토스 사이드잡으로 부수입 시작하기</li>
-            <li>유튜브 AI 자동영상 수익화 금지 대응 가이드</li>
-            <li>외주·프리랜서 첫 계약 체크리스트</li>
             <li>해외 송금 받을 때 외국환·세금 체크리스트</li>
+            <li>결혼·이혼 시 신청 가능한 정부 지원금</li>
+            <li>다자녀 가구 환급·감면 통합 가이드</li>
+            <li>한부모 가족 첫 30일 금융 체크리스트</li>
             <li>유튜버·인플루언서 첫 협찬 세금 체크리스트</li>
           </ul>
         </section>

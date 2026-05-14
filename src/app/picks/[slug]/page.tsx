@@ -20,7 +20,7 @@ import { SiteLogo } from "@/components/SiteLogo";
 const SITE = "https://www.eloan.kr";
 
 // 정적 생성 + ISR (24시간) — SEO·캐시 친화. 카테고리 데이터 변경 시 새 빌드로 반영.
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 type Params = { slug: string };
 

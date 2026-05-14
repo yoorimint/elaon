@@ -12,9 +12,8 @@ const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks`;
 const TODAY = "2026-05-13";
 
-// 정적 빌드 캐시 강제 무효화 — SSR 매번 새로.
-export const revalidate = 0;
-export const dynamic = "force-dynamic";
+// 정적 생성 + ISR (24시간) — SEO·캐시 친화. 데이터(picks.ts) 변경 시 새 빌드로 반영.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "주소모음 — AI·정부지원금·무료리소스·코인 도구 디렉토리",

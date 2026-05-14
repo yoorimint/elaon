@@ -19,9 +19,8 @@ import { SiteLogo } from "@/components/SiteLogo";
 
 const SITE = "https://www.eloan.kr";
 
-// 정적 빌드 캐시 강제 무효화 — Vercel SSR 매번 새로.
-export const revalidate = 0;
-export const dynamic = "force-dynamic";
+// 정적 생성 + ISR (24시간) — SEO·캐시 친화. 카테고리 데이터 변경 시 새 빌드로 반영.
+export const revalidate = 86400;
 
 type Params = { slug: string };
 
@@ -91,7 +90,7 @@ function ItemCard({
 }) {
   const external = isExternal(item.url);
   const linkProps = external
-    ? { target: "_blank", rel: "noopener noreferrer" as const }
+    ? { target: "_blank", rel: "noopener noreferrer nofollow" as const }
     : {};
   const host = external ? hostname(item.url) : "";
   const slug = autoSlug(item);

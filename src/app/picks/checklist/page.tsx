@@ -4,7 +4,9 @@ import {
   CHECKLISTS,
   totalChecklistCount,
   checklistItemCount,
+  checklistImportantCount,
 } from "@/lib/checklists";
+import { DdayBadge } from "@/components/DdayBadge";
 import {
   JsonLd,
   breadcrumbLd,
@@ -101,6 +103,7 @@ export default function ChecklistHubPage() {
         <section className="space-y-4">
           {CHECKLISTS.map((c) => {
             const itemCount = checklistItemCount(c);
+            const importantCount = checklistImportantCount(c);
             return (
               <Link
                 key={c.slug}
@@ -110,16 +113,24 @@ export default function ChecklistHubPage() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl shrink-0">{c.emoji}</div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg sm:text-xl font-extrabold text-neutral-900 dark:text-neutral-100">
-                      {c.shortTitle}
-                    </h2>
+                    <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                      <h2 className="text-lg sm:text-xl font-extrabold text-neutral-900 dark:text-neutral-100">
+                        {c.shortTitle}
+                      </h2>
+                      {c.deadline && (
+                        <span className="text-sm">
+                          <DdayBadge deadline={c.deadline} />
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                       {c.oneLiner}
                     </p>
-                    <div className="mt-3 text-[12px] text-neutral-600 dark:text-neutral-400">
-                      {itemCount}개 항목
-                      {c.deadline && <> · 마감 {c.deadline}</>}
-                      {c.totalImpact && <> · {c.totalImpact}</>}
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-neutral-600 dark:text-neutral-400">
+                      <span>📋 {itemCount}개 항목</span>
+                      <span className="text-rose-600 dark:text-rose-400 font-bold">⚠ 필수 {importantCount}개</span>
+                      {c.deadline && <span>📅 {c.deadline}</span>}
+                      {c.totalImpact && <span className="text-amber-700 dark:text-amber-400 font-bold">💰 {c.totalImpact}</span>}
                     </div>
                   </div>
                 </div>
@@ -135,9 +146,9 @@ export default function ChecklistHubPage() {
           <ul className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5 list-disc list-inside">
             <li>AI 도구 + 토스 사이드잡으로 부수입 시작하기</li>
             <li>유튜브 AI 자동영상 수익화 금지 대응 가이드</li>
-            <li>청년문화예술패스 통합 신청 가이드 (6/30 마감)</li>
-            <li>퇴사 후 30일 금융 체크리스트</li>
             <li>외주·프리랜서 첫 계약 체크리스트</li>
+            <li>해외 송금 받을 때 외국환·세금 체크리스트</li>
+            <li>유튜버·인플루언서 첫 협찬 세금 체크리스트</li>
           </ul>
         </section>
       </main>

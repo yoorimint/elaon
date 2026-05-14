@@ -48,6 +48,10 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "https://www.eloan.kr",
+    languages: {
+      "ko-KR": "https://www.eloan.kr",
+      "x-default": "https://www.eloan.kr",
+    },
   },
   robots: {
     index: true,

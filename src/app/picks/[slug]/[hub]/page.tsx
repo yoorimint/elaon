@@ -77,7 +77,7 @@ function hostname(url: string): string {
 function SubItemCard({ sub }: { sub: SubItem }) {
   const external = sub.url ? isExternal(sub.url) : false;
   const linkProps = external
-    ? { target: "_blank", rel: "noopener noreferrer" as const }
+    ? { target: "_blank", rel: "noopener noreferrer nofollow" as const }
     : {};
   return (
     <article className="relative rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand transition flex flex-col">
@@ -149,7 +149,7 @@ function SubItemCard({ sub }: { sub: SubItem }) {
 function HeroSection({ item }: { item: PickItem }) {
   const itemExternal = isExternal(item.url);
   const itemLinkProps = itemExternal
-    ? { target: "_blank", rel: "noopener noreferrer" as const }
+    ? { target: "_blank", rel: "noopener noreferrer nofollow" as const }
     : {};
   const host = itemExternal ? hostname(item.url) : "";
   return (
@@ -208,7 +208,7 @@ function HeroSection({ item }: { item: PickItem }) {
 function SiteInfoBox({ item }: { item: PickItem }) {
   const itemExternal = isExternal(item.url);
   const itemLinkProps = itemExternal
-    ? { target: "_blank", rel: "noopener noreferrer" as const }
+    ? { target: "_blank", rel: "noopener noreferrer nofollow" as const }
     : {};
   const host = itemExternal ? hostname(item.url) : "";
   return (

@@ -194,7 +194,7 @@ PickItem 0개로 확인된 토픽들. 우선순위 = (검색 의도 강도) × (
 - [x] Phase 1.5 DATA — 5/5 완료 (KOSIS·공공데이터포털·통계청 통계로·e-나라지표 / 한국은행 ECOS). 그룹 2개 모두 채워짐.
 - [x] Phase 1.6 LAW — 5/5 완료 (국가법령정보센터·대법원 종합법률정보·헌법재판소 / 찾기쉬운 생활법령정보·대한법률구조공단). 그룹 2개 모두 채워짐.
 - [x] Phase 1.7 HEALTH — 5/5 완료 (HIRA·약학정보원·식약처 의약품안전나라 / 굿닥·똑닥). 그룹 2개 모두 채워짐.
-- [ ] Phase 1.8 DEV
+- [~] Phase 1.8 DEV — 골격 + 학습·레퍼런스 그룹 2항목 완료 (MDN·Stack Overflow). 디자인 도구·이미지 유틸리티 그룹 빈 배열로 남아 있음 (Figma·Photopea·remove.bg·TinyPNG 4개 추가 예정).
 - [ ] Phase 2.1 AI 보강 (+4)
 - [ ] Phase 2.2 COIN 보강 (+4)
 - [ ] Phase 2.3 FREE 보강 (+4)

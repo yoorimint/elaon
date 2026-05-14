@@ -20,6 +20,7 @@ const NAV_SECONDARY = [
   { href: "/community", label: "커뮤니티" },
   { href: "/glossary", label: "지표 사전" },
   { href: "/picks", label: "주소모음" },
+  { href: "/checklist", label: "체크리스트" },
 ];
 
 export function Header() {

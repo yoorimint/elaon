@@ -10,7 +10,7 @@ import {
 } from "@/components/JsonLd";
 
 const SITE = "https://www.eloan.kr";
-const HUB_URL = `${SITE}/checklist`;
+const HUB_URL = `${SITE}/picks/checklist`;
 
 export const revalidate = 86400;
 
@@ -82,6 +82,7 @@ export default function ChecklistDetailPage({
       <JsonLd
         data={breadcrumbLd([
           { name: "홈", url: `${SITE}/` },
+          { name: "주소모음", url: `${SITE}/picks` },
           { name: "체크리스트", url: HUB_URL },
           { name: c.shortTitle, url },
         ])}
@@ -93,8 +94,12 @@ export default function ChecklistDetailPage({
             홈
           </Link>
           {" / "}
+          <Link href="/picks" className="hover:text-neutral-900 dark:hover:text-white">
+            주소모음
+          </Link>
+          {" / "}
           <Link
-            href="/checklist"
+            href="/picks/checklist"
             className="hover:text-neutral-900 dark:hover:text-white"
           >
             체크리스트
@@ -113,31 +118,17 @@ export default function ChecklistDetailPage({
           <p className="mt-3 text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
             {c.oneLiner}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
-            <span className="px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 font-bold">
-              {itemCount}개 항목
-            </span>
-            {c.deadline && (
-              <span className="px-2 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-bold">
-                마감 {c.deadline}
-              </span>
-            )}
-            {c.totalImpact && (
-              <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-bold">
-                💰 {c.totalImpact}
-              </span>
-            )}
-            <span className="px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400">
-              최종 업데이트 {c.updatedAt}
-            </span>
+          <div className="mt-3 text-[12px] text-neutral-600 dark:text-neutral-400">
+            {itemCount}개 항목
+            {c.deadline && <> · 마감 {c.deadline}</>}
+            {c.totalImpact && <> · {c.totalImpact}</>}
+            <> · 최종 업데이트 {c.updatedAt}</>
           </div>
         </header>
 
-        <section className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
-          <div className="text-sm font-bold text-amber-900 dark:text-amber-200">
-            ⚠️ {c.headline}
-          </div>
-        </section>
+        <p className="mt-4 text-[14px] text-amber-900 dark:text-amber-200 leading-relaxed">
+          {c.headline}
+        </p>
 
         <section className="mt-6 space-y-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
           {c.longIntro.map((p, i) => (
@@ -148,21 +139,21 @@ export default function ChecklistDetailPage({
         <ChecklistRunner checklist={c} />
 
         <section className="mt-12">
-          <h2 className="text-xl font-bold mb-4">❓ 자주 묻는 질문</h2>
+          <h2 className="text-xl font-bold mb-4">자주 묻는 질문</h2>
           <div className="space-y-3">
             {c.faq.map((f, i) => (
               <details
                 key={i}
-                className="group rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 open:border-brand transition"
+                className="group border-b border-neutral-200 dark:border-neutral-800 pb-3"
               >
-                <summary className="cursor-pointer font-semibold text-[15px] text-neutral-800 dark:text-neutral-100 list-none flex items-start gap-2">
+                <summary className="cursor-pointer font-semibold text-[15px] text-neutral-800 dark:text-neutral-100 list-none flex items-start gap-2 py-2">
                   <span className="text-brand shrink-0">Q.</span>
                   <span className="flex-1">{f.q}</span>
                   <span className="text-neutral-400 group-open:rotate-180 transition shrink-0">
                     ▾
                   </span>
                 </summary>
-                <p className="mt-3 pl-6 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                <p className="mt-2 pl-6 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
                   {f.a}
                 </p>
               </details>
@@ -170,11 +161,12 @@ export default function ChecklistDetailPage({
           </div>
         </section>
 
-        <section className="mt-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-5">
-          <h2 className="text-base font-bold mb-2">📚 관련 사이트 디렉토리</h2>
-          <p className="text-sm text-neutral-700 dark:text-neutral-300">
-            이 체크리스트에 등장한 사이트들은 <Link href="/picks" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">주소모음</Link> 에서 카테고리별로 자세히 정리되어 있습니다.
-          </p>
+        <section className="mt-10 text-sm text-neutral-700 dark:text-neutral-300">
+          이 체크리스트에 등장한 사이트는{" "}
+          <Link href="/picks" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">
+            주소모음
+          </Link>
+          에서 카테고리별로 자세히 정리되어 있습니다.
         </section>
       </main>
     </>

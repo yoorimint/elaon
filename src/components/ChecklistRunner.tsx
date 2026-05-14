@@ -80,7 +80,7 @@ export function ChecklistRunner({ checklist }: Props) {
         return;
       }
     } catch (_) {
-      // user cancelled — fall through to clipboard
+      // user cancelled
     }
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
@@ -91,7 +91,7 @@ export function ChecklistRunner({ checklist }: Props) {
   };
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-8">
       <div className="sticky top-14 z-30 -mx-4 px-4 py-3 bg-white/95 dark:bg-neutral-950/95 backdrop-blur border-b border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
@@ -108,13 +108,13 @@ export function ChecklistRunner({ checklist }: Props) {
             <button
               type="button"
               onClick={reset}
-              className="text-xs px-3 py-1.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-900 transition"
+              className="text-xs px-3 py-1.5 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition"
             >
               초기화
             </button>
           </div>
         </div>
-        <div className="mt-2 h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+        <div className="mt-2 h-1.5 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-amber-400 to-rose-500 transition-all"
             style={{ width: `${percent}%` }}
@@ -123,21 +123,21 @@ export function ChecklistRunner({ checklist }: Props) {
       </div>
 
       {checklist.branches && checklist.branches.length > 0 && (
-        <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-4">
-          <h2 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+        <div className="mt-6">
+          <p className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
             본인 상황을 선택하면 해당 항목만 표시됩니다
-          </h2>
-          <div className="mt-3 flex flex-wrap gap-2">
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setBranch(null)}
               className={`text-sm px-3 py-1.5 rounded-full border transition ${
                 branch === null
                   ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900 dark:border-neutral-100"
-                  : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  : "text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
               }`}
             >
-              전체 보기
+              전체
             </button>
             {checklist.branches.map((b) => (
               <button
@@ -147,7 +147,7 @@ export function ChecklistRunner({ checklist }: Props) {
                 className={`text-sm px-3 py-1.5 rounded-full border transition ${
                   branch === b.id
                     ? "bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 border-neutral-900 dark:border-neutral-100"
-                    : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    : "text-neutral-700 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-900"
                 }`}
               >
                 {b.label}
@@ -155,106 +155,96 @@ export function ChecklistRunner({ checklist }: Props) {
             ))}
           </div>
           {branch && (
-            <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-500">
               {checklist.branches.find((b) => b.id === branch)?.description}
             </p>
           )}
-        </section>
+        </div>
       )}
 
-      {checklist.sections.map((section) => {
-        const items = section.items.filter(
-          (i) => !branch || !i.branches || i.branches.length === 0 || i.branches.includes(branch),
-        );
-        if (items.length === 0) return null;
-        return (
-          <section
-            key={section.id}
-            className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5"
-          >
-            <h2 className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100">
-              {section.title}
-            </h2>
-            {section.description && (
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                {section.description}
-              </p>
-            )}
-            <ul className="mt-4 space-y-3">
-              {items.map((item) => {
-                const isChecked = !!checked[item.id];
-                return (
-                  <li
-                    key={item.id}
-                    className={`rounded-xl border p-4 transition ${
-                      isChecked
-                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
-                        : "bg-neutral-50 dark:bg-neutral-900/40 border-neutral-200 dark:border-neutral-800"
-                    }`}
-                  >
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggle(item.id)}
-                        className="mt-1 w-5 h-5 accent-amber-500 cursor-pointer"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-2 flex-wrap">
-                          <span
-                            className={`text-sm font-bold ${
-                              isChecked
-                                ? "line-through text-neutral-500 dark:text-neutral-500"
-                                : "text-neutral-900 dark:text-neutral-100"
-                            }`}
-                          >
+      <div className="mt-8 space-y-10">
+        {checklist.sections.map((section) => {
+          const items = section.items.filter(
+            (i) => !branch || !i.branches || i.branches.length === 0 || i.branches.includes(branch),
+          );
+          if (items.length === 0) return null;
+          return (
+            <section key={section.id}>
+              <h2 className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100">
+                {section.title}
+              </h2>
+              {section.description && (
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  {section.description}
+                </p>
+              )}
+              <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800 border-t border-b border-neutral-200 dark:border-neutral-800">
+                {items.map((item) => {
+                  const isChecked = !!checked[item.id];
+                  return (
+                    <li
+                      key={item.id}
+                      className={`py-3.5 transition ${
+                        isChecked ? "opacity-60" : ""
+                      }`}
+                    >
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggle(item.id)}
+                          className="mt-1 w-5 h-5 accent-amber-500 cursor-pointer shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100 leading-snug">
                             {item.title}
-                          </span>
-                          {item.important && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 font-bold">
-                              필수
-                            </span>
+                            {item.important && (
+                              <span className="ml-2 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                                필수
+                              </span>
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className={`mt-1 text-[13.5px] leading-relaxed ${
+                              isChecked
+                                ? "text-neutral-500 dark:text-neutral-500 line-through"
+                                : "text-neutral-700 dark:text-neutral-300"
+                            }`}>
+                              {item.description}
+                            </p>
                           )}
-                          {item.estimatedImpact && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-bold">
-                              💰 {item.estimatedImpact}
-                            </span>
+                          {(item.relatedPick || item.externalLink) && (
+                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px]">
+                              {item.relatedPick && (
+                                <Link
+                                  href={`/picks/${item.relatedPick.category}/${item.relatedPick.hub}`}
+                                  className="text-amber-700 dark:text-amber-400 hover:underline font-bold"
+                                >
+                                  {item.relatedPick.label} 보기 →
+                                </Link>
+                              )}
+                              {item.externalLink && (
+                                <a
+                                  href={item.externalLink.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer nofollow"
+                                  className="text-neutral-600 dark:text-neutral-400 hover:underline"
+                                >
+                                  {item.externalLink.label} ↗
+                                </a>
+                              )}
+                            </div>
                           )}
                         </div>
-                        {item.description && (
-                          <p className="mt-1 text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                            {item.description}
-                          </p>
-                        )}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {item.relatedPick && (
-                            <Link
-                              href={`/picks/${item.relatedPick.category}/${item.relatedPick.hub}`}
-                              className="text-[11px] px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-bold hover:bg-amber-200 dark:hover:bg-amber-900/50 transition"
-                            >
-                              📚 {item.relatedPick.label}
-                            </Link>
-                          )}
-                          {item.externalLink && (
-                            <a
-                              href={item.externalLink.url}
-                              target="_blank"
-                              rel="noopener noreferrer nofollow"
-                              className="text-[11px] px-2 py-1 rounded-full bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold hover:bg-neutral-300 dark:hover:bg-neutral-700 transition"
-                            >
-                              ↗ {item.externalLink.label}
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

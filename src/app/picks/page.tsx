@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PICK_CATEGORIES, HUB_FAQ, totalPickCount } from "@/lib/picks";
+import { CHECKLISTS, checklistItemCount } from "@/lib/checklists";
 import {
   JsonLd,
   breadcrumbLd,
@@ -122,6 +123,49 @@ export default function PicksHubPage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+            체크리스트
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+            마감이 정해진 일을 빠뜨리지 않게 정리한 인터랙티브 체크리스트입니다. 본인 상황에 맞춰 항목이 자동 필터링되고 진행률이 브라우저에 저장됩니다.
+          </p>
+          <div className="space-y-3">
+            {CHECKLISTS.map((c) => {
+              const itemCount = checklistItemCount(c);
+              return (
+                <Link
+                  key={c.slug}
+                  href={`/picks/checklist/${c.slug}`}
+                  className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand hover:shadow-md transition"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="text-3xl shrink-0">{c.emoji}</div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+                        {c.shortTitle}
+                      </h3>
+                      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                        {c.oneLiner}
+                      </p>
+                      <div className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-500">
+                        {itemCount}개 항목
+                        {c.deadline && <> · 마감 {c.deadline}</>}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+            <Link
+              href="/picks/checklist"
+              className="block text-center text-sm text-amber-700 dark:text-amber-400 font-bold hover:underline py-2"
+            >
+              체크리스트 전체 보기 →
+            </Link>
           </div>
         </section>
 

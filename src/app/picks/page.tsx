@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PICK_CATEGORIES, HUB_FAQ, totalPickCount } from "@/lib/picks";
 import { CHECKLISTS } from "@/lib/checklists";
+import { COMPARISONS } from "@/lib/comparisons";
 import {
   JsonLd,
   breadcrumbLd,
@@ -124,6 +125,29 @@ export default function PicksHubPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-4 text-neutral-800 dark:text-neutral-200 border-l-4 border-brand pl-3">
+            비교
+          </h2>
+          <Link
+            href="/picks/vs"
+            className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand hover:shadow-md transition"
+          >
+            <div className="flex items-start gap-3">
+              <div className="text-3xl shrink-0">🆚</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-lg font-bold group-hover:text-brand transition">비교</h3>
+                  <span className="text-xs text-neutral-500">{COMPARISONS.length}개</span>
+                </div>
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                  한국에서 가장 많이 비교되는 도구·서비스를 점수·시나리오·표로 빠르게 비교.
+                </p>
+              </div>
+            </div>
+          </Link>
         </section>
 
         <section className="mb-10">

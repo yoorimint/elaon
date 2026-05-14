@@ -32,9 +32,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.65,
     })),
-    { url: `${SITE}/checklist`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
+    { url: `${SITE}/picks/checklist`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
     ...CHECKLISTS.map((c) => ({
-      url: `${SITE}/checklist/${c.slug}`,
+      url: `${SITE}/picks/checklist/${c.slug}`,
       lastModified: new Date(c.updatedAt),
       changeFrequency: "weekly" as const,
       priority: 0.8,

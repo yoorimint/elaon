@@ -13,7 +13,7 @@ import {
 } from "@/components/JsonLd";
 
 const SITE = "https://www.eloan.kr";
-const HUB_URL = `${SITE}/checklist`;
+const HUB_URL = `${SITE}/picks/checklist`;
 const TODAY = "2026-05-14";
 
 export const revalidate = 86400;
@@ -21,7 +21,7 @@ export const revalidate = 86400;
 export const metadata: Metadata = {
   title: "체크리스트 — 부수입·세금·환급금 빠뜨림 방지 인터랙티브 가이드",
   description:
-    "유튜버·블로거 종합소득세, 부수입 세금, 정부 환급금 등 한국 사용자를 위한 인터랙티브 체크리스트. 본인 상황별 자동 필터링 + 진행률 저장.",
+    "유튜버·블로거 종합소득세, 부수입 세금, 정부 환급금 등 한국 사용자를 위한 인터랙티브 체크리스트. 본인 상황별 자동 필터링과 진행률 저장.",
   alternates: { canonical: HUB_URL },
   keywords: [
     "체크리스트",
@@ -59,6 +59,7 @@ export default function ChecklistHubPage() {
       <JsonLd
         data={breadcrumbLd([
           { name: "홈", url: `${SITE}/` },
+          { name: "주소모음", url: `${SITE}/picks` },
           { name: "체크리스트", url: HUB_URL },
         ])}
       />
@@ -80,13 +81,17 @@ export default function ChecklistHubPage() {
             홈
           </Link>
           {" / "}
+          <Link href="/picks" className="hover:text-neutral-900 dark:hover:text-white">
+            주소모음
+          </Link>
+          {" / "}
           <span className="text-neutral-700 dark:text-neutral-300">체크리스트</span>
         </nav>
 
         <header className="mt-3 mb-8">
           <h1 className="text-2xl sm:text-4xl font-bold">✅ 체크리스트</h1>
           <p className="mt-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
-            부수입·세금·환급금 같이 *마감이 정해진* 일을 빠뜨리지 않고 처리할 수 있게 정리한 인터랙티브 체크리스트입니다. 본인 상황에 맞는 항목만 자동으로 필터링되고, 체크 진행률은 브라우저에 저장되어 다음 방문에도 유지됩니다.
+            부수입·세금·환급금처럼 마감이 정해진 일을 빠뜨리지 않고 처리할 수 있게 정리한 인터랙티브 체크리스트입니다. 본인 상황에 맞는 항목만 자동으로 필터링되고, 체크 진행률은 브라우저에 저장되어 다음 방문에도 유지됩니다.
           </p>
           <div className="mt-3 text-xs text-neutral-500">
             현재 {total}개 체크리스트
@@ -99,7 +104,7 @@ export default function ChecklistHubPage() {
             return (
               <Link
                 key={c.slug}
-                href={`/checklist/${c.slug}`}
+                href={`/picks/checklist/${c.slug}`}
                 className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-5 hover:border-brand hover:shadow-md transition"
               >
                 <div className="flex items-start gap-4">
@@ -111,20 +116,10 @@ export default function ChecklistHubPage() {
                     <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                       {c.oneLiner}
                     </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 font-bold">
-                        {itemCount}개 항목
-                      </span>
-                      {c.deadline && (
-                        <span className="px-2 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-bold">
-                          마감 {c.deadline}
-                        </span>
-                      )}
-                      {c.totalImpact && (
-                        <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-bold">
-                          💰 {c.totalImpact}
-                        </span>
-                      )}
+                    <div className="mt-3 text-[12px] text-neutral-600 dark:text-neutral-400">
+                      {itemCount}개 항목
+                      {c.deadline && <> · 마감 {c.deadline}</>}
+                      {c.totalImpact && <> · {c.totalImpact}</>}
                     </div>
                   </div>
                 </div>
@@ -133,11 +128,11 @@ export default function ChecklistHubPage() {
           })}
         </section>
 
-        <section className="mt-12 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 p-5">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+        <section className="mt-12">
+          <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100 mb-3">
             앞으로 추가될 체크리스트
           </h2>
-          <ul className="mt-3 text-sm text-neutral-700 dark:text-neutral-300 space-y-1 list-disc list-inside">
+          <ul className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5 list-disc list-inside">
             <li>AI 도구 + 토스 사이드잡으로 부수입 시작하기</li>
             <li>유튜브 AI 자동영상 수익화 금지 대응 가이드</li>
             <li>청년문화예술패스 통합 신청 가이드 (6/30 마감)</li>

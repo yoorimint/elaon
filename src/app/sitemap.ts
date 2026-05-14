@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { createServerClient } from "@/lib/supabase-server";
 import { PICK_CATEGORIES, listHubs } from "@/lib/picks";
+import { CHECKLISTS } from "@/lib/checklists";
 
 const SITE = "https://www.eloan.kr";
 
@@ -30,6 +31,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.65,
+    })),
+    { url: `${SITE}/checklist`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
+    ...CHECKLISTS.map((c) => ({
+      url: `${SITE}/checklist/${c.slug}`,
+      lastModified: new Date(c.updatedAt),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
     })),
   ];
 

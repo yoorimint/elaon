@@ -1,0 +1,182 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { CHECKLISTS, getChecklist, checklistItemCount } from "@/lib/checklists";
+import { ChecklistRunner } from "@/components/ChecklistRunner";
+import {
+  JsonLd,
+  breadcrumbLd,
+  faqLd,
+} from "@/components/JsonLd";
+
+const SITE = "https://www.eloan.kr";
+const HUB_URL = `${SITE}/checklist`;
+
+export const revalidate = 86400;
+
+export function generateStaticParams() {
+  return CHECKLISTS.map((c) => ({ slug: c.slug }));
+}
+
+export function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Metadata {
+  const c = getChecklist(params.slug);
+  if (!c) return { title: "체크리스트 — eloan.kr" };
+  const url = `${HUB_URL}/${c.slug}`;
+  return {
+    title: c.metaTitle,
+    description: c.description,
+    alternates: { canonical: url },
+    keywords: c.relatedKeywords,
+    openGraph: {
+      type: "article",
+      title: c.metaTitle,
+      description: c.description,
+      url,
+      locale: "ko_KR",
+      siteName: "eloan",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: c.metaTitle,
+      description: c.oneLiner,
+    },
+  };
+}
+
+export default function ChecklistDetailPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const c = getChecklist(params.slug);
+  if (!c) notFound();
+
+  const url = `${HUB_URL}/${c.slug}`;
+  const itemCount = checklistItemCount(c);
+
+  const howToLd = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: c.metaTitle,
+    description: c.description,
+    inLanguage: "ko-KR",
+    totalTime: "PT60M",
+    step: c.sections.flatMap((s, sIdx) =>
+      s.items.map((it, iIdx) => ({
+        "@type": "HowToStep",
+        position: sIdx * 100 + iIdx + 1,
+        name: it.title,
+        text: it.description ?? it.title,
+      })),
+    ),
+  };
+
+  return (
+    <>
+      <JsonLd data={howToLd} />
+      <JsonLd data={faqLd(c.faq)} />
+      <JsonLd
+        data={breadcrumbLd([
+          { name: "홈", url: `${SITE}/` },
+          { name: "체크리스트", url: HUB_URL },
+          { name: c.shortTitle, url },
+        ])}
+      />
+
+      <main className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
+        <nav className="text-sm text-neutral-500">
+          <Link href="/" className="hover:text-neutral-900 dark:hover:text-white">
+            홈
+          </Link>
+          {" / "}
+          <Link
+            href="/checklist"
+            className="hover:text-neutral-900 dark:hover:text-white"
+          >
+            체크리스트
+          </Link>
+          {" / "}
+          <span className="text-neutral-700 dark:text-neutral-300">
+            {c.shortTitle}
+          </span>
+        </nav>
+
+        <header className="mt-3 mb-6">
+          <div className="text-4xl sm:text-5xl">{c.emoji}</div>
+          <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold leading-tight text-neutral-900 dark:text-neutral-100">
+            {c.title}
+          </h1>
+          <p className="mt-3 text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
+            {c.oneLiner}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-[11px]">
+            <span className="px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 font-bold">
+              {itemCount}개 항목
+            </span>
+            {c.deadline && (
+              <span className="px-2 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-bold">
+                마감 {c.deadline}
+              </span>
+            )}
+            {c.totalImpact && (
+              <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-bold">
+                💰 {c.totalImpact}
+              </span>
+            )}
+            <span className="px-2 py-1 rounded-full bg-neutral-100 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400">
+              최종 업데이트 {c.updatedAt}
+            </span>
+          </div>
+        </header>
+
+        <section className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
+          <div className="text-sm font-bold text-amber-900 dark:text-amber-200">
+            ⚠️ {c.headline}
+          </div>
+        </section>
+
+        <section className="mt-6 space-y-3 text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+          {c.longIntro.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </section>
+
+        <ChecklistRunner checklist={c} />
+
+        <section className="mt-12">
+          <h2 className="text-xl font-bold mb-4">❓ 자주 묻는 질문</h2>
+          <div className="space-y-3">
+            {c.faq.map((f, i) => (
+              <details
+                key={i}
+                className="group rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 open:border-brand transition"
+              >
+                <summary className="cursor-pointer font-semibold text-[15px] text-neutral-800 dark:text-neutral-100 list-none flex items-start gap-2">
+                  <span className="text-brand shrink-0">Q.</span>
+                  <span className="flex-1">{f.q}</span>
+                  <span className="text-neutral-400 group-open:rotate-180 transition shrink-0">
+                    ▾
+                  </span>
+                </summary>
+                <p className="mt-3 pl-6 text-[14px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                  {f.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-5">
+          <h2 className="text-base font-bold mb-2">📚 관련 사이트 디렉토리</h2>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">
+            이 체크리스트에 등장한 사이트들은 <Link href="/picks" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">주소모음</Link> 에서 카테고리별로 자세히 정리되어 있습니다.
+          </p>
+        </section>
+      </main>
+    </>
+  );
+}

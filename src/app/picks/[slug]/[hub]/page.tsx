@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
   listHubs,
@@ -40,11 +41,13 @@ export function generateMetadata({ params }: { params: Params }): Metadata {
     : hasDetail
       ? `${entry.item.name} 사용법·가격·한국 결제 — 2026 완벽 가이드`
       : `${entry.item.name} 사용법·가격·대안 — ${entry.item.blurb}`;
+  // description — Google SERP 권장 길이 140~160자. 사이트 핵심 정보·차별점·가격·한국 사용성을 압축.
+  const alt = entry.item.alternatives?.slice(0, 3).join("·") ?? "";
   const description = hasSub
-    ? `${entry.item.name} 에서 신청·이용할 수 있는 ${entry.item.subItems!.length}가지 주요 서비스를 자격·금액·신청 시기와 함께 정리했습니다.`
+    ? `${entry.item.name} 에서 신청·이용할 수 있는 ${entry.item.subItems!.length}가지 주요 서비스의 자격·금액·신청 시기·필요 서류·공식 채널을 한 페이지에서 비교. ${entry.item.blurb}`
     : hasDetail
-      ? `${entry.item.name} 한국 사용 가이드. 무료/유료 가격 플랜 비교, 한국어 사용성, 시작하기 단계, 자주 묻는 질문, 장단점까지 정리.`
-      : `${entry.item.name}: ${entry.item.blurb} 가격·사용 시나리오·대안·실전 팁까지 한 페이지에서.`;
+      ? `${entry.item.name} 한국 사용 완벽 가이드 — ${entry.item.blurb} 무료/유료 가격 플랜·한국어 사용성·한국 결제 가능 여부·시작하기 5단계·자주 묻는 질문 12개·장단점·대안(${alt})까지.`
+      : `${entry.item.name}: ${entry.item.blurb} 가격·사용 시나리오·대안(${alt})·실전 팁·한국 결제 가능 여부까지 한 페이지에서 정리.`;
   return {
     title,
     description,
@@ -155,10 +158,13 @@ function HeroSection({ item }: { item: PickItem }) {
   return (
     <>
       {item.imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={item.imageUrl}
           alt={`${item.name} 공식 미리보기`}
+          width={1200}
+          height={630}
+          priority
+          unoptimized
           className="mt-3 w-full aspect-[1200/630] object-cover rounded-2xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800"
         />
       )}

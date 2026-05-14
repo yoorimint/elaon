@@ -12,7 +12,7 @@ import {
 const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks/checklist`;
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return CHECKLISTS.map((c) => ({ slug: c.slug }));

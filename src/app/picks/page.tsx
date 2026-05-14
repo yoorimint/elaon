@@ -14,7 +14,7 @@ const HUB_URL = `${SITE}/picks`;
 const TODAY = "2026-05-13";
 
 // 정적 생성 + ISR (24시간) — SEO·캐시 친화. 데이터(picks.ts) 변경 시 새 빌드로 반영.
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "주소모음 — AI·정부지원금·무료리소스·코인 도구 디렉토리",

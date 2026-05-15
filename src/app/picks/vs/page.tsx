@@ -134,11 +134,11 @@ export default function ComparisonsHubPage() {
             앞으로 추가될 비교
           </h2>
           <ul className="text-sm text-neutral-700 dark:text-neutral-300 space-y-1.5 list-disc list-inside">
-            <li>디딤돌 vs 보금자리 (주담대 정책 금융)</li>
-            <li>크몽 vs 숨고 (프리랜서 플랫폼)</li>
-            <li>업비트 vs 빗썸 (국내 코인거래소)</li>
-            <li>호갱노노 vs 직방 (부동산 시세)</li>
-            <li>Midjourney vs DALL-E (AI 이미지)</li>
+            <li>토스 vs 카카오뱅크 (인터넷은행)</li>
+            <li>Perplexity vs Grok (검색·소셜 AI)</li>
+            <li>스마트스토어 vs 쿠팡 (셀러 입점)</li>
+            <li>HUG vs HF vs SGI (전세보증보험)</li>
+            <li>삼쩜삼 vs 세무사 위임 (종소세 신고)</li>
           </ul>
         </section>
       </main>

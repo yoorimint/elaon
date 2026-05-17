@@ -27,32 +27,35 @@ export default async function StockOG({
 }: {
   params: { slug: string };
 }) {
-  const symbol = slugToSymbol(params.slug);
-  const local = STOCK_MARKETS.find(
-    (m) => m.id.replace(/^yahoo:/, "") === symbol,
-  );
-  const fontData = await loadFont();
-
-  let name = local?.name ?? symbol;
+  let symbol = "";
+  let name = "";
   let priceText = "";
   let changeText = "";
   let changeTone: "up" | "down" | "flat" = "flat";
-  let exchange = symbol.endsWith(".KS")
-    ? "KOSPI"
-    : symbol.endsWith(".KQ")
-      ? "KOSDAQ"
-      : "OTHER";
+  let exchange: "KOSPI" | "KOSDAQ" | "OTHER" = "OTHER";
+  let fontData: ArrayBuffer | null = null;
 
   try {
+    symbol = slugToSymbol(params.slug);
+    const local = STOCK_MARKETS.find(
+      (m) => m.id.replace(/^yahoo:/, "") === symbol,
+    );
+    name = local?.name ?? symbol;
+    exchange = symbol.endsWith(".KS")
+      ? "KOSPI"
+      : symbol.endsWith(".KQ")
+        ? "KOSDAQ"
+        : "OTHER";
+
+    fontData = await loadFont();
+
     const endMs = Date.now();
     const startMs = endMs - 1000 * 60 * 60 * 24 * 365 * 2;
-    const candles = await fetchYahooCandles(symbol, "1d", startMs, endMs);
+    const candles = await fetchYahooCandles(symbol, "1d", startMs, endMs).catch(
+      () => [],
+    );
     if (candles.length > 0) {
-      const report = buildStockReport({
-        symbol,
-        name,
-        candles,
-      });
+      const report = buildStockReport({ symbol, name, candles });
       const isKR = exchange === "KOSPI" || exchange === "KOSDAQ";
       priceText = isKR
         ? `${Math.round(report.price).toLocaleString("ko-KR")}원`
@@ -61,8 +64,8 @@ export default async function StockOG({
       changeTone = ch > 0.05 ? "up" : ch < -0.05 ? "down" : "flat";
       changeText = `${ch >= 0 ? "+" : ""}${ch.toFixed(2)}%`;
     }
-  } catch {
-    // graceful
+  } catch (e) {
+    console.error("[stock] OG image error:", e);
   }
 
   const changeColor =

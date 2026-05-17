@@ -201,19 +201,60 @@ export type DartBundle = {
   hasMapping: boolean;
   financial: DartFinancial | null;
   filings: DartFiling[];
+  diagnostics: {
+    keyPresent: boolean;
+    corpCode: string | null;
+    mappingSize: number;
+    financialError?: string;
+    filingsError?: string;
+  };
 };
 
 export async function fetchDartBundle(ticker6: string): Promise<DartBundle> {
-  if (!isDartEnabled()) {
-    return { enabled: false, hasMapping: false, financial: null, filings: [] };
+  const keyPresent = isDartEnabled();
+  if (!keyPresent) {
+    return {
+      enabled: false,
+      hasMapping: false,
+      financial: null,
+      filings: [],
+      diagnostics: { keyPresent: false, corpCode: null, mappingSize: 0 },
+    };
   }
-  const corpCode = await getCorpCode(ticker6);
+  const corpCode = await getCorpCode(ticker6).catch(() => null);
+  const mappingSize = dynamicCache ? Object.keys(dynamicCache).length : 0;
   if (!corpCode) {
-    return { enabled: true, hasMapping: false, financial: null, filings: [] };
+    return {
+      enabled: true,
+      hasMapping: false,
+      financial: null,
+      filings: [],
+      diagnostics: { keyPresent: true, corpCode: null, mappingSize },
+    };
   }
+  let financialError: string | undefined;
+  let filingsError: string | undefined;
   const [financial, filings] = await Promise.all([
-    fetchDartFinancial(ticker6),
-    fetchDartFilings(ticker6),
+    fetchDartFinancial(ticker6).catch((e) => {
+      financialError = e instanceof Error ? e.message : String(e);
+      return null;
+    }),
+    fetchDartFilings(ticker6).catch((e) => {
+      filingsError = e instanceof Error ? e.message : String(e);
+      return [];
+    }),
   ]);
-  return { enabled: true, hasMapping: true, financial, filings };
+  return {
+    enabled: true,
+    hasMapping: true,
+    financial,
+    filings,
+    diagnostics: {
+      keyPresent: true,
+      corpCode,
+      mappingSize,
+      financialError,
+      filingsError,
+    },
+  };
 }

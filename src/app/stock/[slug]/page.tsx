@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { fetchYahooCandles } from "@/lib/yahoo";
+import { fetchStooqCandles } from "@/lib/stooq";
 import { STOCK_MARKETS } from "@/lib/market";
 import { resolveStock, slugToSymbol, symbolToSlug } from "@/lib/stock-resolver";
 import { buildStockReport, type StockReport } from "@/lib/stock-report";
@@ -36,11 +37,25 @@ export const revalidate = 3600;
 
 async function safeFetchYahooCandles(symbol: string, startMs: number, endMs: number) {
   try {
-    return await fetchYahooCandles(symbol, "1d", startMs, endMs);
+    const out = await fetchYahooCandles(symbol, "1d", startMs, endMs);
+    if (out.length > 0) return out;
   } catch (e) {
     console.error("[stock] yahoo fetch failed:", symbol, e);
-    return [];
   }
+  // Yahoo 실패 또는 빈 결과 → Stooq fallback
+  try {
+    const stooq = await fetchStooqCandles(symbol);
+    if (stooq.length > 0) {
+      console.log("[stock] used stooq fallback for", symbol);
+      // 기간 필터
+      return stooq.filter(
+        (c) => c.timestamp >= startMs && c.timestamp <= endMs,
+      );
+    }
+  } catch (e) {
+    console.error("[stock] stooq fetch failed:", symbol, e);
+  }
+  return [];
 }
 
 async function loadReport(slug: string): Promise<StockReport | null> {

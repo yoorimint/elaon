@@ -502,10 +502,57 @@ export default async function StockDetailPage({
           <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
             📊 일봉 차트
           </h2>
-          <StockChart candles={report.candles} />
-          <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-500">
-            최근 1년 일봉 종가 + EMA20·50·200 + 거래량. 실시간 X.
-          </p>
+          <StockChart candles={report.candles} tradeLines={report.trade} />
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-500 flex-wrap">
+            <span>최근 1년 일봉 + EMA20·50·200 + 거래량</span>
+            {report.trade && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-0.5 bg-amber-500" /> 매수
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-0.5 bg-rose-500" /> 손절
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 h-0.5 bg-emerald-500" /> 익절
+                </span>
+              </>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            📐 52주 가격 위치
+          </h2>
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+            <div className="flex items-baseline justify-between text-sm mb-2">
+              <span className="text-neutral-500 font-bold">
+                저점 {formatPrice(report.low52w, report.exchange)}
+              </span>
+              <span className="font-extrabold text-lg text-neutral-900 dark:text-neutral-100">
+                현재 {formatPrice(report.price, report.exchange)} ({report.pricePosition52w.toFixed(0)}%)
+              </span>
+              <span className="text-neutral-500 font-bold">
+                고점 {formatPrice(report.high52w, report.exchange)}
+              </span>
+            </div>
+            <div className="relative h-3 rounded-full bg-gradient-to-r from-blue-300 via-neutral-200 to-rose-300 dark:from-blue-900/40 dark:via-neutral-800 dark:to-rose-900/40 overflow-hidden">
+              <div
+                className="absolute top-0 bottom-0 w-1 bg-neutral-900 dark:bg-neutral-100"
+                style={{ left: `${Math.max(0, Math.min(100, report.pricePosition52w))}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[12px] text-neutral-600 dark:text-neutral-400">
+              {report.pricePosition52w >= 80
+                ? "고점 부근 — 상승 모멘텀 있으나 단기 조정 위험"
+                : report.pricePosition52w >= 50
+                  ? "중상위 구간 — 추세 진행 중"
+                  : report.pricePosition52w >= 20
+                    ? "중하위 구간 — 반등 또는 추가 하락 분기점"
+                    : "저점 부근 — 반등 기회 또는 추세 약화"}
+            </p>
+          </div>
         </section>
 
         <section className="mt-8">
@@ -603,6 +650,32 @@ export default async function StockDetailPage({
               value={`-${report.mdd1y.toFixed(1)}%`}
               note="최근 1년간 고점 대비 가장 크게 빠진 비율"
               tone={report.mdd1y < 20 ? "good" : report.mdd1y < 40 ? "neutral" : "bad"}
+            />
+            <IndicatorRow
+              label="MACD(12,26,9)"
+              value={
+                report.macdHist > 0
+                  ? `+${report.macdHist.toFixed(2)} (강세)`
+                  : `${report.macdHist.toFixed(2)} (약세)`
+              }
+              note={
+                report.macdHist > 0
+                  ? "MACD 가 시그널선 위 — 매수 우위"
+                  : "MACD 가 시그널선 아래 — 매도 우위"
+              }
+              tone={report.macdHist > 0 ? "good" : "bad"}
+            />
+            <IndicatorRow
+              label="스토캐스틱 %K(14)"
+              value={`${report.stochK.toFixed(1)}`}
+              note={
+                report.stochK >= 80
+                  ? "과매수 — 단기 조정 가능"
+                  : report.stochK <= 20
+                    ? "과매도 — 단기 반등 가능"
+                    : "중립 구간"
+              }
+              tone={report.stochK >= 80 ? "bad" : report.stochK <= 20 ? "good" : "neutral"}
             />
             <IndicatorRow
               label="EMA 정배열"
@@ -1082,6 +1155,8 @@ const GLOSSARY_ANCHOR: Record<string, string> = {
   "볼린저 폭": "bollinger",
   "최근 1년 최대낙폭(MDD)": "mdd",
   "EMA 정배열": "ema",
+  "MACD(12,26,9)": "macd",
+  "스토캐스틱 %K(14)": "stoch",
   "ROE (자기자본이익률)": "roe",
   "영업이익률": "operating-margin",
   "부채비율": "debt-ratio",

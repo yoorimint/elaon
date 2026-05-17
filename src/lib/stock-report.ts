@@ -59,6 +59,39 @@ export function ema(values: number[], period: number): number[] {
   return out;
 }
 
+export function macd(
+  candles: Candle[],
+  fast = 12,
+  slow = 26,
+  signal = 9,
+): { macd: number; signal: number; histogram: number } {
+  if (candles.length < slow + signal) {
+    return { macd: 0, signal: 0, histogram: 0 };
+  }
+  const closes = candles.map((c) => c.close);
+  const emaFast = ema(closes, fast);
+  const emaSlow = ema(closes, slow);
+  const macdLine = closes.map((_, i) => emaFast[i] - emaSlow[i]);
+  const signalLine = ema(macdLine, signal);
+  const last = macdLine[macdLine.length - 1];
+  const sig = signalLine[signalLine.length - 1];
+  return {
+    macd: last,
+    signal: sig,
+    histogram: last - sig,
+  };
+}
+
+export function stochastic(candles: Candle[], k = 14): number {
+  if (candles.length < k) return 50;
+  const window = candles.slice(-k);
+  const high = Math.max(...window.map((c) => c.high));
+  const low = Math.min(...window.map((c) => c.low));
+  const last = candles[candles.length - 1].close;
+  if (high === low) return 50;
+  return ((last - low) / (high - low)) * 100;
+}
+
 // ===========================================================================
 // 추세·모멘텀 지표
 // ===========================================================================
@@ -791,6 +824,11 @@ export type StockReport = {
   volRatio20: number;
   bollWidth: number;
   mdd1y: number;
+  macdValue: number;
+  macdSignal: number;
+  macdHist: number;
+  stochK: number;
+  pricePosition52w: number; // 0~100 (52주 저점 ~ 고점 사이 위치)
 
   // 진입 신호
   entry: EntrySignal;
@@ -865,6 +903,12 @@ export function buildStockReport(params: {
     volRatio20: volumeRatio(candles, 20),
     bollWidth: bollingerWidth(candles, 20) * 100,
     mdd1y: maxDrawdown(candles.slice(-252)),
+    macdValue: macd(candles).macd,
+    macdSignal: macd(candles).signal,
+    macdHist: macd(candles).histogram,
+    stochK: stochastic(candles, 14),
+    pricePosition52w:
+      high52 === low52 ? 50 : ((last - low52) / (high52 - low52)) * 100,
     entry: evaluateEntry(candles),
     canSlim: evaluateCanSlim(candles),
     quant: evaluateQuant(candles),

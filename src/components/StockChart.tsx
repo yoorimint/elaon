@@ -4,11 +4,19 @@
 import type { Candle } from "@/lib/upbit";
 import { ema } from "@/lib/stock-report";
 
+type TradeLines = {
+  entry: number;
+  stop: number;
+  target1: number;
+  target2: number;
+};
+
 type Props = {
   candles: Candle[];
   width?: number;
   height?: number;
   showVolume?: boolean;
+  tradeLines?: TradeLines | null;
 };
 
 export function StockChart({
@@ -16,6 +24,7 @@ export function StockChart({
   width = 720,
   height = 320,
   showVolume = true,
+  tradeLines = null,
 }: Props) {
   if (candles.length < 2) {
     return (
@@ -40,8 +49,13 @@ export function StockChart({
   const padT = 8;
   const innerW = width - padL - padR;
 
-  const minP = Math.min(...closes, ...ema200.filter(Number.isFinite));
-  const maxP = Math.max(...closes, ...ema200.filter(Number.isFinite));
+  const tradeValues = tradeLines
+    ? [tradeLines.entry, tradeLines.stop, tradeLines.target1, tradeLines.target2].filter(
+        (v) => Number.isFinite(v) && v > 0,
+      )
+    : [];
+  const minP = Math.min(...closes, ...ema200.filter(Number.isFinite), ...tradeValues);
+  const maxP = Math.max(...closes, ...ema200.filter(Number.isFinite), ...tradeValues);
   const rangeP = maxP - minP || 1;
 
   const maxV = Math.max(...volumes, 1);
@@ -151,6 +165,47 @@ export function StockChart({
           r={3}
           fill={lastUp ? "#ef4444" : "#3b82f6"}
         />
+
+        {/* 매수/손절/익절 가로선 */}
+        {tradeLines && (
+          <>
+            <line
+              x1={padL}
+              x2={width - padR}
+              y1={y(tradeLines.target2)}
+              y2={y(tradeLines.target2)}
+              stroke="#10b981"
+              strokeWidth={1}
+              strokeDasharray="6 4"
+            />
+            <line
+              x1={padL}
+              x2={width - padR}
+              y1={y(tradeLines.target1)}
+              y2={y(tradeLines.target1)}
+              stroke="#10b981"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+            <line
+              x1={padL}
+              x2={width - padR}
+              y1={y(tradeLines.entry)}
+              y2={y(tradeLines.entry)}
+              stroke="#f59e0b"
+              strokeWidth={1.2}
+            />
+            <line
+              x1={padL}
+              x2={width - padR}
+              y1={y(tradeLines.stop)}
+              y2={y(tradeLines.stop)}
+              stroke="#ef4444"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+          </>
+        )}
 
         {/* 거래량 막대 */}
         {showVolume &&

@@ -341,6 +341,7 @@ export default async function StockDetailPage({
     hasMapping: false,
     financial: null,
     filings: [],
+    diagnostics: { keyPresent: false, corpCode: null, mappingSize: 0 },
   };
   const [dart, news]: [DartBundle, NaverNews[]] = await Promise.all([
     isKR
@@ -975,10 +976,32 @@ export default async function StockDetailPage({
         )}
 
         {isKR && !dart.financial && !dart.filings.length && (
-          <section className="mt-8 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/40 dark:bg-neutral-900/30 p-4 text-[12.5px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
-            💼 <strong>재무·공시(DART) 섹션 비활성</strong> — {!dart.enabled
-              ? "Vercel 환경변수 OPEN_DART_API_KEY 만 설정하면 자동 활성화됩니다. 종목코드 매핑은 코드에서 자동 다운로드됩니다."
-              : "이 종목의 corp_code 가 DART corpCode.xml 에서 발견되지 않거나 첫 다운로드 진행 중입니다. 잠시 후 새로고침해보세요."}
+          <section className="mt-8 rounded-2xl border border-dashed border-rose-300 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-900/10 p-4 text-[12.5px] leading-relaxed">
+            <div className="font-extrabold text-rose-900 dark:text-rose-200 mb-2">
+              💼 재무·공시(DART) 진단
+            </div>
+            <div className="space-y-1 font-mono text-rose-900 dark:text-rose-100">
+              <div>· OPEN_DART_API_KEY 환경변수: {dart.diagnostics.keyPresent ? "✓ 인식" : "✗ 누락 — Vercel Settings → Environment Variables 에서 설정 + Redeploy 필요"}</div>
+              {dart.diagnostics.keyPresent && (
+                <>
+                  <div>· corpCode.xml 매핑 다운로드: {dart.diagnostics.mappingSize > 0 ? `✓ ${dart.diagnostics.mappingSize}개 종목 캐시` : "✗ 0개 — DART 응답 실패 또는 첫 다운로드 진행 중"}</div>
+                  <div>· 이 종목(<strong>{report.ticker}</strong>) corp_code: {dart.diagnostics.corpCode ? `✓ ${dart.diagnostics.corpCode}` : "✗ 매핑에서 발견 안 됨"}</div>
+                  {dart.diagnostics.financialError && (
+                    <div>· 재무 API 실패: {dart.diagnostics.financialError}</div>
+                  )}
+                  {dart.diagnostics.filingsError && (
+                    <div>· 공시 API 실패: {dart.diagnostics.filingsError}</div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="mt-3 text-[11px] text-rose-800 dark:text-rose-300">
+              {!dart.diagnostics.keyPresent
+                ? "환경변수 추가 후 반드시 Redeploy 해야 반영됩니다."
+                : dart.diagnostics.mappingSize === 0
+                  ? "Vercel 함수가 corpCode.xml(10MB) 을 첫 다운받는 중이거나 메모리/타임아웃 한계 가능. 1분 후 새로고침."
+                  : "환경변수·매핑 모두 정상. API 응답 메시지 확인."}
+            </div>
           </section>
         )}
         {dart.financial && (

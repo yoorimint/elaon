@@ -8,6 +8,7 @@ import { buildStockReport, type StockReport } from "@/lib/stock-report";
 import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
 import { fetchDartBundle, type DartBundle } from "@/lib/dart";
+import { fetchNaverNews, type NaverNews } from "@/lib/naver-news";
 
 function relatedStocks(report: StockReport, count = 6) {
   const pool = STOCK_MARKETS.filter((m) => {
@@ -145,9 +146,17 @@ export default async function StockDetailPage({
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
   const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";
-  const dart: DartBundle = isKR
-    ? await fetchDartBundle(report.ticker)
-    : { enabled: false, hasMapping: false, financial: null, filings: [] };
+  const [dart, news]: [DartBundle, NaverNews[]] = await Promise.all([
+    isKR
+      ? fetchDartBundle(report.ticker)
+      : Promise.resolve<DartBundle>({
+          enabled: false,
+          hasMapping: false,
+          financial: null,
+          filings: [],
+        }),
+    fetchNaverNews(`${report.name} 주가`, 8),
+  ]);
 
   return (
     <>
@@ -591,6 +600,32 @@ export default async function StockDetailPage({
                   }
                 />
               )}
+            </div>
+          </section>
+        )}
+
+        {news.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+              📰 최근 뉴스 (네이버)
+            </h2>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {news.slice(0, 8).map((n, i) => (
+                <a
+                  key={i}
+                  href={n.link}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="block p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+                >
+                  <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2">
+                    {n.title}
+                  </div>
+                  <div className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-500">
+                    {new Date(n.pubDate).toLocaleDateString("ko-KR")}
+                  </div>
+                </a>
+              ))}
             </div>
           </section>
         )}

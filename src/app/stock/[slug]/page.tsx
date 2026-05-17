@@ -8,6 +8,25 @@ import { buildStockReport, type StockReport } from "@/lib/stock-report";
 import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
 
+function relatedStocks(report: StockReport, count = 6) {
+  const pool = STOCK_MARKETS.filter((m) => {
+    if (report.exchange === "KOSPI" || report.exchange === "KOSDAQ") {
+      return m.kind === "stock_kr";
+    }
+    return m.kind === "stock_us";
+  }).filter((m) => m.id.replace(/^yahoo:/, "") !== report.symbol);
+  // 단순화: 시드 기반 셔플이 아니라 보고서 종목 코드 기준 분산 선택
+  const seed = report.symbol
+    .split("")
+    .reduce((a, c) => (a + c.charCodeAt(0)) % pool.length, 0);
+  const picks: typeof pool = [];
+  for (let i = 0; i < count && i < pool.length; i++) {
+    const idx = (seed + i * 7) % pool.length;
+    if (!picks.includes(pool[idx])) picks.push(pool[idx]);
+  }
+  return picks;
+}
+
 const SITE = "https://www.eloan.kr";
 
 // 검색 시 on-demand 생성. 미리 빌드 X.
@@ -429,19 +448,101 @@ export default async function StockDetailPage({
           </div>
         </section>
 
-        <section className="mt-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 bg-neutral-50/60 dark:bg-neutral-900/30">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100 mb-2">
-            🧪 이 종목으로 백테스트 해보기
+        {report.backtests.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+              🧪 단순 전략 백테스트 (최근 1년)
+            </h2>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
+              본인 전략을 본격적으로 테스트하기 전 빠른 감을 위한 미리보기. 매수 후 보유(Buy & Hold) 수익률과 비교.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {report.backtests.map((b, i) => (
+                <div
+                  key={i}
+                  className={`rounded-2xl border p-4 ${
+                    b.verdict === "good"
+                      ? "border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-900/10"
+                      : b.verdict === "bad"
+                        ? "border-rose-200 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-900/10"
+                        : "border-neutral-200 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-900/30"
+                  }`}
+                >
+                  <div className="text-sm font-extrabold text-neutral-900 dark:text-neutral-100">
+                    {b.strategy}
+                  </div>
+                  <p className="mt-1 text-[12px] text-neutral-600 dark:text-neutral-400 leading-snug">
+                    {b.description}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <div className="text-[10px] text-neutral-500 font-bold">전략 수익률</div>
+                      <div className={`font-extrabold ${
+                        b.totalReturn >= 0
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-blue-600 dark:text-blue-400"
+                      }`}>
+                        {b.totalReturn >= 0 ? "+" : ""}{b.totalReturn.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-neutral-500 font-bold">매수 후 보유</div>
+                      <div className={`font-extrabold ${
+                        b.buyHoldReturn >= 0
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-blue-600 dark:text-blue-400"
+                      }`}>
+                        {b.buyHoldReturn >= 0 ? "+" : ""}{b.buyHoldReturn.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-neutral-500 font-bold">거래 횟수</div>
+                      <div className="font-bold text-neutral-700 dark:text-neutral-300">
+                        {b.trades}회
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-neutral-500 font-bold">승률</div>
+                      <div className="font-bold text-neutral-700 dark:text-neutral-300">
+                        {b.winRate.toFixed(0)}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Link
+              href={`/backtest?market=yahoo:${encodeURIComponent(report.symbol)}`}
+              className="mt-4 inline-block text-sm font-bold text-amber-700 dark:text-amber-400 hover:underline"
+            >
+              본격 백테스트 도구로 이동 (RSI·MACD·볼린저 등 12 전략) →
+            </Link>
+          </section>
+        )}
+
+        <section className="mt-10">
+          <h2 className="text-base font-bold mb-3 text-neutral-900 dark:text-neutral-100">
+            🔗 같은 거래소의 다른 종목
           </h2>
-          <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
-            본인 전략 (이동평균·RSI·MACD·볼린저 등) 을 {report.name} 과거 데이터에 적용해 수익률·승률·최대낙폭을 계산할 수 있습니다.
-          </p>
-          <Link
-            href={`/backtest?market=yahoo:${encodeURIComponent(report.symbol)}`}
-            className="mt-3 inline-block text-sm font-bold text-amber-700 dark:text-amber-400 hover:underline"
-          >
-            백테스트 도구로 이동 →
-          </Link>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {relatedStocks(report).map((m) => {
+              const symbol = m.id.replace(/^yahoo:/, "");
+              return (
+                <Link
+                  key={m.id}
+                  href={`/stock/${symbolToSlug(symbol)}`}
+                  className="rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 hover:border-brand hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+                >
+                  <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100 truncate">
+                    {m.name}
+                  </div>
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-500">
+                    {symbol.replace(/\.(KS|KQ)$/, "")}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </section>
 
         <section className="mt-10">

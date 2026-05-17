@@ -74,40 +74,75 @@ async function fetchYahooViaProxy(
   return out.sort((a, b) => a.timestamp - b.timestamp);
 }
 
-async function safeFetchYahooCandles(symbol: string, startMs: number, endMs: number) {
+type FetchResult = {
+  candles: import("@/lib/upbit").Candle[];
+  log: { source: string; status: string }[];
+};
+
+async function safeFetchYahooCandles(
+  symbol: string,
+  startMs: number,
+  endMs: number,
+): Promise<FetchResult> {
+  const log: FetchResult["log"] = [];
+
   // 1차: 야후 직접 호출
   try {
     const out = await fetchYahooCandles(symbol, "1d", startMs, endMs);
-    if (out.length > 0) return out;
+    if (out.length > 0) {
+      log.push({ source: "yahoo-direct", status: `OK ${out.length}개` });
+      return { candles: out, log };
+    }
+    log.push({ source: "yahoo-direct", status: "빈 결과" });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[stock] yahoo direct fetch failed:", symbol, e);
+    log.push({ source: "yahoo-direct", status: `실패: ${msg}` });
   }
-  // 2차: 자기 자신 /api/yahoo proxy 통해 호출 (Edge runtime, 다른 IP)
+
+  // 2차: /api/yahoo Edge proxy
   try {
     const out = await fetchYahooViaProxy(symbol, startMs, endMs);
     if (out.length > 0) {
       console.log("[stock] used yahoo proxy fallback for", symbol);
-      return out;
+      log.push({ source: "yahoo-proxy", status: `OK ${out.length}개` });
+      return { candles: out, log };
     }
+    log.push({ source: "yahoo-proxy", status: "빈 결과" });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[stock] yahoo proxy fetch failed:", symbol, e);
+    log.push({ source: "yahoo-proxy", status: `실패: ${msg}` });
   }
-  // 3차: Stooq fallback
+
+  // 3차: Stooq
   try {
     const stooq = await fetchStooqCandles(symbol);
     if (stooq.length > 0) {
       console.log("[stock] used stooq fallback for", symbol);
-      return stooq.filter(
+      const filtered = stooq.filter(
         (c) => c.timestamp >= startMs && c.timestamp <= endMs,
       );
+      log.push({ source: "stooq", status: `OK ${filtered.length}개` });
+      return { candles: filtered, log };
     }
+    log.push({ source: "stooq", status: "빈 결과" });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[stock] stooq fetch failed:", symbol, e);
+    log.push({ source: "stooq", status: `실패: ${msg}` });
   }
-  return [];
+
+  return { candles: [], log };
 }
 
-async function loadReport(slug: string): Promise<StockReport | null> {
+type LoadResult =
+  | { ok: true; report: StockReport }
+  | { ok: false; symbolTried: string[]; log: { source: string; status: string }[]; reason?: string };
+
+async function loadReport(slug: string): Promise<LoadResult> {
+  const symbolTried: string[] = [];
+  const allLog: { source: string; status: string }[] = [];
   try {
     const raw = slugToSymbol(slug);
     let symbol: string | null = null;
@@ -133,7 +168,9 @@ async function loadReport(slug: string): Promise<StockReport | null> {
 
     if (!symbol) {
       const entry = await resolveStock(raw).catch(() => null);
-      if (!entry) return null;
+      if (!entry) {
+        return { ok: false, symbolTried: [raw], log: [], reason: "심볼 매칭 실패" };
+      }
       symbol = entry.id.replace(/^yahoo:/, "");
       name = entry.name;
       subtitle = entry.subtitle;
@@ -141,7 +178,10 @@ async function loadReport(slug: string): Promise<StockReport | null> {
 
     const endMs = Date.now();
     const startMs = endMs - 1000 * 60 * 60 * 24 * 365 * 2;
-    let candles = await safeFetchYahooCandles(symbol!, startMs, endMs);
+    symbolTried.push(symbol!);
+    let result = await safeFetchYahooCandles(symbol!, startMs, endMs);
+    allLog.push(...result.log.map((l) => ({ ...l, source: `${l.source} (${symbol})` })));
+    let candles = result.candles;
 
     if (
       candles.length === 0 &&
@@ -149,11 +189,18 @@ async function loadReport(slug: string): Promise<StockReport | null> {
       /^\d{6}\.KS$/.test(symbol!)
     ) {
       const alt = symbol!.replace(/\.KS$/, ".KQ");
-      candles = await safeFetchYahooCandles(alt, startMs, endMs);
-      if (candles.length > 0) symbol = alt;
+      symbolTried.push(alt);
+      result = await safeFetchYahooCandles(alt, startMs, endMs);
+      allLog.push(...result.log.map((l) => ({ ...l, source: `${l.source} (${alt})` })));
+      if (result.candles.length > 0) {
+        candles = result.candles;
+        symbol = alt;
+      }
     }
 
-    if (candles.length === 0) return null;
+    if (candles.length === 0) {
+      return { ok: false, symbolTried, log: allLog, reason: "모든 데이터 소스에서 빈 결과" };
+    }
 
     if (name === symbol) {
       const local = STOCK_MARKETS.find(
@@ -165,15 +212,19 @@ async function loadReport(slug: string): Promise<StockReport | null> {
       }
     }
 
-    return buildStockReport({
-      symbol: symbol!,
-      name: name ?? symbol!,
-      subtitle,
-      candles,
-    });
+    return {
+      ok: true,
+      report: buildStockReport({
+        symbol: symbol!,
+        name: name ?? symbol!,
+        subtitle,
+        candles,
+      }),
+    };
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[stock] loadReport error:", slug, e);
-    return null;
+    return { ok: false, symbolTried, log: allLog, reason: `예외: ${msg}` };
   }
 }
 
@@ -205,7 +256,13 @@ export async function generateMetadata({
   };
 }
 
-function NotFoundFallback({ slug }: { slug: string }) {
+function NotFoundFallback({
+  slug,
+  result,
+}: {
+  slug: string;
+  result: Extract<LoadResult, { ok: false }>;
+}) {
   const decoded = (() => {
     try { return decodeURIComponent(slug); } catch { return slug; }
   })();
@@ -220,11 +277,34 @@ function NotFoundFallback({ slug }: { slug: string }) {
         종목 데이터를 불러올 수 없습니다
       </h1>
       <p className="mt-3 text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
-        입력한 코드 ‘<span className="font-bold">{decoded}</span>’ 에 해당하는 야후 파이낸스 일봉 데이터를 가져오지 못했습니다. 다음 경우 발생할 수 있습니다.
+        입력한 코드 ‘<span className="font-bold">{decoded}</span>’ 의 일봉 데이터를 가져오지 못했습니다.
       </p>
-      <ul className="mt-3 text-sm text-neutral-700 dark:text-neutral-300 list-disc list-inside space-y-1">
+
+      <section className="mt-5 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-900/10 p-4">
+        <h2 className="text-sm font-extrabold text-rose-900 dark:text-rose-200 mb-2">
+          진단 로그
+        </h2>
+        <div className="text-[12.5px] text-rose-900 dark:text-rose-100 space-y-1 font-mono leading-relaxed">
+          <div>사유: <span className="font-bold">{result.reason ?? "알 수 없음"}</span></div>
+          {result.symbolTried.length > 0 && (
+            <div>시도한 심볼: {result.symbolTried.join(", ")}</div>
+          )}
+          {result.log.length > 0 && (
+            <div className="mt-2 space-y-0.5">
+              {result.log.map((l, i) => (
+                <div key={i}>· {l.source} → {l.status}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <p className="mt-5 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
+        다음 경우 발생할 수 있습니다.
+      </p>
+      <ul className="mt-2 text-sm text-neutral-700 dark:text-neutral-300 list-disc list-inside space-y-1">
         <li>존재하지 않거나 상장폐지된 종목코드</li>
-        <li>야후 파이낸스 일시 응답 지연 (잠시 후 재시도)</li>
+        <li>야후·Stooq 일시 응답 지연 (잠시 후 재시도)</li>
         <li>한국 종목인데 .KS / .KQ 접미사 없이 입력 (예: <code>005930</code>, <code>005930.KS</code>)</li>
       </ul>
       <div className="mt-6 flex gap-2">
@@ -250,8 +330,9 @@ export default async function StockDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const report = await loadReport(params.slug);
-  if (!report) return <NotFoundFallback slug={params.slug} />;
+  const result = await loadReport(params.slug);
+  if (!result.ok) return <NotFoundFallback slug={params.slug} result={result} />;
+  const report = result.report;
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
   const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";

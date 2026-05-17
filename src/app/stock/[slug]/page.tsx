@@ -7,6 +7,7 @@ import { resolveStock, slugToSymbol, symbolToSlug } from "@/lib/stock-resolver";
 import { buildStockReport, type StockReport } from "@/lib/stock-report";
 import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
+import { fetchDartBundle, type DartBundle } from "@/lib/dart";
 
 function relatedStocks(report: StockReport, count = 6) {
   const pool = STOCK_MARKETS.filter((m) => {
@@ -143,6 +144,10 @@ export default async function StockDetailPage({
   if (!report) notFound();
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
+  const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";
+  const dart: DartBundle = isKR
+    ? await fetchDartBundle(report.ticker)
+    : { enabled: false, hasMapping: false, financial: null, filings: [] };
 
   return (
     <>
@@ -517,6 +522,103 @@ export default async function StockDetailPage({
             >
               본격 백테스트 도구로 이동 (RSI·MACD·볼린저 등 12 전략) →
             </Link>
+          </section>
+        )}
+
+        {dart.financial && (
+          <section className="mt-8">
+            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+              💼 재무 지표 (DART 사업보고서 {dart.financial.reportYear})
+            </h2>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {dart.financial.roe !== null && (
+                <IndicatorRow
+                  label="ROE (자기자본이익률)"
+                  value={`${dart.financial.roe.toFixed(1)}%`}
+                  note={
+                    dart.financial.roe >= 17
+                      ? "오닐 기준 17% 충족 — 수익성 우수"
+                      : dart.financial.roe >= 10
+                        ? "양호한 수익성"
+                        : "수익성 점검 필요"
+                  }
+                  tone={
+                    dart.financial.roe >= 17
+                      ? "good"
+                      : dart.financial.roe >= 10
+                        ? "neutral"
+                        : "bad"
+                  }
+                />
+              )}
+              {dart.financial.operatingMargin !== null && (
+                <IndicatorRow
+                  label="영업이익률"
+                  value={`${dart.financial.operatingMargin.toFixed(1)}%`}
+                  note={
+                    dart.financial.operatingMargin >= 20
+                      ? "20% 이상 — 우수"
+                      : dart.financial.operatingMargin >= 10
+                        ? "양호"
+                        : "수익성 약함"
+                  }
+                  tone={
+                    dart.financial.operatingMargin >= 20
+                      ? "good"
+                      : dart.financial.operatingMargin >= 10
+                        ? "neutral"
+                        : "bad"
+                  }
+                />
+              )}
+              {dart.financial.debtRatio !== null && (
+                <IndicatorRow
+                  label="부채비율"
+                  value={`${dart.financial.debtRatio.toFixed(1)}%`}
+                  note={
+                    dart.financial.debtRatio < 100
+                      ? "100% 미만 — 안정"
+                      : dart.financial.debtRatio < 200
+                        ? "100~200% — 주의"
+                        : "200% 초과 — 위험"
+                  }
+                  tone={
+                    dart.financial.debtRatio < 100
+                      ? "good"
+                      : dart.financial.debtRatio < 200
+                        ? "neutral"
+                        : "bad"
+                  }
+                />
+              )}
+            </div>
+          </section>
+        )}
+
+        {dart.filings.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+              📄 최근 공시 (DART)
+            </h2>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {dart.filings.map((f) => (
+                <a
+                  key={f.reportNo}
+                  href={`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${f.reportNo}`}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="flex items-center gap-3 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+                >
+                  <span className="text-xs text-neutral-500 dark:text-neutral-500 shrink-0">
+                    {f.date}
+                  </span>
+                  <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-200 truncate">
+                    {f.title}
+                  </span>
+                  <span className="text-xs text-neutral-400">↗</span>
+                </a>
+              ))}
+            </div>
           </section>
         )}
 

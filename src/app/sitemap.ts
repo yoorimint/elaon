@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase-server";
 import { PICK_CATEGORIES, listHubs } from "@/lib/picks";
 import { CHECKLISTS } from "@/lib/checklists";
 import { COMPARISONS } from "@/lib/comparisons";
+import { STOCK_MARKETS } from "@/lib/market";
+import { symbolToSlug } from "@/lib/stock-resolver";
 
 const SITE = "https://www.eloan.kr";
 
@@ -41,6 +43,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     })),
     { url: `${SITE}/stock`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.7 },
+    // 인기 한국·미국 종목 (50개씩 우선) — long-tail 검색 색인 유도
+    ...STOCK_MARKETS.filter((m) => m.kind === "stock_kr")
+      .slice(0, 50)
+      .map((m) => ({
+        url: `${SITE}/stock/${symbolToSlug(m.id.replace(/^yahoo:/, ""))}`,
+        lastModified: now,
+        changeFrequency: "weekly" as const,
+        priority: 0.55,
+      })),
+    ...STOCK_MARKETS.filter((m) => m.kind === "stock_us")
+      .slice(0, 30)
+      .map((m) => ({
+        url: `${SITE}/stock/${symbolToSlug(m.id.replace(/^yahoo:/, ""))}`,
+        lastModified: now,
+        changeFrequency: "weekly" as const,
+        priority: 0.55,
+      })),
     { url: `${SITE}/picks/vs`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
     ...COMPARISONS.map((c) => ({
       url: `${SITE}/picks/vs/${c.slug}`,

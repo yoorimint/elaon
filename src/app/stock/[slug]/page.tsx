@@ -797,6 +797,21 @@ function Stat({
   );
 }
 
+// 지표 라벨 → 글로서리 anchor 매핑
+const GLOSSARY_ANCHOR: Record<string, string> = {
+  "RSI(14)": "rsi-ind",
+  "ADX(14)": "adx",
+  "ATR%": "atr",
+  "VWAP(20일) 거리": "vwap",
+  "거래량 비율": "volume",
+  "볼린저 폭": "bollinger",
+  "최근 1년 최대낙폭(MDD)": "mdd",
+  "EMA 정배열": "ema",
+  "ROE (자기자본이익률)": "roe",
+  "영업이익률": "operating-margin",
+  "부채비율": "debt-ratio",
+};
+
 function IndicatorRow({
   label,
   value,
@@ -814,12 +829,23 @@ function IndicatorRow({
       : tone === "bad"
         ? "text-rose-600 dark:text-rose-400"
         : "text-neutral-700 dark:text-neutral-300";
+  const anchor = GLOSSARY_ANCHOR[label];
+  const labelNode = anchor ? (
+    <Link
+      href={`/glossary#${anchor}`}
+      className="text-sm font-bold text-neutral-900 dark:text-neutral-100 hover:text-amber-600 dark:hover:text-amber-400 hover:underline"
+    >
+      {label} <span className="text-[10px] text-neutral-400">↗</span>
+    </Link>
+  ) : (
+    <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+      {label}
+    </span>
+  );
   return (
     <div className="flex items-start justify-between gap-3 p-3">
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
-          {label}
-        </div>
+        {labelNode}
         <div className="text-[12px] text-neutral-600 dark:text-neutral-400 leading-snug mt-0.5">
           {note}
         </div>

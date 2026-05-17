@@ -167,6 +167,23 @@ export default async function StockDetailPage({
           { name: report.name, url },
         ])}
       />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "FinancialProduct",
+          name: report.name,
+          identifier: report.ticker,
+          url,
+          inLanguage: "ko-KR",
+          category: report.exchange,
+          description: `${report.name} (${report.ticker}) 일봉 차트와 EMA·RSI·ADX·VWAP·볼린저·CAN SLIM·Quant 지표 종합 보고서.`,
+          provider: {
+            "@type": "Organization",
+            name: "eloan.kr",
+            url: SITE,
+          },
+        }}
+      />
 
       <main className="mx-auto max-w-3xl px-5 py-10 sm:py-14">
         <nav className="text-sm text-neutral-500">

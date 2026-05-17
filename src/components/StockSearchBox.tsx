@@ -2,26 +2,23 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { STOCK_MARKETS, type MarketEntry } from "@/lib/market";
-import { symbolToSlug } from "@/lib/stock-resolver";
-
-const KR_STOCKS = STOCK_MARKETS.filter(
-  (m) => m.kind === "stock_kr" || m.kind === "stock_us",
-);
+import { STOCK_SUGGESTIONS, type StockSuggestion } from "@/lib/stock-suggestions";
 
 function normalize(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "");
 }
 
-function localMatches(query: string, max = 8): MarketEntry[] {
+function symbolToSlug(symbol: string): string {
+  return symbol.replace(/\./g, "-");
+}
+
+function localMatches(query: string, max = 8): StockSuggestion[] {
   const q = normalize(query);
   if (!q) return [];
-  const out: MarketEntry[] = [];
-  const exact: MarketEntry[] = [];
-  const partial: MarketEntry[] = [];
-  for (const m of KR_STOCKS) {
-    const symbol = m.id.replace(/^yahoo:/, "");
-    const ticker = symbol.replace(/\.(KS|KQ)$/, "");
+  const exact: StockSuggestion[] = [];
+  const partial: StockSuggestion[] = [];
+  for (const m of STOCK_SUGGESTIONS) {
+    const ticker = m.symbol.replace(/\.(KS|KQ)$/, "");
     const name = normalize(m.name);
     const sub = m.subtitle ? normalize(m.subtitle) : "";
     const tk = normalize(ticker);
@@ -74,13 +71,11 @@ export function StockSearchBox() {
     setError(null);
     setOpen(false);
 
-    // 자동완성 첫 결과가 있으면 그걸로 이동
     if (matches.length > 0) {
-      goTo(matches[0].id.replace(/^yahoo:/, ""));
+      goTo(matches[0].symbol);
       return;
     }
 
-    // 6자리 숫자·미국 티커는 바로 라우팅
     if (/^\d{6}(\.(KS|KQ))?$/.test(input) || /^[A-Za-z]{1,5}$/.test(input)) {
       goTo(input.toUpperCase());
       return;
@@ -112,7 +107,7 @@ export function StockSearchBox() {
       setHighlighted((h) => Math.max(h - 1, 0));
     } else if (e.key === "Enter" && matches[highlighted]) {
       e.preventDefault();
-      goTo(matches[highlighted].id.replace(/^yahoo:/, ""));
+      goTo(matches[highlighted].symbol);
     } else if (e.key === "Escape") {
       setOpen(false);
     }
@@ -152,16 +147,14 @@ export function StockSearchBox() {
       {open && matches.length > 0 && (
         <div className="absolute left-0 right-0 mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-lg overflow-hidden z-30">
           {matches.map((m, i) => {
-            const symbol = m.id.replace(/^yahoo:/, "");
-            const ticker = symbol.replace(/\.(KS|KQ)$/, "");
-            const isKR = symbol.endsWith(".KS") || symbol.endsWith(".KQ");
+            const ticker = m.symbol.replace(/\.(KS|KQ)$/, "");
             return (
               <button
-                key={m.id}
+                key={m.symbol}
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  goTo(symbol);
+                  goTo(m.symbol);
                 }}
                 onMouseEnter={() => setHighlighted(i)}
                 className={`block w-full text-left px-4 py-2.5 transition ${
@@ -175,12 +168,7 @@ export function StockSearchBox() {
                     {m.name}
                   </div>
                   <div className="text-[11px] text-neutral-500 dark:text-neutral-500 shrink-0">
-                    {ticker} ·{" "}
-                    {isKR
-                      ? symbol.endsWith(".KS")
-                        ? "KOSPI"
-                        : "KOSDAQ"
-                      : "US"}
+                    {ticker} · {m.exchange}
                   </div>
                 </div>
                 {m.subtitle && (

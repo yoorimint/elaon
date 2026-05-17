@@ -1,7 +1,5 @@
 import { ImageResponse } from "next/og";
-import { STOCK_MARKETS } from "@/lib/market";
-import { fetchYahooCandles } from "@/lib/yahoo";
-import { buildStockReport } from "@/lib/stock-report";
+import { STOCK_SUGGESTIONS } from "@/lib/stock-suggestions";
 import { slugToSymbol } from "@/lib/stock-resolver";
 
 export const size = { width: 1200, height: 630 };
@@ -29,51 +27,24 @@ export default async function StockOG({
 }) {
   let symbol = "";
   let name = "";
-  let priceText = "";
-  let changeText = "";
-  let changeTone: "up" | "down" | "flat" = "flat";
-  let exchange: "KOSPI" | "KOSDAQ" | "OTHER" = "OTHER";
+  let exchange: "KOSPI" | "KOSDAQ" | "US" | "OTHER" = "OTHER";
   let fontData: ArrayBuffer | null = null;
 
   try {
     symbol = slugToSymbol(params.slug);
-    const local = STOCK_MARKETS.find(
-      (m) => m.id.replace(/^yahoo:/, "") === symbol,
-    );
+    const local = STOCK_SUGGESTIONS.find((m) => m.symbol === symbol);
     name = local?.name ?? symbol;
-    exchange = symbol.endsWith(".KS")
-      ? "KOSPI"
-      : symbol.endsWith(".KQ")
-        ? "KOSDAQ"
-        : "OTHER";
-
-    fontData = await loadFont();
-
-    const endMs = Date.now();
-    const startMs = endMs - 1000 * 60 * 60 * 24 * 365 * 2;
-    const candles = await fetchYahooCandles(symbol, "1d", startMs, endMs).catch(
-      () => [],
+    exchange = local?.exchange ?? (
+      symbol.endsWith(".KS")
+        ? "KOSPI"
+        : symbol.endsWith(".KQ")
+          ? "KOSDAQ"
+          : "OTHER"
     );
-    if (candles.length > 0) {
-      const report = buildStockReport({ symbol, name, candles });
-      const isKR = exchange === "KOSPI" || exchange === "KOSDAQ";
-      priceText = isKR
-        ? `${Math.round(report.price).toLocaleString("ko-KR")}원`
-        : `$${report.price.toFixed(2)}`;
-      const ch = report.change1d;
-      changeTone = ch > 0.05 ? "up" : ch < -0.05 ? "down" : "flat";
-      changeText = `${ch >= 0 ? "+" : ""}${ch.toFixed(2)}%`;
-    }
-  } catch (e) {
-    console.error("[stock] OG image error:", e);
+    fontData = await loadFont();
+  } catch {
+    name = name || symbol || "종목";
   }
-
-  const changeColor =
-    changeTone === "up"
-      ? "#ef4444"
-      : changeTone === "down"
-        ? "#3b82f6"
-        : "#737373";
 
   return new ImageResponse(
     (
@@ -83,8 +54,7 @@ export default async function StockOG({
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background:
-            "linear-gradient(135deg, #1c1917 0%, #44403c 100%)",
+          background: "linear-gradient(135deg, #1c1917 0%, #44403c 100%)",
           padding: "64px 80px",
           color: "#fafafa",
           fontFamily: "NotoSansKR, sans-serif",
@@ -113,38 +83,23 @@ export default async function StockOG({
         >
           <div
             style={{
-              fontSize: 96,
+              fontSize: 110,
               fontWeight: 900,
               lineHeight: 1,
               letterSpacing: -3,
-              marginBottom: 16,
+              marginBottom: 24,
             }}
           >
             {name}
           </div>
           <div
             style={{
-              fontSize: 32,
+              fontSize: 36,
               color: "#d4d4d4",
-              marginBottom: 36,
             }}
           >
-            {symbol.replace(/\.(KS|KQ)$/, "")} · {exchange}
+            {(symbol || "").replace(/\.(KS|KQ)$/, "")} · {exchange}
           </div>
-          {priceText && (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 24 }}>
-              <span style={{ fontSize: 80, fontWeight: 800 }}>{priceText}</span>
-              <span
-                style={{
-                  fontSize: 48,
-                  fontWeight: 700,
-                  color: changeColor,
-                }}
-              >
-                {changeText}
-              </span>
-            </div>
-          )}
         </div>
 
         <div

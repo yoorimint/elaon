@@ -40,6 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
+    { url: `${SITE}/stock`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.7 },
     { url: `${SITE}/picks/vs`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
     ...COMPARISONS.map((c) => ({
       url: `${SITE}/picks/vs/${c.slug}`,

@@ -16,57 +16,70 @@ export function isDartEnabled(): boolean {
 // corp_code 자동 다운로드 (메모리 캐시 24시간)
 // ===========================================================================
 
-type CorpMap = Record<string, string>; // ticker6 → corp_code
+type CorpMap = Record<string, string>;
 let dynamicCache: CorpMap | null = null;
 let cacheFetchedAt = 0;
+let loadingPromise: Promise<CorpMap | null> | null = null;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-async function loadDynamicMap(): Promise<CorpMap | null> {
-  if (!isDartEnabled()) return null;
-  const now = Date.now();
-  if (dynamicCache && now - cacheFetchedAt < CACHE_TTL_MS) {
-    return dynamicCache;
-  }
-  try {
-    const url = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${DART_KEY}`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      console.error("[dart] corpCode.xml HTTP", res.status);
-      return dynamicCache;
-    }
-    const buf = await res.arrayBuffer();
-    // ZIP 풀기 (CORPCODE.xml 단일 파일)
-    const zip = unzipSync(new Uint8Array(buf));
-    const entry = Object.values(zip)[0];
-    if (!entry) return dynamicCache;
-    const xml = strFromU8(entry);
-    const map: CorpMap = {};
-    const re = /<list>([\s\S]*?)<\/list>/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(xml))) {
-      const block = m[1];
-      const corpCode = /<corp_code>(\d+)<\/corp_code>/.exec(block)?.[1] ?? "";
-      const stockCode = /<stock_code>\s*(\d{6})?\s*<\/stock_code>/.exec(block)?.[1];
-      if (stockCode && corpCode) {
-        map[stockCode] = corpCode;
+function startLoadingInBackground(): Promise<CorpMap | null> {
+  if (loadingPromise) return loadingPromise;
+  loadingPromise = (async () => {
+    try {
+      const url = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${DART_KEY}`;
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 15000); // 15초 timeout
+      const res = await fetch(url, {
+        cache: "no-store",
+        signal: controller.signal,
+      }).finally(() => clearTimeout(t));
+      if (!res.ok) {
+        console.error("[dart] corpCode.xml HTTP", res.status);
+        return dynamicCache;
       }
+      const buf = await res.arrayBuffer();
+      const zip = unzipSync(new Uint8Array(buf));
+      const entry = Object.values(zip)[0];
+      if (!entry) return dynamicCache;
+      const xml = strFromU8(entry);
+      const map: CorpMap = {};
+      const re = /<list>([\s\S]*?)<\/list>/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(xml))) {
+        const block = m[1];
+        const corpCode = /<corp_code>(\d+)<\/corp_code>/.exec(block)?.[1] ?? "";
+        const stockCode = /<stock_code>\s*(\d{6})?\s*<\/stock_code>/.exec(block)?.[1];
+        if (stockCode && corpCode) map[stockCode] = corpCode;
+      }
+      dynamicCache = map;
+      cacheFetchedAt = Date.now();
+      console.log(`[dart] corpCode loaded: ${Object.keys(map).length} stocks`);
+      return map;
+    } catch (e) {
+      console.error("[dart] corpCode load failed:", e);
+      return dynamicCache;
+    } finally {
+      loadingPromise = null;
     }
-    dynamicCache = map;
-    cacheFetchedAt = now;
-    console.log(`[dart] corpCode loaded: ${Object.keys(map).length} stocks`);
-    return map;
-  } catch (e) {
-    console.error("[dart] corpCode load failed:", e);
-    return dynamicCache;
-  }
+  })();
+  return loadingPromise;
 }
 
 export async function getCorpCode(ticker6: string): Promise<string | null> {
-  // 1. 정적 매핑 우선 (사용자가 dart-corps.ts 에 직접 채운 경우)
+  // 1. 정적 매핑 우선
   if (DART_CORP_CODES[ticker6]) return DART_CORP_CODES[ticker6];
-  // 2. 자동 다운로드된 동적 매핑
-  const dyn = await loadDynamicMap();
-  return dyn?.[ticker6] ?? null;
+  // 2. 캐시된 동적 매핑
+  if (dynamicCache && Date.now() - cacheFetchedAt < CACHE_TTL_MS) {
+    return dynamicCache[ticker6] ?? null;
+  }
+  // 3. 캐시 없거나 만료 — 백그라운드로 로드 시작
+  //    이번 요청은 await 하지 않고 즉시 null 반환 (페이지 빠르게 응답)
+  //    다음 요청부터는 캐시 사용 가능
+  if (isDartEnabled()) {
+    startLoadingInBackground();
+  }
+  // 메모리에 부분 캐시가 있으면 그거라도 시도
+  return dynamicCache?.[ticker6] ?? null;
 }
 
 // ===========================================================================
@@ -96,7 +109,12 @@ export async function fetchDartFinancial(
   const y = year ?? new Date().getFullYear() - 1;
   try {
     const url = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${y}&reprt_code=11011`;
-    const res = await fetch(url, { next: { revalidate: 86400 } });
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      next: { revalidate: 86400 },
+      signal: controller.signal,
+    }).finally(() => clearTimeout(t));
     if (!res.ok) return null;
     const json = await res.json();
     if (json?.status !== "000") return null;
@@ -177,7 +195,12 @@ export async function fetchDartFilings(
     `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   try {
     const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bgn_de=${fmt(start)}&end_de=${fmt(end)}&page_count=20`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
+      signal: controller.signal,
+    }).finally(() => clearTimeout(t));
     if (!res.ok) return [];
     const json = await res.json();
     if (json?.status !== "000") return [];

@@ -528,6 +528,146 @@ export function evaluateQuant(candles: Candle[]): QuantItem[] {
 }
 
 // ===========================================================================
+// 단순 백테스트 미리보기
+// 보고서 페이지에서 본인 백테스트 도구를 열기 전 빠른 감을 잡기 위함.
+// 본격 백테스트는 /backtest 에서 수행.
+// ===========================================================================
+
+export type BacktestPreview = {
+  strategy: string;
+  description: string;
+  trades: number;
+  winRate: number; // 0~100
+  totalReturn: number; // %
+  buyHoldReturn: number; // %
+  maxDrawdown: number; // %
+  verdict: "good" | "neutral" | "bad";
+};
+
+// SMA 골든/데드 크로스 (50/200) 백테스트 — 최근 252일 기준
+function backtestSmaCross(candles: Candle[]): BacktestPreview {
+  const closes = candles.map((c) => c.close);
+  const sma50 = sma(closes, 50);
+  const sma200 = sma(closes, 200);
+  // 최근 252일 윈도우
+  const data = candles.slice(-252);
+  const startIdx = candles.length - data.length;
+  let position: "in" | "out" = "out";
+  let entryPrice = 0;
+  let cash = 100;
+  const trades: { ret: number }[] = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const idx = startIdx + i;
+    const f = sma50[idx];
+    const s = sma200[idx];
+    const pf = sma50[idx - 1];
+    const ps = sma200[idx - 1];
+    if (!Number.isFinite(f) || !Number.isFinite(s)) continue;
+
+    // 골든 크로스: 매수
+    if (position === "out" && pf <= ps && f > s) {
+      position = "in";
+      entryPrice = data[i].close;
+    }
+    // 데드 크로스: 매도
+    else if (position === "in" && pf >= ps && f < s) {
+      const ret = ((data[i].close - entryPrice) / entryPrice) * 100;
+      trades.push({ ret });
+      cash *= 1 + ret / 100;
+      position = "out";
+    }
+  }
+  // 보유 중이면 마지막 가격으로 청산
+  if (position === "in") {
+    const ret = ((data[data.length - 1].close - entryPrice) / entryPrice) * 100;
+    trades.push({ ret });
+    cash *= 1 + ret / 100;
+  }
+
+  const wins = trades.filter((t) => t.ret > 0).length;
+  const winRate = trades.length === 0 ? 0 : (wins / trades.length) * 100;
+  const totalReturn = cash - 100;
+  const buyHoldReturn = changePercent(data, data.length - 1);
+  const mdd = maxDrawdown(data);
+
+  const verdict: BacktestPreview["verdict"] =
+    totalReturn > buyHoldReturn && totalReturn > 0
+      ? "good"
+      : totalReturn > 0
+        ? "neutral"
+        : "bad";
+
+  return {
+    strategy: "SMA 50/200 골든·데드 크로스",
+    description: "50일 이동평균이 200일 이동평균 위로 올라가면 매수, 아래로 내려가면 매도. 가장 고전적인 추세 추종 전략.",
+    trades: trades.length,
+    winRate,
+    totalReturn,
+    buyHoldReturn,
+    maxDrawdown: mdd,
+    verdict,
+  };
+}
+
+// RSI 반전 (RSI 30 미만 매수, 70 이상 매도) — 최근 252일 기준
+function backtestRsiMeanRevert(candles: Candle[]): BacktestPreview {
+  const data = candles.slice(-252);
+  let position: "in" | "out" = "out";
+  let entryPrice = 0;
+  let cash = 100;
+  const trades: { ret: number }[] = [];
+
+  for (let i = 14; i < data.length; i++) {
+    const slice = candles.slice(candles.length - data.length + i - 14, candles.length - data.length + i + 1);
+    const r = rsi(slice, 14);
+    if (position === "out" && r < 30) {
+      position = "in";
+      entryPrice = data[i].close;
+    } else if (position === "in" && r > 70) {
+      const ret = ((data[i].close - entryPrice) / entryPrice) * 100;
+      trades.push({ ret });
+      cash *= 1 + ret / 100;
+      position = "out";
+    }
+  }
+  if (position === "in") {
+    const ret = ((data[data.length - 1].close - entryPrice) / entryPrice) * 100;
+    trades.push({ ret });
+    cash *= 1 + ret / 100;
+  }
+
+  const wins = trades.filter((t) => t.ret > 0).length;
+  const winRate = trades.length === 0 ? 0 : (wins / trades.length) * 100;
+  const totalReturn = cash - 100;
+  const buyHoldReturn = changePercent(data, data.length - 1);
+  const mdd = maxDrawdown(data);
+
+  const verdict: BacktestPreview["verdict"] =
+    totalReturn > buyHoldReturn && totalReturn > 0
+      ? "good"
+      : totalReturn > 0
+        ? "neutral"
+        : "bad";
+
+  return {
+    strategy: "RSI 30↓ 매수 / 70↑ 매도",
+    description: "RSI 가 30 아래로 떨어지면 매수, 70 위로 올라가면 매도. 평균 회귀 전략.",
+    trades: trades.length,
+    winRate,
+    totalReturn,
+    buyHoldReturn,
+    maxDrawdown: mdd,
+    verdict,
+  };
+}
+
+export function evaluateBacktests(candles: Candle[]): BacktestPreview[] {
+  if (candles.length < 252) return [];
+  return [backtestSmaCross(candles), backtestRsiMeanRevert(candles)];
+}
+
+// ===========================================================================
 // 종합 보고서 데이터
 // ===========================================================================
 
@@ -566,9 +706,10 @@ export type StockReport = {
   // 진입 신호
   entry: EntrySignal;
 
-  // CAN SLIM·Quant
+  // CAN SLIM·Quant·백테스트
   canSlim: CanSlimItem[];
   quant: QuantItem[];
+  backtests: BacktestPreview[];
 
   // 캔들 (차트용)
   candles: Candle[];
@@ -633,6 +774,7 @@ export function buildStockReport(params: {
     entry: evaluateEntry(candles),
     canSlim: evaluateCanSlim(candles),
     quant: evaluateQuant(candles),
+    backtests: evaluateBacktests(candles),
     candles,
   };
 }

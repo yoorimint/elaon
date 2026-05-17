@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { fetchYahooCandles } from "@/lib/yahoo";
 import { STOCK_MARKETS } from "@/lib/market";
 import { resolveStock, slugToSymbol, symbolToSlug } from "@/lib/stock-resolver";
@@ -142,13 +141,53 @@ export async function generateMetadata({
   };
 }
 
+function NotFoundFallback({ slug }: { slug: string }) {
+  const decoded = (() => {
+    try { return decodeURIComponent(slug); } catch { return slug; }
+  })();
+  return (
+    <main className="mx-auto max-w-2xl px-5 py-16">
+      <nav className="text-sm text-neutral-500 mb-6">
+        <Link href="/" className="hover:text-neutral-900 dark:hover:text-white">홈</Link>
+        {" / "}
+        <Link href="/stock" className="hover:text-neutral-900 dark:hover:text-white">종목 검색</Link>
+      </nav>
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-neutral-100">
+        종목 데이터를 불러올 수 없습니다
+      </h1>
+      <p className="mt-3 text-[15px] text-neutral-700 dark:text-neutral-300 leading-relaxed">
+        입력한 코드 ‘<span className="font-bold">{decoded}</span>’ 에 해당하는 야후 파이낸스 일봉 데이터를 가져오지 못했습니다. 다음 경우 발생할 수 있습니다.
+      </p>
+      <ul className="mt-3 text-sm text-neutral-700 dark:text-neutral-300 list-disc list-inside space-y-1">
+        <li>존재하지 않거나 상장폐지된 종목코드</li>
+        <li>야후 파이낸스 일시 응답 지연 (잠시 후 재시도)</li>
+        <li>한국 종목인데 .KS / .KQ 접미사 없이 입력 (예: <code>005930</code>, <code>005930.KS</code>)</li>
+      </ul>
+      <div className="mt-6 flex gap-2">
+        <Link
+          href="/stock"
+          className="inline-flex items-center px-5 py-3 rounded-xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 font-bold hover:opacity-90 transition"
+        >
+          다시 검색하기
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center px-5 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-100 dark:hover:bg-neutral-900 transition"
+        >
+          홈으로
+        </Link>
+      </div>
+    </main>
+  );
+}
+
 export default async function StockDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
   const report = await loadReport(params.slug);
-  if (!report) notFound();
+  if (!report) return <NotFoundFallback slug={params.slug} />;
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
   const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";

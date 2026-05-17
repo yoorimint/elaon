@@ -795,6 +795,113 @@ export default async function StockDetailPage({
           </div>
         </section>
 
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            🧭 신호 종합 (Conviction)
+          </h2>
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+              <div>
+                <div className="text-xs font-bold text-neutral-500">7개 신호 일치도</div>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className={`text-4xl font-extrabold ${
+                    report.convictionBias === "long"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : report.convictionBias === "short"
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-neutral-700 dark:text-neutral-300"
+                  }`}>
+                    {report.conviction}
+                  </span>
+                  <span className="text-base text-neutral-500">/100</span>
+                </div>
+              </div>
+              <span className={`text-sm font-extrabold px-3 py-1 rounded-full ${
+                report.convictionBias === "long"
+                  ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                  : report.convictionBias === "short"
+                    ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                    : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+              }`}>
+                {report.convictionBias === "long" ? "매수 우위" : report.convictionBias === "short" ? "매도 우위" : "중립"}
+              </span>
+            </div>
+            <p className="mt-3 text-[12px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+              EMA 정배열·200일선 위치·RSI·MACD·스토캐스틱·3개월 수익률·거래량 동행 7가지 신호의 같은 방향 일치 비율. 80 이상이면 강한 신호.
+            </p>
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            🔬 보조 지표
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <MiniStat
+              label="OBV 스마트머니"
+              value={
+                report.obvTrend === "up"
+                  ? "↑ 유입"
+                  : report.obvTrend === "down"
+                    ? "↓ 유출"
+                    : "→ 횡보"
+              }
+              tone={report.obvTrend === "up" ? "good" : report.obvTrend === "down" ? "bad" : "neutral"}
+              note="거래량 기반 자금 흐름 추세"
+            />
+            <MiniStat
+              label="NR7 압축"
+              value={report.nr7Signal ? "감지" : "없음"}
+              tone={report.nr7Signal ? "good" : "neutral"}
+              note="최근 7일 중 가장 좁은 변동폭 — 큰 움직임 임박 신호"
+            />
+            <MiniStat
+              label="변동성 백분위"
+              value={`${report.volPercentile.toFixed(0)}%`}
+              tone={
+                report.volPercentile < 30 ? "good" : report.volPercentile > 70 ? "bad" : "neutral"
+              }
+              note={
+                report.volPercentile < 30
+                  ? "1년 기준 낮은 변동성 — 안정"
+                  : report.volPercentile > 70
+                    ? "1년 기준 높은 변동성 — 주의"
+                    : "보통"
+              }
+            />
+            <MiniStat
+              label="이격도 (20일)"
+              value={`${report.disparity20.toFixed(1)}%`}
+              tone={
+                Math.abs(report.disparity20 - 100) < 5 ? "neutral" : report.disparity20 > 105 ? "bad" : "good"
+              }
+              note={
+                report.disparity20 > 105
+                  ? "단기 이평선 대비 5% 이상 위 — 단기 과열"
+                  : report.disparity20 < 95
+                    ? "단기 이평선 아래 — 반등 가능 구간"
+                    : "이평선 부근 — 중립"
+              }
+            />
+            <MiniStat
+              label="이격도 (60일)"
+              value={`${report.disparity60.toFixed(1)}%`}
+              tone={
+                Math.abs(report.disparity60 - 100) < 7 ? "neutral" : report.disparity60 > 110 ? "bad" : "good"
+              }
+              note="중기 이평선 대비 가격 위치"
+            />
+            <MiniStat
+              label="이격도 (120일)"
+              value={`${report.disparity120.toFixed(1)}%`}
+              tone={
+                Math.abs(report.disparity120 - 100) < 10 ? "neutral" : report.disparity120 > 115 ? "bad" : "good"
+              }
+              note="장기 이평선 대비 — 대형 추세 위치"
+            />
+          </div>
+        </section>
+
         {report.backtests.length > 0 && (
           <section className="mt-8">
             <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
@@ -867,6 +974,13 @@ export default async function StockDetailPage({
           </section>
         )}
 
+        {isKR && !dart.financial && !dart.filings.length && (
+          <section className="mt-8 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/40 dark:bg-neutral-900/30 p-4 text-[12.5px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
+            💼 <strong>재무·공시(DART) 섹션 비활성</strong> — {!dart.enabled
+              ? "환경변수 OPEN_DART_API_KEY 를 설정하면 자동 활성화됩니다."
+              : "DART API 키는 설정됐지만 이 종목의 corp_code 매핑이 없습니다. src/lib/dart-corps.ts 에 추가 시 활성화됩니다."}
+          </section>
+        )}
         {dart.financial && (
           <section className="mt-8">
             <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
@@ -1061,6 +1175,36 @@ export default async function StockDetailPage({
 // ===========================================================================
 // 시각 컴포넌트
 // ===========================================================================
+
+function MiniStat({
+  label,
+  value,
+  tone,
+  note,
+}: {
+  label: string;
+  value: string;
+  tone: "good" | "neutral" | "bad";
+  note: string;
+}) {
+  const color =
+    tone === "good"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "bad"
+        ? "text-rose-600 dark:text-rose-400"
+        : "text-neutral-700 dark:text-neutral-300";
+  return (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
+      <div className="text-[11px] font-bold text-neutral-500 dark:text-neutral-500">
+        {label}
+      </div>
+      <div className={`mt-1 text-base font-extrabold ${color}`}>{value}</div>
+      <div className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400 leading-snug">
+        {note}
+      </div>
+    </div>
+  );
+}
 
 function TradeBox({
   label,

@@ -92,6 +92,115 @@ export function stochastic(candles: Candle[], k = 14): number {
   return ((last - low) / (high - low)) * 100;
 }
 
+// OBV (On-Balance Volume) — 스마트머니 흐름 추정
+export function obv(candles: Candle[]): { current: number; trend: "up" | "down" | "flat" } {
+  if (candles.length < 2) return { current: 0, trend: "flat" };
+  let value = 0;
+  const series: number[] = [0];
+  for (let i = 1; i < candles.length; i++) {
+    const diff = candles[i].close - candles[i - 1].close;
+    if (diff > 0) value += candles[i].volume;
+    else if (diff < 0) value -= candles[i].volume;
+    series.push(value);
+  }
+  // 최근 20일 vs 그 이전 20일 평균 비교로 trend 판정
+  const recent = series.slice(-20);
+  const prior = series.slice(-40, -20);
+  if (recent.length === 0 || prior.length === 0) {
+    return { current: value, trend: "flat" };
+  }
+  const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  const priorAvg = prior.reduce((a, b) => a + b, 0) / prior.length;
+  const diff = recentAvg - priorAvg;
+  return {
+    current: value,
+    trend: diff > Math.abs(priorAvg) * 0.05 ? "up" : diff < -Math.abs(priorAvg) * 0.05 ? "down" : "flat",
+  };
+}
+
+// NR7 — 최근 7일 중 가장 좁은 일중 변동폭 (변동성 압축 → 곧 큰 움직임)
+export function nr7(candles: Candle[]): boolean {
+  if (candles.length < 7) return false;
+  const last7 = candles.slice(-7);
+  const ranges = last7.map((c) => c.high - c.low);
+  return ranges[ranges.length - 1] === Math.min(...ranges);
+}
+
+// 이격도 (Disparity) — 이동평균 대비 현재가 %
+export function disparity(candles: Candle[], period: number): number {
+  if (candles.length < period) return 100;
+  const window = candles.slice(-period).map((c) => c.close);
+  const avg = window.reduce((a, b) => a + b, 0) / period;
+  const last = candles[candles.length - 1].close;
+  return avg === 0 ? 100 : (last / avg) * 100;
+}
+
+// 변동성 백분위 — 현재 ATR% 가 1년 기준 어디 위치
+export function volatilityPercentile(candles: Candle[]): number {
+  if (candles.length < 252) return 50;
+  const slice = candles.slice(-252);
+  const atrs: number[] = [];
+  for (let i = 14; i < slice.length; i++) {
+    const sub = slice.slice(i - 14, i + 1);
+    const atrVal = atr(sub, 14);
+    atrs.push(atrVal);
+  }
+  const currentAtr = atr(slice, 14);
+  const below = atrs.filter((a) => a <= currentAtr).length;
+  return (below / atrs.length) * 100;
+}
+
+// Conviction — 여러 신호의 방향 일치도 (0~100)
+// 추세·모멘텀·수급 등 5개 신호 중 같은 방향(매수/매도) 의 비율
+export function convictionScore(candles: Candle[]): { score: number; bias: "long" | "short" | "neutral" } {
+  const closes = candles.map((c) => c.close);
+  const last = closes[closes.length - 1] ?? 0;
+  const ema20Val = ema(closes, 20)[closes.length - 1] ?? last;
+  const ema50Val = ema(closes, 50)[closes.length - 1] ?? last;
+  const ema200Val = ema(closes, 200)[closes.length - 1] ?? last;
+  const rsiVal = rsi(candles, 14);
+  const macdH = macd(candles).histogram;
+  const stoch = stochastic(candles, 14);
+  const ch3m = changePercent(candles, 63);
+  const volR = volumeRatio(candles, 20);
+
+  let long = 0;
+  let short = 0;
+  // 1. EMA 정배열
+  if (last > ema20Val && ema20Val > ema50Val) long++;
+  else if (last < ema20Val && ema20Val < ema50Val) short++;
+  // 2. 200일선
+  if (last > ema200Val) long++;
+  else short++;
+  // 3. RSI
+  if (rsiVal >= 50 && rsiVal < 70) long++;
+  else if (rsiVal < 30) long++;
+  else if (rsiVal > 70) short++;
+  else if (rsiVal < 50 && rsiVal >= 30) short++;
+  // 4. MACD
+  if (macdH > 0) long++;
+  else short++;
+  // 5. Stochastic
+  if (stoch >= 50 && stoch < 80) long++;
+  else if (stoch < 20) long++;
+  else if (stoch > 80) short++;
+  else short++;
+  // 6. 3개월 수익률
+  if (ch3m > 0) long++;
+  else short++;
+  // 7. 거래량 + 가격 상승 동시
+  if (volR > 1 && ch3m > 0) long++;
+  else if (volR > 1 && ch3m < 0) short++;
+
+  const total = long + short;
+  if (total === 0) return { score: 0, bias: "neutral" };
+  const dominantPct = Math.max(long, short) / total;
+  return {
+    score: Math.round(dominantPct * 100),
+    bias: long > short ? "long" : short > long ? "short" : "neutral",
+  };
+}
+
 // ===========================================================================
 // 추세·모멘텀 지표
 // ===========================================================================
@@ -828,7 +937,15 @@ export type StockReport = {
   macdSignal: number;
   macdHist: number;
   stochK: number;
-  pricePosition52w: number; // 0~100 (52주 저점 ~ 고점 사이 위치)
+  pricePosition52w: number;
+  obvTrend: "up" | "down" | "flat";
+  nr7Signal: boolean;
+  disparity20: number;
+  disparity60: number;
+  disparity120: number;
+  volPercentile: number;
+  conviction: number;
+  convictionBias: "long" | "short" | "neutral";
 
   // 진입 신호
   entry: EntrySignal;
@@ -909,6 +1026,14 @@ export function buildStockReport(params: {
     stochK: stochastic(candles, 14),
     pricePosition52w:
       high52 === low52 ? 50 : ((last - low52) / (high52 - low52)) * 100,
+    obvTrend: obv(candles).trend,
+    nr7Signal: nr7(candles),
+    disparity20: disparity(candles, 20),
+    disparity60: disparity(candles, 60),
+    disparity120: disparity(candles, 120),
+    volPercentile: volatilityPercentile(candles),
+    conviction: convictionScore(candles).score,
+    convictionBias: convictionScore(candles).bias,
     entry: evaluateEntry(candles),
     canSlim: evaluateCanSlim(candles),
     quant: evaluateQuant(candles),

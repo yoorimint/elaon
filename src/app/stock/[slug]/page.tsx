@@ -35,19 +35,68 @@ const SITE = "https://www.eloan.kr";
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
+// server-side 에서 자기 /api/yahoo proxy 호출용 절대 URL.
+// production 사이트 도메인 사용 — Edge runtime proxy 가 yahoo 로 요청.
+const PROXY_BASE = "https://www.eloan.kr/api/yahoo";
+
+async function fetchYahooViaProxy(
+  symbol: string,
+  startMs: number,
+  endMs: number,
+): Promise<import("@/lib/upbit").Candle[]> {
+  const p1 = Math.floor(startMs / 1000);
+  const p2 = Math.floor(endMs / 1000);
+  const url = `${PROXY_BASE}/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${p1}&period2=${p2}&interval=1d&events=history`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`proxy ${res.status}`);
+  const json = await res.json();
+  const r = json?.chart?.result?.[0];
+  const ts: number[] = r?.timestamp ?? [];
+  const q = r?.indicators?.quote?.[0];
+  if (!q || ts.length === 0) return [];
+  const out: import("@/lib/upbit").Candle[] = [];
+  for (let i = 0; i < ts.length; i++) {
+    const o = q.open?.[i];
+    const h = q.high?.[i];
+    const l = q.low?.[i];
+    const c = q.close?.[i];
+    const v = q.volume?.[i];
+    if (
+      o == null || h == null || l == null || c == null ||
+      !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)
+    ) continue;
+    out.push({
+      timestamp: ts[i] * 1000,
+      open: o, high: h, low: l, close: c,
+      volume: Number.isFinite(v ?? NaN) ? v : 0,
+    });
+  }
+  return out.sort((a, b) => a.timestamp - b.timestamp);
+}
+
 async function safeFetchYahooCandles(symbol: string, startMs: number, endMs: number) {
+  // 1차: 야후 직접 호출
   try {
     const out = await fetchYahooCandles(symbol, "1d", startMs, endMs);
     if (out.length > 0) return out;
   } catch (e) {
-    console.error("[stock] yahoo fetch failed:", symbol, e);
+    console.error("[stock] yahoo direct fetch failed:", symbol, e);
   }
-  // Yahoo 실패 또는 빈 결과 → Stooq fallback
+  // 2차: 자기 자신 /api/yahoo proxy 통해 호출 (Edge runtime, 다른 IP)
+  try {
+    const out = await fetchYahooViaProxy(symbol, startMs, endMs);
+    if (out.length > 0) {
+      console.log("[stock] used yahoo proxy fallback for", symbol);
+      return out;
+    }
+  } catch (e) {
+    console.error("[stock] yahoo proxy fetch failed:", symbol, e);
+  }
+  // 3차: Stooq fallback
   try {
     const stooq = await fetchStooqCandles(symbol);
     if (stooq.length > 0) {
       console.log("[stock] used stooq fallback for", symbol);
-      // 기간 필터
       return stooq.filter(
         (c) => c.timestamp >= startMs && c.timestamp <= endMs,
       );

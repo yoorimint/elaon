@@ -71,7 +71,12 @@ export async function resolveStock(input: string): Promise<MarketEntry | null> {
 // 모두 받아서 야후 심볼로 정규화.
 export function slugToSymbol(slug: string): string {
   // URL 안전 변형 ("." → "-" 또는 ":" 인코딩) 을 다시 정규형으로
-  let s = decodeURIComponent(slug);
+  let s: string;
+  try {
+    s = decodeURIComponent(slug);
+  } catch {
+    s = slug;
+  }
   s = s.replace(/^yahoo:/, "");
   s = s.replace(/-KS$/i, ".KS").replace(/-KQ$/i, ".KQ");
   return s;

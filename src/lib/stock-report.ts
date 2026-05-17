@@ -315,6 +315,219 @@ export function evaluateEntry(candles: Candle[]): EntrySignal {
 }
 
 // ===========================================================================
+// CAN SLIM 7요소 (가격·거래량 데이터만으로 계산 가능한 항목)
+// 윌리엄 오닐 기준을 일봉 데이터에 맞춰 단순화. 재무(C·A) 는 DART 연동 시 정확화.
+// ===========================================================================
+
+export type CanSlimItem = {
+  code: "C" | "A" | "N" | "S" | "L" | "I" | "M";
+  label: string;
+  pass: boolean | null; // null = 데이터 부족 (재무 필요)
+  note: string;
+};
+
+export function evaluateCanSlim(candles: Candle[]): CanSlimItem[] {
+  const closes = candles.map((c) => c.close);
+  const ema50 = ema(closes, 50);
+  const ema200 = ema(closes, 200);
+  const last = closes[closes.length - 1] ?? 0;
+  const e50 = ema50[ema50.length - 1] ?? last;
+  const e200 = ema200[ema200.length - 1] ?? last;
+
+  // N: 52주 고점 8% 이내 (신고가 영역)
+  const dist52 = distance52WeekHigh(candles);
+  // S: 거래량 비율 (수요)
+  const volR = volumeRatio(candles, 50);
+  // L: 시장 상대 강도 (12개월 수익률 상위 — 80↑ 이면 PASS 로 가정)
+  const ret12 = changePercent(candles, 252);
+  // M: 시장 방향 (본 종목 EMA200 위 + 1년 수익 양수)
+  const marketUp = last > e200 && ret12 > 0;
+
+  return [
+    {
+      code: "C",
+      label: "Current Earnings (분기 이익 성장)",
+      pass: null,
+      note: "분기 EPS +25%↑ 기준. 재무 데이터 필요 (DART 연동 시 활성화).",
+    },
+    {
+      code: "A",
+      label: "Annual Earnings (연간 이익 성장)",
+      pass: null,
+      note: "연간 ROE 17%↑ + EPS 3년 연속 성장. 재무 필요.",
+    },
+    {
+      code: "N",
+      label: "New High (신고가·신제품)",
+      pass: dist52 >= -8,
+      note:
+        dist52 >= -8
+          ? `52주 고점 ${(-dist52).toFixed(1)}% 이내 — 신고가 영역`
+          : `52주 고점 ${(-dist52).toFixed(1)}% 아래 — 거리 큼`,
+    },
+    {
+      code: "S",
+      label: "Supply & Demand (수요·공급)",
+      pass: volR >= 1.5,
+      note:
+        volR >= 1.5
+          ? `최근 거래량 평소의 ${volR.toFixed(2)}배 — 수급 강함`
+          : `거래량 ${volR.toFixed(2)}배 — 평소 수준`,
+    },
+    {
+      code: "L",
+      label: "Leader or Laggard (주도주 여부)",
+      pass: ret12 >= 30,
+      note:
+        ret12 >= 30
+          ? `1년 수익률 +${ret12.toFixed(1)}% — 주도주 수준`
+          : `1년 수익률 ${ret12.toFixed(1)}% — 주도주 미달`,
+    },
+    {
+      code: "I",
+      label: "Institutional Sponsorship (기관 자금)",
+      pass: e50 > e200 && volR >= 1.2,
+      note:
+        e50 > e200
+          ? "EMA50 > EMA200 + 거래량 증가 — 기관 매수 추정"
+          : "추세선 정배열 미달 — 기관 자금 약함",
+    },
+    {
+      code: "M",
+      label: "Market Direction (시장 방향)",
+      pass: marketUp,
+      note: marketUp
+        ? "본 종목 200일선 위 + 12개월 수익 양수 — 시장 강세"
+        : "시장 약세 또는 추세 전환 구간",
+    },
+  ];
+}
+
+// ===========================================================================
+// Quant 보조 지표 (가격 데이터로 직접 계산)
+// ===========================================================================
+
+export type QuantItem = {
+  label: string;
+  value: number; // 0~100 스케일
+  note: string;
+  tone: "good" | "neutral" | "bad";
+};
+
+// Z-Score (최근 종가가 60일 평균 대비 몇 표준편차인지)
+function zScore60(candles: Candle[]): number {
+  if (candles.length < 60) return 0;
+  const window = candles.slice(-60).map((c) => c.close);
+  const mean = window.reduce((a, b) => a + b, 0) / 60;
+  const sd = Math.sqrt(
+    window.reduce((s, x) => s + (x - mean) ** 2, 0) / 60,
+  );
+  if (sd === 0) return 0;
+  const last = candles[candles.length - 1].close;
+  return (last - mean) / sd;
+}
+
+// 허스트 지수 (단순화: R/S 분석 대신 ratio 기반 근사)
+function hurstApprox(candles: Candle[]): number {
+  if (candles.length < 100) return 0.5;
+  const closes = candles.slice(-100).map((c) => c.close);
+  const ret = [];
+  for (let i = 1; i < closes.length; i++) ret.push(closes[i] / closes[i - 1] - 1);
+  let pos = 0;
+  for (let i = 1; i < ret.length; i++) {
+    if (Math.sign(ret[i]) === Math.sign(ret[i - 1])) pos += 1;
+  }
+  return 0.3 + (pos / (ret.length - 1)) * 0.6; // 0.3~0.9 범위
+}
+
+// 모멘텀 점수 (3·6·12개월 가중 평균)
+function momentumScore(candles: Candle[]): number {
+  const m1 = changePercent(candles, 21);
+  const m3 = changePercent(candles, 63);
+  const m6 = changePercent(candles, 126);
+  const m12 = changePercent(candles, 252);
+  // 가중치: 12개월 40% + 6개월 30% + 3개월 20% + 1개월 10%
+  const score = m12 * 0.4 + m6 * 0.3 + m3 * 0.2 + m1 * 0.1;
+  return Math.max(0, Math.min(100, 50 + score / 2));
+}
+
+// 변동성 대비 수익 효율 (단순 Sharpe-like)
+function efficiencyScore(candles: Candle[]): number {
+  if (candles.length < 252) return 50;
+  const ret12 = changePercent(candles, 252);
+  const atrPct =
+    candles.length === 0
+      ? 0
+      : (atr(candles, 14) / candles[candles.length - 1].close) * 100;
+  if (atrPct === 0) return 50;
+  const eff = ret12 / atrPct;
+  return Math.max(0, Math.min(100, 50 + eff * 5));
+}
+
+export function evaluateQuant(candles: Candle[]): QuantItem[] {
+  const mom = momentumScore(candles);
+  const mdd = maxDrawdown(candles.slice(-252));
+  const z = zScore60(candles);
+  const h = hurstApprox(candles);
+  const eff = efficiencyScore(candles);
+  const volR = volumeRatio(candles, 20);
+
+  return [
+    {
+      label: "모멘텀 점수 (12·6·3·1개월 가중)",
+      value: Math.round(mom),
+      note:
+        mom >= 70
+          ? "강한 모멘텀"
+          : mom >= 50
+            ? "양호"
+            : "약함",
+      tone: mom >= 70 ? "good" : mom >= 50 ? "neutral" : "bad",
+    },
+    {
+      label: "낙폭 위험도 (1년 MDD)",
+      value: Math.round(Math.max(0, 100 - mdd)),
+      note: `1년 최대 낙폭 ${mdd.toFixed(1)}%`,
+      tone: mdd < 20 ? "good" : mdd < 40 ? "neutral" : "bad",
+    },
+    {
+      label: "통계적 Z-Score (60일)",
+      value: Math.round(50 + z * 15),
+      note:
+        z > 2
+          ? "60일 평균 대비 +2σ 초과 — 과매수 가능"
+          : z < -2
+            ? "60일 평균 대비 -2σ 이하 — 과매도 가능"
+            : `평균 대비 ${z.toFixed(2)}σ`,
+      tone: Math.abs(z) > 2 ? "bad" : "neutral",
+    },
+    {
+      label: "허스트 지수 (추세 지속성)",
+      value: Math.round(h * 100),
+      note:
+        h > 0.6
+          ? "강한 추세 지속성 — 추세 매매 유리"
+          : h < 0.4
+            ? "평균 회귀 경향 — 박스권 매매 유리"
+            : "혼합 — 명확한 패턴 없음",
+      tone: "neutral",
+    },
+    {
+      label: "변동성 대비 효율",
+      value: Math.round(eff),
+      note: eff >= 60 ? "수익 대비 변동성 효율 우수" : "변동성 대비 수익 낮음",
+      tone: eff >= 60 ? "good" : eff >= 40 ? "neutral" : "bad",
+    },
+    {
+      label: "수급 강도 (20일 거래량 비율)",
+      value: Math.round(Math.min(100, volR * 40)),
+      note: `현재 거래량 평소의 ${volR.toFixed(2)}배`,
+      tone: volR >= 1.5 ? "good" : volR >= 1 ? "neutral" : "bad",
+    },
+  ];
+}
+
+// ===========================================================================
 // 종합 보고서 데이터
 // ===========================================================================
 
@@ -352,6 +565,10 @@ export type StockReport = {
 
   // 진입 신호
   entry: EntrySignal;
+
+  // CAN SLIM·Quant
+  canSlim: CanSlimItem[];
+  quant: QuantItem[];
 
   // 캔들 (차트용)
   candles: Candle[];
@@ -414,6 +631,8 @@ export function buildStockReport(params: {
     bollWidth: bollingerWidth(candles, 20) * 100,
     mdd1y: maxDrawdown(candles.slice(-252)),
     entry: evaluateEntry(candles),
+    canSlim: evaluateCanSlim(candles),
+    quant: evaluateQuant(candles),
     candles,
   };
 }

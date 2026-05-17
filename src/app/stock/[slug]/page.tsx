@@ -6,6 +6,7 @@ import { STOCK_MARKETS } from "@/lib/market";
 import { resolveStock, slugToSymbol, symbolToSlug } from "@/lib/stock-resolver";
 import { buildStockReport, type StockReport } from "@/lib/stock-report";
 import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
+import { StockChart } from "@/components/StockChart";
 
 const SITE = "https://www.eloan.kr";
 
@@ -206,6 +207,16 @@ export default async function StockDetailPage({
 
         <section className="mt-8">
           <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            📊 일봉 차트
+          </h2>
+          <StockChart candles={report.candles} />
+          <p className="mt-2 text-[12px] text-neutral-500 dark:text-neutral-500">
+            최근 1년 일봉 종가 + EMA20·50·200 + 거래량. 실시간 X.
+          </p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
             📈 가격 변동
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -328,6 +339,96 @@ export default async function StockDetailPage({
           </div>
         </section>
 
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            🎯 CAN SLIM 7요소
+          </h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
+            윌리엄 오닐의 종목 선정 7요소. 가격·거래량 데이터로 계산 가능한 5개 (N·S·L·I·M) 만 평가, 재무(C·A) 는 DART 연동 시 활성화.
+          </p>
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
+            {report.canSlim.map((item) => (
+              <div key={item.code} className="flex items-start gap-3 p-3">
+                <div
+                  className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-extrabold text-sm ${
+                    item.pass === true
+                      ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
+                      : item.pass === false
+                        ? "bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300"
+                        : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
+                  }`}
+                >
+                  {item.code}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                    {item.label}
+                  </div>
+                  <p className="text-[12px] text-neutral-600 dark:text-neutral-400 leading-snug mt-0.5">
+                    {item.note}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 text-xs font-extrabold ${
+                    item.pass === true
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : item.pass === false
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-neutral-400"
+                  }`}
+                >
+                  {item.pass === true ? "PASS" : item.pass === false ? "FAIL" : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+            🧮 Quant 보조 지표
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            {report.quant.map((q) => (
+              <div
+                key={q.label}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3"
+              >
+                <div className="text-[11px] text-neutral-500 dark:text-neutral-500 font-bold">
+                  {q.label}
+                </div>
+                <div
+                  className={`mt-1 text-2xl font-extrabold ${
+                    q.tone === "good"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : q.tone === "bad"
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-neutral-700 dark:text-neutral-300"
+                  }`}
+                >
+                  {q.value}
+                  <span className="text-xs text-neutral-400 ml-0.5">/100</span>
+                </div>
+                <div className="mt-1 h-1 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                  <div
+                    className={`h-full ${
+                      q.tone === "good"
+                        ? "bg-emerald-500"
+                        : q.tone === "bad"
+                          ? "bg-rose-500"
+                          : "bg-neutral-500"
+                    }`}
+                    style={{ width: `${q.value}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400 leading-snug">
+                  {q.note}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 bg-neutral-50/60 dark:bg-neutral-900/30">
           <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100 mb-2">
             🧪 이 종목으로 백테스트 해보기
@@ -341,6 +442,41 @@ export default async function StockDetailPage({
           >
             백테스트 도구로 이동 →
           </Link>
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-base font-bold mb-3 text-neutral-900 dark:text-neutral-100">
+            📚 함께 보면 좋은 글
+          </h2>
+          <div className="space-y-2">
+            <Link
+              href="/picks/checklist/loan-before-checklist"
+              className="block px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-brand hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+            >
+              <span className="text-xs text-neutral-500 dark:text-neutral-500">체크리스트</span>
+              <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                ✅ 대출 받기 전 체크리스트 — DSR·LTV·정책 금융 →
+              </div>
+            </Link>
+            <Link
+              href="/picks/money"
+              className="block px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-brand hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+            >
+              <span className="text-xs text-neutral-500 dark:text-neutral-500">사이트</span>
+              <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                💰 정부지원금·환급금 디렉토리 →
+              </div>
+            </Link>
+            <Link
+              href="/glossary"
+              className="block px-4 py-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-brand hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
+            >
+              <span className="text-xs text-neutral-500 dark:text-neutral-500">사전</span>
+              <div className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
+                📖 RSI·ADX·VWAP 같은 지표 뜻 정리 →
+              </div>
+            </Link>
+          </div>
         </section>
 
         <section className="mt-10 text-xs text-neutral-500 dark:text-neutral-500 leading-relaxed">

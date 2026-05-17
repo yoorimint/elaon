@@ -977,8 +977,8 @@ export default async function StockDetailPage({
         {isKR && !dart.financial && !dart.filings.length && (
           <section className="mt-8 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/40 dark:bg-neutral-900/30 p-4 text-[12.5px] text-neutral-600 dark:text-neutral-400 leading-relaxed">
             💼 <strong>재무·공시(DART) 섹션 비활성</strong> — {!dart.enabled
-              ? "환경변수 OPEN_DART_API_KEY 를 설정하면 자동 활성화됩니다."
-              : "DART API 키는 설정됐지만 이 종목의 corp_code 매핑이 없습니다. src/lib/dart-corps.ts 에 추가 시 활성화됩니다."}
+              ? "Vercel 환경변수 OPEN_DART_API_KEY 만 설정하면 자동 활성화됩니다. 종목코드 매핑은 코드에서 자동 다운로드됩니다."
+              : "이 종목의 corp_code 가 DART corpCode.xml 에서 발견되지 않거나 첫 다운로드 진행 중입니다. 잠시 후 새로고침해보세요."}
           </section>
         )}
         {dart.financial && (

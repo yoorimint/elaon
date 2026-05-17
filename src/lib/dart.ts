@@ -1,8 +1,9 @@
 // DART OpenAPI 클라이언트.
-// 환경변수 OPEN_DART_API_KEY 가 설정된 경우에만 활성화.
-// corp_code 매핑은 정적 JSON (src/lib/dart-corps.ts) 활용.
-// 외부 패키지 의존성 없음.
+// OPEN_DART_API_KEY 환경변수 설정 시 자동 활성화.
+// corp_code 매핑은 첫 호출 시 DART corpCode.xml ZIP 자동 다운로드 + 메모리 캐싱.
+// 사용자가 정적 매핑(dart-corps.ts) 을 따로 채울 필요 없음.
 
+import { unzipSync, strFromU8 } from "fflate";
 import { DART_CORP_CODES } from "./dart-corps";
 
 const DART_KEY = process.env.OPEN_DART_API_KEY || process.env.DART_API_KEY || "";
@@ -11,8 +12,61 @@ export function isDartEnabled(): boolean {
   return DART_KEY.length > 0;
 }
 
-export function getCorpCode(ticker6: string): string | null {
-  return DART_CORP_CODES[ticker6] ?? null;
+// ===========================================================================
+// corp_code 자동 다운로드 (메모리 캐시 24시간)
+// ===========================================================================
+
+type CorpMap = Record<string, string>; // ticker6 → corp_code
+let dynamicCache: CorpMap | null = null;
+let cacheFetchedAt = 0;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function loadDynamicMap(): Promise<CorpMap | null> {
+  if (!isDartEnabled()) return null;
+  const now = Date.now();
+  if (dynamicCache && now - cacheFetchedAt < CACHE_TTL_MS) {
+    return dynamicCache;
+  }
+  try {
+    const url = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${DART_KEY}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      console.error("[dart] corpCode.xml HTTP", res.status);
+      return dynamicCache;
+    }
+    const buf = await res.arrayBuffer();
+    // ZIP 풀기 (CORPCODE.xml 단일 파일)
+    const zip = unzipSync(new Uint8Array(buf));
+    const entry = Object.values(zip)[0];
+    if (!entry) return dynamicCache;
+    const xml = strFromU8(entry);
+    const map: CorpMap = {};
+    const re = /<list>([\s\S]*?)<\/list>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml))) {
+      const block = m[1];
+      const corpCode = /<corp_code>(\d+)<\/corp_code>/.exec(block)?.[1] ?? "";
+      const stockCode = /<stock_code>\s*(\d{6})?\s*<\/stock_code>/.exec(block)?.[1];
+      if (stockCode && corpCode) {
+        map[stockCode] = corpCode;
+      }
+    }
+    dynamicCache = map;
+    cacheFetchedAt = now;
+    console.log(`[dart] corpCode loaded: ${Object.keys(map).length} stocks`);
+    return map;
+  } catch (e) {
+    console.error("[dart] corpCode load failed:", e);
+    return dynamicCache;
+  }
+}
+
+export async function getCorpCode(ticker6: string): Promise<string | null> {
+  // 1. 정적 매핑 우선 (사용자가 dart-corps.ts 에 직접 채운 경우)
+  if (DART_CORP_CODES[ticker6]) return DART_CORP_CODES[ticker6];
+  // 2. 자동 다운로드된 동적 매핑
+  const dyn = await loadDynamicMap();
+  return dyn?.[ticker6] ?? null;
 }
 
 // ===========================================================================
@@ -37,7 +91,7 @@ export async function fetchDartFinancial(
   year?: number,
 ): Promise<DartFinancial | null> {
   if (!isDartEnabled()) return null;
-  const corpCode = getCorpCode(ticker6);
+  const corpCode = await getCorpCode(ticker6);
   if (!corpCode) return null;
   const y = year ?? new Date().getFullYear() - 1;
   try {
@@ -115,7 +169,7 @@ export async function fetchDartFilings(
   days = 90,
 ): Promise<DartFiling[]> {
   if (!isDartEnabled()) return [];
-  const corpCode = getCorpCode(ticker6);
+  const corpCode = await getCorpCode(ticker6);
   if (!corpCode) return [];
   const end = new Date();
   const start = new Date(end.getTime() - days * 86400000);
@@ -139,7 +193,7 @@ export async function fetchDartFilings(
 }
 
 // ===========================================================================
-// 통합 호출 (보고서 페이지에서 한 번에)
+// 통합 호출
 // ===========================================================================
 
 export type DartBundle = {
@@ -153,7 +207,7 @@ export async function fetchDartBundle(ticker6: string): Promise<DartBundle> {
   if (!isDartEnabled()) {
     return { enabled: false, hasMapping: false, financial: null, filings: [] };
   }
-  const corpCode = getCorpCode(ticker6);
+  const corpCode = await getCorpCode(ticker6);
   if (!corpCode) {
     return { enabled: true, hasMapping: false, financial: null, filings: [] };
   }

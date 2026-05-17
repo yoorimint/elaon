@@ -35,77 +35,83 @@ const SITE = "https://www.eloan.kr";
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
+async function safeFetchYahooCandles(symbol: string, startMs: number, endMs: number) {
+  try {
+    return await fetchYahooCandles(symbol, "1d", startMs, endMs);
+  } catch (e) {
+    console.error("[stock] yahoo fetch failed:", symbol, e);
+    return [];
+  }
+}
+
 async function loadReport(slug: string): Promise<StockReport | null> {
-  const raw = slugToSymbol(slug);
-  // 1) 정확 심볼이면 바로 시도
-  let symbol: string | null = null;
-  let name: string | null = null;
-  let subtitle: string | undefined;
+  try {
+    const raw = slugToSymbol(slug);
+    let symbol: string | null = null;
+    let name: string | null = null;
+    let subtitle: string | undefined;
 
-  if (/^[A-Z0-9.\-]+$/i.test(raw)) {
-    // 내장 목록 우선
-    const local = STOCK_MARKETS.find(
-      (m) => m.id.replace(/^yahoo:/, "") === raw,
-    );
-    if (local) {
-      symbol = raw;
-      name = local.name;
-      subtitle = local.subtitle;
-    } else if (/^\d{6}(\.(KS|KQ))?$/.test(raw)) {
-      // 6자리 코드 → .KS 먼저, 실패 시 .KQ
-      symbol = raw.includes(".") ? raw : `${raw}.KS`;
-      name = symbol;
-    } else if (/^[A-Z]{1,5}$/.test(raw)) {
-      // 미국 티커
-      symbol = raw.toUpperCase();
-      name = symbol;
+    if (/^[A-Z0-9.\-]+$/i.test(raw)) {
+      const local = STOCK_MARKETS.find(
+        (m) => m.id.replace(/^yahoo:/, "") === raw,
+      );
+      if (local) {
+        symbol = raw;
+        name = local.name;
+        subtitle = local.subtitle;
+      } else if (/^\d{6}(\.(KS|KQ))?$/.test(raw)) {
+        symbol = raw.includes(".") ? raw : `${raw}.KS`;
+        name = symbol;
+      } else if (/^[A-Z]{1,5}$/.test(raw)) {
+        symbol = raw.toUpperCase();
+        name = symbol;
+      }
     }
-  }
 
-  // 2) 정규 매칭 실패 시 야후 검색
-  if (!symbol) {
-    const entry = await resolveStock(raw);
-    if (!entry) return null;
-    symbol = entry.id.replace(/^yahoo:/, "");
-    name = entry.name;
-    subtitle = entry.subtitle;
-  }
-
-  // 3) 일봉 캔들 fetch (2년치)
-  const endMs = Date.now();
-  const startMs = endMs - 1000 * 60 * 60 * 24 * 365 * 2;
-  let candles = await fetchYahooCandles(symbol!, "1d", startMs, endMs);
-
-  // 4) 한국 종목 .KS 시도 후 빈 결과면 .KQ 재시도
-  if (
-    candles.length === 0 &&
-    symbol!.endsWith(".KS") &&
-    /^\d{6}\.KS$/.test(symbol!)
-  ) {
-    const alt = symbol!.replace(/\.KS$/, ".KQ");
-    candles = await fetchYahooCandles(alt, "1d", startMs, endMs);
-    if (candles.length > 0) symbol = alt;
-  }
-
-  if (candles.length === 0) return null;
-
-  // 이름이 심볼 그대로면 내장 목록에서 다시 찾기
-  if (name === symbol) {
-    const local = STOCK_MARKETS.find(
-      (m) => m.id.replace(/^yahoo:/, "") === symbol,
-    );
-    if (local) {
-      name = local.name;
-      subtitle = local.subtitle;
+    if (!symbol) {
+      const entry = await resolveStock(raw).catch(() => null);
+      if (!entry) return null;
+      symbol = entry.id.replace(/^yahoo:/, "");
+      name = entry.name;
+      subtitle = entry.subtitle;
     }
-  }
 
-  return buildStockReport({
-    symbol: symbol!,
-    name: name ?? symbol!,
-    subtitle,
-    candles,
-  });
+    const endMs = Date.now();
+    const startMs = endMs - 1000 * 60 * 60 * 24 * 365 * 2;
+    let candles = await safeFetchYahooCandles(symbol!, startMs, endMs);
+
+    if (
+      candles.length === 0 &&
+      symbol!.endsWith(".KS") &&
+      /^\d{6}\.KS$/.test(symbol!)
+    ) {
+      const alt = symbol!.replace(/\.KS$/, ".KQ");
+      candles = await safeFetchYahooCandles(alt, startMs, endMs);
+      if (candles.length > 0) symbol = alt;
+    }
+
+    if (candles.length === 0) return null;
+
+    if (name === symbol) {
+      const local = STOCK_MARKETS.find(
+        (m) => m.id.replace(/^yahoo:/, "") === symbol,
+      );
+      if (local) {
+        name = local.name;
+        subtitle = local.subtitle;
+      }
+    }
+
+    return buildStockReport({
+      symbol: symbol!,
+      name: name ?? symbol!,
+      subtitle,
+      candles,
+    });
+  } catch (e) {
+    console.error("[stock] loadReport error:", slug, e);
+    return null;
+  }
 }
 
 export async function generateMetadata({
@@ -146,16 +152,23 @@ export default async function StockDetailPage({
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
   const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";
+  const emptyDart: DartBundle = {
+    enabled: false,
+    hasMapping: false,
+    financial: null,
+    filings: [],
+  };
   const [dart, news]: [DartBundle, NaverNews[]] = await Promise.all([
     isKR
-      ? fetchDartBundle(report.ticker)
-      : Promise.resolve<DartBundle>({
-          enabled: false,
-          hasMapping: false,
-          financial: null,
-          filings: [],
-        }),
-    fetchNaverNews(`${report.name} 주가`, 8),
+      ? fetchDartBundle(report.ticker).catch((e) => {
+          console.error("[stock] dart fetch failed:", e);
+          return emptyDart;
+        })
+      : Promise.resolve(emptyDart),
+    fetchNaverNews(`${report.name} 주가`, 8).catch((e) => {
+      console.error("[stock] naver news failed:", e);
+      return [] as NaverNews[];
+    }),
   ]);
 
   return (

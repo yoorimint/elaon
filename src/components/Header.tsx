@@ -19,6 +19,7 @@ const NAV_SECONDARY = [
   { href: "/ranking", label: "랭킹" },
   { href: "/community", label: "커뮤니티" },
   { href: "/glossary", label: "지표 사전" },
+  { href: "/stock", label: "종목 검색" },
   { href: "/picks", label: "주소모음" },
 ];
 

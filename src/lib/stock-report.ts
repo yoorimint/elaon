@@ -668,6 +668,95 @@ export function evaluateBacktests(candles: Candle[]): BacktestPreview[] {
 }
 
 // ===========================================================================
+// 매수·손절·익절 가격 제안 (ATR 기반)
+// ===========================================================================
+
+export type TradeLevels = {
+  entry: number;
+  stop: number;
+  target1: number;
+  target2: number;
+  riskPct: number; // 진입가 대비 손절 % 거리
+  reward1Pct: number; // 진입가 대비 1차 익절 % 거리
+  reward2Pct: number;
+  rrRatio: number; // 1차 익절 / 손절 비율
+  basis: string;
+};
+
+export function suggestTradeLevels(candles: Candle[]): TradeLevels | null {
+  if (candles.length < 30) return null;
+  const last = candles[candles.length - 1].close;
+  const atrVal = atr(candles, 14);
+  if (atrVal <= 0) return null;
+  // 진입 = 현재가, 손절 = 1.5 ATR 아래, 1차 익절 = 2 ATR 위, 2차 = 4 ATR 위
+  const entry = last;
+  const stop = Math.max(0, last - atrVal * 1.5);
+  const target1 = last + atrVal * 2;
+  const target2 = last + atrVal * 4;
+  const riskPct = ((entry - stop) / entry) * 100;
+  const reward1Pct = ((target1 - entry) / entry) * 100;
+  const reward2Pct = ((target2 - entry) / entry) * 100;
+  const rrRatio = riskPct === 0 ? 0 : reward1Pct / riskPct;
+  return {
+    entry,
+    stop,
+    target1,
+    target2,
+    riskPct,
+    reward1Pct,
+    reward2Pct,
+    rrRatio,
+    basis: "ATR(14) × 1.5 손절 / × 2·4 익절",
+  };
+}
+
+// ===========================================================================
+// 종합 점수 (0~100)
+// ===========================================================================
+
+export function overallScore(report: Omit<StockReport, "overall" | "headline" | "trade">): number {
+  // 4축 별점 (총 max 19) → 60점 환산
+  const entryScore = (report.entry.total / 19) * 60;
+  // CAN SLIM PASS 비율 → 25점 (재무 2개 제외 5개 기준)
+  const csPass = report.canSlim.filter((c) => c.pass === true).length;
+  const csConsidered = report.canSlim.filter((c) => c.pass !== null).length;
+  const csScore = csConsidered === 0 ? 0 : (csPass / csConsidered) * 25;
+  // Quant 평균 (0-100 의 절반 가중) → 15점
+  const quantAvg =
+    report.quant.length === 0
+      ? 0
+      : report.quant.reduce((s, q) => s + q.value, 0) / report.quant.length;
+  const quantScore = (quantAvg / 100) * 15;
+  return Math.round(entryScore + csScore + quantScore);
+}
+
+// ===========================================================================
+// 핵심 관찰 한 줄 (사용자가 한 눈에 보는 결론)
+// ===========================================================================
+
+export function generateHeadline(report: Omit<StockReport, "overall" | "headline" | "trade">): string {
+  const parts: string[] = [];
+  if (report.distFrom52wHigh > -3) parts.push("52주 신고가");
+  else if (report.distFrom52wHigh > -10) parts.push(`52주 고점 ${(-report.distFrom52wHigh).toFixed(1)}% 이내`);
+  else if (report.distFrom52wHigh < -30) parts.push(`52주 고점 ${(-report.distFrom52wHigh).toFixed(0)}% 아래`);
+
+  if (report.rsi14 >= 70) parts.push(`RSI ${report.rsi14.toFixed(0)} 과매수`);
+  else if (report.rsi14 <= 30) parts.push(`RSI ${report.rsi14.toFixed(0)} 과매도`);
+
+  if (report.adx14 >= 40) parts.push("강한 추세");
+  else if (report.adx14 < 20) parts.push("약한 추세");
+
+  if (report.volRatio20 >= 2) parts.push(`거래량 ${report.volRatio20.toFixed(1)}배 폭증`);
+  else if (report.volRatio20 < 0.5) parts.push("거래량 위축");
+
+  if (report.change12m >= 100) parts.push(`1년 +${report.change12m.toFixed(0)}%`);
+  else if (report.change12m <= -30) parts.push(`1년 ${report.change12m.toFixed(0)}%`);
+
+  if (parts.length === 0) return "특이 신호 없음 — 중립 구간";
+  return parts.join(" · ");
+}
+
+// ===========================================================================
 // 종합 보고서 데이터
 // ===========================================================================
 
@@ -711,6 +800,11 @@ export type StockReport = {
   quant: QuantItem[];
   backtests: BacktestPreview[];
 
+  // 종합 평가 (스크린샷 형식)
+  overall: number;
+  headline: string;
+  trade: TradeLevels | null;
+
   // 캔들 (차트용)
   candles: Candle[];
 };
@@ -744,7 +838,7 @@ export function buildStockReport(params: {
   const vwap20 = vwap(candles.slice(-20));
   const vwapDistPct = vwap20 === 0 ? 0 : ((last - vwap20) / vwap20) * 100;
 
-  return {
+  const base: StockReport = {
     symbol,
     ticker,
     exchange,
@@ -775,6 +869,12 @@ export function buildStockReport(params: {
     canSlim: evaluateCanSlim(candles),
     quant: evaluateQuant(candles),
     backtests: evaluateBacktests(candles),
+    overall: 0,
+    headline: "",
+    trade: suggestTradeLevels(candles),
     candles,
   };
+  base.overall = overallScore(base);
+  base.headline = generateHeadline(base);
+  return base;
 }

@@ -31,8 +31,8 @@ function relatedStocks(report: StockReport, count = 6) {
 
 const SITE = "https://www.eloan.kr";
 
-// 검색 시 on-demand 생성. 미리 빌드 X.
-export const dynamic = "force-dynamic";
+// 검색 시 on-demand 생성 + ISR 1시간 캐시. force-dynamic 제거해서
+// 첫 요청 후 1시간 캐싱 — 다음 사용자들은 빠른 응답.
 export const revalidate = 3600;
 
 // server-side 에서 자기 /api/yahoo proxy 호출용 절대 URL.

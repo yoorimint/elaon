@@ -429,28 +429,74 @@ export default async function StockDetailPage({
           </p>
         </header>
 
-        <section className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 p-5">
-          <div className="flex items-baseline justify-between gap-3 flex-wrap">
-            <h2 className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100">
-              진입 타이밍 평가
-            </h2>
-            <span className="text-amber-700 dark:text-amber-400 font-extrabold text-lg">
-              {"★".repeat(report.entry.stars)}
-              <span className="text-neutral-300 dark:text-neutral-700">
-                {"★".repeat(5 - report.entry.stars)}
+        <section className="grid sm:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10 p-5">
+            <div className="text-xs font-bold text-amber-800 dark:text-amber-300">
+              종합 점수 (재무·기술·진입 종합)
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-5xl font-extrabold text-amber-900 dark:text-amber-100">
+                {report.overall}
               </span>
-            </span>
+              <span className="text-2xl font-bold text-amber-700 dark:text-amber-400">점</span>
+            </div>
+            <div className="mt-2 inline-block px-3 py-1 rounded-full bg-amber-200 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 text-xs font-extrabold">
+              {report.entry.verdict}
+            </div>
+            <p className="mt-3 text-[13px] text-amber-900 dark:text-amber-200 leading-relaxed">
+              {report.headline}
+            </p>
           </div>
-          <p className="mt-1 text-sm font-bold text-amber-900 dark:text-amber-200">
-            {report.entry.verdict}
-          </p>
-          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px]">
-            <FactorCell label="추세" score={report.entry.trend.score} max={5} note={report.entry.trend.note} />
-            <FactorCell label="모멘텀" score={report.entry.momentum.score} max={4} note={report.entry.momentum.note} />
-            <FactorCell label="변동성" score={report.entry.volatility.score} max={5} note={report.entry.volatility.note} />
-            <FactorCell label="수급" score={report.entry.liquidity.score} max={5} note={report.entry.liquidity.note} />
+
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+            <div className="text-xs font-bold text-neutral-600 dark:text-neutral-400 mb-2">
+              4축 진입 평가 ({"★".repeat(report.entry.stars)}{"☆".repeat(5 - report.entry.stars)})
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[12px]">
+              <FactorCell label="추세" score={report.entry.trend.score} max={5} note={report.entry.trend.note} />
+              <FactorCell label="모멘텀" score={report.entry.momentum.score} max={4} note={report.entry.momentum.note} />
+              <FactorCell label="변동성" score={report.entry.volatility.score} max={5} note={report.entry.volatility.note} />
+              <FactorCell label="수급" score={report.entry.liquidity.score} max={5} note={report.entry.liquidity.note} />
+            </div>
           </div>
         </section>
+
+        {report.trade && (
+          <section className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-900/30 p-5">
+            <div className="flex items-baseline justify-between gap-2 mb-3 flex-wrap">
+              <h2 className="text-lg font-extrabold text-neutral-900 dark:text-neutral-100">
+                💡 매수·손절·익절 가격 제안
+              </h2>
+              <span className="text-[11px] text-neutral-500 dark:text-neutral-500">
+                {report.trade.basis} · R:R {report.trade.rrRatio.toFixed(2)}:1
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <TradeBox label="매수가" value={formatPrice(report.trade.entry, report.exchange)} sub="현재가" tone="neutral" />
+              <TradeBox
+                label="손절가"
+                value={formatPrice(report.trade.stop, report.exchange)}
+                sub={`-${report.trade.riskPct.toFixed(1)}%`}
+                tone="bad"
+              />
+              <TradeBox
+                label="1차 익절"
+                value={formatPrice(report.trade.target1, report.exchange)}
+                sub={`+${report.trade.reward1Pct.toFixed(1)}%`}
+                tone="good"
+              />
+              <TradeBox
+                label="2차 익절"
+                value={formatPrice(report.trade.target2, report.exchange)}
+                sub={`+${report.trade.reward2Pct.toFixed(1)}%`}
+                tone="good"
+              />
+            </div>
+            <p className="mt-3 text-[11px] text-neutral-500 dark:text-neutral-500 leading-relaxed">
+              ATR(14) 변동성에 기반한 일반적 권장값입니다. 본인 매매 스타일·자금 관리에 맞춰 조정하세요.
+            </p>
+          </section>
+        )}
 
         <section className="mt-8">
           <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
@@ -942,6 +988,38 @@ export default async function StockDetailPage({
 // ===========================================================================
 // 시각 컴포넌트
 // ===========================================================================
+
+function TradeBox({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  tone: "good" | "neutral" | "bad";
+}) {
+  const color =
+    tone === "good"
+      ? "text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/40"
+      : tone === "bad"
+        ? "text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/40"
+        : "text-neutral-900 dark:text-neutral-100 border-neutral-200 dark:border-neutral-800";
+  return (
+    <div className={`rounded-xl border bg-white dark:bg-neutral-950 p-3 ${color.split(" ").filter(c => c.startsWith("border")).join(" ")}`}>
+      <div className="text-[11px] font-bold text-neutral-500 dark:text-neutral-500">
+        {label}
+      </div>
+      <div className={`mt-1 text-base font-extrabold ${color.split(" ").filter(c => !c.startsWith("border")).join(" ")}`}>
+        {value}
+      </div>
+      <div className={`text-[11px] font-bold ${color.split(" ").filter(c => !c.startsWith("border")).join(" ")}`}>
+        {sub}
+      </div>
+    </div>
+  );
+}
 
 function FactorCell({
   label,

@@ -32,9 +32,8 @@ function relatedStocks(report: StockReport, count = 6) {
 
 const SITE = "https://www.eloan.kr";
 
-// 검색 시 on-demand 생성 + ISR 1시간 캐시. force-dynamic 제거해서
-// 첫 요청 후 1시간 캐싱 — 다음 사용자들은 빠른 응답.
-export const revalidate = 3600;
+// 검색 시 on-demand 생성 + ISR 5분 캐시.
+export const revalidate = 300;
 
 // server-side 에서 자기 /api/yahoo proxy 호출용 절대 URL.
 // production 사이트 도메인 사용 — Edge runtime proxy 가 yahoo 로 요청.
@@ -985,26 +984,27 @@ export default async function StockDetailPage({
               💼 재무·공시(DART) 진단
             </div>
             <div className="space-y-1 font-mono text-rose-900 dark:text-rose-100">
-              <div>· OPEN_DART_API_KEY 환경변수: {dart.diagnostics.keyPresent ? "✓ 인식" : "✗ 누락 — Vercel Settings → Environment Variables 에서 설정 + Redeploy 필요"}</div>
+              <div>· OPEN_DART_API_KEY 환경변수: {dart.diagnostics.keyPresent ? "✓ 인식" : "✗ 누락"}</div>
               {dart.diagnostics.keyPresent && (
                 <>
-                  <div>· corpCode.xml 매핑 다운로드: {dart.diagnostics.mappingSize > 0 ? `✓ ${dart.diagnostics.mappingSize}개 종목 캐시` : "✗ 0개 — DART 응답 실패 또는 첫 다운로드 진행 중"}</div>
+                  <div>· corpCode.xml 매핑 다운로드: {dart.diagnostics.mappingSize > 0 ? `✓ ${dart.diagnostics.mappingSize}개 종목 캐시` : "✗ 0개 — DART 가 Vercel IP 풀 TLS 차단 중"}</div>
                   <div>· 이 종목(<strong>{report.ticker}</strong>) corp_code: {dart.diagnostics.corpCode ? `✓ ${dart.diagnostics.corpCode}` : "✗ 매핑에서 발견 안 됨"}</div>
                   {dart.diagnostics.financialError && (
                     <div>· 재무 API 실패: {dart.diagnostics.financialError}</div>
                   )}
-                  {dart.diagnostics.filingsError && (
-                    <div>· 공시 API 실패: {dart.diagnostics.filingsError}</div>
-                  )}
                 </>
               )}
+              <div>· 야후 재무 fallback: {yfin ? `✓ ${[
+                yfin.per !== null ? "PER" : null,
+                yfin.pbr !== null ? "PBR" : null,
+                yfin.roe !== null ? "ROE" : null,
+                yfin.eps !== null ? "EPS" : null,
+              ].filter(Boolean).join("·")} 표시` : "✗ 야후도 실패"}</div>
             </div>
             <div className="mt-3 text-[11px] text-rose-800 dark:text-rose-300">
-              {!dart.diagnostics.keyPresent
-                ? "환경변수 추가 후 반드시 Redeploy 해야 반영됩니다."
-                : dart.diagnostics.mappingSize === 0
-                  ? "Vercel 함수가 corpCode.xml(10MB) 을 첫 다운받는 중이거나 메모리/타임아웃 한계 가능. 1분 후 새로고침."
-                  : "환경변수·매핑 모두 정상. API 응답 메시지 확인."}
+              {yfin
+                ? "DART 차단되어 야후 데이터로 표시 중. 위에 재무 섹션 확인."
+                : "DART · 야후 둘 다 실패. 본인 한국 IP PC 에서 corpCode.xml 한 번 다운받아 src/lib/dart-corps-data.ts 에 commit 필요."}
             </div>
           </section>
         )}

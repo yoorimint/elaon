@@ -9,8 +9,17 @@ type Props = {
 };
 
 export function DartFinancialClient({ ticker }: Props) {
-  const financial = DART_FINANCIAL_DATA[ticker] ?? null;
-  const filings = DART_FILINGS_DATA[ticker] ?? [];
+  const financial = (DART_FINANCIAL_DATA[ticker] ?? null) as {
+    roe: number | null;
+    operatingMargin: number | null;
+    debtRatio: number | null;
+    reportYear: number;
+  } | null;
+  const filings = (DART_FILINGS_DATA[ticker] ?? []) as Array<{
+    date: string;
+    title: string;
+    reportNo: string;
+  }>;
 
   if (!financial && filings.length === 0) {
     return (

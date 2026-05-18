@@ -9,7 +9,6 @@ import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
 import { PopularCoinsTop } from "@/components/PopularCoinsTop";
 import { SajudayAd } from "@/components/SajudayAd";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { StockSearchBox } from "@/components/StockSearchBox";
 
 export const revalidate = 30;
 
@@ -90,70 +89,6 @@ export default async function HomePage() {
             className="inline-flex items-center rounded-full border border-neutral-300 dark:border-neutral-700 px-6 py-3 font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900"
           >
             커뮤니티 보기
-          </Link>
-        </div>
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-lg sm:text-xl font-bold mb-3">
-          🔍 종목 검색 — 일봉 차트·기술 지표·재무 한눈에
-        </h2>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
-          종목명·코드(예: 삼성전자, 005930, AAPL) 를 입력하면 EMA·RSI·ADX·VWAP·CAN SLIM·Quant 지표 + 단순 전략 백테스트 미리보기를 한 페이지에서 확인할 수 있습니다.
-        </p>
-        <StockSearchBox />
-      </section>
-
-      <section className="mb-10">
-        <h2 className="text-lg sm:text-xl font-bold mb-3">📚 사이트 도구 둘러보기</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Link
-            href="/picks/checklist"
-            className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand hover:shadow-md transition"
-          >
-            <div className="text-3xl mb-2">✅</div>
-            <div className="font-bold text-neutral-900 dark:text-neutral-100">
-              체크리스트
-            </div>
-            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              부수입·세금·환급금 빠뜨림 방지. 본인 상황 분기 + 진행률 저장.
-            </p>
-          </Link>
-          <Link
-            href="/picks/vs"
-            className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand hover:shadow-md transition"
-          >
-            <div className="text-3xl mb-2">🆚</div>
-            <div className="font-bold text-neutral-900 dark:text-neutral-100">
-              비교
-            </div>
-            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              ChatGPT vs Claude, 디딤돌 vs 보금자리 등 사이드바이사이드.
-            </p>
-          </Link>
-          <Link
-            href="/picks"
-            className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand hover:shadow-md transition"
-          >
-            <div className="text-3xl mb-2">📚</div>
-            <div className="font-bold text-neutral-900 dark:text-neutral-100">
-              주소모음
-            </div>
-            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              AI·정부지원금·무료 리소스·코인 도구 등 카테고리 디렉토리.
-            </p>
-          </Link>
-          <Link
-            href="/glossary"
-            className="block rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 p-4 hover:border-brand hover:shadow-md transition"
-          >
-            <div className="text-3xl mb-2">📖</div>
-            <div className="font-bold text-neutral-900 dark:text-neutral-100">
-              지표 사전
-            </div>
-            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              RSI·ADX·VWAP·MACD 같은 기술 지표 뜻과 사용법.
-            </p>
           </Link>
         </div>
       </section>

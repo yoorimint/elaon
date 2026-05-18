@@ -9,6 +9,7 @@ yfinance 가 야후의 crumb cookie 인증을 자동 처리.
 from __future__ import annotations
 
 import json
+import logging
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,6 +18,11 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 import yfinance as yf
+
+# yfinance 의 404/Quote not found 등 내장 로그 무음 처리 — 6000개 중
+# 상장폐지·OTC 등 무효 ticker 가 다수라 노이즈만 많음
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 
 OUT = Path("src/lib/yahoo-financial-data.ts")
 CONCURRENCY = 4  # 야후 차단 회피 — 보수적 동시 처리

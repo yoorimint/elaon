@@ -8,38 +8,68 @@ type Props = {
   exchange: "KOSPI" | "KOSDAQ" | "OTHER" | "US";
 };
 
-// 야후 quoteSummary 응답 파싱 (브라우저에서 직접 호출)
+// 야후 v7/v10 응답 파싱 (브라우저에서 직접 호출)
 async function fetchFinancialClient(symbol: string): Promise<YahooFinancial | null> {
-  const modules = "defaultKeyStatistics,financialData,summaryDetail,price";
-  // /api/yahoo Edge proxy 활용 (CORS·rate-limit 우회)
-  const url = `/api/yahoo/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+  // 1차: v10 quoteSummary (cookie/crumb 필요할 수 있음)
   try {
+    const modules = "defaultKeyStatistics,financialData,summaryDetail,price";
+    const url = `/api/yahoo/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.ok) {
+      const json = await res.json();
+      const r = json?.quoteSummary?.result?.[0];
+      if (r) {
+        const ks = r.defaultKeyStatistics ?? {};
+        const fd = r.financialData ?? {};
+        const sd = r.summaryDetail ?? {};
+        const per = sd.trailingPE?.raw ?? ks.forwardPE?.raw ?? null;
+        const pbr = ks.priceToBook?.raw ?? null;
+        const eps = ks.trailingEps?.raw ?? null;
+        const roeRaw = fd.returnOnEquity?.raw;
+        const roe = roeRaw != null ? roeRaw * 100 : null;
+        const opmRaw = fd.operatingMargins?.raw;
+        const operatingMargin = opmRaw != null ? opmRaw * 100 : null;
+        const debtRatio = fd.debtToEquity?.raw ?? null;
+        const marketCap = sd.marketCap?.raw ?? r.price?.marketCap?.raw ?? null;
+        const dyRaw = sd.dividendYield?.raw;
+        const dividendYield = dyRaw != null ? dyRaw * 100 : null;
+        if (per !== null || pbr !== null || roe !== null || marketCap !== null) {
+          return { per, pbr, roe, eps, operatingMargin, debtRatio, marketCap, dividendYield, source: "Yahoo" };
+        }
+      }
+    }
+  } catch {
+    // 다음 fallback
+  }
+
+  // 2차: v7 quote (인증 불필요)
+  try {
+    const url = `/api/yahoo/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     const json = await res.json();
-    const r = json?.quoteSummary?.result?.[0];
+    const r = json?.quoteResponse?.result?.[0];
     if (!r) return null;
-    const ks = r.defaultKeyStatistics ?? {};
-    const fd = r.financialData ?? {};
-    const sd = r.summaryDetail ?? {};
-
-    const per = sd.trailingPE?.raw ?? ks.forwardPE?.raw ?? null;
-    const pbr = ks.priceToBook?.raw ?? null;
-    const eps = ks.trailingEps?.raw ?? null;
-    const roeRaw = fd.returnOnEquity?.raw;
-    const roe = roeRaw != null ? roeRaw * 100 : null;
-    const opmRaw = fd.operatingMargins?.raw;
-    const operatingMargin = opmRaw != null ? opmRaw * 100 : null;
-    const debtRatio = fd.debtToEquity?.raw ?? null;
-    const marketCap = sd.marketCap?.raw ?? r.price?.marketCap?.raw ?? null;
-    const dyRaw = sd.dividendYield?.raw;
-    const dividendYield = dyRaw != null ? dyRaw * 100 : null;
-
-    if (per === null && pbr === null && roe === null && eps === null && marketCap === null) {
-      return null;
-    }
+    const per = r.trailingPE ?? r.forwardPE ?? null;
+    const pbr = r.priceToBook ?? null;
+    const eps = r.epsTrailingTwelveMonths ?? null;
+    const marketCap = r.marketCap ?? null;
+    const dividendYield =
+      typeof r.trailingAnnualDividendYield === "number"
+        ? r.trailingAnnualDividendYield * 100
+        : typeof r.dividendYield === "number"
+          ? r.dividendYield
+          : null;
+    if (per === null && pbr === null && eps === null && marketCap === null) return null;
     return {
-      per, pbr, roe, eps, operatingMargin, debtRatio, marketCap, dividendYield,
+      per,
+      pbr,
+      roe: null,
+      eps,
+      operatingMargin: null,
+      debtRatio: null,
+      marketCap,
+      dividendYield,
       source: "Yahoo",
     };
   } catch {

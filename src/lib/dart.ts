@@ -9,6 +9,10 @@ import { DART_CORP_DATA } from "./dart-corps-data";
 
 const DART_KEY = process.env.OPEN_DART_API_KEY || process.env.DART_API_KEY || "";
 
+// Vercel server runtime IP 가 opendart.fss.or.kr 와 TLS 차단됨 (ECONNRESET).
+// 우리 Edge proxy 통해 호출하면 Edge runtime IP 풀로 우회.
+const PROXY_BASE = "https://www.eloan.kr/api/dart";
+
 export function isDartEnabled(): boolean {
   return DART_KEY.length > 0;
 }
@@ -27,7 +31,8 @@ function startLoadingInBackground(): Promise<CorpMap | null> {
   if (loadingPromise) return loadingPromise;
   loadingPromise = (async () => {
     try {
-      const url = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${DART_KEY}`;
+      // Edge proxy 통해 호출 — server runtime IP 의 DART TLS 차단 우회
+      const url = `${PROXY_BASE}/corpCode.xml?crtfc_key=${DART_KEY}`;
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 15000); // 15초 timeout
       const res = await fetch(url, {
@@ -112,7 +117,7 @@ export async function fetchDartFinancial(
   if (!corpCode) return null;
   const y = year ?? new Date().getFullYear() - 1;
   try {
-    const url = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${y}&reprt_code=11011`;
+    const url = `${PROXY_BASE}/fnlttSinglAcnt.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${y}&reprt_code=11011`;
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, {
@@ -198,7 +203,7 @@ export async function fetchDartFilings(
   const fmt = (d: Date) =>
     `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   try {
-    const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bgn_de=${fmt(start)}&end_de=${fmt(end)}&page_count=20`;
+    const url = `${PROXY_BASE}/list.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bgn_de=${fmt(start)}&end_de=${fmt(end)}&page_count=20`;
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(url, {

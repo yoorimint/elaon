@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { STOCK_SUGGESTIONS, type StockSuggestion } from "@/lib/stock-suggestions";
 
+type IndexRow = {
+  s: string; // ticker symbol (예: "005930" or "AAPL")
+  n: string; // primary name (한글 우선)
+  e?: string; // english/alt name
+  x: "KR" | "US"; // exchange family
+};
+
 function normalize(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "");
 }
@@ -12,7 +19,8 @@ function symbolToSlug(symbol: string): string {
   return symbol.replace(/\./g, "-");
 }
 
-function localMatches(query: string, max = 8): StockSuggestion[] {
+// 인기 종목 → 자동완성 즉시 표시
+function popularMatches(query: string, max = 6): StockSuggestion[] {
   const q = normalize(query);
   if (!q) return [];
   const exact: StockSuggestion[] = [];
@@ -22,17 +30,42 @@ function localMatches(query: string, max = 8): StockSuggestion[] {
     const name = normalize(m.name);
     const sub = m.subtitle ? normalize(m.subtitle) : "";
     const tk = normalize(ticker);
-    if (tk === q || name === q || sub === q) {
-      exact.push(m);
-    } else if (
+    if (tk === q || name === q || sub === q) exact.push(m);
+    else if (
       tk.startsWith(q) ||
       name.startsWith(q) ||
       sub.startsWith(q) ||
       name.includes(q) ||
       (sub && sub.includes(q))
-    ) {
+    )
       partial.push(m);
-    }
+    if (exact.length + partial.length >= max * 2) break;
+  }
+  return [...exact, ...partial].slice(0, max);
+}
+
+// 전체 인덱스 (DART + SEC) → 매칭
+function indexMatches(index: IndexRow[] | null, query: string, exclude: Set<string>, max = 10): StockSuggestion[] {
+  if (!index) return [];
+  const q = normalize(query);
+  if (!q) return [];
+  const exact: StockSuggestion[] = [];
+  const partial: StockSuggestion[] = [];
+  for (const m of index) {
+    const symbolKey = m.s;
+    if (exclude.has(symbolKey) || exclude.has(`${symbolKey}.KS`) || exclude.has(`${symbolKey}.KQ`)) continue;
+    const n = normalize(m.n);
+    const e = m.e ? normalize(m.e) : "";
+    const s = normalize(m.s);
+    const sug: StockSuggestion = {
+      symbol: m.s, // 한국은 .KS/.KQ 없이 6자리만 — 야후가 알아서 해석
+      name: m.n,
+      subtitle: m.e || undefined,
+      exchange: m.x === "KR" ? "KOSPI" : "US",
+    };
+    if (s === q || n === q || e === q) exact.push(sug);
+    else if (s.startsWith(q) || n.startsWith(q) || e.startsWith(q) || n.includes(q) || (e && e.includes(q)))
+      partial.push(sug);
     if (exact.length + partial.length >= max * 2) break;
   }
   return [...exact, ...partial].slice(0, max);
@@ -44,10 +77,25 @@ export function StockSearchBox() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
+  const [index, setIndex] = useState<IndexRow[] | null>(null);
   const router = useRouter();
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const matches = useMemo(() => localMatches(q), [q]);
+  // 첫 포커스 시 전체 인덱스 lazy load (1회만, HTTP 캐시 활용)
+  useEffect(() => {
+    if (!open || index !== null) return;
+    fetch("/stocks-index.json", { cache: "force-cache" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: IndexRow[]) => setIndex(Array.isArray(data) ? data : []))
+      .catch(() => setIndex([]));
+  }, [open, index]);
+
+  const matches = useMemo(() => {
+    const popular = popularMatches(q, 6);
+    const popularSyms = new Set(popular.map((m) => m.symbol));
+    const rest = indexMatches(index, q, popularSyms, 10);
+    return [...popular, ...rest].slice(0, 12);
+  }, [q, index]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -127,7 +175,7 @@ export function StockSearchBox() {
             }}
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
-            placeholder="종목명 또는 코드 (예: 삼성전자, 005930, AAPL)"
+            placeholder="종목명 또는 코드 (예: 삼성전자, 애플, 005930, AAPL)"
             className="flex-1 px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30"
             autoComplete="off"
           />
@@ -145,12 +193,12 @@ export function StockSearchBox() {
       </form>
 
       {open && matches.length > 0 && (
-        <div className="absolute left-0 right-0 mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-lg overflow-hidden z-30">
+        <div className="absolute left-0 right-0 mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-lg overflow-hidden z-30 max-h-96 overflow-y-auto">
           {matches.map((m, i) => {
             const ticker = m.symbol.replace(/\.(KS|KQ)$/, "");
             return (
               <button
-                key={m.symbol}
+                key={`${m.symbol}-${i}`}
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault();

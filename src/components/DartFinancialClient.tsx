@@ -1,5 +1,4 @@
-"use client";
-
+// 서버 컴포넌트 — DART 정적 데이터를 클라이언트 번들에 포함하지 않기 위해 서버에서만 렌더
 import { DART_FINANCIAL_DATA } from "@/lib/dart-financial-data";
 import { DART_FILINGS_DATA } from "@/lib/dart-filings-data";
 

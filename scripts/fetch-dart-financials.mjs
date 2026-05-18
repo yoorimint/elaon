@@ -1,6 +1,6 @@
 // 빌드 시점 DART 재무·공시 데이터 일괄 다운로드.
 // GitHub Actions 또는 본인 PC 에서 실행.
-// 인기 한국 종목의 fnlttSinglAcnt(재무) + list(공시) 데이터를 정적 파일로.
+// 한국 상장 전 종목(KOSPI/KOSDAQ) 의 fnlttSinglAcnt(재무) + list(공시) 데이터를 정적 파일로.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -8,22 +8,7 @@ import { unzipSync, strFromU8 } from "fflate";
 
 const KEY = process.env.OPEN_DART_API_KEY || process.env.DART_API_KEY || "";
 const YEAR = new Date().getFullYear() - 1;
-const POPULAR = [
-  // KOSPI 시총 상위 + 자주 검색
-  "005930", "000660", "373220", "207940", "005380",
-  "000270", "068270", "005490", "035420", "051910",
-  "006400", "105560", "055550", "012330", "028260",
-  "066570", "003550", "017670", "030200", "096770",
-  "316140", "086790", "015760", "034730", "032830",
-  "018260", "010130", "009150", "011200", "259960",
-  "035720", "323410", "377300", "247540", "086520",
-  "041510", "352820", "022100", "402340", "035250",
-  // KOSDAQ
-  "293490", "035900", "091990", "196170", "068760",
-  "058470", "112040", "263750", "041960", "326030",
-  "145020", "095340", "278280", "067310", "240810",
-  "240810", "353200", "043150", "036620", "287410",
-];
+const CONCURRENCY = 8; // DART 동시 호출 수 (분당 1000회 제한 대비 안전 영역)
 
 const FIN_OUT = path.join("src", "lib", "dart-financial-data.ts");
 const FILING_OUT = path.join("src", "lib", "dart-filings-data.ts");
@@ -94,7 +79,6 @@ async function fetchFinancial(corpCode) {
       reportYear: YEAR,
     };
   } catch (e) {
-    console.error(`[fin ${corpCode}]`, e?.message ?? e);
     return null;
   }
 }
@@ -117,9 +101,28 @@ async function fetchFilings(corpCode) {
       reportNo: it.rcept_no,
     }));
   } catch (e) {
-    console.error(`[fil ${corpCode}]`, e?.message ?? e);
     return [];
   }
+}
+
+// CONCURRENCY 만큼 동시 실행하며 큐 소화.
+async function runWithConcurrency(items, worker) {
+  let idx = 0;
+  let done = 0;
+  const total = items.length;
+  const t0 = Date.now();
+  async function next() {
+    while (idx < total) {
+      const i = idx++;
+      await worker(items[i], i);
+      done++;
+      if (done % 100 === 0) {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+        console.log(`[dart] ${done}/${total} (${elapsed}s)`);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => next()));
 }
 
 async function main() {
@@ -131,22 +134,23 @@ async function main() {
   }
   console.log("[dart] downloading corp_code map...");
   const corpMap = await getCorpMap();
-  console.log(`[dart] ${Object.keys(corpMap).length} corp_codes`);
+  const tickers = Object.keys(corpMap);
+  console.log(`[dart] ${tickers.length} listed corps — fetching all financials`);
 
   const financials = {};
   const filings = {};
-  let success = 0;
-  for (const ticker of POPULAR) {
+
+  await runWithConcurrency(tickers, async (ticker) => {
     const corp = corpMap[ticker];
-    if (!corp) continue;
+    if (!corp) return;
     const [fin, fil] = await Promise.all([fetchFinancial(corp), fetchFilings(corp)]);
     if (fin) financials[ticker] = fin;
     if (fil.length) filings[ticker] = fil;
-    if (fin || fil.length) success++;
-    // rate limit 회피 — 200ms
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  console.log(`[dart] ${success}/${POPULAR.length} stocks loaded`);
+  });
+
+  console.log(
+    `[dart] done: ${Object.keys(financials).length} financials, ${Object.keys(filings).length} filings`,
+  );
   write(FIN_OUT, "DART_FINANCIAL_DATA", financials);
   write(FILING_OUT, "DART_FILINGS_DATA", filings);
 }

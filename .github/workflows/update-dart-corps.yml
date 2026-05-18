@@ -12,10 +12,11 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: claude/improve-address-search-engagement-HMBcH
+          ref: main
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -25,7 +26,7 @@ jobs:
         env:
           OPEN_DART_API_KEY: ${{ secrets.OPEN_DART_API_KEY }}
         run: node scripts/build-corp-codes.mjs
-      - name: Fetch financial + filing data for popular stocks
+      - name: Fetch financial + filing data for all listed stocks
         env:
           OPEN_DART_API_KEY: ${{ secrets.OPEN_DART_API_KEY }}
         run: node scripts/fetch-dart-financials.mjs

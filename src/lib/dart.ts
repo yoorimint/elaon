@@ -5,6 +5,7 @@
 
 import { unzipSync, strFromU8 } from "fflate";
 import { DART_CORP_CODES } from "./dart-corps";
+import { DART_CORP_DATA } from "./dart-corps-data";
 
 const DART_KEY = process.env.OPEN_DART_API_KEY || process.env.DART_API_KEY || "";
 
@@ -66,20 +67,23 @@ function startLoadingInBackground(): Promise<CorpMap | null> {
 }
 
 export async function getCorpCode(ticker6: string): Promise<string | null> {
-  // 1. 정적 매핑 우선
+  // 1. 사용자 수동 매핑 (dart-corps.ts)
   if (DART_CORP_CODES[ticker6]) return DART_CORP_CODES[ticker6];
-  // 2. 캐시된 동적 매핑
+  // 2. 빌드 시점 자동 생성된 정적 매핑 (dart-corps-data.ts)
+  if (DART_CORP_DATA[ticker6]) return DART_CORP_DATA[ticker6];
+  // 3. 메모리 동적 캐시 (이전 invocation 이 채워둔 게 우연히 살아있으면)
   if (dynamicCache && Date.now() - cacheFetchedAt < CACHE_TTL_MS) {
     return dynamicCache[ticker6] ?? null;
   }
-  // 3. 캐시 없거나 만료 — 백그라운드로 로드 시작
-  //    이번 요청은 await 하지 않고 즉시 null 반환 (페이지 빠르게 응답)
-  //    다음 요청부터는 캐시 사용 가능
+  // 4. 모두 실패 — 백그라운드 로드 시작 (다음 invocation 운 좋으면 활용)
   if (isDartEnabled()) {
     startLoadingInBackground();
   }
-  // 메모리에 부분 캐시가 있으면 그거라도 시도
-  return dynamicCache?.[ticker6] ?? null;
+  return null;
+}
+
+export function getMappingSize(): number {
+  return Object.keys(DART_CORP_DATA).length + (dynamicCache ? Object.keys(dynamicCache).length : 0);
 }
 
 // ===========================================================================
@@ -245,7 +249,7 @@ export async function fetchDartBundle(ticker6: string): Promise<DartBundle> {
     };
   }
   const corpCode = await getCorpCode(ticker6).catch(() => null);
-  const mappingSize = dynamicCache ? Object.keys(dynamicCache).length : 0;
+  const mappingSize = getMappingSize();
   if (!corpCode) {
     return {
       enabled: true,

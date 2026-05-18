@@ -9,6 +9,7 @@ import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
 import { fetchDartBundle, type DartBundle } from "@/lib/dart";
 import { fetchNaverNews, type NaverNews } from "@/lib/naver-news";
+import { fetchYahooFinancial, type YahooFinancial } from "@/lib/yahoo-financial";
 
 function relatedStocks(report: StockReport, count = 6) {
   const pool = STOCK_MARKETS.filter((m) => {
@@ -343,7 +344,7 @@ export default async function StockDetailPage({
     filings: [],
     diagnostics: { keyPresent: false, corpCode: null, mappingSize: 0 },
   };
-  const [dart, news]: [DartBundle, NaverNews[]] = await Promise.all([
+  const [dart, news, yfin]: [DartBundle, NaverNews[], YahooFinancial | null] = await Promise.all([
     isKR
       ? fetchDartBundle(report.ticker).catch((e) => {
           console.error("[stock] dart fetch failed:", e);
@@ -354,7 +355,10 @@ export default async function StockDetailPage({
       console.error("[stock] naver news failed:", e);
       return [] as NaverNews[];
     }),
+    fetchYahooFinancial(report.symbol).catch(() => null),
   ]);
+  // DART 가 실패하면 야후 재무로 fallback
+  const hasFinancial = dart.financial !== null || yfin !== null;
 
   return (
     <>
@@ -1004,6 +1008,52 @@ export default async function StockDetailPage({
             </div>
           </section>
         )}
+        {!dart.financial && yfin && (
+          <section className="mt-8">
+            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
+              💼 재무 지표 (야후 파이낸스)
+            </h2>
+            <p className="text-[12px] text-neutral-500 dark:text-neutral-500 mb-3">
+              DART 직접 접속이 차단되어 야후 파이낸스 데이터로 표시. 정확한 한국 회계 기준 수치는 DART 공식 보고서를 확인하세요.
+            </p>
+            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {yfin.per !== null && (
+                <IndicatorRow label="PER (주가수익비율)" value={yfin.per.toFixed(1)} note={yfin.per < 15 ? "저평가 영역 (15 미만)" : yfin.per < 30 ? "보통" : "고평가 영역"} tone={yfin.per < 15 ? "good" : yfin.per < 30 ? "neutral" : "bad"} />
+              )}
+              {yfin.pbr !== null && (
+                <IndicatorRow label="PBR (주가순자산비율)" value={yfin.pbr.toFixed(2)} note={yfin.pbr < 1 ? "순자산 대비 저평가" : yfin.pbr < 3 ? "보통" : "고평가"} tone={yfin.pbr < 1 ? "good" : yfin.pbr < 3 ? "neutral" : "bad"} />
+              )}
+              {yfin.roe !== null && (
+                <IndicatorRow label="ROE (자기자본이익률)" value={`${yfin.roe.toFixed(1)}%`} note={yfin.roe >= 17 ? "오닐 기준 17%↑ 충족" : yfin.roe >= 10 ? "양호" : "수익성 점검 필요"} tone={yfin.roe >= 17 ? "good" : yfin.roe >= 10 ? "neutral" : "bad"} />
+              )}
+              {yfin.eps !== null && (
+                <IndicatorRow label="EPS (주당순이익)" value={`${yfin.eps.toFixed(0)}${isKR ? "원" : "$"}`} note="최근 12개월 기준" tone="neutral" />
+              )}
+              {yfin.operatingMargin !== null && (
+                <IndicatorRow label="영업이익률" value={`${yfin.operatingMargin.toFixed(1)}%`} note={yfin.operatingMargin >= 20 ? "우수" : yfin.operatingMargin >= 10 ? "양호" : "수익성 약함"} tone={yfin.operatingMargin >= 20 ? "good" : yfin.operatingMargin >= 10 ? "neutral" : "bad"} />
+              )}
+              {yfin.debtRatio !== null && (
+                <IndicatorRow label="부채비율" value={`${yfin.debtRatio.toFixed(1)}%`} note={yfin.debtRatio < 100 ? "안정" : yfin.debtRatio < 200 ? "주의" : "위험"} tone={yfin.debtRatio < 100 ? "good" : yfin.debtRatio < 200 ? "neutral" : "bad"} />
+              )}
+              {yfin.dividendYield !== null && yfin.dividendYield > 0 && (
+                <IndicatorRow label="배당수익률" value={`${yfin.dividendYield.toFixed(2)}%`} note={yfin.dividendYield >= 3 ? "배당주" : "저배당"} tone={yfin.dividendYield >= 3 ? "good" : "neutral"} />
+              )}
+              {yfin.marketCap !== null && (
+                <IndicatorRow
+                  label="시가총액"
+                  value={
+                    isKR
+                      ? `${(yfin.marketCap / 1e12).toFixed(2)}조원`
+                      : `$${(yfin.marketCap / 1e9).toFixed(2)}B`
+                  }
+                  note="기업 규모"
+                  tone="neutral"
+                />
+              )}
+            </div>
+          </section>
+        )}
+
         {dart.financial && (
           <section className="mt-8">
             <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">

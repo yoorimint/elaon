@@ -8,7 +8,8 @@ import { unzipSync, strFromU8 } from "fflate";
 
 const KEY = process.env.OPEN_DART_API_KEY || process.env.DART_API_KEY || "";
 const YEAR = new Date().getFullYear() - 1;
-const CONCURRENCY = 8; // DART 동시 호출 수 (분당 1000회 제한 대비 안전 영역)
+const CONCURRENCY = 3; // DART rate limit 보수적 대응 — "020" 초과 방지
+const MAX_RETRIES = 4;
 
 const FIN_OUT = path.join("src", "lib", "dart-financial-data.ts");
 const FILING_OUT = path.join("src", "lib", "dart-filings-data.ts");
@@ -25,6 +26,23 @@ function write(file, name, value) {
   const body = `export const ${name}: ${TYPES[name]} = ${JSON.stringify(value, null, 0)};\n`;
   fs.writeFileSync(file, banner + body, "utf8");
 }
+
+// 기존 데이터 보존용 — fetch 실패한 ticker 는 이전 값 유지
+function readExisting(file, name) {
+  try {
+    if (!fs.existsSync(file)) return {};
+    const content = fs.readFileSync(file, "utf8");
+    const start = content.indexOf("= ");
+    const end = content.lastIndexOf(";");
+    if (start < 0 || end < 0) return {};
+    return JSON.parse(content.slice(start + 2, end));
+  } catch (e) {
+    console.warn(`[dart] readExisting ${name} 실패 — 빈 dict 으로 시작:`, e?.message ?? e);
+    return {};
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function getCorpMap() {
   try {
@@ -52,60 +70,77 @@ async function getCorpMap() {
   }
 }
 
-async function fetchFinancial(corpCode) {
-  try {
-    const url = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${KEY}&corp_code=${corpCode}&bsns_year=${YEAR}&reprt_code=11011`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json?.status !== "000") return null;
-    const items = json.list ?? [];
-    let revenue = NaN, operatingIncome = NaN, netIncome = NaN, equity = NaN, debt = NaN;
-    for (const it of items) {
-      if (it.fs_div !== "CFS" && it.fs_div !== "OFS") continue;
-      const v = Number(String(it.thstrm_amount).replace(/[^\d.-]/g, ""));
-      if (!Number.isFinite(v)) continue;
-      const nm = it.account_nm;
-      if (nm.includes("매출액") && !Number.isFinite(revenue)) revenue = v;
-      else if (nm.includes("영업이익") && !Number.isFinite(operatingIncome)) operatingIncome = v;
-      else if (nm.includes("당기순이익") && !Number.isFinite(netIncome)) netIncome = v;
-      else if (nm.includes("자본총계") && !Number.isFinite(equity)) equity = v;
-      else if (nm.includes("부채총계") && !Number.isFinite(debt)) debt = v;
+// status "020" (사용한도 초과) 시 지수 백오프 재시도.
+// "013" (조회된 데이터 없음) 은 즉시 null — 데이터 없는 종목.
+async function dartFetchJson(url) {
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        if (res.status === 429 || res.status >= 500) {
+          await sleep(2000 * (attempt + 1));
+          continue;
+        }
+        return null;
+      }
+      const json = await res.json();
+      const status = json?.status;
+      if (status === "020") {
+        // rate limit — 백오프
+        await sleep(3000 * (attempt + 1));
+        continue;
+      }
+      if (status === "000") return json;
+      // "013" (데이터 없음), "100" 등은 즉시 종료
+      return null;
+    } catch (e) {
+      await sleep(1000 * (attempt + 1));
     }
-    return {
-      roe: Number.isFinite(netIncome) && Number.isFinite(equity) && equity > 0 ? (netIncome / equity) * 100 : null,
-      operatingMargin: Number.isFinite(operatingIncome) && Number.isFinite(revenue) && revenue > 0 ? (operatingIncome / revenue) * 100 : null,
-      debtRatio: Number.isFinite(debt) && Number.isFinite(equity) && equity > 0 ? (debt / equity) * 100 : null,
-      reportYear: YEAR,
-    };
-  } catch (e) {
-    return null;
   }
+  return null;
+}
+
+async function fetchFinancial(corpCode) {
+  const url = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${KEY}&corp_code=${corpCode}&bsns_year=${YEAR}&reprt_code=11011`;
+  const json = await dartFetchJson(url);
+  if (!json) return null;
+  const items = json.list ?? [];
+  let revenue = NaN, operatingIncome = NaN, netIncome = NaN, equity = NaN, debt = NaN;
+  for (const it of items) {
+    if (it.fs_div !== "CFS" && it.fs_div !== "OFS") continue;
+    const v = Number(String(it.thstrm_amount).replace(/[^\d.-]/g, ""));
+    if (!Number.isFinite(v)) continue;
+    const nm = it.account_nm;
+    if (nm.includes("매출액") && !Number.isFinite(revenue)) revenue = v;
+    else if (nm.includes("영업이익") && !Number.isFinite(operatingIncome)) operatingIncome = v;
+    else if (nm.includes("당기순이익") && !Number.isFinite(netIncome)) netIncome = v;
+    else if (nm.includes("자본총계") && !Number.isFinite(equity)) equity = v;
+    else if (nm.includes("부채총계") && !Number.isFinite(debt)) debt = v;
+  }
+  return {
+    roe: Number.isFinite(netIncome) && Number.isFinite(equity) && equity > 0 ? (netIncome / equity) * 100 : null,
+    operatingMargin: Number.isFinite(operatingIncome) && Number.isFinite(revenue) && revenue > 0 ? (operatingIncome / revenue) * 100 : null,
+    debtRatio: Number.isFinite(debt) && Number.isFinite(equity) && equity > 0 ? (debt / equity) * 100 : null,
+    reportYear: YEAR,
+  };
 }
 
 async function fetchFilings(corpCode) {
-  try {
-    const end = new Date();
-    const start = new Date(end.getTime() - 90 * 86400000);
-    const fmt = (d) =>
-      `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
-    const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${KEY}&corp_code=${corpCode}&bgn_de=${fmt(start)}&end_de=${fmt(end)}&page_count=15`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const json = await res.json();
-    if (json?.status !== "000") return [];
-    const list = json.list ?? [];
-    return list.map((it) => ({
-      date: `${it.rcept_dt.slice(0, 4)}.${it.rcept_dt.slice(4, 6)}.${it.rcept_dt.slice(6, 8)}`,
-      title: it.report_nm,
-      reportNo: it.rcept_no,
-    }));
-  } catch (e) {
-    return [];
-  }
+  const end = new Date();
+  const start = new Date(end.getTime() - 90 * 86400000);
+  const fmt = (d) =>
+    `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const url = `https://opendart.fss.or.kr/api/list.json?crtfc_key=${KEY}&corp_code=${corpCode}&bgn_de=${fmt(start)}&end_de=${fmt(end)}&page_count=15`;
+  const json = await dartFetchJson(url);
+  if (!json) return null; // null = fetch 실패 (보존), [] 와 구분
+  const list = json.list ?? [];
+  return list.map((it) => ({
+    date: `${it.rcept_dt.slice(0, 4)}.${it.rcept_dt.slice(4, 6)}.${it.rcept_dt.slice(6, 8)}`,
+    title: it.report_nm,
+    reportNo: it.rcept_no,
+  }));
 }
 
-// CONCURRENCY 만큼 동시 실행하며 큐 소화.
 async function runWithConcurrency(items, worker) {
   let idx = 0;
   let done = 0;
@@ -128,28 +163,48 @@ async function runWithConcurrency(items, worker) {
 async function main() {
   if (!KEY) {
     console.warn("OPEN_DART_API_KEY 미설정 — 빈 데이터로 진행");
-    write(FIN_OUT, "DART_FINANCIAL_DATA", {});
-    write(FILING_OUT, "DART_FILINGS_DATA", {});
+    // 기존 데이터는 보존
     return;
   }
+
+  // 기존 데이터 로드 — fetch 실패한 ticker 는 이 값 유지
+  const financials = readExisting(FIN_OUT, "DART_FINANCIAL_DATA");
+  const filings = readExisting(FILING_OUT, "DART_FILINGS_DATA");
+  const beforeFin = Object.keys(financials).length;
+  const beforeFil = Object.keys(filings).length;
+  console.log(`[dart] 기존 데이터 로드: ${beforeFin} financials, ${beforeFil} filings`);
+
   console.log("[dart] downloading corp_code map...");
   const corpMap = await getCorpMap();
   const tickers = Object.keys(corpMap);
   console.log(`[dart] ${tickers.length} listed corps — fetching all financials`);
 
-  const financials = {};
-  const filings = {};
+  let updatedFin = 0;
+  let updatedFil = 0;
 
   await runWithConcurrency(tickers, async (ticker) => {
     const corp = corpMap[ticker];
     if (!corp) return;
-    const [fin, fil] = await Promise.all([fetchFinancial(corp), fetchFilings(corp)]);
-    if (fin) financials[ticker] = fin;
-    if (fil.length) filings[ticker] = fil;
+    const fin = await fetchFinancial(corp);
+    if (fin) {
+      financials[ticker] = fin;
+      updatedFin++;
+    }
+    const fil = await fetchFilings(corp);
+    if (fil !== null) {
+      // fetch 성공 — 빈 배열이면 기존 entry 도 빈 배열로 (실제로 공시 없는 경우 반영)
+      if (fil.length > 0) {
+        filings[ticker] = fil;
+        updatedFil++;
+      } else if (filings[ticker]) {
+        // 이전엔 있었는데 이번엔 0건 = 90일 지나서 만료 → 삭제
+        delete filings[ticker];
+      }
+    }
   });
 
   console.log(
-    `[dart] done: ${Object.keys(financials).length} financials, ${Object.keys(filings).length} filings`,
+    `[dart] done: financials ${beforeFin}→${Object.keys(financials).length} (${updatedFin} 신선), filings ${beforeFil}→${Object.keys(filings).length} (${updatedFil} 신선)`,
   );
   write(FIN_OUT, "DART_FINANCIAL_DATA", financials);
   write(FILING_OUT, "DART_FILINGS_DATA", filings);
@@ -157,6 +212,5 @@ async function main() {
 
 main().catch((e) => {
   console.error("[dart] unexpected:", e);
-  write(FIN_OUT, "DART_FINANCIAL_DATA", {});
-  write(FILING_OUT, "DART_FILINGS_DATA", {});
+  // 에러 시 기존 데이터 그대로 — write 호출 안 함
 });

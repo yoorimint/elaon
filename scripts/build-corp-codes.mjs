@@ -1,6 +1,6 @@
-// 빌드 시점에 DART corpCode.xml 다운로드 → 정적 TS 파일로 저장.
-// Vercel build 시 OPEN_DART_API_KEY 환경변수가 있으면 자동 실행.
-// 없으면 빈 매핑으로 빌드 통과 (사이트 다른 부분은 정상 동작).
+// 빌드 시점 DART corpCode 다운로드 시도.
+// Vercel build runtime IP 는 opendart.fss.or.kr 와 TLS 차단 가능성 있음 (ECONNRESET).
+// 실패해도 빌드 통과 — 런타임에 Edge proxy 통해 다시 시도.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -17,23 +17,29 @@ function writeOutput(map) {
 
 async function main() {
   if (!KEY) {
-    console.warn("[corp-codes] OPEN_DART_API_KEY 미설정 — 빈 매핑으로 진행");
+    console.warn("[corp-codes] OPEN_DART_API_KEY 미설정 — 빈 매핑");
     writeOutput({});
     return;
   }
   const url = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${KEY}`;
   console.log("[corp-codes] downloading corpCode.xml...");
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.error("[corp-codes] HTTP", res.status, "— 빈 매핑으로 진행");
+  let buf;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[corp-codes] HTTP ${res.status} — 빈 매핑, 런타임 Edge proxy 시도`);
+      writeOutput({});
+      return;
+    }
+    buf = await res.arrayBuffer();
+  } catch (e) {
+    console.warn("[corp-codes] fetch 실패 (TLS/네트워크) — 빈 매핑, 런타임 Edge proxy 시도:", e?.message ?? e);
     writeOutput({});
     return;
   }
-  const buf = await res.arrayBuffer();
   if (buf.byteLength < 1024) {
-    // DART 가 에러 JSON 을 반환할 수 있음
     const text = new TextDecoder().decode(buf);
-    console.error("[corp-codes] suspicious small response:", text.slice(0, 200));
+    console.warn("[corp-codes] 응답 너무 작음:", text.slice(0, 200));
     writeOutput({});
     return;
   }
@@ -44,7 +50,7 @@ async function main() {
     if (!entry) throw new Error("zip empty");
     xml = strFromU8(entry);
   } catch (e) {
-    console.error("[corp-codes] unzip failed:", e?.message ?? e);
+    console.warn("[corp-codes] unzip 실패:", e?.message ?? e);
     writeOutput({});
     return;
   }
@@ -63,6 +69,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("[corp-codes] error:", e);
+  console.error("[corp-codes] unexpected:", e);
   writeOutput({});
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DART_CORP_DATA } from "@/lib/dart-corps-data";
 
 type Props = {
   ticker: string;
@@ -19,34 +20,6 @@ type Filing = {
   title: string;
   reportNo: string;
 };
-
-// 인기 종목 corp_code 매핑 (사용자가 직접 검증한 값)
-// 필요한 종목은 본인이 추가. 또는 GitHub Actions 자동 갱신.
-const STATIC_CORP_CODES: Record<string, string> = {};
-
-async function loadCorpCode(ticker: string): Promise<string | null> {
-  if (STATIC_CORP_CODES[ticker]) return STATIC_CORP_CODES[ticker];
-  // 클라이언트가 직접 DART 호출은 CORS 막힘 — Edge proxy 통해 (server IP 차단 가능)
-  // 그래도 시도 — 사용자 IP 라 일부 환경에선 동작 가능성
-  try {
-    const res = await fetch("/api/dart/corpCode.xml", { cache: "no-store" });
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    // ZIP 파싱 — 브라우저에서 fflate 동적 import
-    const { unzipSync, strFromU8 } = await import("fflate");
-    const zip = unzipSync(new Uint8Array(buf));
-    const entry = Object.values(zip)[0];
-    if (!entry) return null;
-    const xml = strFromU8(entry);
-    const block = xml.match(
-      new RegExp(`<list>([\\s\\S]*?<stock_code>\\s*${ticker}\\s*</stock_code>[\\s\\S]*?)</list>`),
-    );
-    if (!block) return null;
-    return /<corp_code>(\d+)<\/corp_code>/.exec(block[1])?.[1] ?? null;
-  } catch {
-    return null;
-  }
-}
 
 async function fetchFinancial(corpCode: string, year: number): Promise<Financial | null> {
   try {
@@ -105,42 +78,41 @@ async function fetchFilings(corpCode: string): Promise<Filing[]> {
   }
 }
 
-export function DartFinancialClient({ ticker, name }: Props) {
+export function DartFinancialClient({ ticker }: Props) {
   const [financial, setFinancial] = useState<Financial | null>(null);
   const [filings, setFilings] = useState<Filing[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("");
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setStatus("DART corp_code 매핑 다운로드 중...");
-      const corp = await loadCorpCode(ticker);
-      if (!corp) {
+    const corp = DART_CORP_DATA[ticker];
+    if (!corp) {
+      setLoading(false);
+      setStatus(`이 종목(${ticker})의 corp_code 가 매핑에 없습니다 (상장폐지·신규 상장 등).`);
+      return;
+    }
+    setStatus(`corp_code ${corp} — 재무·공시 조회 중...`);
+    Promise.all([
+      fetchFinancial(corp, new Date().getFullYear() - 1),
+      fetchFilings(corp),
+    ])
+      .then(([fin, fil]) => {
+        setFinancial(fin);
+        setFilings(fil);
         setLoading(false);
-        setStatus("매핑 다운로드 실패 — 사용자 IP 에서도 DART 접근 불가");
-        return;
-      }
-      setStatus(`corp_code ${corp} — 재무·공시 조회 중...`);
-      const [fin, fil] = await Promise.all([
-        fetchFinancial(corp, new Date().getFullYear() - 1),
-        fetchFilings(corp),
-      ]);
-      setFinancial(fin);
-      setFilings(fil);
-      setLoading(false);
-      setStatus(fin || fil.length ? "" : "데이터 조회 실패");
-    })().catch((e) => {
-      console.error("[dart-client] error:", e);
-      setLoading(false);
-      setStatus("에러 발생");
-    });
+        setStatus(fin || fil.length ? "" : "DART API 응답 실패 (Edge proxy IP 차단 가능성)");
+      })
+      .catch((e) => {
+        console.error("[dart-client] error:", e);
+        setLoading(false);
+        setStatus("에러 발생");
+      });
   }, [ticker]);
 
   if (loading) {
     return (
       <section className="mt-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 text-sm text-neutral-600 dark:text-neutral-400">
-        💼 DART 재무·공시 — {status}
+        💼 DART 재무·공시 불러오는 중... {status && `(${status})`}
       </section>
     );
   }
@@ -151,13 +123,7 @@ export function DartFinancialClient({ ticker, name }: Props) {
         <div className="font-bold text-neutral-900 dark:text-neutral-100 mb-1">
           💼 DART 재무·공시 표시 불가
         </div>
-        <p className="text-[12px] leading-relaxed">
-          DART API 가 Vercel 서버 + 본인 브라우저 둘 다 응답하지 않음.
-          {status && ` (${status})`}
-        </p>
-        <p className="mt-2 text-[12px] leading-relaxed">
-          본인 한국 IP PC 에서 corpCode.xml 한 번 다운받아 commit 하면 영구 해결됩니다.
-        </p>
+        <p className="text-[12px] leading-relaxed">{status}</p>
       </section>
     );
   }
@@ -171,7 +137,7 @@ export function DartFinancialClient({ ticker, name }: Props) {
           </h2>
           <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
             {financial.roe !== null && (
-              <DartRow label="ROE" value={`${financial.roe.toFixed(1)}%`} good={financial.roe >= 17} note={financial.roe >= 17 ? "오닐 기준 충족" : "수익성 점검"} />
+              <DartRow label="ROE (자기자본이익률)" value={`${financial.roe.toFixed(1)}%`} good={financial.roe >= 17} note={financial.roe >= 17 ? "오닐 기준 17%↑ 충족" : "수익성 점검 필요"} />
             )}
             {financial.operatingMargin !== null && (
               <DartRow label="영업이익률" value={`${financial.operatingMargin.toFixed(1)}%`} good={financial.operatingMargin >= 20} note={financial.operatingMargin >= 20 ? "우수" : financial.operatingMargin >= 10 ? "양호" : "약함"} />

@@ -19,9 +19,9 @@ from urllib.request import Request, urlopen
 import yfinance as yf
 
 OUT = Path("src/lib/yahoo-financial-data.ts")
-CONCURRENCY = 8
-# 야후 throttle 회피 — 너무 빠르면 401/429
-REQUEST_DELAY_SEC = 0.05
+CONCURRENCY = 4  # 야후 차단 회피 — 보수적 동시 처리
+REQUEST_DELAY_SEC = 0.1
+MAX_RETRIES = 3  # 429/throttle 시 재시도
 
 # 수집할 필드 (yfinance Ticker.info 키 기준)
 FIELDS = [
@@ -97,25 +97,34 @@ def get_us_tickers() -> list[str]:
 
 
 def fetch_one(symbol: str) -> tuple[str, dict | None]:
-    try:
-        info = yf.Ticker(symbol).info
-        if not info or not isinstance(info, dict):
+    last_err = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            info = yf.Ticker(symbol).info
+            if not info or not isinstance(info, dict):
+                return symbol, None
+            data = {}
+            has_value = False
+            for k in FIELDS:
+                v = info.get(k)
+                if v is None or (isinstance(v, float) and (v != v)):  # NaN
+                    data[k] = None
+                else:
+                    data[k] = v
+                    has_value = True
+            if not has_value:
+                return symbol, None
+            return symbol, data
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            # 429 / throttle → backoff 후 재시도
+            if "429" in msg or "rate" in msg or "throttl" in msg:
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+                continue
+            # 기타 에러는 즉시 포기
             return symbol, None
-        # 핵심 필드만 추출. 값이 없으면 null.
-        data = {}
-        has_value = False
-        for k in FIELDS:
-            v = info.get(k)
-            if v is None or (isinstance(v, float) and (v != v)):  # NaN
-                data[k] = None
-            else:
-                data[k] = v
-                has_value = True
-        if not has_value:
-            return symbol, None
-        return symbol, data
-    except Exception:
-        return symbol, None
+    return symbol, None
 
 
 def write_output(payload: dict) -> None:

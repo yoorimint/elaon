@@ -1,4 +1,4 @@
-name: Update DART data (corp_codes + financials)
+name: Update DART + Yahoo financial data
 
 on:
   schedule:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,20 +20,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Install fflate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Node deps
         run: npm install --no-save fflate
+      - name: Install Python deps
+        run: pip install yfinance
       - name: Download corpCode.xml and generate mapping
         env:
           OPEN_DART_API_KEY: ${{ secrets.OPEN_DART_API_KEY }}
         run: node scripts/build-corp-codes.mjs
-      - name: Fetch financial + filing data for all listed stocks
+      - name: Fetch DART financial + filing data (KR)
         env:
           OPEN_DART_API_KEY: ${{ secrets.OPEN_DART_API_KEY }}
         run: node scripts/fetch-dart-financials.mjs
+      - name: Fetch Yahoo financial data (US)
+        run: python scripts/fetch-yahoo-financials.py
       - name: Check if changed
         id: diff
         run: |
-          if git diff --quiet src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts; then
+          if git diff --quiet src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -43,6 +50,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts
-          git commit -m "chore(dart): auto-update corp_code + financial data"
+          git add src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts
+          git commit -m "chore(data): auto-update DART + Yahoo financial data"
           git push

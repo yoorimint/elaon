@@ -9,6 +9,7 @@ import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
 import { fetchNaverNews, type NaverNews } from "@/lib/naver-news";
 import { DartFinancialClient } from "@/components/DartFinancialClient";
+import { SecFilingsCard } from "@/components/SecFilingsCard";
 
 function relatedStocks(report: StockReport, count = 6) {
   const pool = STOCK_MARKETS.filter((m) => {
@@ -964,6 +965,8 @@ export default async function StockDetailPage({
         {isKR && (
           <DartFinancialClient ticker={report.ticker} name={report.name} />
         )}
+
+        {report.exchange === "OTHER" && <SecFilingsCard ticker={report.ticker} />}
 
         {news.length > 0 && (
           <section className="mt-8">

@@ -37,10 +37,12 @@ jobs:
         run: node scripts/fetch-dart-financials.mjs
       - name: Fetch Yahoo financial data (US)
         run: python scripts/fetch-yahoo-financials.py
+      - name: Fetch SEC EDGAR filings (US)
+        run: python scripts/fetch-sec-filings.py
       - name: Check if changed
         id: diff
         run: |
-          if git diff --quiet src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts; then
+          if git diff --quiet src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts src/lib/sec-filings-data.ts; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -50,6 +52,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts
-          git commit -m "chore(data): auto-update DART + Yahoo financial data"
+          git add src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts src/lib/yahoo-financial-data.ts src/lib/sec-filings-data.ts
+          git commit -m "chore(data): auto-update DART + Yahoo + SEC data"
           git push

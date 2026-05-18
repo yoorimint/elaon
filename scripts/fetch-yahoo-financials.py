@@ -29,8 +29,8 @@ logging.getLogger("urllib3").setLevel(logging.CRITICAL)
 logging.getLogger("peewee").setLevel(logging.CRITICAL)
 
 OUT = Path("src/lib/yahoo-financial-data.ts")
-CONCURRENCY = 4  # 야후 차단 회피 — 보수적 동시 처리
-REQUEST_DELAY_SEC = 0.1
+CONCURRENCY = 8  # retry/backoff 있어서 8 까지는 안전
+REQUEST_DELAY_SEC = 0.05
 MAX_RETRIES = 3  # 429/throttle 시 재시도
 
 # 수집할 필드 (yfinance Ticker.info 키 기준)

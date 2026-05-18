@@ -7,9 +7,8 @@ import { resolveStock, slugToSymbol, symbolToSlug } from "@/lib/stock-resolver";
 import { buildStockReport, type StockReport } from "@/lib/stock-report";
 import { JsonLd, breadcrumbLd } from "@/components/JsonLd";
 import { StockChart } from "@/components/StockChart";
-import { fetchDartBundle, type DartBundle } from "@/lib/dart";
 import { fetchNaverNews, type NaverNews } from "@/lib/naver-news";
-import { YahooFinancialClient } from "@/components/YahooFinancialClient";
+import { DartFinancialClient } from "@/components/DartFinancialClient";
 
 function relatedStocks(report: StockReport, count = 6) {
   const pool = STOCK_MARKETS.filter((m) => {
@@ -336,25 +335,12 @@ export default async function StockDetailPage({
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;
   const isKR = report.exchange === "KOSPI" || report.exchange === "KOSDAQ";
-  const emptyDart: DartBundle = {
-    enabled: false,
-    hasMapping: false,
-    financial: null,
-    filings: [],
-    diagnostics: { keyPresent: false, corpCode: null, mappingSize: 0 },
-  };
-  const [dart, news]: [DartBundle, NaverNews[]] = await Promise.all([
-    isKR
-      ? fetchDartBundle(report.ticker).catch((e) => {
-          console.error("[stock] dart fetch failed:", e);
-          return emptyDart;
-        })
-      : Promise.resolve(emptyDart),
-    fetchNaverNews(`${report.name} 주가`, 8).catch((e) => {
-      console.error("[stock] naver news failed:", e);
-      return [] as NaverNews[];
-    }),
-  ]);
+  // server-side DART 호출 제거 — Vercel runtime IP 가 DART TLS 차단됨.
+  // 재무·공시는 클라이언트 컴포넌트(DartFinancialClient)로 사용자 IP 활용.
+  const news = await fetchNaverNews(`${report.name} 주가`, 8).catch((e) => {
+    console.error("[stock] naver news failed:", e);
+    return [] as NaverNews[];
+  });
 
   return (
     <>
@@ -975,100 +961,8 @@ export default async function StockDetailPage({
           </section>
         )}
 
-        {isKR && !dart.financial && !dart.filings.length && (
-          <section className="mt-8 rounded-2xl border border-dashed border-rose-300 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-900/10 p-4 text-[12.5px] leading-relaxed">
-            <div className="font-extrabold text-rose-900 dark:text-rose-200 mb-2">
-              💼 재무·공시(DART) 진단
-            </div>
-            <div className="space-y-1 font-mono text-rose-900 dark:text-rose-100">
-              <div>· OPEN_DART_API_KEY 환경변수: {dart.diagnostics.keyPresent ? "✓ 인식" : "✗ 누락"}</div>
-              {dart.diagnostics.keyPresent && (
-                <>
-                  <div>· corpCode.xml 매핑 다운로드: {dart.diagnostics.mappingSize > 0 ? `✓ ${dart.diagnostics.mappingSize}개 종목 캐시` : "✗ 0개 — DART 가 Vercel IP 풀 TLS 차단 중"}</div>
-                  <div>· 이 종목(<strong>{report.ticker}</strong>) corp_code: {dart.diagnostics.corpCode ? `✓ ${dart.diagnostics.corpCode}` : "✗ 매핑에서 발견 안 됨"}</div>
-                  {dart.diagnostics.financialError && (
-                    <div>· 재무 API 실패: {dart.diagnostics.financialError}</div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="mt-3 text-[11px] text-rose-800 dark:text-rose-300">
-              DART 차단됨. 아래 야후 재무 지표는 본인 브라우저(한국 IP)에서 직접 호출 — 잠시 후 채워집니다.
-            </div>
-          </section>
-        )}
-        {!dart.financial && (
-          <YahooFinancialClient symbol={report.symbol} exchange={report.exchange} />
-        )}
-
-        {dart.financial && (
-          <section className="mt-8">
-            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
-              💼 재무 지표 (DART 사업보고서 {dart.financial.reportYear})
-            </h2>
-            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
-              {dart.financial.roe !== null && (
-                <IndicatorRow
-                  label="ROE (자기자본이익률)"
-                  value={`${dart.financial.roe.toFixed(1)}%`}
-                  note={
-                    dart.financial.roe >= 17
-                      ? "오닐 기준 17% 충족 — 수익성 우수"
-                      : dart.financial.roe >= 10
-                        ? "양호한 수익성"
-                        : "수익성 점검 필요"
-                  }
-                  tone={
-                    dart.financial.roe >= 17
-                      ? "good"
-                      : dart.financial.roe >= 10
-                        ? "neutral"
-                        : "bad"
-                  }
-                />
-              )}
-              {dart.financial.operatingMargin !== null && (
-                <IndicatorRow
-                  label="영업이익률"
-                  value={`${dart.financial.operatingMargin.toFixed(1)}%`}
-                  note={
-                    dart.financial.operatingMargin >= 20
-                      ? "20% 이상 — 우수"
-                      : dart.financial.operatingMargin >= 10
-                        ? "양호"
-                        : "수익성 약함"
-                  }
-                  tone={
-                    dart.financial.operatingMargin >= 20
-                      ? "good"
-                      : dart.financial.operatingMargin >= 10
-                        ? "neutral"
-                        : "bad"
-                  }
-                />
-              )}
-              {dart.financial.debtRatio !== null && (
-                <IndicatorRow
-                  label="부채비율"
-                  value={`${dart.financial.debtRatio.toFixed(1)}%`}
-                  note={
-                    dart.financial.debtRatio < 100
-                      ? "100% 미만 — 안정"
-                      : dart.financial.debtRatio < 200
-                        ? "100~200% — 주의"
-                        : "200% 초과 — 위험"
-                  }
-                  tone={
-                    dart.financial.debtRatio < 100
-                      ? "good"
-                      : dart.financial.debtRatio < 200
-                        ? "neutral"
-                        : "bad"
-                  }
-                />
-              )}
-            </div>
-          </section>
+        {isKR && (
+          <DartFinancialClient ticker={report.ticker} name={report.name} />
         )}
 
         {news.length > 0 && (
@@ -1091,33 +985,6 @@ export default async function StockDetailPage({
                   <div className="mt-1 text-[12px] text-neutral-500 dark:text-neutral-500">
                     {new Date(n.pubDate).toLocaleDateString("ko-KR")}
                   </div>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {dart.filings.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xl font-extrabold mb-3 text-neutral-900 dark:text-neutral-100">
-              📄 최근 공시 (DART)
-            </h2>
-            <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 divide-y divide-neutral-200 dark:divide-neutral-800">
-              {dart.filings.map((f) => (
-                <a
-                  key={f.reportNo}
-                  href={`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${f.reportNo}`}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="flex items-center gap-3 p-3 hover:bg-neutral-50 dark:hover:bg-neutral-900/40 transition"
-                >
-                  <span className="text-xs text-neutral-500 dark:text-neutral-500 shrink-0">
-                    {f.date}
-                  </span>
-                  <span className="flex-1 text-sm text-neutral-800 dark:text-neutral-200 truncate">
-                    {f.title}
-                  </span>
-                  <span className="text-xs text-neutral-400">↗</span>
                 </a>
               ))}
             </div>

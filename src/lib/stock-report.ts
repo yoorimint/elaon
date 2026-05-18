@@ -3,6 +3,7 @@
 // 외부 API 추가 호출 없이 가격·거래량 시계열만으로 동작.
 
 import type { Candle } from "./upbit";
+import { DART_FINANCIAL_DATA } from "./dart-financial-data";
 
 export type IndicatorScore = {
   value: number;
@@ -468,7 +469,7 @@ export type CanSlimItem = {
   note: string;
 };
 
-export function evaluateCanSlim(candles: Candle[]): CanSlimItem[] {
+export function evaluateCanSlim(candles: Candle[], ticker?: string): CanSlimItem[] {
   const closes = candles.map((c) => c.close);
   const ema50 = ema(closes, 50);
   const ema200 = ema(closes, 200);
@@ -485,18 +486,33 @@ export function evaluateCanSlim(candles: Candle[]): CanSlimItem[] {
   // M: 시장 방향 (본 종목 EMA200 위 + 1년 수익 양수)
   const marketUp = last > e200 && ret12 > 0;
 
+  // DART 재무 (있는 종목만). C 는 영업이익률(수익성 프록시), A 는 ROE 17%↑ 오닐 기준.
+  const fin = ticker ? DART_FINANCIAL_DATA[ticker] : undefined;
+  const opm = fin?.operatingMargin ?? null;
+  const roe = fin?.roe ?? null;
+
   return [
     {
       code: "C",
       label: "Current Earnings (분기 이익 성장)",
-      pass: null,
-      note: "분기 EPS +25%↑ 기준. 재무 데이터 필요 (DART 연동 시 활성화).",
+      pass: opm === null ? null : opm >= 15,
+      note:
+        opm === null
+          ? "분기 EPS +25%↑ 기준. 재무 데이터 부족."
+          : opm >= 15
+            ? `영업이익률 ${opm.toFixed(1)}% — 수익성 우수 (분기 데이터는 사업보고서로 추정)`
+            : `영업이익률 ${opm.toFixed(1)}% — 분기 이익 성장 기준 미달`,
     },
     {
       code: "A",
       label: "Annual Earnings (연간 이익 성장)",
-      pass: null,
-      note: "연간 ROE 17%↑ + EPS 3년 연속 성장. 재무 필요.",
+      pass: roe === null ? null : roe >= 17,
+      note:
+        roe === null
+          ? "연간 ROE 17%↑ 기준. 재무 데이터 부족."
+          : roe >= 17
+            ? `ROE ${roe.toFixed(1)}% — 오닐 17%↑ 충족`
+            : `ROE ${roe.toFixed(1)}% — 17% 기준 미달`,
     },
     {
       code: "N",
@@ -1035,7 +1051,7 @@ export function buildStockReport(params: {
     conviction: convictionScore(candles).score,
     convictionBias: convictionScore(candles).bias,
     entry: evaluateEntry(candles),
-    canSlim: evaluateCanSlim(candles),
+    canSlim: evaluateCanSlim(candles, ticker),
     quant: evaluateQuant(candles),
     backtests: evaluateBacktests(candles),
     overall: 0,

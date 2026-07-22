@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
@@ -119,6 +120,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 })();
 `,
           }}
+        />
+        {/* Google AdSense — 전체 페이지 공통 광고 스크립트 */}
+        <Script
+          id="google-adsense"
+          async
+          strategy="afterInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7521397660882740"
+          crossOrigin="anonymous"
         />
       </head>
       <body className="min-h-screen antialiased bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">

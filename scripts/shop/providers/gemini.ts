@@ -30,6 +30,7 @@ const DEFAULT_CANDIDATES = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 const MAX_RETRY_WAIT_MS = 30_000; // "N초 후 재시도" 안내를 따를 최대 대기
 const RETRIES_PER_MODEL = 2;
 const OVERLOAD_WAITS_MS = [15_000, 30_000]; // 503 "high demand"(일시적) 재시도 간격
+const REQUEST_TIMEOUT_MS = 150_000; // 응답이 이보다 늦으면 끊고 다음 모델로 (Node 기본 5분 끊김 방지)
 
 let candidates: string[] | null = null;
 
@@ -121,12 +122,14 @@ type GeminiResponse = {
 // Gemini 3.x generateContent 형식 (AI Studio 문서 기준)
 // - JSON 출력: responseMimeType + responseJsonSchema (표준 JSON Schema)
 // - temperature/top_p 는 3.x 에서 "deprecated and ignored" → 보내지 않음
-// - thinking 은 모델 기본값 사용 (flash=medium, flash-lite=minimal). 출력 예산은 넉넉히
-function buildBody(prompt: string, opts: GeminiOptions) {
+// - thinkingLevel "low": 응답 속도 우선 (3.8-flash 는 low/medium/high, lite 는 minimal~high 지원).
+//   지원하지 않는 모델이 거부하면 thinking 설정 없이 재시도한다.
+function buildBody(prompt: string, opts: GeminiOptions, withThinking: boolean) {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       maxOutputTokens: opts.maxOutputTokens ?? 16384,
+      ...(withThinking ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
       ...(opts.jsonSchema
         ? { responseMimeType: "application/json", responseJsonSchema: opts.jsonSchema }
         : {}),
@@ -141,12 +144,31 @@ type Attempt = { ok: true; result: GeminiResult } | { ok: false; retryable: bool
 
 async function callModel(key: string, model: string, prompt: string, opts: GeminiOptions): Promise<Attempt> {
   let lastError = "";
+  let withThinking = true;
   for (let attempt = 0; attempt <= RETRIES_PER_MODEL; attempt++) {
-    const res = await fetch(`${HOST}/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify(buildBody(prompt, opts)),
-    });
+    const started = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(`${HOST}/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify(buildBody(prompt, opts, withThinking)),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (e) {
+      const secs = Math.round((Date.now() - started) / 1000);
+      const err = e as Error & { cause?: { code?: string } };
+      if (err.name === "TimeoutError" || err.name === "AbortError") {
+        // 이 모델이 지금 너무 느림 → 같은 모델을 또 기다리지 않고 다음 후보로
+        return { ok: false, retryable: true, error: `응답 지연 ${secs}초로 중단` };
+      }
+      lastError = `네트워크 오류(${err.cause?.code ?? err.message}) ${secs}초`;
+      if (attempt < RETRIES_PER_MODEL) {
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      return { ok: false, retryable: true, error: lastError };
+    }
     if (res.ok) {
       const json = (await res.json()) as GeminiResponse;
       const cand = json.candidates?.[0];
@@ -159,6 +181,11 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
     }
 
     lastError = await describeError(res);
+    if (res.status === 400 && withThinking && /thinking/i.test(lastError)) {
+      withThinking = false; // thinkingLevel 미지원 모델 → 설정 없이 즉시 재시도
+      attempt--;
+      continue;
+    }
     if (res.status === 404) return { ok: false, retryable: true, error: lastError }; // 종료된 모델 → 다음 후보
     if (res.status === 429) {
       if (isHardQuota(lastError)) {

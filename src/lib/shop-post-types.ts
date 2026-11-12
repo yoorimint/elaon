@@ -4,7 +4,7 @@
 export type ShopPostStatus = "draft" | "published";
 
 // 관리자가 입력한 상품 (링크는 항상 이 값만 사용)
-export type ShopPostInputProduct = { name: string; link: string };
+export type ShopPostInputProduct = { name: string; link: string; image?: string };
 
 // AI 가 작성하는 상품별 내용
 export type ShopPostProductContent = {
@@ -31,8 +31,25 @@ export type ShopPostContent = {
 export const DEFAULT_POST_DISCLOSURE =
   "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.";
 
+export type ShopSourceKind =
+  | "naver_blog"
+  | "naver_cafe"
+  | "naver_kin"
+  | "naver_web"
+  | "naver_news"
+  | "youtube";
+
+export const SOURCE_LABEL: Record<ShopSourceKind, string> = {
+  naver_blog: "블로그",
+  naver_cafe: "카페",
+  naver_kin: "지식iN",
+  naver_web: "웹문서",
+  naver_news: "뉴스",
+  youtube: "유튜브",
+};
+
 export type ShopPostSource = {
-  kind: "naver_blog" | "naver_cafe" | "naver_kin" | "youtube";
+  kind: ShopSourceKind;
   title: string;
   url: string;
   product: number; // 상품 index

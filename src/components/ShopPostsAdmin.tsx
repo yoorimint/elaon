@@ -5,7 +5,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { timeAgo } from "@/lib/community";
 import { POST_WORKFLOW_URL } from "@/lib/shop-config";
-import { deletePost, listAllPosts, setPostStatus, type AdminPostRow } from "@/lib/shop-posts";
+import {
+  deletePost,
+  listAllPosts,
+  notifySearchEngines,
+  setPostStatus,
+  type AdminPostRow,
+} from "@/lib/shop-posts";
 
 export function ShopPostsAdmin() {
   const [posts, setPosts] = useState<AdminPostRow[]>([]);
@@ -102,7 +108,12 @@ export function ShopPostsAdmin() {
                   </a>
                   <button
                     disabled={busy}
-                    onClick={() => run(p.id, () => setPostStatus(p, published ? "draft" : "published"))}
+                    onClick={() =>
+                      run(p.id, async () => {
+                        await setPostStatus(p, published ? "draft" : "published");
+                        if (!published) void notifySearchEngines(p.slug);
+                      })
+                    }
                     className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-60 ${
                       published
                         ? "border border-neutral-300 dark:border-neutral-700"

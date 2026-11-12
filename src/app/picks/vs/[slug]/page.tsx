@@ -1,3 +1,4 @@
+import { ShopLatestLinks } from "@/components/ShopLatestLinks";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +14,9 @@ const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks/vs`;
 
 export const revalidate = 3600;
+
+// 쇼핑 비교글로 연결할 쇼핑몰 비교 페이지
+const SHOPPING_COMPARISONS = new Set(["coupang-vs-naver-shopping", "11st-vs-gmarket"]);
 
 export function generateStaticParams() {
   return COMPARISONS.map((c) => ({ slug: c.slug }));
@@ -275,6 +279,8 @@ export default function ComparisonDetailPage({
             </div>
           </section>
         )}
+        {/* 쇼핑몰 비교글에서는 최신 쇼핑 비교글로 연결 */}
+        {SHOPPING_COMPARISONS.has(params.slug) && <ShopLatestLinks />}
       </main>
     </>
   );

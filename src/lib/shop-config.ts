@@ -44,13 +44,25 @@ export type KeyCheckResult = { ok: boolean; message: string };
 
 // 직접 입력 상품. 쿠팡 상세페이지는 자동으로 읽을 수 없으므로 상품명을 함께 받아
 // 그 이름으로 네이버·유튜브·구글 후기를 검색한다.
-export type ManualProduct = { name: string; link: string };
+export type ManualProduct = { name: string; link: string; image?: string };
 
 export const MANUAL_PRODUCT_SLOTS = 2;
 
 // 쿠팡 파트너스 링크 형식 (간편 링크 / 단축 링크)
 export function isPartnersLink(url: string): boolean {
   return /^https:\/\/(link\.coupang\.com\/a\/|coupa\.ng\/)[A-Za-z0-9]+/.test(url.trim());
+}
+
+// 쿠팡 파트너스 "이미지+텍스트" 등의 HTML 을 붙여넣으면 링크와 이미지 주소를 뽑는다.
+// 일반 링크를 넣으면 그대로 링크로 쓴다.
+export function parsePartnersInput(input: string): { link: string; image?: string } {
+  const text = input.trim();
+  if (!text.includes("<")) return { link: text };
+  const link =
+    /(?:href|src)\s*=\s*["'](https:\/\/(?:link\.coupang\.com\/a\/|coupa\.ng\/)[^"']+)["']/i.exec(text)?.[1] ?? "";
+  // 이미지는 쿠팡 이미지 서버 것만 허용 (외부 이미지가 사이트에 실리지 않게)
+  const image = /<img[^>]+src\s*=\s*["'](https:\/\/[a-z0-9.-]*coupangcdn\.com\/[^"']+)["']/i.exec(text)?.[1];
+  return { link, image };
 }
 
 // 화면용: 항상 MANUAL_PRODUCT_SLOTS 칸으로 맞춘다
@@ -177,7 +189,7 @@ function sanitize(patch: ShopConfigEditable): ShopConfigEditable {
   out.min_price = Math.max(0, Math.round(out.min_price || 0));
   out.max_price = Math.max(0, Math.round(out.max_price || 0));
   out.manual_products = (out.manual_products ?? [])
-    .map((p) => ({ name: p.name.trim(), link: p.link.trim() }))
+    .map((p) => ({ name: p.name.trim(), link: p.link.trim(), ...(p.image ? { image: p.image.trim() } : {}) }))
     .filter((p) => p.name || p.link)
     .slice(0, MANUAL_PRODUCT_SLOTS);
   return out;

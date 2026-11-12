@@ -7,7 +7,8 @@ import { MISSING, describeError, type CheckResult, type Secrets } from "./types"
 
 const HOST = "https://naverapihub.apigw.ntruss.com";
 
-export type NaverSearchType = "blog" | "cafearticle" | "kin"; // kin = 지식iN
+// kin = 지식iN, webkr = 웹문서(네이버 밖 리뷰 사이트·커뮤니티 포함), news = 뉴스
+export type NaverSearchType = "blog" | "cafearticle" | "kin" | "webkr" | "news";
 
 export type NaverSearchItem = {
   title: string;

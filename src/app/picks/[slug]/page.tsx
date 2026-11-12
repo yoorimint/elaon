@@ -1,3 +1,4 @@
+import { ShopLatestLinks } from "@/components/ShopLatestLinks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -329,6 +330,9 @@ export default function PickCategoryPage({ params }: { params: Params }) {
             </div>
           </section>
         ))}
+
+        {/* 쇼핑 카테고리에서는 최신 쇼핑 비교글로 연결 */}
+        {params.slug === "shopping" && <ShopLatestLinks />}
 
         {/* FAQ */}
         <section id="faq" className="mb-10 scroll-mt-24">

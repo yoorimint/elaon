@@ -2,20 +2,30 @@
 
 // 쿠팡 자동글 API 키 입력. 저장된 키 원문은 서버가 돌려주지 않으므로
 // 화면에는 끝 4자리만 보이고, 수정은 "새 값으로 덮어쓰기" 방식이다.
+// 키가 실제로 동작하는지는 GitHub Actions "shop key check" 가 점검해 결과를 남긴다.
 
 import { useCallback, useEffect, useState } from "react";
 import { timeAgo } from "@/lib/community";
 import {
   API_KEY_GROUPS,
+  KEY_CHECK_WORKFLOW_URL,
   getSecretStatus,
   setSecret,
+  type ApiKeyGroupId,
+  type KeyCheckResult,
   type SecretName,
   type SecretStatus,
 } from "@/lib/shop-config";
 
 type StatusMap = Partial<Record<SecretName, SecretStatus>>;
 
-export function ShopApiKeys() {
+export function ShopApiKeys({
+  check,
+  checkedAt,
+}: {
+  check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
+  checkedAt: string | null;
+}) {
   const [status, setStatus] = useState<StatusMap>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -42,6 +52,23 @@ export function ShopApiKeys() {
         <p className="mt-3 text-sm text-red-600">키 상태 불러오기 실패: {loadError}</p>
       )}
 
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3 text-xs">
+        <span className="text-neutral-600 dark:text-neutral-300">
+          키 동작 점검 {checkedAt ? `· 마지막 ${timeAgo(checkedAt)}` : "· 아직 안 함"}
+          <span className="block text-neutral-500">
+            Run workflow 실행 → 1분쯤 뒤 이 페이지 새로고침
+          </span>
+        </span>
+        <a
+          href={KEY_CHECK_WORKFLOW_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-4 py-2 font-semibold hover:opacity-90"
+        >
+          키 점검 실행 ↗
+        </a>
+      </div>
+
       <div className="mt-4 space-y-5">
         {API_KEY_GROUPS.map((g) => (
           <div key={g.label}>
@@ -52,6 +79,7 @@ export function ShopApiKeys() {
               </span>
             </div>
             <div className="text-xs text-neutral-500">{g.where}</div>
+            {check[g.id] && <CheckLine result={check[g.id]!} />}
             <div className="mt-2 space-y-2">
               {g.fields.map((f) => (
                 <SecretRow
@@ -67,6 +95,18 @@ export function ShopApiKeys() {
         ))}
       </div>
     </section>
+  );
+}
+
+function CheckLine({ result }: { result: KeyCheckResult }) {
+  return (
+    <div
+      className={`mt-1 break-all text-xs font-medium ${
+        result.ok ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"
+      }`}
+    >
+      {result.ok ? "✅" : "❌"} {result.message}
+    </div>
   );
 }
 

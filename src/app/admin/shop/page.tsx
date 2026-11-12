@@ -128,7 +128,7 @@ export default function AdminShopPage() {
 
       {config && form && (
         <div className="space-y-6">
-          <ShopApiKeys />
+          <ShopApiKeys check={config.key_check ?? {}} checkedAt={config.key_check_at ?? null} />
 
           <SettingsSection title="실행">
             <ToggleField
@@ -203,11 +203,6 @@ export default function AdminShopPage() {
             title="정보 수집"
             description="키가 등록되지 않은 출처는 켜져 있어도 자동으로 건너뜁니다."
           >
-            <ToggleField
-              label="네이버 쇼핑 (가격대·브랜드)"
-              checked={form.use_naver_shopping}
-              onChange={(v) => set("use_naver_shopping", v)}
-            />
             <ToggleField
               label="네이버 블로그·카페 후기"
               checked={form.use_naver_reviews}

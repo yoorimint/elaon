@@ -31,3 +31,7 @@ export const COUPANG_DISCLOSURE =
 
 // 하단 배너를 숨길 경로 (앞부분 일치)
 export const BOTTOM_BANNER_HIDDEN_PATHS = ["/admin"];
+
+// 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
+// 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.
+export const SHOW_SAJUDAY_PILL = false;

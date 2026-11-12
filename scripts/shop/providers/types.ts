@@ -17,6 +17,6 @@ export const MISSING: CheckResult = { ok: false, message: "키 미등록" };
 
 // 응답 본문 일부를 오류 메시지로 쓰기 위한 헬퍼
 export async function describeError(res: Response): Promise<string> {
-  const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160);
+  const body = (await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 400);
   return `HTTP ${res.status}${body ? ` — ${body}` : ""}`;
 }

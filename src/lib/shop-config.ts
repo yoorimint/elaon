@@ -19,7 +19,6 @@ export type ShopConfig = {
   max_price: number;
   rocket_only: boolean;
 
-  use_naver_shopping: boolean;
   use_naver_reviews: boolean;
   use_youtube: boolean;
   use_gemini_search: boolean;
@@ -32,11 +31,19 @@ export type ShopConfig = {
   extra_prompt: string;
   disclosure_text: string;
 
+  // 키 점검 결과 (스크립트가 기록, 그룹 id → 결과)
+  key_check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
+  key_check_at: string | null;
   updated_at: string;
 };
 
+export type KeyCheckResult = { ok: boolean; message: string };
+
 // 관리자가 수정할 수 있는 필드만.
-export type ShopConfigEditable = Omit<ShopConfig, "id" | "updated_at">;
+export type ShopConfigEditable = Omit<
+  ShopConfig,
+  "id" | "updated_at" | "key_check" | "key_check_at"
+>;
 
 // DB check 제약과 동일한 범위. 화면 입력 제한과 저장 전 보정에 같이 쓴다.
 export const SHOP_LIMITS = {
@@ -59,7 +66,11 @@ export type SecretName =
   | "NAVER_CLIENT_SECRET"
   | "YOUTUBE_API_KEY";
 
+// scripts/shop/check-keys.ts 의 점검 id 와 같아야 한다.
+export type ApiKeyGroupId = "coupang" | "gemini" | "naver" | "youtube";
+
 export type ApiKeyGroup = {
+  id: ApiKeyGroupId;
   label: string;
   required: boolean;
   where: string; // 발급 위치 안내
@@ -68,6 +79,7 @@ export type ApiKeyGroup = {
 
 export const API_KEY_GROUPS: ApiKeyGroup[] = [
   {
+    id: "coupang",
     label: "쿠팡 파트너스 API",
     required: true,
     where: "쿠팡 파트너스 → 추가기능 → 파트너스 API",
@@ -77,21 +89,24 @@ export const API_KEY_GROUPS: ApiKeyGroup[] = [
     ],
   },
   {
+    id: "gemini",
     label: "Gemini (글 작성 + 구글 검색)",
     required: true,
     where: "Google AI Studio → Get API key",
     fields: [{ name: "GEMINI_API_KEY", label: "API Key" }],
   },
   {
-    label: "네이버 검색 API (쇼핑·블로그·카페)",
+    id: "naver",
+    label: "네이버 검색 API (블로그·카페 후기)",
     required: false,
-    where: "developers.naver.com → 애플리케이션 등록 → 검색",
+    where: "NAVER API HUB(네이버 클라우드 콘솔) → 앱의 Client ID / Secret. 구 개발자센터 키는 사용 불가",
     fields: [
       { name: "NAVER_CLIENT_ID", label: "Client ID" },
       { name: "NAVER_CLIENT_SECRET", label: "Client Secret" },
     ],
   },
   {
+    id: "youtube",
     label: "YouTube Data API",
     required: false,
     where: "Google Cloud 콘솔 → YouTube Data API v3 사용 설정 → 사용자 인증 정보",
@@ -163,6 +178,10 @@ export async function updateShopConfig(patch: ShopConfigEditable): Promise<void>
 
 export function toEditable(c: ShopConfig): ShopConfigEditable {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, updated_at, ...rest } = c;
+  const { id, updated_at, key_check, key_check_at, ...rest } = c;
   return rest;
 }
+
+// 키 점검 실행 버튼이 여는 GitHub Actions 페이지
+export const KEY_CHECK_WORKFLOW_URL =
+  "https://github.com/yoorimint/elaon/actions/workflows/shop-key-check.yml";

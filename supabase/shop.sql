@@ -27,7 +27,6 @@ create table if not exists public.shop_config (
   rocket_only boolean not null default false,
 
   -- 정보 수집 출처
-  use_naver_shopping boolean not null default true,
   use_naver_reviews boolean not null default true,
   use_youtube boolean not null default true,
   use_gemini_search boolean not null default true,
@@ -59,9 +58,12 @@ drop policy if exists shop_config_update on public.shop_config;
 create policy shop_config_update on public.shop_config
   for update using (public.is_admin());
 
--- 이전 버전에서 만든 컬럼 정리 (키 상태는 shop_secrets 로 이동)
-alter table public.shop_config drop column if exists key_status;
-alter table public.shop_config drop column if exists key_checked_at;
+-- 키 점검 결과 (scripts/shop/check-keys.ts 가 service role 로 기록, 값 원문은 없음)
+alter table public.shop_config add column if not exists key_check jsonb not null default '{}'::jsonb;
+alter table public.shop_config add column if not exists key_check_at timestamptz;
+
+-- 네이버 쇼핑 검색 API 종료(2026-07-31)로 옵션 제거
+alter table public.shop_config drop column if exists use_naver_shopping;
 
 -- ===================================================================
 -- API 키 저장소

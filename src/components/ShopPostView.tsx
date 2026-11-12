@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowUpRight, ChevronDown, ImageIcon, Info, Minus, Plus, ShieldCheck } from "lucide-react";
 import {
   DEFAULT_POST_DISCLOSURE,
+  type RelatedPost,
   type ShopPost,
   type ShopPostInputProduct,
   type ShopPostInsight,
@@ -181,7 +182,16 @@ function ProductCard({
 }
 
 // preview: 관리자 초안 미리보기 (사진 자리 표시)
-export function ShopPostView({ post, preview = false }: { post: ShopPost; preview?: boolean }) {
+// related: 함께 보면 좋은 글 (공개된 우리 글만, 페이지에서 조회해 넘김)
+export function ShopPostView({
+  post,
+  preview = false,
+  related = [],
+}: {
+  post: ShopPost;
+  preview?: boolean;
+  related?: RelatedPost[];
+}) {
   const { content: c, products } = post;
   const hasPhoto = (p: ShopPostInputProduct) => preview || !!p.image;
   const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
@@ -455,22 +465,30 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
         ))}
       </div>
 
-      {/* 같은 카테고리 인기 제품 (자동 선정 때 함께 찾은 후보) */}
-      {c.alternatives && c.alternatives.length > 0 && (
+      {/* 함께 보면 좋은 글: 우리가 이미 공개한 글만 링크 (안 쓴 제품은 표시하지 않음) */}
+      {related.length > 0 && (
         <section className="mt-12">
-          <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">
-            {c.category ? `${c.category} ` : ""}함께 많이 언급되는 제품
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {c.alternatives.map((a) => (
-              <span
-                key={a}
-                className="rounded-full border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-[14px] text-neutral-700 dark:text-neutral-300"
-              >
-                {a}
-              </span>
+          <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">함께 보면 좋은 글</div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {related.map((r) => (
+              <li key={r.slug}>
+                <Link
+                  href={`/shop/${r.slug}`}
+                  className="group flex h-full items-start justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-neutral-400 dark:hover:border-neutral-600"
+                >
+                  <span>
+                    <span className="block text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white group-hover:underline">
+                      {r.title}
+                    </span>
+                    <span className="mt-1 block text-[13px] text-neutral-500">
+                      {r.products.map((p) => p.name).join(" · ")}
+                    </span>
+                  </span>
+                  <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 

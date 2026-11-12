@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
 import { timeAgo } from "@/lib/community";
 import { POST_WORKFLOW_URL } from "@/lib/shop-config";
+import type { ShopPostQa } from "@/lib/shop-post-types";
 import {
   deletePost,
   listAllPosts,
@@ -97,6 +98,7 @@ export function ShopPostsAdmin() {
                   >
                     {published ? "공개" : "초안"}
                   </span>
+                  <QaBadge qa={p.qa} />
                   {needsLink && (
                     <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
                       링크 필요
@@ -162,5 +164,23 @@ export function ShopPostsAdmin() {
         </ul>
       )}
     </section>
+  );
+}
+
+// 자동 검수 결과 배지: 남은 문제가 있으면 마우스를 올려 목록 확인
+function QaBadge({ qa }: { qa?: ShopPostQa | null }) {
+  if (!qa) return null;
+  const left = qa.remaining.length;
+  return (
+    <span
+      title={left ? qa.remaining.join("\n") : `처음 ${qa.issuesFound}개 발견 → 자동 수정 완료`}
+      className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-semibold ${
+        left
+          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+      }`}
+    >
+      {left ? `검수 문제 ${left}` : "검수 통과"}
+    </span>
   );
 }

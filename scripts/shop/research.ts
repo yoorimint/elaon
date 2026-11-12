@@ -1,12 +1,12 @@
 // 상품별 후기 수집. 출처마다 실패해도 나머지로 계속 진행한다(오류는 errors 에 기록).
-//  - 네이버 블로그·카페 (NAVER API HUB 검색)
-//  - 유튜브 리뷰 영상 + 댓글 (YouTube Data API)
+//  - 네이버 블로그·카페·지식iN (NAVER API HUB 검색) — 여러 검색어로 넓게
+//  - 유튜브 리뷰 영상(댓글 많은 순) + 댓글 + 영상 설명 (YouTube Data API)
 //  - Gemini 구글 검색 요약 (그라운딩)
 
 import type { ShopPostInputProduct, ShopPostSource } from "@/lib/shop-post-types";
 import { GroundingUnavailableError, geminiGenerate } from "./providers/gemini";
 import { cleanNaverText, naverSearch, type NaverSearchType } from "./providers/naver";
-import { searchVideos, topComments, type YoutubeVideo } from "./providers/youtube";
+import { searchVideos, topComments, videoDetails, type YoutubeVideo } from "./providers/youtube";
 import type { Secrets } from "./providers/types";
 
 export type ResearchOptions = {
@@ -19,19 +19,37 @@ export type ResearchOptions = {
   adFilterWords: string[];
 };
 
-export type ReviewSnippet = { kind: "naver_blog" | "naver_cafe"; title: string; text: string; url: string };
+export type ReviewSnippet = {
+  kind: "naver_blog" | "naver_cafe" | "naver_kin";
+  title: string;
+  text: string;
+  url: string;
+};
+
+export type VideoNote = { title: string; text: string }; // 영상 설명란 (리뷰어가 정리한 스펙·장단점)
 
 export type ProductResearch = {
   product: ShopPostInputProduct;
   reviews: ReviewSnippet[];
   videos: YoutubeVideo[];
   comments: string[];
+  videoNotes: VideoNote[];
   webSummary: string | null;
   webSourceCount: number;
   errors: string[];
 };
 
 const COMMENT_MAX_CHARS = 300;
+const VIDEO_NOTE_MAX_CHARS = 1200;
+const YOUTUBE_SEARCH_POOL = 10; // 이만큼 찾은 뒤 댓글 많은 영상부터 고른다
+
+// 같은 상품을 여러 관점으로 검색해 후기 폭을 넓힌다
+const NAVER_QUERIES = ["후기", "단점", "장단점"];
+const NAVER_TYPES: [NaverSearchType, ReviewSnippet["kind"]][] = [
+  ["blog", "naver_blog"],
+  ["cafearticle", "naver_cafe"],
+  ["kin", "naver_kin"],
+];
 
 // 무료 요금제 등으로 그라운딩이 막혀 있으면 첫 실패 후 같은 실행에서는 건너뛴다
 let groundingUnavailable = false;
@@ -45,32 +63,65 @@ async function collectNaver(
   name: string,
   opts: ResearchOptions,
 ): Promise<ReviewSnippet[]> {
-  const half = Math.max(1, Math.ceil(opts.reviewsPerProduct / 2));
-  const types: [NaverSearchType, ReviewSnippet["kind"]][] = [
-    ["blog", "naver_blog"],
-    ["cafearticle", "naver_cafe"],
-  ];
+  // 검색어 × 출처마다 받은 결과를 버킷에 담고, 돌아가며 하나씩 뽑아 다양성을 유지한다
+  const buckets: ReviewSnippet[][] = [];
+  for (const q of NAVER_QUERIES) {
+    for (const [type, kind] of NAVER_TYPES) {
+      const items = await naverSearch(secrets, type, `${name} ${q}`, 100);
+      buckets.push(
+        items
+          .map((i) => ({ kind, title: cleanNaverText(i.title), text: cleanNaverText(i.description), url: i.link }))
+          .filter((r) => r.text.length >= 20 && !isAd(`${r.title} ${r.text}`, opts.adFilterWords)),
+      );
+    }
+  }
+  const seen = new Set<string>();
   const out: ReviewSnippet[] = [];
-  for (const [type, kind] of types) {
-    // 광고 제외 후에도 개수를 채우도록 넉넉히 받는다 (최대 100)
-    const items = await naverSearch(secrets, type, `${name} 후기`, Math.min(100, half * 2));
-    const kept = items
-      .map((i) => ({ kind, title: cleanNaverText(i.title), text: cleanNaverText(i.description), url: i.link }))
-      .filter((r) => r.text.length >= 20 && !isAd(`${r.title} ${r.text}`, opts.adFilterWords))
-      .slice(0, half);
-    out.push(...kept);
+  for (let i = 0; out.length < opts.reviewsPerProduct; i++) {
+    let added = false;
+    for (const b of buckets) {
+      const r = b[i];
+      if (!r) continue;
+      added = true;
+      if (seen.has(r.url)) continue;
+      seen.add(r.url);
+      out.push(r);
+      if (out.length >= opts.reviewsPerProduct) break;
+    }
+    if (!added) break; // 모든 버킷 소진
   }
   return out;
 }
 
+// 영상 설명에서 링크·해시태그·구매 유도 줄 제거
+function cleanDescription(text: string): string {
+  return text
+    .split("\n")
+    .filter((l) => !/https?:\/\/|#\S+|구매\s*링크|쿠팡|파트너스|제휴|협찬|할인\s*코드/i.test(l))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, VIDEO_NOTE_MAX_CHARS);
+}
+
 async function collectYoutube(secrets: Secrets, name: string, opts: ResearchOptions) {
-  const videos = await searchVideos(secrets, `${name} 리뷰`, opts.youtubeVideos);
+  const found = await searchVideos(secrets, `${name} 리뷰`, YOUTUBE_SEARCH_POOL);
+  // 댓글이 많은 영상부터 (댓글이 막힌 영상은 0 이라 뒤로 밀림)
+  const detailed = (await videoDetails(secrets, found))
+    .sort((a, b) => b.commentCount - a.commentCount)
+    .slice(0, opts.youtubeVideos);
+
   const comments: string[] = [];
-  for (const v of videos) {
+  for (const v of detailed) {
+    if (v.commentCount === 0) continue;
     const cs = await topComments(secrets, v.id, opts.youtubeComments);
-    comments.push(...cs.map((c) => c.slice(0, COMMENT_MAX_CHARS)));
+    comments.push(...cs.filter((c) => !isAd(c, opts.adFilterWords)).map((c) => c.slice(0, COMMENT_MAX_CHARS)));
   }
-  return { videos, comments };
+  const videoNotes = detailed
+    .map((v) => ({ title: v.title, text: cleanDescription(v.description) }))
+    .filter((n) => n.text.length >= 40);
+  const videos: YoutubeVideo[] = detailed.map(({ id, title, channel, url }) => ({ id, title, channel, url }));
+  return { videos, comments, videoNotes };
 }
 
 async function collectWebSummary(secrets: Secrets, name: string) {
@@ -94,6 +145,7 @@ export async function researchProduct(
     reviews: [],
     videos: [],
     comments: [],
+    videoNotes: [],
     webSummary: null,
     webSourceCount: 0,
     errors: [],
@@ -136,5 +188,5 @@ export function toSources(research: ProductResearch[]): ShopPostSource[] {
 
 // 후기가 하나도 없으면 글을 쓰지 않는다 (근거 없는 글 방지)
 export function hasEnoughEvidence(r: ProductResearch): boolean {
-  return r.reviews.length > 0 || r.comments.length > 0 || !!r.webSummary;
+  return r.reviews.length > 0 || r.comments.length > 0 || r.videoNotes.length > 0 || !!r.webSummary;
 }

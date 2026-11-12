@@ -93,20 +93,27 @@ const SCHEMA = {
 };
 
 // 프롬프트가 너무 길어지지 않게 출처별 상한
-const LIMITS = { reviews: 30, comments: 80 };
+const LIMITS = { reviews: 100, comments: 100, videoNotes: 5 };
+const KIND_LABEL = { naver_blog: "블로그", naver_cafe: "카페", naver_kin: "지식iN" } as const;
 
 function evidenceBlock(r: ProductResearch, index: number): string {
   const reviews = r.reviews
     .slice(0, LIMITS.reviews)
-    .map((s) => `- [${s.kind === "naver_blog" ? "블로그" : "카페"}] ${s.title}: ${s.text}`)
+    .map((s) => `- [${KIND_LABEL[s.kind]}] ${s.title}: ${s.text}`)
     .join("\n");
   const comments = r.comments
     .slice(0, LIMITS.comments)
     .map((c) => `- ${c}`)
     .join("\n");
+  const notes = r.videoNotes
+    .slice(0, LIMITS.videoNotes)
+    .map((n) => `- [${n.title}] ${n.text}`)
+    .join("\n");
   return `## 제품 ${index}: ${r.product.name}
-### 네이버 후기 요약문 (${r.reviews.length}건)
+### 네이버 블로그·카페·지식iN 요약문 (${r.reviews.length}건)
 ${reviews || "(없음)"}
+### 유튜브 리뷰 영상 설명란 (${r.videoNotes.length}개)
+${notes || "(없음)"}
 ### 유튜브 리뷰 영상 댓글 (${r.comments.length}개)
 ${comments || "(없음)"}
 ### 웹 후기 요약 (구글 검색, 출처 ${r.webSourceCount}곳)

@@ -64,7 +64,7 @@ async function main() {
   for (const p of products) {
     const r = await researchProduct(secrets, p, opts);
     console.log(
-      `  - ${p.name}: 네이버 ${r.reviews.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개 · 웹 출처 ${r.webSourceCount}곳`,
+      `  - ${p.name}: 네이버 ${r.reviews.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개/설명 ${r.videoNotes.length}개 · 웹 출처 ${r.webSourceCount}곳`,
     );
     r.errors.forEach((e) => console.warn(`    ⚠ ${e}`));
     research.push(r);

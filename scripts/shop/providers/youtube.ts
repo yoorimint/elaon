@@ -64,6 +64,25 @@ export async function searchVideos(
     }));
 }
 
+export type YoutubeVideoDetail = YoutubeVideo & { description: string; commentCount: number };
+
+// videos.list = 할당량 1 단위. 설명 전체와 댓글 수(댓글 막힌 영상은 0 또는 없음)
+export async function videoDetails(secrets: Secrets, videos: YoutubeVideo[]): Promise<YoutubeVideoDetail[]> {
+  if (!videos.length) return [];
+  const r = await youtubeGet<{
+    items?: { id?: string; snippet?: { description?: string }; statistics?: { commentCount?: string } }[];
+  }>(secrets, "videos", { part: "snippet,statistics", id: videos.map((v) => v.id).join(",") });
+  const byId = new Map((r.items ?? []).map((i) => [i.id, i]));
+  return videos.map((v) => {
+    const it = byId.get(v.id);
+    return {
+      ...v,
+      description: it?.snippet?.description ?? "",
+      commentCount: Number(it?.statistics?.commentCount ?? 0),
+    };
+  });
+}
+
 export async function topComments(secrets: Secrets, videoId: string, max: number): Promise<string[]> {
   try {
     // commentThreads.list = 할당량 1 단위. 댓글이 막힌 영상은 403 → 빈 배열

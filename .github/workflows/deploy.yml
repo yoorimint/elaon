@@ -1,8 +1,11 @@
 name: Deploy to GitHub Pages
 
+# 사이트는 Vercel 에서 배포된다(eloan.kr 응답 server: Vercel).
+# 이 GitHub Pages 배포는 정적 export(out/)가 없어 매번 실패하던 예전 방식이라
+# 자동 실행을 끄고 수동 실행만 남겨둔다. 다시 쓰려면 아래 push 트리거를 복구.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:

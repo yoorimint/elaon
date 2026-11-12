@@ -8,7 +8,7 @@ import {
   type ShopPostInputProduct,
 } from "@/lib/shop-post-types";
 
-const SOURCE_LABEL = { naver_blog: "블로그", naver_cafe: "카페", youtube: "유튜브" } as const;
+const SOURCE_LABEL = { naver_blog: "블로그", naver_cafe: "카페", naver_kin: "지식iN", youtube: "유튜브" } as const;
 
 function formatDate(iso: string | null) {
   if (!iso) return "";

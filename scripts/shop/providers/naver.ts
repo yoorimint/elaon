@@ -43,3 +43,16 @@ export async function checkNaver(secrets: Secrets): Promise<CheckResult> {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// 검색 결과의 <b> 태그·HTML 엔티티 제거
+export function cleanNaverText(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}

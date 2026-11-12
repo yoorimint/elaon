@@ -13,6 +13,7 @@ import {
 } from "@/components/AdminFormFields";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { ShopManualProducts } from "@/components/ShopManualProducts";
+import { ShopPostsAdmin } from "@/components/ShopPostsAdmin";
 import { timeAgo } from "@/lib/community";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import {
@@ -135,6 +136,8 @@ export default function AdminShopPage() {
             value={form.manual_products}
             onChange={(v) => set("manual_products", v)}
           />
+
+          <ShopPostsAdmin />
 
           <SettingsSection title="실행">
             <ToggleField

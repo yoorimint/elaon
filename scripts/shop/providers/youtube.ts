@@ -33,3 +33,63 @@ export async function checkYoutube(secrets: Secrets): Promise<CheckResult> {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
 }
+
+// ---------- 후기 수집용 ----------
+
+export type YoutubeVideo = { id: string; title: string; channel: string; url: string };
+
+export async function searchVideos(
+  secrets: Secrets,
+  query: string,
+  max: number,
+): Promise<YoutubeVideo[]> {
+  // search.list = 할당량 100 단위
+  const r = await youtubeGet<{
+    items?: { id?: { videoId?: string }; snippet?: { title?: string; channelTitle?: string } }[];
+  }>(secrets, "search", {
+    part: "snippet",
+    q: query,
+    type: "video",
+    maxResults: max,
+    regionCode: "KR",
+    relevanceLanguage: "ko",
+  });
+  return (r.items ?? [])
+    .filter((i) => i.id?.videoId)
+    .map((i) => ({
+      id: i.id!.videoId!,
+      title: decodeEntities(i.snippet?.title ?? ""),
+      channel: i.snippet?.channelTitle ?? "",
+      url: `https://www.youtube.com/watch?v=${i.id!.videoId}`,
+    }));
+}
+
+export async function topComments(secrets: Secrets, videoId: string, max: number): Promise<string[]> {
+  try {
+    // commentThreads.list = 할당량 1 단위. 댓글이 막힌 영상은 403 → 빈 배열
+    const r = await youtubeGet<{
+      items?: { snippet?: { topLevelComment?: { snippet?: { textDisplay?: string } } } }[];
+    }>(secrets, "commentThreads", {
+      part: "snippet",
+      videoId,
+      maxResults: max,
+      order: "relevance",
+      textFormat: "plainText",
+    });
+    return (r.items ?? [])
+      .map((i) => i.snippet?.topLevelComment?.snippet?.textDisplay ?? "")
+      .map((t) => t.replace(/\s+/g, " ").trim())
+      .filter((t) => t.length >= 8);
+  } catch {
+    return [];
+  }
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}

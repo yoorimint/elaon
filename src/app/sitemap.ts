@@ -72,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 공개 공유 백테스트 + 커뮤니티 글도 색인에 노출
   try {
     const sb = createServerClient();
-    const [shares, posts] = await Promise.all([
+    const [shares, posts, shopPosts] = await Promise.all([
       sb
         .from("shared_backtests")
         .select("slug, created_at")
@@ -83,6 +83,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from("posts")
         .select("slug, created_at")
         .order("created_at", { ascending: false })
+        .limit(1000),
+      sb
+        .from("shop_posts")
+        .select("slug, updated_at")
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
         .limit(1000),
     ]);
     const shareRoutes = (shares.data ?? []).map((s: { slug: string; created_at: string }) => ({
@@ -97,7 +103,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.5,
     }));
-    return [...staticRoutes, ...shareRoutes, ...postRoutes];
+    const shopRoutes = (shopPosts.data ?? []).map((p: { slug: string; updated_at: string }) => ({
+      url: `${SITE}/shop/${p.slug}`,
+      lastModified: new Date(p.updated_at),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
+    return [
+      ...staticRoutes,
+      { url: `${SITE}/shop`, lastModified: now, changeFrequency: "daily" as const, priority: 0.6 },
+      ...shareRoutes,
+      ...postRoutes,
+      ...shopRoutes,
+    ];
   } catch {
     // DB 조회 실패 시에도 정적 경로만이라도 반환 (sitemap 자체가 깨지지 않게)
     return staticRoutes;

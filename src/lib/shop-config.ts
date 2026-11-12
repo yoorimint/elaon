@@ -210,3 +210,7 @@ export function toEditable(c: ShopConfig): ShopConfigEditable {
 // 키 점검 실행 버튼이 여는 GitHub Actions 페이지
 export const KEY_CHECK_WORKFLOW_URL =
   "https://github.com/yoorimint/elaon/actions/workflows/shop-key-check.yml";
+
+// "지금 글 쓰기" 버튼이 여는 GitHub Actions 페이지 (수동 실행 = 조건 무시하고 1회 작성)
+export const POST_WORKFLOW_URL =
+  "https://github.com/yoorimint/elaon/actions/workflows/shop-post.yml";

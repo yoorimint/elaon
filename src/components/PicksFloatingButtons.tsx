@@ -30,7 +30,7 @@ export function PicksFloatingButtons() {
   return (
     <>
       {!isHub && (
-        <div className="fixed bottom-5 left-5 z-50">
+        <div className="fixed bottom-[calc(var(--bottom-ad-h,0px)+1.25rem)] left-5 z-50">
           <Link
             href="/picks"
             aria-label="주소모음 메인으로 이동"
@@ -43,7 +43,7 @@ export function PicksFloatingButtons() {
       )}
 
       <div
-        className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3"
+        className="fixed bottom-[calc(var(--bottom-ad-h,0px)+1.25rem)] right-5 z-50 flex flex-col items-end gap-3"
         aria-hidden={false}
       >
         {showTop && (

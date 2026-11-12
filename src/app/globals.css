@@ -11,6 +11,11 @@ html, body {
   overflow-x: hidden;
 }
 
+/* 하단 고정 배너(CoupangBottomBanner) 높이만큼 여백 → 끝까지 스크롤하면 본문이 배너 위로 올라옴 */
+body {
+  padding-bottom: var(--bottom-ad-h, 0px);
+}
+
 /* 화면 폭을 넘는 가로 스크롤을 원천 차단 (모바일 overflow 방지) */
 #__next, main {
   max-width: 100%;

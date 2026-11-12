@@ -4,6 +4,7 @@
 
 import { SOURCE_LABEL, type ShopPostContent } from "@/lib/shop-post-types";
 import { digestBlock, type ProductDigest } from "./digest";
+import { fixHanja } from "./hanja";
 import { geminiGenerate } from "./providers/gemini";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
@@ -25,13 +26,20 @@ const COMMON_RULES = `반드시 지킬 규칙:
 6. 해요체 존댓말. 짧고 읽기 쉬운 문장.
 7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.
 8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.
+9. 한글로만 쓴다. 한자·중국어·일본어 문자 금지(예: "内部" 대신 "내부"). 영문은 모델명·단위만.
+10. 같은 내용을 여러 섹션에서 반복하지 않는다. 섹션마다 역할이 다르다:
+   - review: 장단점 나열이 아니라 "어떤 사용 환경에서 만족하고 어떤 환경에서 불만이 생기는지" 맥락
+   - pros/cons: 각 항목의 구체적 설명
+   - commonComplaints: 단점 반복 금지. "구매 전 확인할 점과 대처 팁"(예: 취침 전 물을 가득 채우면 중간에 멈추지 않아요)
+   - faq: 위에서 안 다룬 궁금증 위주
+11. 표(comparison)의 항목·수치는 자료에 그대로 나온 것만, 용어는 정확하게(예: 온수 온도, 소비전력). 확실하지 않은 항목은 빼라.
 가독성 규칙 (모바일에서 훑어보기 쉽게):
 - 표의 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
 - 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫에서도 잘 빨아들인다는 평이 많아요").
 - 상황 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
 - summary 는 2문장 이내. 한 문장은 40자 안팎.
 풍성함 규칙 (얇은 글은 검색엔진이 스팸으로 본다 — 근거 자료 안에서 최대한 깊게):
-- 제품마다 review 는 후기 경향을 풀어 쓴 3~5문장 문단(칭찬과 불만이 어떤 상황에서 나오는지).
+- 제품마다 review 는 3~5문장 문단: 어떤 사용 환경·사람에게 만족이 크고 어떤 경우 불만이 나오는지(장단점 목록 반복 금지).
 - 제품마다 notFor 는 이 제품이 맞지 않는 사람 1~2문장.
 - faq 는 4~6개(답은 2~3문장), verdict 는 3~5문장.`;
 
@@ -249,5 +257,6 @@ ${research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n")}
   } catch {
     throw new Error("Gemini 응답이 JSON 형식이 아님");
   }
-  return validate(parsed, research.length);
+  // 저장 전 검사: 한자 섞임 수정
+  return fixHanja(secrets, validate(parsed, research.length));
 }

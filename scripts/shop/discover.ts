@@ -16,7 +16,7 @@ const TREND_WEEKS = 8; // 최근 4주 vs 이전 4주
 const CATEGORY_TRIES = 4; // 후보가 안 나오면 다음 카테고리로
 const MAX_CANDIDATES = 8;
 
-export type Discovery = { category: string; products: ManualProduct[] };
+export type Discovery = { category: string; products: ManualProduct[]; alternatives: string[] };
 
 // ---------- 날짜 ----------
 function ymd(d: Date) {
@@ -184,15 +184,19 @@ export async function discoverProducts(
     }
     console.log(`  ${category} 후보: ${cands.map((c) => c.name).join(", ") || "(없음)"}`);
     const asProduct = (name: string): ManualProduct => ({ name, link: "" });
+    // 고른 상품을 뺀 나머지 후보 (같은 카테고리 인기 제품)
+    const others = (chosen: string[]) => cands.map((c) => c.name).filter((n) => !chosen.includes(n)).slice(0, 4);
 
     if (kind === "single") {
       const c = cands.find((x) => !usedPairKeys.has(pairKeyOf([asProduct(x.name)])));
-      if (c) return { category, products: [asProduct(c.name)] };
+      if (c) return { category, products: [asProduct(c.name)], alternatives: others([c.name]) };
     } else {
       for (let i = 0; i < cands.length; i++) {
         for (let j = i + 1; j < cands.length; j++) {
           const pair = [asProduct(cands[i].name), asProduct(cands[j].name)];
-          if (!usedPairKeys.has(pairKeyOf(pair))) return { category, products: pair };
+          if (!usedPairKeys.has(pairKeyOf(pair))) {
+            return { category, products: pair, alternatives: others([cands[i].name, cands[j].name]) };
+          }
         }
       }
     }

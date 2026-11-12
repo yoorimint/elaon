@@ -48,6 +48,7 @@ async function main() {
   const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
   let products = manual;
   let category: string | undefined;
+  let alternatives: string[] = [];
   if (manual.length && !FORCE && history.usedPairKeys.has(pairKeyOf(manual))) {
     products = []; // 직접 지정 상품은 이미 썼음 → 자동 선정으로
   }
@@ -59,6 +60,7 @@ async function main() {
     if (!found) skip("자동 선정 실패 — 조건에 맞는 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)");
     products = found.products;
     category = found.category;
+    alternatives = found.alternatives;
   }
   const pairKey = pairKeyOf(products);
   const needsLink = products.some((p) => !p.link?.trim());
@@ -120,6 +122,7 @@ async function main() {
       ...written.content,
       insights: digests.map((d) => (d ? toInsight(d) : null)),
       ...(category ? { category } : {}),
+      ...(alternatives.length ? { alternatives } : {}),
       disclosure: config.disclosure_text,
     },
     products,

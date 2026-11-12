@@ -175,3 +175,11 @@ create policy shop_posts_delete on public.shop_posts
 -- 자동 글 종류: single(단일 후기) / compare(비교) / mixed(번갈아)
 alter table public.shop_config add column if not exists auto_mode text not null default 'single'
   check (auto_mode in ('single', 'compare', 'mixed'));
+
+-- 초안 미리보기: 주소(slug)를 정확히 아는 사람만 한 건 조회 (목록 조회는 여전히 불가, 검색 제외는 화면에서 noindex)
+create or replace function public.get_shop_post_by_slug(p_slug text)
+returns setof public.shop_posts
+language sql stable security definer set search_path = public as $$
+  select * from public.shop_posts where slug = p_slug limit 1;
+$$;
+grant execute on function public.get_shop_post_by_slug(text) to anon, authenticated;

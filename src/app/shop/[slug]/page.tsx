@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
-import { getPublishedPost } from "@/lib/shop-posts-server";
+import { getPostBySlugAnyStatus, getPublishedPost } from "@/lib/shop-posts-server";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
 export const revalidate = 60;
@@ -25,8 +25,22 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 export default async function ShopPostPage({ params }: { params: { slug: string } }) {
   const post = await getPublishedPost(params.slug);
-  // 공개 글이 아니면 관리자 로그인 상태에서만 초안 미리보기
-  if (!post) return <ShopDraftPreview slug={params.slug} />;
+  if (!post) {
+    // 초안: 주소를 아는 사람만 볼 수 있음 (목록·사이트맵에 없고 noindex)
+    const draft = await getPostBySlugAnyStatus(params.slug);
+    if (draft) {
+      return (
+        <main>
+          <div className="bg-amber-100 dark:bg-amber-950/50 px-5 py-2 text-center text-sm font-semibold text-amber-900 dark:text-amber-200">
+            초안 미리보기 — 아직 공개되지 않은 글이에요 (주소를 아는 사람만 볼 수 있고 검색에 안 나와요)
+          </div>
+          <ShopPostView post={draft} preview />
+        </main>
+      );
+    }
+    // RPC 가 아직 없으면 관리자 로그인 미리보기로 대체
+    return <ShopDraftPreview slug={params.slug} />;
+  }
 
   return (
     <main>

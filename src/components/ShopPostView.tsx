@@ -455,6 +455,25 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
         ))}
       </div>
 
+      {/* 같은 카테고리 인기 제품 (자동 선정 때 함께 찾은 후보) */}
+      {c.alternatives && c.alternatives.length > 0 && (
+        <section className="mt-12">
+          <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">
+            {c.category ? `${c.category} ` : ""}함께 많이 언급되는 제품
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {c.alternatives.map((a) => (
+              <span
+                key={a}
+                className="rounded-full border border-neutral-200 dark:border-neutral-800 px-3 py-1.5 text-[14px] text-neutral-700 dark:text-neutral-300"
+              >
+                {a}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 신뢰 박스: 어떻게 만들었는지 정직하게 */}
       <aside className="mt-14 rounded-2xl bg-neutral-50 dark:bg-neutral-900 p-5">
         <div className="flex items-center gap-2 text-[15px] font-semibold text-neutral-900 dark:text-white">

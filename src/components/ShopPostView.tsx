@@ -5,6 +5,7 @@
 //  - 절제: 무채색 + 브랜드 주황 하나. 이모지·알록달록한 배경 대신 얇은 선 아이콘
 //  - 위계: 글자 크기 종류는 적게, 여백은 넉넉하게, 구분은 색 대신 얇은 선
 //  - 결론 먼저 → 짧은 비교표 → 상품별 같은 틀 → 신뢰 박스(어떻게 만들었는지 정직하게)
+//  - 상품 1개면 "단일 상품 후기 분석": VS·A/B 배지 없이, 비교표 대신 주요 특징 표
 // 구매 링크는 상품 사진 카드 자체(제휴 링크라 rel="sponsored").
 
 import Link from "next/link";
@@ -136,12 +137,14 @@ function ProductCard({
   index,
   sub,
   preview,
+  showBadge = true,
 }: {
   product: ShopPostInputProduct;
   name: string;
   index: number;
   sub?: string;
   preview: boolean;
+  showBadge?: boolean;
 }) {
   return (
     <a
@@ -159,7 +162,7 @@ function ProductCard({
         />
       </div>
       <div className="mt-3 flex items-start gap-2">
-        <Letter index={index} />
+        {showBadge && <Letter index={index} />}
         <div className="min-w-0">
           <div className="text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">{name}</div>
           {sub && <div className="mt-0.5 text-[13px] leading-snug text-neutral-500 line-clamp-2">{sub}</div>}
@@ -177,7 +180,10 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
   const { content: c, products } = post;
   const hasPhoto = (p: ShopPostInputProduct) => preview || !!p.image;
   const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
-  const cols = products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
+  const single = products.length === 1;
+  const cols = single ? "mx-auto max-w-sm grid-cols-1" : products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
+  // 비교글에서만 A/B 배지
+  const badge = (i: number, size?: "sm" | "md") => (single ? null : <Letter index={i} size={size} />);
   // 상황별 추천을 상품별로 묶기
   const picksByProduct = products.map((_, i) => c.recommendations.filter((r) => r.pick === i));
   let sectionNo = 0;
@@ -192,12 +198,12 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
         <Link href="/shop" className="hover:text-neutral-600">쇼핑 비교</Link>
       </nav>
 
-      <div className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand">COMPARISON</div>
+      <div className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand">{single ? "REVIEW" : "COMPARISON"}</div>
       <h1 className="mt-2 text-[28px] sm:text-[34px] font-bold leading-[1.3] tracking-tight text-neutral-900 dark:text-white">
         {post.title}
       </h1>
       <div className="mt-3 text-[13px] text-neutral-400">
-        eloan 쇼핑 비교 · {formatDate(post.published_at ?? post.created_at)}
+        {single ? "eloan 후기 분석" : "eloan 쇼핑 비교"} · {formatDate(post.published_at ?? post.created_at)}
       </div>
 
       {/* 공정위 지침: 글 상단에 경제적 이해관계 표시 */}
@@ -206,10 +212,10 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
         {c.disclosure || DEFAULT_POST_DISCLOSURE}
       </p>
 
-      {/* 두 상품 + VS */}
+      {/* 상품 사진 (비교글이면 두 상품 + VS) */}
       <div className={`relative mt-8 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} />
+          <ProductCard key={p.link} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} showBadge={!single} />
         ))}
         {products.length === 2 && (
           <span className="pointer-events-none absolute left-1/2 top-[calc(50%-3.5rem)] flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-bold tracking-wider text-white ring-4 ring-white dark:bg-white dark:text-neutral-900 dark:ring-neutral-950">
@@ -222,13 +228,15 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
       <Section id="verdict" no={no()} title="결론부터">
         <p className="text-[19px] font-medium leading-[1.7] text-neutral-900 dark:text-white">{c.summary}</p>
         {c.recommendations.length > 0 && (
-          <div className={`mt-6 grid gap-3 ${products.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <div className={`mt-6 grid gap-3 ${single ? "" : products.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             {products.map((p, i) =>
               picksByProduct[i].length ? (
                 <div key={p.link} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
                   <div className="flex items-center gap-2">
-                    <Letter index={i} size="md" />
-                    <span className="text-[15px] font-semibold text-neutral-900 dark:text-white">{names[i]}</span>
+                    {badge(i, "md")}
+                    <span className="text-[15px] font-semibold text-neutral-900 dark:text-white">
+                      {single ? "이런 분께 잘 맞아요" : names[i]}
+                    </span>
                   </div>
                   <ul className="mt-3 space-y-2.5">
                     {picksByProduct[i].map((r) => (
@@ -248,7 +256,7 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
 
       {/* 고르는 기준 (구매 가이드) */}
       {c.buyingGuide && c.buyingGuide.length > 0 && (
-        <Section id="guide" no={no()} title="이렇게 고르세요">
+        <Section id="guide" no={no()} title={single ? "사기 전에 따져볼 점" : "이렇게 고르세요"}>
           <ol className="space-y-5">
             {c.buyingGuide.map((g, i) => (
               <li key={g.criterion} className="flex gap-4">
@@ -267,8 +275,9 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
 
       {/* 비교표 */}
       {c.comparison.length > 0 && (
-        <Section id="compare" no={no()} title="한눈에 비교">
+        <Section id="compare" no={no()} title={single ? "주요 특징" : "한눈에 비교"}>
           <table className="w-full table-fixed text-[15px] leading-snug">
+            {!single && (
             <thead>
               <tr className="border-b border-neutral-900 dark:border-white">
                 <th className="w-[28%] pb-3" />
@@ -280,7 +289,7 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
                       </div>
                     )}
                     <div className="mt-2 flex flex-col items-center gap-1">
-                      <Letter index={i} />
+                      {badge(i)}
                       <span className="text-xs font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">
                         {names[i]}
                       </span>
@@ -289,14 +298,18 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
                 ))}
               </tr>
             </thead>
-            <tbody>
+            )}
+            <tbody className={single ? "border-t border-neutral-900 dark:border-white" : undefined}>
               {c.comparison.map((row) => (
                 <tr key={row.label} className="border-b border-neutral-200 dark:border-neutral-800">
                   <th scope="row" className="py-3.5 pr-2 text-left text-sm font-normal text-neutral-500">
                     {row.label}
                   </th>
                   {row.values.map((v, i) => (
-                    <td key={i} className="py-3.5 text-center font-medium text-neutral-900 dark:text-white">
+                    <td
+                      key={i}
+                      className={`py-3.5 font-medium text-neutral-900 dark:text-white ${single ? "text-left" : "text-center"}`}
+                    >
                       {v}
                     </td>
                   ))}
@@ -308,7 +321,7 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
       )}
 
       {/* 상품별 같은 틀 */}
-      <Section id="products" no={no()} title="제품별 장단점">
+      <Section id="products" no={no()} title={single ? "장단점 분석" : "제품별 장단점"}>
         <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {c.products.map((p, i) => (
             <div key={i} className="py-8 first:pt-0 last:pb-0">
@@ -320,7 +333,7 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
                 )}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <Letter index={i} />
+                    {badge(i)}
                     <h3 className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">{names[i]}</h3>
                   </div>
                   {p.oneLiner && <p className="text-[14px] text-neutral-500">{p.oneLiner}</p>}
@@ -435,7 +448,7 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
 
       <div className={`mt-10 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} preview={preview} />
+          <ProductCard key={p.link} product={p} name={names[i]} index={i} preview={preview} showBadge={!single} />
         ))}
       </div>
 

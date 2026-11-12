@@ -24,8 +24,8 @@ export function ShopManualProducts({
     <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
       <h2 className="font-bold">직접 입력 상품 (쿠팡 API 대신)</h2>
       <p className="mt-1 text-xs text-neutral-500">
-        두 상품을 비교하는 글을 씁니다. 상품명으로 네이버·유튜브·구글 후기를 찾고, 링크는 글의
-        구매 버튼에 들어갑니다. 입력 후 아래 <b>설정 저장</b>을 누르세요.
+        <b>1개만</b> 채우면 단일 상품 후기 분석 글, <b>2개</b> 채우면 비교글을 씁니다. 상품명으로
+        네이버·유튜브 후기를 찾고, 링크는 글의 구매 링크에 들어갑니다. 입력 후 아래 <b>설정 저장</b>을 누르세요.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">

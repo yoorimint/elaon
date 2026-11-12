@@ -33,6 +33,7 @@ export type ShopPostContent = {
   verdict: string; // 마무리
   faq: { q: string; a: string }[];
   buyingGuide?: { criterion: string; detail: string }[]; // 고르는 기준
+  category?: string; // 자동 선정 시 카테고리 (같은 카테고리 반복 방지용)
   insights?: (ShopPostInsight | null)[]; // 상품 순서와 같음. 스크립트가 분석 결과로 채움
   // 공정위 고지 문구. AI 가 아니라 스크립트가 작성 시점의 설정값을 넣는다.
   disclosure?: string;

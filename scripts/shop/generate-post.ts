@@ -4,8 +4,9 @@
 // 상품: 관리자 페이지 "직접 입력 상품" (쿠팡 API 승인 전). 1개 = 단일 후기, 2개 = 비교글
 
 import { randomBytes } from "node:crypto";
-import type { ShopPostInputProduct } from "@/lib/shop-post-types";
-import { countPostsSince, insertPost, loadConfig, loadSecrets, pairExists } from "./db";
+import { countPostsSince, insertPost, loadConfig, loadPostHistory, loadSecrets } from "./db";
+import { discoverProducts } from "./discover";
+import { nextKind, pairKeyOf } from "./select-products";
 import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
 import { pingIndexNow } from "@/lib/indexnow";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
@@ -18,11 +19,6 @@ function kstNow() {
   const kst = new Date(now.getTime() + 9 * 3600 * 1000);
   const midnightUtc = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) - 9 * 3600 * 1000);
   return { hour: kst.getUTCHours(), ymd: kst.toISOString().slice(0, 10).replace(/-/g, ""), todayStartIso: midnightUtc.toISOString() };
-}
-
-// 같은 상품 조합 판별용 (순서 무관)
-function pairKeyOf(products: ShopPostInputProduct[]): string {
-  return products.map((p) => p.link.trim()).sort().join("|");
 }
 
 function skip(reason: string): never {
@@ -45,12 +41,27 @@ async function main() {
   }
   if (!secrets.GEMINI_API_KEY) skip("Gemini 키 미등록");
 
-  const products = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
-  // 1개 = 단일 상품 후기 분석, 2개 = 비교글
-  if (products.length < 1) skip("직접 입력 상품(상품명+링크)이 1개 이상 필요");
-
+  // ---- 상품 정하기 ----
+  // 1) 직접 지정(테스트용) 칸에 상품이 있으면 그것으로 (1개 = 단일, 2개 = 비교)
+  // 2) 없으면 자동 선정: 자동 글 종류(단일/비교/섞어서)에 따라 요즘 뜨는 상품을 고른다
+  const history = await loadPostHistory();
+  const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
+  let products = manual;
+  let category: string | undefined;
+  if (manual.length && !FORCE && history.usedPairKeys.has(pairKeyOf(manual))) {
+    products = []; // 직접 지정 상품은 이미 썼음 → 자동 선정으로
+  }
+  if (!products.length) {
+    const lastKind = history.lastProductCount == null ? null : history.lastProductCount === 1 ? "single" : "compare";
+    const kind = nextKind(config.auto_mode ?? "single", lastKind);
+    console.log(`🧭 자동 선정 (${config.auto_mode ?? "single"} → 이번 글: ${kind === "single" ? "단일" : "비교"})`);
+    const found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+    if (!found) skip("자동 선정 실패 — 조건에 맞는 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)");
+    products = found.products;
+    category = found.category;
+  }
   const pairKey = pairKeyOf(products);
-  if (!FORCE && (await pairExists(pairKey))) skip("이 상품 조합은 이미 글이 있음 (새 상품을 입력하세요)");
+  const needsLink = products.some((p) => !p.link?.trim());
 
   // ---- 후기 수집 ----
   const opts: ResearchOptions = {
@@ -99,7 +110,8 @@ async function main() {
   });
 
   // ---- 저장 ----
-  const status = config.publish_mode === "auto" ? "published" : "draft";
+  // 링크가 없는 자동 선정 글은 관리자가 링크를 넣을 때까지 초안
+  const status = config.publish_mode === "auto" && !needsLink ? "published" : "draft";
   const slug = await insertPost({
     slug: `${t.ymd}-${randomBytes(3).toString("hex")}`,
     title: written.title,
@@ -107,6 +119,7 @@ async function main() {
     content: {
       ...written.content,
       insights: digests.map((d) => (d ? toInsight(d) : null)),
+      ...(category ? { category } : {}),
       disclosure: config.disclosure_text,
     },
     products,
@@ -120,7 +133,9 @@ async function main() {
     pair_key: pairKey,
     status,
   });
-  console.log(`✅ 저장 완료 (${status === "published" ? "발행" : "초안"}): ${written.title}`);
+  console.log(
+    `✅ 저장 완료 (${status === "published" ? "발행" : needsLink ? "초안 — 쿠팡 링크 필요" : "초안"}): ${written.title}`,
+  );
   console.log(`   https://www.eloan.kr/shop/${slug}`);
 
   // 바로 공개된 글이면 검색엔진(네이버 등)에 즉시 알림

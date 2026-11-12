@@ -82,6 +82,8 @@ export function ShopPostsAdmin() {
         <ul className="mt-4 grid gap-2">
           {posts.map((p) => {
             const published = p.status === "published";
+            // 자동 선정 글은 쿠팡 링크가 비어 있음 → 링크를 넣어야 발행 가능
+            const needsLink = p.products.some((x) => !x.link?.trim());
             const busy = busyId === p.id;
             return (
               <li key={p.id} className="min-w-0 rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
@@ -95,6 +97,11 @@ export function ShopPostsAdmin() {
                   >
                     {published ? "공개" : "초안"}
                   </span>
+                  {needsLink && (
+                    <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
+                      링크 필요
+                    </span>
+                  )}
                   <span className="shrink-0 whitespace-nowrap">{timeAgo(p.created_at)}</span>
                   <span className="min-w-0 truncate">{p.products.map((x) => x.name).join(" vs ")}</span>
                 </div>
@@ -109,7 +116,8 @@ export function ShopPostsAdmin() {
                     {published ? "보기 ↗" : "미리보기 ↗"}
                   </a>
                   <button
-                    disabled={busy}
+                    disabled={busy || (!published && needsLink)}
+                    title={!published && needsLink ? "쿠팡 링크를 먼저 넣어야 발행할 수 있어요" : undefined}
                     onClick={() =>
                       run(p.id, async () => {
                         await setPostStatus(p, published ? "draft" : "published");
@@ -128,7 +136,7 @@ export function ShopPostsAdmin() {
                     onClick={() => setEditingId(editingId === p.id ? null : p.id)}
                     className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold"
                   >
-                    {p.products.every((x) => x.image) ? "사진·링크" : "📷 사진 넣기"}
+                    {needsLink ? "🔗 링크 넣기" : p.products.every((x) => x.image) ? "사진·링크" : "📷 사진 넣기"}
                   </button>
                   <button
                     disabled={busy}
@@ -141,7 +149,12 @@ export function ShopPostsAdmin() {
                   </button>
                 </div>
                 {editingId === p.id && (
-                  <ShopPostProductsEditor key={p.id} postId={p.id} products={p.products} onSaved={reload} />
+                  <ShopPostProductsEditor
+                    key={p.id}
+                    post={p}
+                    publishWhenComplete={!published && needsLink}
+                    onSaved={reload}
+                  />
                 )}
               </li>
             );

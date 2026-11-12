@@ -29,6 +29,7 @@ export type ShopConfig = {
 
   // 쿠팡 API 대신 직접 넣는 비교 상품 (MANUAL_PRODUCT_SLOTS 칸)
   manual_products: ManualProduct[];
+  auto_mode: AutoMode;
 
   title_style: string;
   extra_prompt: string;
@@ -47,6 +48,14 @@ export type KeyCheckResult = { ok: boolean; message: string };
 export type ManualProduct = { name: string; link: string; image?: string };
 
 export const MANUAL_PRODUCT_SLOTS = 2;
+
+// 자동 글 종류 (직접 지정 상품이 없을 때 시스템이 주제를 골라 쓴다)
+export type AutoMode = "single" | "compare" | "mixed";
+export const AUTO_MODES: { value: AutoMode; label: string; description: string }[] = [
+  { value: "single", label: "단일 자동", description: "요즘 뜨는 상품 1개 후기 분석" },
+  { value: "compare", label: "비교 자동", description: "같은 카테고리 인기 상품 2개 비교" },
+  { value: "mixed", label: "섞어서 자동", description: "단일·비교를 번갈아" },
+];
 
 // 쿠팡 파트너스 링크 형식 (간편 링크 / 단축 링크)
 export function isPartnersLink(url: string): boolean {

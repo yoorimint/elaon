@@ -88,3 +88,26 @@ export async function insertPost(post: NewShopPost): Promise<string> {
   if (error) throw new Error(`글 저장 실패: ${error.message}`);
   return (data as { slug: string }).slug;
 }
+
+// 자동 선정용 이력: 이미 쓴 조합 키, 직전 글의 상품 수, 최근 14일 카테고리
+export async function loadPostHistory(): Promise<{
+  usedPairKeys: Set<string>;
+  lastProductCount: number | null;
+  recentCategories: Set<string>;
+}> {
+  const { data, error } = await sb
+    .from("shop_posts")
+    .select("pair_key, products, created_at, category:content->>category")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  if (error) throw new Error(`shop_posts 조회 실패: ${error.message}`);
+  const rows = (data ?? []) as { pair_key: string; products: unknown[]; created_at: string; category: string | null }[];
+  const since = Date.now() - 14 * 24 * 3600 * 1000;
+  return {
+    usedPairKeys: new Set(rows.map((r) => r.pair_key)),
+    lastProductCount: rows[0] && Array.isArray(rows[0].products) ? rows[0].products.length : null,
+    recentCategories: new Set(
+      rows.filter((r) => r.category && new Date(r.created_at).getTime() >= since).map((r) => r.category as string),
+    ),
+  };
+}

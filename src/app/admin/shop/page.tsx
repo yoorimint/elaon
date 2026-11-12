@@ -17,6 +17,7 @@ import { ShopPostsAdmin } from "@/components/ShopPostsAdmin";
 import { timeAgo } from "@/lib/community";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import {
+  AUTO_MODES,
   SHOP_LIMITS,
   getShopConfig,
   parseList,
@@ -165,6 +166,13 @@ export default function AdminShopPage() {
               value={form.publish_mode}
               options={PUBLISH_MODES}
               onChange={(v) => set("publish_mode", v)}
+            />
+            <RadioField
+              label="자동 글 종류"
+              hint="직접 지정 상품이 비어 있으면 시스템이 요즘 뜨는 상품을 골라 씁니다"
+              value={form.auto_mode ?? "single"}
+              options={AUTO_MODES}
+              onChange={(v) => set("auto_mode", v)}
             />
           </SettingsSection>
 

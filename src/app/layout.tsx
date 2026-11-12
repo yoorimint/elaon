@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { VisitLogger } from "@/components/VisitLogger";
+import { CoupangBottomBanner } from "@/components/CoupangBottomBanner";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.eloan.kr"),
@@ -143,6 +144,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <VisitLogger />
           <Header />
           {children}
+          <CoupangBottomBanner />
         </AuthProvider>
       </body>
     </html>

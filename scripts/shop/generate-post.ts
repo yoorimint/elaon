@@ -36,7 +36,8 @@ async function main() {
   // ---- 실행 조건 (수동 실행이면 무시) ----
   if (!FORCE) {
     if (!config.enabled) skip("자동글 비활성화 상태");
-    if (t.hour !== config.publish_hour) skip(`작성 시각 아님 (현재 ${t.hour}시, 설정 ${config.publish_hour}시 KST)`);
+    // 작성 시각 이후면 오늘 글 수를 채울 때까지 매시간 시도 (일시적 오류가 나도 다음 시간에 재시도)
+    if (t.hour < config.publish_hour) skip(`작성 시각 전 (현재 ${t.hour}시, 설정 ${config.publish_hour}시 KST)`);
     const today = await countPostsSince(t.todayStartIso);
     if (today >= config.daily_count) skip(`오늘 이미 ${today}개 작성 (하루 ${config.daily_count}개)`);
   }

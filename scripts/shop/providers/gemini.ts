@@ -27,8 +27,9 @@ export async function checkGemini(secrets: Secrets): Promise<CheckResult> {
 // 특정 모델을 강제하려면 환경변수 GEMINI_MODEL.
 
 const DEFAULT_CANDIDATES = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const MAX_RETRY_WAIT_MS = 20_000; // "N초 후 재시도" 안내를 따를 최대 대기
+const MAX_RETRY_WAIT_MS = 30_000; // "N초 후 재시도" 안내를 따를 최대 대기
 const RETRIES_PER_MODEL = 2;
+const OVERLOAD_WAITS_MS = [15_000, 30_000]; // 503 "high demand"(일시적) 재시도 간격
 
 let candidates: string[] | null = null;
 
@@ -81,16 +82,26 @@ function retryDelayMs(errText: string): number | null {
   return m ? Math.ceil(Number(m[1]) * 1000) : null;
 }
 
-// 무료 할당량 0 / 일일 한도 소진 → 기다려도 소용없으니 바로 다음 모델로
+// 무료 할당량 0 / 일일 한도 / 요금제에서 미지원(결제 필요) → 기다려도 소용없음
 function isHardQuota(errText: string): boolean {
-  return /limit:\s*0\b|PerDay|per day|daily/i.test(errText);
+  return /limit:\s*0\b|PerDay|per day|daily|exceeded your current quota|check your plan and billing/i.test(
+    errText,
+  );
+}
+
+// 구글 검색 그라운딩은 무료 요금제에서 제공되지 않는다(2026-11 AI Studio 가격표).
+// 이 오류가 나면 다른 모델로 넘겨도 똑같으므로 바로 알린다.
+export class GroundingUnavailableError extends Error {
+  constructor(detail: string) {
+    super(`구글 검색 그라운딩 사용 불가 — 무료 요금제 미지원, AI Studio 결제 등록 필요 (${detail.slice(0, 120)})`);
+    this.name = "GroundingUnavailableError";
+  }
 }
 
 export type GeminiOptions = {
   system?: string;
-  googleSearch?: boolean; // 구글 검색 그라운딩 (JSON 스키마와 동시 사용 불가)
-  jsonSchema?: Record<string, unknown>; // 지정하면 JSON 으로만 응답
-  temperature?: number;
+  googleSearch?: boolean; // 구글 검색 그라운딩 (유료 요금제 전용)
+  jsonSchema?: Record<string, unknown>; // 표준 JSON Schema(소문자 type). 지정하면 JSON 으로만 응답
   maxOutputTokens?: number;
 };
 
@@ -107,15 +118,17 @@ type GeminiResponse = {
   }[];
 };
 
-function buildBody(prompt: string, opts: GeminiOptions, withThinkingOff: boolean) {
+// Gemini 3.x generateContent 형식 (AI Studio 문서 기준)
+// - JSON 출력: responseMimeType + responseJsonSchema (표준 JSON Schema)
+// - temperature/top_p 는 3.x 에서 "deprecated and ignored" → 보내지 않음
+// - thinking 은 모델 기본값 사용 (flash=medium, flash-lite=minimal). 출력 예산은 넉넉히
+function buildBody(prompt: string, opts: GeminiOptions) {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
-      temperature: opts.temperature ?? 0.6,
-      maxOutputTokens: opts.maxOutputTokens ?? 8192,
-      ...(withThinkingOff ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      maxOutputTokens: opts.maxOutputTokens ?? 16384,
       ...(opts.jsonSchema
-        ? { responseMimeType: "application/json", responseSchema: opts.jsonSchema }
+        ? { responseMimeType: "application/json", responseJsonSchema: opts.jsonSchema }
         : {}),
     },
   };
@@ -127,13 +140,12 @@ function buildBody(prompt: string, opts: GeminiOptions, withThinkingOff: boolean
 type Attempt = { ok: true; result: GeminiResult } | { ok: false; retryable: boolean; error: string };
 
 async function callModel(key: string, model: string, prompt: string, opts: GeminiOptions): Promise<Attempt> {
-  let thinkingOff = true; // 출력 예산 확보 (bot-post.ts 와 동일). 거부하는 모델이면 끈다
   let lastError = "";
-  for (let attempt = 0; attempt < RETRIES_PER_MODEL + 1; attempt++) {
-    const res = await fetch(`${HOST}/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+  for (let attempt = 0; attempt <= RETRIES_PER_MODEL; attempt++) {
+    const res = await fetch(`${HOST}/models/${model}:generateContent`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(buildBody(prompt, opts, thinkingOff)),
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify(buildBody(prompt, opts)),
     });
     if (res.ok) {
       const json = (await res.json()) as GeminiResponse;
@@ -147,22 +159,28 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
     }
 
     lastError = await describeError(res);
-    if (res.status === 400 && thinkingOff && /thinking/i.test(lastError)) {
-      thinkingOff = false; // 같은 모델로 즉시 재시도
-      attempt--;
-      continue;
-    }
     if (res.status === 404) return { ok: false, retryable: true, error: lastError }; // 종료된 모델 → 다음 후보
-    if (res.status === 429 || res.status === 503) {
-      if (res.status === 429 && isHardQuota(lastError)) return { ok: false, retryable: true, error: lastError };
+    if (res.status === 429) {
+      if (isHardQuota(lastError)) {
+        if (opts.googleSearch) throw new GroundingUnavailableError(lastError);
+        return { ok: false, retryable: true, error: lastError }; // 이 모델 할당량 소진 → 다음 후보
+      }
       if (attempt < RETRIES_PER_MODEL) {
-        const wait = Math.min(retryDelayMs(lastError) ?? 5000 * (attempt + 1), MAX_RETRY_WAIT_MS);
-        await new Promise((r) => setTimeout(r, wait));
+        await new Promise((r) => setTimeout(r, Math.min(retryDelayMs(lastError) ?? 10_000, MAX_RETRY_WAIT_MS)));
         continue;
       }
       return { ok: false, retryable: true, error: lastError };
     }
-    return { ok: false, retryable: false, error: lastError }; // 요청 자체 문제 → 다른 모델로도 안 됨
+    if (res.status === 503 || res.status === 500) {
+      // 일시적 과부하 → 조금 길게 기다렸다 같은 모델 재시도, 그래도 안 되면 다음 후보
+      if (attempt < RETRIES_PER_MODEL) {
+        await new Promise((r) => setTimeout(r, OVERLOAD_WAITS_MS[attempt] ?? MAX_RETRY_WAIT_MS));
+        continue;
+      }
+      return { ok: false, retryable: true, error: lastError };
+    }
+    // 400 등: 이 모델이 요청 형식을 거부 → 다른 모델은 받아줄 수 있으니 다음 후보로
+    return { ok: false, retryable: res.status === 400, error: lastError };
   }
   return { ok: false, retryable: true, error: lastError };
 }

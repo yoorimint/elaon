@@ -11,11 +11,10 @@ import {
   TextField,
   ToggleField,
 } from "@/components/AdminFormFields";
+import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { timeAgo } from "@/lib/community";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import {
-  API_KEYS,
-  GITHUB_SECRETS_URL,
   SHOP_LIMITS,
   getShopConfig,
   parseList,
@@ -129,7 +128,7 @@ export default function AdminShopPage() {
 
       {config && form && (
         <div className="space-y-6">
-          <ApiKeyStatus config={config} />
+          <ShopApiKeys />
 
           <SettingsSection title="실행">
             <ToggleField
@@ -294,74 +293,11 @@ export default function AdminShopPage() {
               disabled={saving}
               className="rounded-full bg-brand text-white px-6 py-2 text-sm font-semibold hover:bg-brand-dark disabled:opacity-60"
             >
-              {saving ? "저장 중…" : "저장"}
+              {saving ? "저장 중…" : "설정 저장"}
             </button>
           </div>
         </div>
       )}
     </main>
-  );
-}
-
-// 키 "값"은 GitHub Secrets 에만 있고 브라우저에서 알 수 없다.
-// 자동글 스크립트가 실행될 때 등록 여부를 key_status 에 기록하면 여기서 보여준다.
-function ApiKeyStatus({ config }: { config: ShopConfig }) {
-  const checked = config.key_checked_at !== null;
-  return (
-    <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-bold">API 키</h2>
-        <span className="text-xs text-neutral-500">
-          {checked ? `마지막 점검 ${timeAgo(config.key_checked_at!)}` : "아직 점검 기록 없음"}
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-neutral-500">
-        키는 보안상 이 페이지에 입력하지 않고 GitHub Secrets 에 등록합니다. 상태는 자동글
-        스크립트가 실행될 때 갱신됩니다.
-      </p>
-      <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
-        {API_KEYS.map((k) => {
-          const registered = checked && k.secrets.every((s) => config.key_status[s] === true);
-          return (
-            <li key={k.label} className="flex items-start justify-between gap-3 py-3 text-sm">
-              <div className="min-w-0">
-                <div className="font-medium">
-                  {k.label}
-                  <span className="ml-2 text-xs text-neutral-500">
-                    {k.required ? "필수" : "선택"}
-                  </span>
-                </div>
-                <div className="mt-0.5 font-mono text-xs text-neutral-500 break-all">
-                  {k.secrets.join(", ")}
-                </div>
-                <div className="mt-0.5 text-xs text-neutral-500">{k.where}</div>
-              </div>
-              <KeyBadge checked={checked} registered={registered} />
-            </li>
-          );
-        })}
-      </ul>
-      <a
-        href={GITHUB_SECRETS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 rounded-full bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 px-4 py-2 text-xs font-semibold hover:opacity-90"
-      >
-        GitHub Secrets 열기 ↗
-      </a>
-    </section>
-  );
-}
-
-function KeyBadge({ checked, registered }: { checked: boolean; registered: boolean }) {
-  const [text, cls] = !checked
-    ? ["확인 전", "bg-neutral-100 text-neutral-500 dark:bg-neutral-800"]
-    : registered
-      ? ["등록됨", "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"]
-      : ["미등록", "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"];
-  return (
-    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${cls}`}>
-      {text}
-    </span>
   );
 }

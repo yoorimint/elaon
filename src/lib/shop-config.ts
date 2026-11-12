@@ -32,16 +32,11 @@ export type ShopConfig = {
   extra_prompt: string;
   disclosure_text: string;
 
-  key_status: Record<string, boolean>;
-  key_checked_at: string | null;
   updated_at: string;
 };
 
-// 관리자가 수정할 수 있는 필드만. 상태값(key_status 등)은 스크립트 전용.
-export type ShopConfigEditable = Omit<
-  ShopConfig,
-  "id" | "key_status" | "key_checked_at" | "updated_at"
->;
+// 관리자가 수정할 수 있는 필드만.
+export type ShopConfigEditable = Omit<ShopConfig, "id" | "updated_at">;
 
 // DB check 제약과 동일한 범위. 화면 입력 제한과 저장 전 보정에 같이 쓴다.
 export const SHOP_LIMITS = {
@@ -55,43 +50,73 @@ export const SHOP_LIMITS = {
 
 export type LimitedField = keyof typeof SHOP_LIMITS;
 
-// GitHub Secrets 에 등록해야 하는 키 목록. 값은 여기 두지 않는다.
-export type ApiKeyInfo = {
-  secrets: string[];
+// API 키 목록. name 은 supabase/shop.sql 의 shop_secret_names() 와 같아야 한다.
+export type SecretName =
+  | "COUPANG_ACCESS_KEY"
+  | "COUPANG_SECRET_KEY"
+  | "GEMINI_API_KEY"
+  | "NAVER_CLIENT_ID"
+  | "NAVER_CLIENT_SECRET"
+  | "YOUTUBE_API_KEY";
+
+export type ApiKeyGroup = {
   label: string;
   required: boolean;
-  where: string;
+  where: string; // 발급 위치 안내
+  fields: { name: SecretName; label: string }[];
 };
 
-export const API_KEYS: ApiKeyInfo[] = [
+export const API_KEY_GROUPS: ApiKeyGroup[] = [
   {
-    secrets: ["COUPANG_ACCESS_KEY", "COUPANG_SECRET_KEY"],
     label: "쿠팡 파트너스 API",
     required: true,
     where: "쿠팡 파트너스 → 추가기능 → 파트너스 API",
+    fields: [
+      { name: "COUPANG_ACCESS_KEY", label: "Access Key" },
+      { name: "COUPANG_SECRET_KEY", label: "Secret Key" },
+    ],
   },
   {
-    secrets: ["GEMINI_API_KEY"],
     label: "Gemini (글 작성 + 구글 검색)",
     required: true,
-    where: "Google AI Studio → Get API key (기존 봇과 공용)",
+    where: "Google AI Studio → Get API key",
+    fields: [{ name: "GEMINI_API_KEY", label: "API Key" }],
   },
   {
-    secrets: ["NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"],
     label: "네이버 검색 API (쇼핑·블로그·카페)",
     required: false,
     where: "developers.naver.com → 애플리케이션 등록 → 검색",
+    fields: [
+      { name: "NAVER_CLIENT_ID", label: "Client ID" },
+      { name: "NAVER_CLIENT_SECRET", label: "Client Secret" },
+    ],
   },
   {
-    secrets: ["YOUTUBE_API_KEY"],
     label: "YouTube Data API",
     required: false,
     where: "Google Cloud 콘솔 → YouTube Data API v3 사용 설정 → 사용자 인증 정보",
+    fields: [{ name: "YOUTUBE_API_KEY", label: "API Key" }],
   },
 ];
 
-export const GITHUB_SECRETS_URL =
-  "https://github.com/yoorimint/elaon/settings/secrets/actions";
+// 서버는 원문을 돌려주지 않는다. hint = "••••" + 끝 4자리.
+export type SecretStatus = { hint: string; updated_at: string };
+
+export async function getSecretStatus(): Promise<Partial<Record<SecretName, SecretStatus>>> {
+  const { data, error } = await supabase.rpc("admin_shop_secret_status");
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<{ name: SecretName; hint: string; updated_at: string }>;
+  return Object.fromEntries(rows.map((r) => [r.name, { hint: r.hint, updated_at: r.updated_at }]));
+}
+
+// 빈 문자열을 보내면 삭제된다.
+export async function setSecret(name: SecretName, value: string): Promise<void> {
+  const { error } = await supabase.rpc("admin_set_shop_secret", {
+    p_name: name,
+    p_value: value,
+  });
+  if (error) throw new Error(error.message);
+}
 
 export function clampLimited(field: LimitedField, value: number): number {
   const { min, max } = SHOP_LIMITS[field];
@@ -138,6 +163,6 @@ export async function updateShopConfig(patch: ShopConfigEditable): Promise<void>
 
 export function toEditable(c: ShopConfig): ShopConfigEditable {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, key_status, key_checked_at, updated_at, ...rest } = c;
+  const { id, updated_at, ...rest } = c;
   return rest;
 }

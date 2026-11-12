@@ -4,11 +4,11 @@
 import Link from "next/link";
 import {
   DEFAULT_POST_DISCLOSURE,
+  SOURCE_LABEL,
   type ShopPost,
   type ShopPostInputProduct,
 } from "@/lib/shop-post-types";
 
-const SOURCE_LABEL = { naver_blog: "블로그", naver_cafe: "카페", naver_kin: "지식iN", youtube: "유튜브" } as const;
 
 function formatDate(iso: string | null) {
   if (!iso) return "";
@@ -65,6 +65,18 @@ export function ShopPostView({ post }: { post: ShopPost }) {
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {products.map((p, i) => (
           <div key={p.link} className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+            {p.image && (
+              <a href={p.link} target="_blank" rel="sponsored nofollow noopener" className="mb-3 block">
+                {/* 쿠팡 파트너스가 제공한 상품 이미지 */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.image}
+                  alt={names[i]}
+                  loading="lazy"
+                  className="mx-auto h-40 w-full object-contain"
+                />
+              </a>
+            )}
             <div className="font-bold">{names[i]}</div>
             <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">{c.products[i]?.oneLiner}</p>
             {c.products[i]?.bestFor && (

@@ -40,3 +40,12 @@ export async function deletePost(id: string): Promise<void> {
   const { error } = await supabase.from("shop_posts").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
+
+// 발행 직후 검색엔진(네이버 등)에 새 글 알림. 실패해도 발행에는 영향 없음.
+export async function notifySearchEngines(slug: string): Promise<void> {
+  await fetch("/api/indexnow", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ slug }),
+  }).catch(() => undefined);
+}

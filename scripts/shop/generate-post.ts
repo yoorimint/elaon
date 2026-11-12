@@ -7,6 +7,8 @@ import { randomBytes } from "node:crypto";
 import type { ShopPostInputProduct } from "@/lib/shop-post-types";
 import { countPostsSince, insertPost, loadConfig, loadSecrets, pairExists } from "./db";
 import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
+import { pingIndexNow } from "@/lib/indexnow";
+import { digestProduct, type ProductDigest } from "./digest";
 import { writePost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
@@ -64,7 +66,7 @@ async function main() {
   for (const p of products) {
     const r = await researchProduct(secrets, p, opts);
     console.log(
-      `  - ${p.name}: 네이버 ${r.reviews.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개/설명 ${r.videoNotes.length}개 · 웹 출처 ${r.webSourceCount}곳`,
+      `  - ${p.name}: 네이버 ${r.reviews.length}건 · 뉴스 ${r.news.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개/설명 ${r.videoNotes.length}개 · 웹 출처 ${r.webSourceCount}곳`,
     );
     r.errors.forEach((e) => console.warn(`    ⚠ ${e}`));
     research.push(r);
@@ -74,9 +76,23 @@ async function main() {
     throw new Error(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")} — 상품명을 확인하세요`);
   }
 
-  // ---- 작성 ----
+  // ---- 1단계: 상품별 후기 분석 (실패해도 원자료로 작성은 진행) ----
+  console.log("🧠 상품별 후기 분석 중...");
+  const digests: (ProductDigest | null)[] = [];
+  for (const r of research) {
+    try {
+      const d = await digestProduct(secrets, r);
+      console.log(`  - ${r.product.name}: 장점 ${d.strengths.length} · 단점 ${d.weaknesses.length} · 스펙 ${d.specs.length} · 구매자 질문 ${d.buyerQuestions.length}`);
+      digests.push(d);
+    } catch (e) {
+      console.warn(`  ⚠ ${r.product.name} 분석 실패 → 원자료로 작성: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
+      digests.push(null);
+    }
+  }
+
+  // ---- 2단계: 비교글 작성 ----
   console.log("✍️  Gemini 작성 중...");
-  const written = await writePost(secrets, research, {
+  const written = await writePost(secrets, research, digests, {
     titleStyle: config.title_style,
     extraPrompt: config.extra_prompt,
   });
@@ -101,6 +117,12 @@ async function main() {
   });
   console.log(`✅ 저장 완료 (${status === "published" ? "발행" : "초안"}): ${written.title}`);
   console.log(`   https://www.eloan.kr/shop/${slug}`);
+
+  // 바로 공개된 글이면 검색엔진(네이버 등)에 즉시 알림
+  if (status === "published") {
+    const pings = await pingIndexNow([`/shop/${slug}`, "/shop"]);
+    console.log(`🔔 검색엔진 알림: ${pings.map((p) => `${new URL(p.endpoint).host}=${p.status}`).join(", ")}`);
+  }
 }
 
 main().catch((e) => {

@@ -1,7 +1,8 @@
-// 수집한 후기를 근거로 Gemini 가 비교글을 JSON 구조로 작성.
+// 2단계: 상품별 분석(digest)과 원자료 일부를 근거로 Gemini 가 비교글을 JSON 구조로 작성.
 // 링크는 AI 에게 맡기지 않고 관리자 입력값을 그대로 붙인다.
 
-import type { ShopPostContent } from "@/lib/shop-post-types";
+import { SOURCE_LABEL, type ShopPostContent } from "@/lib/shop-post-types";
+import { digestBlock, type ProductDigest } from "./digest";
 import { geminiGenerate } from "./providers/gemini";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
@@ -92,31 +93,36 @@ const SCHEMA = {
   ],
 };
 
-// 프롬프트가 너무 길어지지 않게 출처별 상한
-const LIMITS = { reviews: 100, comments: 100, videoNotes: 5 };
-const KIND_LABEL = { naver_blog: "블로그", naver_cafe: "카페", naver_kin: "지식iN" } as const;
+// 분석(digest)이 있으면 그것을 중심으로, 원자료는 어투·구체성 참고용으로 일부만.
+// 분석이 실패한 상품은 원자료를 더 많이 넘긴다.
+const RAW_LIMITS = {
+  withDigest: { reviews: 25, comments: 20, videoNotes: 2 },
+  withoutDigest: { reviews: 100, comments: 100, videoNotes: 5 },
+};
 
-function evidenceBlock(r: ProductResearch, index: number): string {
+function evidenceBlock(r: ProductResearch, digest: ProductDigest | null, index: number): string {
+  const lim = digest ? RAW_LIMITS.withDigest : RAW_LIMITS.withoutDigest;
   const reviews = r.reviews
-    .slice(0, LIMITS.reviews)
-    .map((s) => `- [${KIND_LABEL[s.kind]}] ${s.title}: ${s.text}`)
+    .slice(0, lim.reviews)
+    .map((s) => `- [${SOURCE_LABEL[s.kind]}] ${s.title}: ${s.text}`)
     .join("\n");
   const comments = r.comments
-    .slice(0, LIMITS.comments)
+    .slice(0, lim.comments)
     .map((c) => `- ${c}`)
     .join("\n");
   const notes = r.videoNotes
-    .slice(0, LIMITS.videoNotes)
+    .slice(0, lim.videoNotes)
     .map((n) => `- [${n.title}] ${n.text}`)
     .join("\n");
   return `## 제품 ${index}: ${r.product.name}
-### 네이버 블로그·카페·지식iN 요약문 (${r.reviews.length}건)
+수집량: 네이버 ${r.reviews.length}건 · 뉴스 ${r.news.length}건 · 유튜브 댓글 ${r.comments.length}개 · 영상 설명 ${r.videoNotes.length}개
+${digest ? `### 후기 분석 (전체 자료 기준)\n${digestBlock(digest)}\n` : ""}### 원자료 발췌 — 네이버
 ${reviews || "(없음)"}
-### 유튜브 리뷰 영상 설명란 (${r.videoNotes.length}개)
+### 원자료 발췌 — 유튜브 영상 설명
 ${notes || "(없음)"}
-### 유튜브 리뷰 영상 댓글 (${r.comments.length}개)
+### 원자료 발췌 — 유튜브 댓글
 ${comments || "(없음)"}
-### 웹 후기 요약 (구글 검색, 출처 ${r.webSourceCount}곳)
+### 웹 후기 요약 (구글 검색)
 ${r.webSummary ?? "(없음)"}`;
 }
 
@@ -170,6 +176,7 @@ function validate(raw: unknown, productCount: number): WrittenPost {
 export async function writePost(
   secrets: Secrets,
   research: ProductResearch[],
+  digests: (ProductDigest | null)[],
   opts: WriterOptions,
 ): Promise<WrittenPost> {
   const names = research.map((r) => r.product.name).join(" vs ");
@@ -177,7 +184,7 @@ export async function writePost(
 제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)
 ${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===
-${research.map((r, i) => evidenceBlock(r, i)).join("\n\n")}
+${research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n")}
 ===`;
 
   const r = await geminiGenerate(secrets, prompt, {

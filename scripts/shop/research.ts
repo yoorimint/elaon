@@ -1,5 +1,6 @@
 // 상품별 후기 수집. 출처마다 실패해도 나머지로 계속 진행한다(오류는 errors 에 기록).
-//  - 네이버 블로그·카페·지식iN (NAVER API HUB 검색) — 여러 검색어로 넓게
+//  - 네이버 블로그·카페·지식iN·웹문서 (NAVER API HUB 검색) — 여러 검색어로 넓게
+//  - 네이버 뉴스 (출시·스펙·이슈)
 //  - 유튜브 리뷰 영상(댓글 많은 순) + 댓글 + 영상 설명 (YouTube Data API)
 //  - Gemini 구글 검색 요약 (그라운딩)
 
@@ -20,7 +21,7 @@ export type ResearchOptions = {
 };
 
 export type ReviewSnippet = {
-  kind: "naver_blog" | "naver_cafe" | "naver_kin";
+  kind: "naver_blog" | "naver_cafe" | "naver_kin" | "naver_web";
   title: string;
   text: string;
   url: string;
@@ -34,6 +35,7 @@ export type ProductResearch = {
   videos: YoutubeVideo[];
   comments: string[];
   videoNotes: VideoNote[];
+  news: { title: string; text: string; url: string }[];
   webSummary: string | null;
   webSourceCount: number;
   errors: string[];
@@ -49,7 +51,9 @@ const NAVER_TYPES: [NaverSearchType, ReviewSnippet["kind"]][] = [
   ["blog", "naver_blog"],
   ["cafearticle", "naver_cafe"],
   ["kin", "naver_kin"],
+  ["webkr", "naver_web"],
 ];
+const NEWS_MAX = 5;
 
 // 무료 요금제 등으로 그라운딩이 막혀 있으면 첫 실패 후 같은 실행에서는 건너뛴다
 let groundingUnavailable = false;
@@ -91,6 +95,14 @@ async function collectNaver(
     if (!added) break; // 모든 버킷 소진
   }
   return out;
+}
+
+async function collectNews(secrets: Secrets, name: string) {
+  const items = await naverSearch(secrets, "news", name, NEWS_MAX * 2);
+  return items
+    .map((i) => ({ title: cleanNaverText(i.title), text: cleanNaverText(i.description), url: i.link }))
+    .filter((n) => n.text.length >= 20)
+    .slice(0, NEWS_MAX);
 }
 
 // 영상 설명에서 링크·해시태그·구매 유도 줄 제거
@@ -146,6 +158,7 @@ export async function researchProduct(
     videos: [],
     comments: [],
     videoNotes: [],
+    news: [],
     webSummary: null,
     webSourceCount: 0,
     errors: [],
@@ -156,6 +169,11 @@ export async function researchProduct(
       result.reviews = await collectNaver(secrets, product.name, opts);
     } catch (e) {
       result.errors.push(`네이버: ${e instanceof Error ? e.message : e}`);
+    }
+    try {
+      result.news = await collectNews(secrets, product.name);
+    } catch (e) {
+      result.errors.push(`네이버 뉴스: ${e instanceof Error ? e.message : e}`);
     }
   }
   if (opts.useYoutube && secrets.YOUTUBE_API_KEY) {
@@ -182,6 +200,7 @@ export async function researchProduct(
 export function toSources(research: ProductResearch[]): ShopPostSource[] {
   return research.flatMap((r, i) => [
     ...r.reviews.map((s) => ({ kind: s.kind, title: s.title, url: s.url, product: i })),
+    ...r.news.map((n) => ({ kind: "naver_news" as const, title: n.title, url: n.url, product: i })),
     ...r.videos.map((v) => ({ kind: "youtube" as const, title: v.title, url: v.url, product: i })),
   ]);
 }

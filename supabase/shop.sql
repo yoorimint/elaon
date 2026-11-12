@@ -183,3 +183,19 @@ language sql stable security definer set search_path = public as $$
   select * from public.shop_posts where slug = p_slug limit 1;
 $$;
 grant execute on function public.get_shop_post_by_slug(text) to anon, authenticated;
+
+-- ===== 상품 사진 저장소 (초안 미리보기에서 사진 자리를 눌러 업로드) =====
+-- 공개 버킷: 누구나 사진 주소로 볼 수 있음. 올리기·지우기는 관리자만.
+insert into storage.buckets (id, name, public)
+values ('shop-images', 'shop-images', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "shop images admin insert" on storage.objects;
+create policy "shop images admin insert" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'shop-images' and public.is_admin());
+
+drop policy if exists "shop images admin delete" on storage.objects;
+create policy "shop images admin delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'shop-images' and public.is_admin());

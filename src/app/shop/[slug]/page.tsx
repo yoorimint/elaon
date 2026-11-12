@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_noStore as noStore } from "next/cache";
 import { JsonLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
 import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
@@ -27,6 +28,8 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
   const post = await getPublishedPost(params.slug);
   if (!post) {
     // 초안: 주소를 아는 사람만 볼 수 있음 (목록·사이트맵에 없고 noindex)
+    // 사진 등록 직후 새로고침해도 바로 보이게 초안은 캐시하지 않음
+    noStore();
     const draft = await getPostBySlugAnyStatus(params.slug);
     if (draft) {
       return (

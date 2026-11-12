@@ -62,6 +62,9 @@ create policy shop_config_update on public.shop_config
 alter table public.shop_config add column if not exists key_check jsonb not null default '{}'::jsonb;
 alter table public.shop_config add column if not exists key_check_at timestamptz;
 
+-- 쿠팡 API 대신 직접 입력하는 비교 상품 [{ "name": "...", "link": "https://link.coupang.com/a/..." }]
+alter table public.shop_config add column if not exists manual_products jsonb not null default '[]'::jsonb;
+
 -- 네이버 쇼핑 검색 API 종료(2026-07-31)로 옵션 제거
 alter table public.shop_config drop column if exists use_naver_shopping;
 

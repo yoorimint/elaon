@@ -12,6 +12,7 @@ import {
   ToggleField,
 } from "@/components/AdminFormFields";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
+import { ShopManualProducts } from "@/components/ShopManualProducts";
 import { timeAgo } from "@/lib/community";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import {
@@ -129,6 +130,11 @@ export default function AdminShopPage() {
       {config && form && (
         <div className="space-y-6">
           <ShopApiKeys check={config.key_check ?? {}} checkedAt={config.key_check_at ?? null} />
+
+          <ShopManualProducts
+            value={form.manual_products}
+            onChange={(v) => set("manual_products", v)}
+          />
 
           <SettingsSection title="실행">
             <ToggleField

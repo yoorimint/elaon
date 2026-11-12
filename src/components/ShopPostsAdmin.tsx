@@ -138,7 +138,7 @@ export function ShopPostsAdmin() {
                     onClick={() => setEditingId(editingId === p.id ? null : p.id)}
                     className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold"
                   >
-                    {needsLink ? "🔗 링크 넣기" : p.products.every((x) => x.image) ? "사진·링크" : "📷 사진 넣기"}
+                    {needsLink ? "🔗 링크 넣기" : "링크 수정"}
                   </button>
                   <button
                     disabled={busy}
@@ -154,7 +154,6 @@ export function ShopPostsAdmin() {
                   <ShopPostProductsEditor
                     key={p.id}
                     post={p}
-                    publishWhenComplete={!published && needsLink}
                     onSaved={reload}
                   />
                 )}

@@ -1,26 +1,19 @@
 "use client";
 
-// 작성된 글의 상품 사진·링크 수정. 쿠팡 파트너스 "이미지+텍스트" HTML 을 붙여넣으면
-// 링크와 사진이 함께 바뀐다. 글 본문은 그대로.
+// 작성된 글의 쿠팡 파트너스 링크 입력·수정. 저장만 하고 발행은 하지 않는다
+// (링크·사진을 넣은 뒤 미리보기에서 확인하고 목록의 "발행" 버튼으로 공개).
+// 사진은 초안 미리보기에서 사진 자리를 눌러 등록. 글 본문은 그대로.
 
 import { useState } from "react";
 import { isPartnersLink, parsePartnersInput } from "@/lib/shop-config";
-import {
-  notifySearchEngines,
-  setPostStatus,
-  updatePostProducts,
-  type AdminPostRow,
-} from "@/lib/shop-posts";
+import { updatePostProducts, type AdminPostRow } from "@/lib/shop-posts";
 import type { ShopPostInputProduct } from "@/lib/shop-post-types";
 
 export function ShopPostProductsEditor({
   post,
-  publishWhenComplete,
   onSaved,
 }: {
   post: AdminPostRow;
-  // 링크 필요 초안: 링크를 모두 넣고 저장하면 바로 발행
-  publishWhenComplete: boolean;
   onSaved: () => Promise<void>;
 }) {
   const postId = post.id;
@@ -58,13 +51,7 @@ export function ShopPostProductsEditor({
     try {
       await updatePostProducts(postId, draft);
       const complete = draft.every((p) => p.link.trim());
-      if (publishWhenComplete && complete) {
-        await setPostStatus({ ...post, products: draft }, "published");
-        void notifySearchEngines(post.slug);
-        setMsg("저장 후 발행됨");
-      } else {
-        setMsg(complete ? "저장됨" : "저장됨 (링크가 남았어요)");
-      }
+      setMsg(complete ? "저장됨 — 미리보기에서 확인 후 발행하세요" : "저장됨 (링크가 남았어요)");
       await onSaved();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "저장 실패");
@@ -76,11 +63,9 @@ export function ShopPostProductsEditor({
   return (
     <div className="mt-3 space-y-3 rounded-lg bg-neutral-50 dark:bg-neutral-900/50 p-3">
       <p className="text-xs text-neutral-500">
-        쿠팡 파트너스 → 상품 검색 → 링크 생성 → &quot;이미지+텍스트&quot; HTML 을 복사해 붙여넣으세요.
+        쿠팡 파트너스 링크(link.coupang.com/a/…)를 붙여넣고 저장하세요. 사진은 미리보기에서 사진 자리를
+        눌러 등록해요. 저장만 되고 발행은 목록의 <b>발행</b> 버튼으로 해요.
       </p>
-      {publishWhenComplete && (
-        <p className="text-xs font-semibold text-brand">링크를 모두 넣고 저장하면 바로 발행돼요.</p>
-      )}
       {draft.map((p, i) => (
         <div key={i} className="flex items-start gap-3">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-neutral-200 dark:border-neutral-700 bg-white">
@@ -97,7 +82,7 @@ export function ShopPostProductsEditor({
               type="text"
               value={inputs[i]}
               onChange={(e) => applyInput(i, e.target.value)}
-              placeholder="이미지+텍스트 HTML 또는 링크 붙여넣기"
+              placeholder="https://link.coupang.com/a/..."
               className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-2 py-1.5 font-mono text-xs"
             />
             <div className="mt-0.5 truncate text-[11px] text-neutral-500">{p.link}</div>
@@ -111,7 +96,7 @@ export function ShopPostProductsEditor({
           disabled={saving}
           className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
-          {saving ? "저장 중…" : publishWhenComplete ? "저장하고 발행" : "사진·링크 저장"}
+          {saving ? "저장 중…" : "저장"}
         </button>
       </div>
     </div>

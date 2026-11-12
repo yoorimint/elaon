@@ -22,7 +22,8 @@ const SYSTEM = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 �
 4. "최저가", "1위", "무조건" 같은 확인되지 않은 과장 표현 금지.
 5. 두 제품을 공정하게 비교한다. 각 제품의 단점도 반드시 쓴다.
 6. 해요체 존댓말. 짧고 읽기 쉬운 문장.
-7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.`;
+7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.
+8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.`;
 
 const SCHEMA = {
   type: "object",
@@ -115,7 +116,6 @@ function evidenceBlock(r: ProductResearch, digest: ProductDigest | null, index: 
     .map((n) => `- [${n.title}] ${n.text}`)
     .join("\n");
   return `## 제품 ${index}: ${r.product.name}
-수집량: 네이버 ${r.reviews.length}건 · 뉴스 ${r.news.length}건 · 유튜브 댓글 ${r.comments.length}개 · 영상 설명 ${r.videoNotes.length}개
 ${digest ? `### 후기 분석 (전체 자료 기준)\n${digestBlock(digest)}\n` : ""}### 원자료 발췌 — 네이버
 ${reviews || "(없음)"}
 ### 원자료 발췌 — 유튜브 영상 설명

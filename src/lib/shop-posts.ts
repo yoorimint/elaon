@@ -2,7 +2,7 @@
 // 권한은 Supabase RLS: 초안 조회·수정·삭제는 관리자만.
 
 import { supabase } from "./supabase";
-import type { ShopPost, ShopPostStatus } from "./shop-post-types";
+import type { ShopPost, ShopPostInputProduct, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products">;
 
@@ -48,4 +48,13 @@ export async function notifySearchEngines(slug: string): Promise<void> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ slug }),
   }).catch(() => undefined);
+}
+
+// 이미 작성된 글의 상품 링크·사진 수정 (글을 다시 쓰지 않고 사진만 넣을 때)
+export async function updatePostProducts(id: string, products: ShopPostInputProduct[]): Promise<void> {
+  const { error } = await supabase
+    .from("shop_posts")
+    .update({ products, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }

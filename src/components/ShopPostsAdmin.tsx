@@ -3,6 +3,7 @@
 // 관리자 페이지: 자동 작성된 비교글 목록과 발행/비공개/삭제.
 
 import { useCallback, useEffect, useState } from "react";
+import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
 import { timeAgo } from "@/lib/community";
 import { POST_WORKFLOW_URL } from "@/lib/shop-config";
 import {
@@ -17,6 +18,7 @@ export function ShopPostsAdmin() {
   const [posts, setPosts] = useState<AdminPostRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     try {
@@ -123,6 +125,12 @@ export function ShopPostsAdmin() {
                     {published ? "비공개로" : "발행"}
                   </button>
                   <button
+                    onClick={() => setEditingId(editingId === p.id ? null : p.id)}
+                    className="rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold"
+                  >
+                    {p.products.every((x) => x.image) ? "사진·링크" : "📷 사진 넣기"}
+                  </button>
+                  <button
                     disabled={busy}
                     onClick={() => {
                       if (confirm("이 글을 삭제할까요? 되돌릴 수 없습니다.")) run(p.id, () => deletePost(p.id));
@@ -132,6 +140,9 @@ export function ShopPostsAdmin() {
                     삭제
                   </button>
                 </div>
+                {editingId === p.id && (
+                  <ShopPostProductsEditor key={p.id} postId={p.id} products={p.products} onSaved={reload} />
+                )}
               </li>
             );
           })}

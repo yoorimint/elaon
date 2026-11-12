@@ -60,13 +60,34 @@ function Section({ id, no, title, children }: { id: string; no: string; title: s
   );
 }
 
-function ProductImage({ product, name, className = "" }: { product: ShopPostInputProduct; name: string; className?: string }) {
-  return product.image ? (
+// 사진이 없을 때: 관리자 미리보기는 점선 "상품 사진" 자리, 공개 글은 상품명 카드(미완성처럼 보이지 않게)
+function ProductImage({
+  product,
+  name,
+  preview,
+  className = "",
+}: {
+  product: ShopPostInputProduct;
+  name: string;
+  preview: boolean;
+  className?: string;
+}) {
+  if (product.image) {
     // 쿠팡 파트너스 상품 이미지
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={product.image} alt={name} loading="lazy" className={`object-contain ${className}`} />
-  ) : (
-    // 사진이 들어갈 자리 표시
+    return <img src={product.image} alt={name} loading="lazy" className={`object-contain ${className}`} />;
+  }
+  if (!preview) {
+    return (
+      <span
+        className={`flex items-center justify-center bg-neutral-50 px-4 text-center text-lg font-bold leading-snug tracking-tight text-neutral-400 dark:bg-neutral-900 ${className}`}
+      >
+        {name}
+      </span>
+    );
+  }
+  return (
+    // 사진이 들어갈 자리 표시 (미리보기 전용)
     <span
       className={`flex flex-col items-center justify-center gap-1 rounded-[inherit] border-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 ${className}`}
       aria-label={`${name} 상품 사진 자리`}
@@ -109,7 +130,19 @@ function InsightBars({ insight }: { insight: ShopPostInsight }) {
 }
 
 // 사진 + 이름 = 구매 링크
-function ProductCard({ product, name, index, sub }: { product: ShopPostInputProduct; name: string; index: number; sub?: string }) {
+function ProductCard({
+  product,
+  name,
+  index,
+  sub,
+  preview,
+}: {
+  product: ShopPostInputProduct;
+  name: string;
+  index: number;
+  sub?: string;
+  preview: boolean;
+}) {
   return (
     <a
       href={product.link}
@@ -117,8 +150,13 @@ function ProductCard({ product, name, index, sub }: { product: ShopPostInputProd
       rel="sponsored nofollow noopener"
       className="group block"
     >
-      <div className="aspect-square overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
-        <ProductImage product={product} name={name} className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]" />
+      <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
+        <ProductImage
+          product={product}
+          name={name}
+          preview={preview}
+          className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
+        />
       </div>
       <div className="mt-3 flex items-start gap-2">
         <Letter index={index} />
@@ -134,8 +172,10 @@ function ProductCard({ product, name, index, sub }: { product: ShopPostInputProd
   );
 }
 
-export function ShopPostView({ post }: { post: ShopPost }) {
+// preview: 관리자 초안 미리보기 (사진 자리 표시)
+export function ShopPostView({ post, preview = false }: { post: ShopPost; preview?: boolean }) {
   const { content: c, products } = post;
+  const hasPhoto = (p: ShopPostInputProduct) => preview || !!p.image;
   const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
   const cols = products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
   // 상황별 추천을 상품별로 묶기
@@ -169,7 +209,7 @@ export function ShopPostView({ post }: { post: ShopPost }) {
       {/* 두 상품 + VS */}
       <div className={`relative mt-8 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} />
+          <ProductCard key={p.link} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} />
         ))}
         {products.length === 2 && (
           <span className="pointer-events-none absolute left-1/2 top-[calc(50%-3.5rem)] flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-bold tracking-wider text-white ring-4 ring-white dark:bg-white dark:text-neutral-900 dark:ring-neutral-950">
@@ -234,9 +274,11 @@ export function ShopPostView({ post }: { post: ShopPost }) {
                 <th className="w-[28%] pb-3" />
                 {products.map((p, i) => (
                   <th key={p.link} className="pb-3 align-bottom font-normal">
-                    <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                      <ProductImage product={p} name={names[i]} className="h-full w-full p-1" />
-                    </div>
+                    {hasPhoto(p) && (
+                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
+                        <ProductImage product={p} name={names[i]} preview={preview} className="h-full w-full p-1" />
+                      </div>
+                    )}
                     <div className="mt-2 flex flex-col items-center gap-1">
                       <Letter index={i} />
                       <span className="text-xs font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">
@@ -271,9 +313,11 @@ export function ShopPostView({ post }: { post: ShopPost }) {
           {c.products.map((p, i) => (
             <div key={i} className="py-8 first:pt-0 last:pb-0">
               <div className="flex items-center gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                  <ProductImage product={products[i]} name={names[i]} className="h-full w-full p-1" />
-                </div>
+                {hasPhoto(products[i]) && (
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
+                    <ProductImage product={products[i]} name={names[i]} preview={preview} className="h-full w-full p-1" />
+                  </div>
+                )}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Letter index={i} />
@@ -283,14 +327,16 @@ export function ShopPostView({ post }: { post: ShopPost }) {
                 </div>
               </div>
 
-              <a
-                href={products[i].link}
-                target="_blank"
-                rel="sponsored nofollow noopener"
-                className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
-              >
-                <ProductImage product={products[i]} name={names[i]} className="h-full w-full p-6" />
-              </a>
+              {hasPhoto(products[i]) && (
+                <a
+                  href={products[i].link}
+                  target="_blank"
+                  rel="sponsored nofollow noopener"
+                  className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
+                >
+                  <ProductImage product={products[i]} name={names[i]} preview={preview} className="h-full w-full p-6" />
+                </a>
+              )}
 
               {p.review && <p className="mt-5">{p.review}</p>}
 
@@ -389,7 +435,7 @@ export function ShopPostView({ post }: { post: ShopPost }) {
 
       <div className={`mt-10 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} />
+          <ProductCard key={p.link} product={p} name={names[i]} index={i} preview={preview} />
         ))}
       </div>
 
@@ -401,7 +447,6 @@ export function ShopPostView({ post }: { post: ShopPost }) {
         <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
           <li>네이버 블로그·카페와 유튜브 리뷰 영상·댓글의 실사용 후기를 모아 분석했어요.</li>
           <li>협찬·체험단 표시가 있는 후기는 분석에서 제외했어요.</li>
-          <li>AI로 정리한 글이며, 직접 사용해 본 후기는 아니에요.</li>
           <li>가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.</li>
         </ul>
       </aside>

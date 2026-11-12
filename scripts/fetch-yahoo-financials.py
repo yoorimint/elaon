@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -106,6 +107,17 @@ def get_us_tickers() -> list[str]:
     return sorted(set(tickers))
 
 
+def to_finite_number(v: object) -> int | float | None:
+    """숫자 필드에는 유한한 숫자만 허용.
+    야후는 가끔 forwardPE 등에 "Infinity" 같은 문자열이나 NaN/inf 를 준다.
+    그대로 쓰면 TS 타입(number | null) 이 깨져 Next 빌드 → 배포가 실패한다."""
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)) and math.isfinite(v):
+        return v
+    return None
+
+
 def fetch_one(symbol: str) -> tuple[str, dict | None]:
     last_err = None
     for attempt in range(MAX_RETRIES):
@@ -116,11 +128,9 @@ def fetch_one(symbol: str) -> tuple[str, dict | None]:
             data = {}
             has_value = False
             for k in FIELDS:
-                v = info.get(k)
-                if v is None or (isinstance(v, float) and (v != v)):  # NaN
-                    data[k] = None
-                else:
-                    data[k] = v
+                v = to_finite_number(info.get(k))
+                data[k] = v
+                if v is not None:
                     has_value = True
             if not has_value:
                 return symbol, None
@@ -149,7 +159,7 @@ def write_output(payload: dict) -> None:
     )
     body = (
         f"export const YAHOO_FINANCIAL_DATA: {type_str} = "
-        + json.dumps(payload, separators=(",", ":"))
+        + json.dumps(payload, separators=(",", ":"), allow_nan=False)
         + ";\n"
     )
     OUT.parent.mkdir(parents=True, exist_ok=True)

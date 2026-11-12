@@ -9,7 +9,8 @@
 // 구매 링크는 상품 사진 카드 자체(제휴 링크라 rel="sponsored").
 
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, ImageIcon, Info, Minus, Plus, ShieldCheck } from "lucide-react";
+import { PhotoEditProvider, PhotoSlot } from "@/components/ShopPhotoEdit";
+import { ArrowUpRight, ChevronDown, Info, Minus, Plus, ShieldCheck } from "lucide-react";
 import {
   DEFAULT_POST_DISCLOSURE,
   type RelatedPost,
@@ -62,40 +63,31 @@ function Section({ id, no, title, children }: { id: string; no: string; title: s
   );
 }
 
-// 사진이 없을 때: 관리자 미리보기는 점선 "상품 사진" 자리, 공개 글은 상품명 카드(미완성처럼 보이지 않게)
+// 미리보기(초안): 사진 자리 — 관리자는 눌러서 사진 등록·변경
+// 공개 글: 사진이 있으면 사진, 없으면 상품명 카드(미완성처럼 보이지 않게)
 function ProductImage({
   product,
   name,
+  index,
   preview,
   className = "",
 }: {
   product: ShopPostInputProduct;
   name: string;
+  index: number;
   preview: boolean;
   className?: string;
 }) {
+  if (preview) return <PhotoSlot index={index} name={name} className={className} />;
   if (product.image) {
-    // 쿠팡 파트너스 상품 이미지
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={product.image} alt={name} loading="lazy" className={`object-contain ${className}`} />;
   }
-  if (!preview) {
-    return (
-      <span
-        className={`flex items-center justify-center bg-neutral-50 px-4 text-center text-lg font-bold leading-snug tracking-tight text-neutral-400 dark:bg-neutral-900 ${className}`}
-      >
-        {name}
-      </span>
-    );
-  }
   return (
-    // 사진이 들어갈 자리 표시 (미리보기 전용)
     <span
-      className={`flex flex-col items-center justify-center gap-1 rounded-[inherit] border-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 ${className}`}
-      aria-label={`${name} 상품 사진 자리`}
+      className={`flex items-center justify-center bg-neutral-50 px-4 text-center text-lg font-bold leading-snug tracking-tight text-neutral-400 dark:bg-neutral-900 ${className}`}
     >
-      <ImageIcon className="h-5 w-5" strokeWidth={1.5} />
-      <span className="text-[11px] font-medium">상품 사진</span>
+      {name}
     </span>
   );
 }
@@ -163,6 +155,7 @@ function ProductCard({
         <ProductImage
           product={product}
           name={name}
+          index={index}
           preview={preview}
           className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
         />
@@ -204,7 +197,7 @@ export function ShopPostView({
   let sectionNo = 0;
   const no = () => String(++sectionNo).padStart(2, "0");
 
-  return (
+  const article = (
     // break-keep: 한국어 단어 단위 줄바꿈
     <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
       <nav className="text-[13px] text-neutral-400">
@@ -230,7 +223,7 @@ export function ShopPostView({
       {/* 상품 사진 (비교글이면 두 상품 + VS) */}
       <div className={`relative mt-8 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} showBadge={!single} />
+          <ProductCard key={i} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} showBadge={!single} />
         ))}
         {products.length === 2 && (
           <span className="pointer-events-none absolute left-1/2 top-[calc(50%-3.5rem)] flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-bold tracking-wider text-white ring-4 ring-white dark:bg-white dark:text-neutral-900 dark:ring-neutral-950">
@@ -300,7 +293,7 @@ export function ShopPostView({
                   <th key={p.link} className="pb-3 align-bottom font-normal">
                     {hasPhoto(p) && (
                       <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                        <ProductImage product={p} name={names[i]} preview={preview} className="h-full w-full p-1" />
+                        <ProductImage product={p} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
                       </div>
                     )}
                     <div className="mt-2 flex flex-col items-center gap-1">
@@ -343,7 +336,7 @@ export function ShopPostView({
               <div className="flex items-center gap-3">
                 {hasPhoto(products[i]) && (
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                    <ProductImage product={products[i]} name={names[i]} preview={preview} className="h-full w-full p-1" />
+                    <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
                   </div>
                 )}
                 <div className="min-w-0">
@@ -360,7 +353,7 @@ export function ShopPostView({
                   href={products[i].link}
                   className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
                 >
-                  <ProductImage product={products[i]} name={names[i]} preview={preview} className="h-full w-full p-6" />
+                  <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-6" />
                 </LinkOrDiv>
               )}
 
@@ -461,7 +454,7 @@ export function ShopPostView({
 
       <div className={`mt-10 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={p.link} product={p} name={names[i]} index={i} preview={preview} showBadge={!single} />
+          <ProductCard key={i} product={p} name={names[i]} index={i} preview={preview} showBadge={!single} />
         ))}
       </div>
 
@@ -504,5 +497,14 @@ export function ShopPostView({
         </ul>
       </aside>
     </article>
+  );
+
+  // 초안 미리보기: 사진 자리를 눌러 사진 등록 (관리자만, 등록한 사진은 모든 자리에 함께 반영)
+  return preview ? (
+    <PhotoEditProvider postId={post.id} initialImages={products.map((p) => p.image)}>
+      {article}
+    </PhotoEditProvider>
+  ) : (
+    article
   );
 }

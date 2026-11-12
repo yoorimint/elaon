@@ -13,6 +13,14 @@ export type ShopPostProductContent = {
   pros: string[];
   cons: string[];
   bestFor: string; // 이런 분께 추천
+  review?: string; // 후기 경향 요약 문단 (3~4문장)
+  notFor?: string; // 이런 분께는 비추천
+};
+
+// 1단계 분석에서 나온 장단점 언급 빈도 (화면 막대그래프용, weight 0~1 상대값)
+export type ShopPostInsight = {
+  strengths: { point: string; weight: number }[];
+  weaknesses: { point: string; weight: number }[];
 };
 
 export type ShopPostContent = {
@@ -24,6 +32,8 @@ export type ShopPostContent = {
   commonComplaints: string[]; // 후기에서 반복되는 불만
   verdict: string; // 마무리
   faq: { q: string; a: string }[];
+  buyingGuide?: { criterion: string; detail: string }[]; // 고르는 기준
+  insights?: (ShopPostInsight | null)[]; // 상품 순서와 같음. 스크립트가 분석 결과로 채움
   // 공정위 고지 문구. AI 가 아니라 스크립트가 작성 시점의 설정값을 넣는다.
   disclosure?: string;
 };

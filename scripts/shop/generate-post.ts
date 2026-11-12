@@ -8,7 +8,7 @@ import type { ShopPostInputProduct } from "@/lib/shop-post-types";
 import { countPostsSince, insertPost, loadConfig, loadSecrets, pairExists } from "./db";
 import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
 import { pingIndexNow } from "@/lib/indexnow";
-import { digestProduct, type ProductDigest } from "./digest";
+import { digestProduct, toInsight, type ProductDigest } from "./digest";
 import { writePost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
@@ -103,7 +103,11 @@ async function main() {
     slug: `${t.ymd}-${randomBytes(3).toString("hex")}`,
     title: written.title,
     description: written.description,
-    content: { ...written.content, disclosure: config.disclosure_text },
+    content: {
+      ...written.content,
+      insights: digests.map((d) => (d ? toInsight(d) : null)),
+      disclosure: config.disclosure_text,
+    },
     products,
     sources: toSources(research),
     stats: {

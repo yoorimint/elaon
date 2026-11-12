@@ -23,7 +23,12 @@ const SYSTEM = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 �
 5. 두 제품을 공정하게 비교한다. 각 제품의 단점도 반드시 쓴다.
 6. 해요체 존댓말. 짧고 읽기 쉬운 문장.
 7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.
-8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.`;
+8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.
+가독성 규칙 (모바일에서 훑어보기 쉽게):
+- 비교표 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
+- 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫에서도 잘 빨아들인다는 평이 많아요").
+- 상황별 추천 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
+- summary 는 2문장 이내, intro 는 2~3문장, verdict 는 2~3문장. 한 문장은 40자 안팎.`;
 
 const SCHEMA = {
   type: "object",
@@ -39,8 +44,8 @@ const SCHEMA = {
         properties: {
           name: { type: "string" },
           oneLiner: { type: "string" },
-          pros: { type: "array", items: { type: "string" } },
-          cons: { type: "array", items: { type: "string" } },
+          pros: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
+          cons: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
           bestFor: { type: "string" },
         },
         required: ["name", "oneLiner", "pros", "cons", "bestFor"],
@@ -48,7 +53,7 @@ const SCHEMA = {
     },
     comparison: {
       type: "array",
-      description: "항목별 비교 4~7개. values 는 제품 순서대로",
+      description: "항목별 비교 4~7개. label 6자 이내, values 는 제품 순서대로 12자 이내 짧은 값",
       items: {
         type: "object",
         properties: { label: { type: "string" }, values: { type: "array", items: { type: "string" } } },

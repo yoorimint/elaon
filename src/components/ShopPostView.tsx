@@ -130,6 +130,16 @@ function InsightBars({ insight }: { insight: ShopPostInsight }) {
   );
 }
 
+// 구매 링크 (제휴: rel="sponsored"). 링크가 아직 없으면(자동 선정 초안) 일반 블록
+function LinkOrDiv({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
+  if (!href?.trim()) return <div className={className}>{children}</div>;
+  return (
+    <a href={href} target="_blank" rel="sponsored nofollow noopener" className={className}>
+      {children}
+    </a>
+  );
+}
+
 // 사진 + 이름 = 구매 링크
 function ProductCard({
   product,
@@ -147,12 +157,7 @@ function ProductCard({
   showBadge?: boolean;
 }) {
   return (
-    <a
-      href={product.link}
-      target="_blank"
-      rel="sponsored nofollow noopener"
-      className="group block"
-    >
+    <LinkOrDiv href={product.link} className="group block">
       <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
         <ProductImage
           product={product}
@@ -171,7 +176,7 @@ function ProductCard({
           </div>
         </div>
       </div>
-    </a>
+    </LinkOrDiv>
   );
 }
 
@@ -341,14 +346,12 @@ export function ShopPostView({ post, preview = false }: { post: ShopPost; previe
               </div>
 
               {hasPhoto(products[i]) && (
-                <a
+                <LinkOrDiv
                   href={products[i].link}
-                  target="_blank"
-                  rel="sponsored nofollow noopener"
                   className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
                 >
                   <ProductImage product={products[i]} name={names[i]} preview={preview} className="h-full w-full p-6" />
-                </a>
+                </LinkOrDiv>
               )}
 
               {p.review && <p className="mt-5">{p.review}</p>}

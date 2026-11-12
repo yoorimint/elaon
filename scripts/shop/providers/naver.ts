@@ -57,3 +57,33 @@ export function cleanNaverText(s: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// ---------- 데이터랩 검색어 트렌드 (NAVER API HUB) ----------
+// 키워드 그룹(최대 5개)의 기간별 상대 검색량(ratio, 요청 안 최댓값 = 100)을 준다.
+
+export type TrendGroup = { groupName: string; keywords: string[] };
+export type TrendResult = { title: string; data: { period: string; ratio: number }[] };
+
+export async function searchTrend(
+  secrets: Secrets,
+  groups: TrendGroup[],
+  startDate: string,
+  endDate: string,
+  timeUnit: "date" | "week" | "month" = "week",
+): Promise<TrendResult[]> {
+  const id = secrets.NAVER_CLIENT_ID;
+  const key = secrets.NAVER_CLIENT_SECRET;
+  if (!id || !key) throw new Error("네이버 키 미등록");
+  const res = await fetch(`${HOST}/search-trend/v1/search`, {
+    method: "POST",
+    headers: {
+      "X-NCP-APIGW-API-KEY-ID": id,
+      "X-NCP-APIGW-API-KEY": key,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ startDate, endDate, timeUnit, keywordGroups: groups.slice(0, 5) }),
+  });
+  if (!res.ok) throw new Error(`검색어 트렌드 ${await describeError(res)}`);
+  const json = (await res.json()) as { results?: TrendResult[] };
+  return json.results ?? [];
+}

@@ -171,3 +171,7 @@ create policy shop_posts_update on public.shop_posts
 drop policy if exists shop_posts_delete on public.shop_posts;
 create policy shop_posts_delete on public.shop_posts
   for delete using (public.is_admin());
+
+-- 자동 글 종류: single(단일 후기) / compare(비교) / mixed(번갈아)
+alter table public.shop_config add column if not exists auto_mode text not null default 'single'
+  check (auto_mode in ('single', 'compare', 'mixed'));

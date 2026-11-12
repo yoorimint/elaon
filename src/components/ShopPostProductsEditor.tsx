@@ -5,18 +5,26 @@
 
 import { useState } from "react";
 import { isPartnersLink, parsePartnersInput } from "@/lib/shop-config";
-import { updatePostProducts } from "@/lib/shop-posts";
+import {
+  notifySearchEngines,
+  setPostStatus,
+  updatePostProducts,
+  type AdminPostRow,
+} from "@/lib/shop-posts";
 import type { ShopPostInputProduct } from "@/lib/shop-post-types";
 
 export function ShopPostProductsEditor({
-  postId,
-  products,
+  post,
+  publishWhenComplete,
   onSaved,
 }: {
-  postId: string;
-  products: ShopPostInputProduct[];
+  post: AdminPostRow;
+  // 링크 필요 초안: 링크를 모두 넣고 저장하면 바로 발행
+  publishWhenComplete: boolean;
   onSaved: () => Promise<void>;
 }) {
+  const postId = post.id;
+  const products: ShopPostInputProduct[] = post.products;
   const [draft, setDraft] = useState(products);
   const [inputs, setInputs] = useState(products.map(() => ""));
   const [saving, setSaving] = useState(false);
@@ -40,7 +48,8 @@ export function ShopPostProductsEditor({
   }
 
   async function save() {
-    if (draft.some((p) => !isPartnersLink(p.link))) {
+    // 비어 있는 링크는 허용(나중에 채움), 채운 링크는 파트너스 형식이어야 함
+    if (draft.some((p) => p.link.trim() && !isPartnersLink(p.link))) {
       setMsg("쿠팡 파트너스 링크가 아닌 상품이 있어요");
       return;
     }
@@ -48,8 +57,15 @@ export function ShopPostProductsEditor({
     setMsg(null);
     try {
       await updatePostProducts(postId, draft);
+      const complete = draft.every((p) => p.link.trim());
+      if (publishWhenComplete && complete) {
+        await setPostStatus({ ...post, products: draft }, "published");
+        void notifySearchEngines(post.slug);
+        setMsg("저장 후 발행됨");
+      } else {
+        setMsg(complete ? "저장됨" : "저장됨 (링크가 남았어요)");
+      }
       await onSaved();
-      setMsg("저장됨");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "저장 실패");
     } finally {
@@ -62,6 +78,9 @@ export function ShopPostProductsEditor({
       <p className="text-xs text-neutral-500">
         쿠팡 파트너스 → 상품 검색 → 링크 생성 → &quot;이미지+텍스트&quot; HTML 을 복사해 붙여넣으세요.
       </p>
+      {publishWhenComplete && (
+        <p className="text-xs font-semibold text-brand">링크를 모두 넣고 저장하면 바로 발행돼요.</p>
+      )}
       {draft.map((p, i) => (
         <div key={i} className="flex items-start gap-3">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-neutral-200 dark:border-neutral-700 bg-white">
@@ -92,7 +111,7 @@ export function ShopPostProductsEditor({
           disabled={saving}
           className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
         >
-          {saving ? "저장 중…" : "사진·링크 저장"}
+          {saving ? "저장 중…" : publishWhenComplete ? "저장하고 발행" : "사진·링크 저장"}
         </button>
       </div>
     </div>

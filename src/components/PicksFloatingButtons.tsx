@@ -2,12 +2,14 @@
 
 // 주소모음(picks) 페이지 전용 우측 하단 플로팅 버튼.
 // 위: 화면 상단 바로가기 (스크롤 일정 이상 내려갔을 때만 표시)
-// 아래: 사주데이 홈으로 이동 (항상 표시, 새 탭) — 같은 운영자 사이트 간 링크
+// 아래: 사주데이 홈으로 이동 (새 탭) — 같은 운영자 사이트 간 링크.
+//       노출 여부는 src/lib/ads-config.ts 의 SHOW_SAJUDAY_PILL
 // 2026-05-14 파일명·함수명 변경 (Vercel 캐시 무효화 강제)
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SHOW_SAJUDAY_PILL } from "@/lib/ads-config";
 
 const SAJUDAY_URL = "https://sajuday.kr/money";
 
@@ -70,15 +72,17 @@ export function PicksFloatingButtons() {
           </button>
         )}
 
-        <Link
-          href={SAJUDAY_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="내 재물운은?"
-          className="group relative h-12 px-4 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg flex items-center justify-center text-white text-sm font-bold whitespace-nowrap hover:scale-105 transition active:scale-95"
-        >
-          내 재물운은?
-        </Link>
+        {SHOW_SAJUDAY_PILL && (
+          <Link
+            href={SAJUDAY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="내 재물운은?"
+            className="group relative h-12 px-4 rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg flex items-center justify-center text-white text-sm font-bold whitespace-nowrap hover:scale-105 transition active:scale-95"
+          >
+            내 재물운은?
+          </Link>
+        )}
       </div>
     </>
   );

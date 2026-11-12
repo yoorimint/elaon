@@ -27,6 +27,9 @@ export type ShopConfig = {
   youtube_comments_per_video: number;
   ad_filter_words: string[];
 
+  // 쿠팡 API 대신 직접 넣는 비교 상품 (MANUAL_PRODUCT_SLOTS 칸)
+  manual_products: ManualProduct[];
+
   title_style: string;
   extra_prompt: string;
   disclosure_text: string;
@@ -38,6 +41,24 @@ export type ShopConfig = {
 };
 
 export type KeyCheckResult = { ok: boolean; message: string };
+
+// 직접 입력 상품. 쿠팡 상세페이지는 자동으로 읽을 수 없으므로 상품명을 함께 받아
+// 그 이름으로 네이버·유튜브·구글 후기를 검색한다.
+export type ManualProduct = { name: string; link: string };
+
+export const MANUAL_PRODUCT_SLOTS = 2;
+
+// 쿠팡 파트너스 링크 형식 (간편 링크 / 단축 링크)
+export function isPartnersLink(url: string): boolean {
+  return /^https:\/\/(link\.coupang\.com\/a\/|coupa\.ng\/)[A-Za-z0-9]+/.test(url.trim());
+}
+
+// 화면용: 항상 MANUAL_PRODUCT_SLOTS 칸으로 맞춘다
+export function toSlots(list: ManualProduct[] | null | undefined): ManualProduct[] {
+  const items = (list ?? []).slice(0, MANUAL_PRODUCT_SLOTS);
+  while (items.length < MANUAL_PRODUCT_SLOTS) items.push({ name: "", link: "" });
+  return items;
+}
 
 // 관리자가 수정할 수 있는 필드만.
 export type ShopConfigEditable = Omit<
@@ -155,6 +176,10 @@ function sanitize(patch: ShopConfigEditable): ShopConfigEditable {
   });
   out.min_price = Math.max(0, Math.round(out.min_price || 0));
   out.max_price = Math.max(0, Math.round(out.max_price || 0));
+  out.manual_products = (out.manual_products ?? [])
+    .map((p) => ({ name: p.name.trim(), link: p.link.trim() }))
+    .filter((p) => p.name || p.link)
+    .slice(0, MANUAL_PRODUCT_SLOTS);
   return out;
 }
 
@@ -179,7 +204,7 @@ export async function updateShopConfig(patch: ShopConfigEditable): Promise<void>
 export function toEditable(c: ShopConfig): ShopConfigEditable {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { id, updated_at, key_check, key_check_at, ...rest } = c;
-  return rest;
+  return { ...rest, manual_products: toSlots(rest.manual_products) };
 }
 
 // 키 점검 실행 버튼이 여는 GitHub Actions 페이지

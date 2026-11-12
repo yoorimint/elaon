@@ -19,8 +19,52 @@ export async function checkGemini(secrets: Secrets): Promise<CheckResult> {
 
 // ---------- 글 생성용 ----------
 
-// 기존 봇과 같은 모델. 바꿀 때는 여기 한 곳만.
-export const GEMINI_MODEL = "gemini-2.5-flash";
+// 모델 선택: 구글이 구모델을 수시로 종료하므로 이름을 고정하지 않고,
+// 키로 사용 가능한 모델 목록에서 가장 최신 정식 "gemini-X.Y-flash" 를 고른다.
+// 특정 모델을 강제하려면 환경변수 GEMINI_MODEL 사용.
+const FALLBACK_MODEL = "gemini-2.5-flash";
+let resolvedModel: string | null = null;
+
+type ModelInfo = { name?: string; supportedGenerationMethods?: string[] };
+
+// "models/gemini-3.8-flash" → [3, 8]. preview·exp·lite·날짜 붙은 변형은 제외(정식만)
+function flashVersion(name: string): number[] | null {
+  const m = /^models\/gemini-(\d+(?:\.\d+)*)-flash$/.exec(name);
+  return m ? m[1].split(".").map(Number) : null;
+}
+
+function compareVersion(a: number[], b: number[]): number {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
+export async function resolveGeminiModel(secrets: Secrets): Promise<string> {
+  if (process.env.GEMINI_MODEL) return process.env.GEMINI_MODEL;
+  if (resolvedModel) return resolvedModel;
+  const key = secrets.GEMINI_API_KEY;
+  if (!key) throw new Error("Gemini 키 미등록");
+
+  let best: { id: string; v: number[] } | null = null;
+  try {
+    const res = await fetch(`${HOST}/models?pageSize=1000&key=${encodeURIComponent(key)}`);
+    if (res.ok) {
+      const json = (await res.json()) as { models?: ModelInfo[] };
+      for (const m of json.models ?? []) {
+        if (!m.name || !m.supportedGenerationMethods?.includes("generateContent")) continue;
+        const v = flashVersion(m.name);
+        if (v && (!best || compareVersion(v, best.v) > 0)) best = { id: m.name.slice("models/".length), v };
+      }
+    }
+  } catch {
+    // 목록 조회 실패 → 기본값 사용
+  }
+  resolvedModel = best?.id ?? FALLBACK_MODEL;
+  console.log(`  (Gemini 모델: ${resolvedModel})`);
+  return resolvedModel;
+}
 
 export type GeminiOptions = {
   system?: string;
@@ -64,7 +108,8 @@ export async function geminiGenerate(
   if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
   if (opts.googleSearch) body.tools = [{ google_search: {} }];
 
-  const url = `${HOST}/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+  const model = await resolveGeminiModel(secrets);
+  const url = `${HOST}/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
   // 일시적 과부하(429/503)는 한 번 쉬었다가 재시도
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(url, {
@@ -76,7 +121,16 @@ export async function geminiGenerate(
       await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
       continue;
     }
-    if (!res.ok) throw new Error(`Gemini ${await describeError(res)}`);
+    if (!res.ok) {
+      const err = await describeError(res);
+      // 신모델이 thinking 끄기 옵션을 거부하면 옵션 없이 재시도
+      const gen = body.generationConfig as Record<string, unknown>;
+      if (res.status === 400 && /thinking/i.test(err) && gen.thinkingConfig) {
+        delete gen.thinkingConfig;
+        continue;
+      }
+      throw new Error(`Gemini ${err}`);
+    }
     const json = (await res.json()) as GeminiResponse;
     const cand = json.candidates?.[0];
     const text = (cand?.content?.parts ?? []).map((p) => p.text ?? "").join("").trim();

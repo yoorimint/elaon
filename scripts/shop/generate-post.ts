@@ -1,7 +1,7 @@
 // 쿠팡 비교글 자동 작성.
 // 1) 설정·키 읽기 → 2) 실행 조건 확인 → 3) 상품별 후기 수집 → 4) Gemini 작성 → 5) 저장
 // 실행: GitHub Actions "shop post" (매시간 스케줄 / 수동 실행 = 조건 무시하고 즉시 1회)
-// 상품: 관리자 페이지 "직접 입력 상품" (쿠팡 API 승인 전)
+// 상품: 관리자 페이지 "직접 입력 상품" (쿠팡 API 승인 전). 1개 = 단일 후기, 2개 = 비교글
 
 import { randomBytes } from "node:crypto";
 import type { ShopPostInputProduct } from "@/lib/shop-post-types";
@@ -46,7 +46,8 @@ async function main() {
   if (!secrets.GEMINI_API_KEY) skip("Gemini 키 미등록");
 
   const products = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
-  if (products.length < 2) skip("직접 입력 상품 2개(상품명+링크)가 필요");
+  // 1개 = 단일 상품 후기 분석, 2개 = 비교글
+  if (products.length < 1) skip("직접 입력 상품(상품명+링크)이 1개 이상 필요");
 
   const pairKey = pairKeyOf(products);
   if (!FORCE && (await pairExists(pairKey))) skip("이 상품 조합은 이미 글이 있음 (새 상품을 입력하세요)");
@@ -61,7 +62,7 @@ async function main() {
     youtubeComments: config.youtube_comments_per_video,
     adFilterWords: config.ad_filter_words ?? [],
   };
-  console.log(`🔎 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
+  console.log(`🔎 ${products.length === 1 ? "단일 상품 후기 분석" : "비교글"} — 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
   const research = [];
   for (const p of products) {
     const r = await researchProduct(secrets, p, opts);

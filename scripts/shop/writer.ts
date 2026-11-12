@@ -1,4 +1,5 @@
-// 2단계: 상품별 분석(digest)과 원자료 일부를 근거로 Gemini 가 비교글을 JSON 구조로 작성.
+// 2단계: 상품별 분석(digest)과 원자료 일부를 근거로 Gemini 가 글을 JSON 구조로 작성.
+// 상품 1개 = 단일 상품 후기 분석, 2개 이상 = 비교글 (구조는 같고 작성 규칙만 다름)
 // 링크는 AI 에게 맡기지 않고 관리자 입력값을 그대로 붙인다.
 
 import { SOURCE_LABEL, type ShopPostContent } from "@/lib/shop-post-types";
@@ -14,27 +15,45 @@ export type WriterOptions = {
 
 export type WrittenPost = { title: string; description: string; content: ShopPostContent };
 
-const SYSTEM = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 에디터야.
-반드시 지킬 규칙:
+// 공통 규칙 + 글 종류별 규칙. 상품 1개 = 단일 상품 후기 분석, 2개 이상 = 비교글
+const COMMON_RULES = `반드시 지킬 규칙:
 1. 아래 "근거 자료"에 있는 내용만 쓴다. 근거에 없는 스펙·수치·기능은 절대 지어내지 않는다.
 2. 가격은 쓰지 않는다. 가격·할인은 "쿠팡에서 현재 가격을 확인하세요"로 안내한다.
 3. 직접 써본 것처럼 쓰지 않는다("써보니", "제가 사용해보니" 금지). "후기에서는 ~라는 의견이 많아요"처럼 후기 분석 관점으로 쓴다.
 4. "최저가", "1위", "무조건" 같은 확인되지 않은 과장 표현 금지.
-5. 두 제품을 공정하게 비교한다. 각 제품의 단점도 반드시 쓴다.
+5. 장점과 단점을 균형 있게 쓴다. 단점도 반드시 쓴다.
 6. 해요체 존댓말. 짧고 읽기 쉬운 문장.
 7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.
 8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.
 가독성 규칙 (모바일에서 훑어보기 쉽게):
-- 비교표 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
+- 표의 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
 - 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫에서도 잘 빨아들인다는 평이 많아요").
-- 상황별 추천 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
+- 상황 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
 - summary 는 2문장 이내. 한 문장은 40자 안팎.
 풍성함 규칙 (얇은 글은 검색엔진이 스팸으로 본다 — 근거 자료 안에서 최대한 깊게):
-- intro 는 이 제품군을 고르는 사람이 무엇을 고민하는지로 시작하는 3~4문장.
-- buyingGuide 는 이 제품군을 고를 때 볼 기준 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 두 제품이 어떻게 다른지.
 - 제품마다 review 는 후기 경향을 풀어 쓴 3~5문장 문단(칭찬과 불만이 어떤 상황에서 나오는지).
 - 제품마다 notFor 는 이 제품이 맞지 않는 사람 1~2문장.
-- comparison 은 6~8개, faq 는 4~6개(답은 2~3문장), verdict 는 3~5문장으로 상황별 선택을 정리.`;
+- faq 는 4~6개(답은 2~3문장), verdict 는 3~5문장.`;
+
+const COMPARE_RULES = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 에디터야.
+${COMMON_RULES}
+비교글 규칙:
+- 두 제품을 공정하게 비교한다.
+- intro 는 이 제품군을 고르는 사람이 무엇을 고민하는지로 시작하는 3~4문장.
+- buyingGuide 는 이 제품군을 고를 때 볼 기준 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 두 제품이 어떻게 다른지.
+- comparison 은 항목별 비교 6~8개(values 는 제품 순서대로).
+- recommendations 는 상황별로 어느 제품이 맞는지 3~5개(pick = 제품 번호).
+- verdict 는 상황별 선택을 정리.`;
+
+const SINGLE_RULES = `너는 한국 소비자를 위한 제품 후기 분석 글을 쓰는 에디터야. 한 제품의 구매자 후기를 모아 분석한다.
+${COMMON_RULES}
+단일 상품 글 규칙:
+- 제목은 상품명을 포함하고 "후기", "장단점" 같은 검색어를 자연스럽게 넣는다.
+- intro 는 이 제품을 검색한 사람이 궁금해할 점(살 만한지, 어떤 사람에게 맞는지)으로 시작하는 3~4문장.
+- buyingGuide 는 이 제품을 살 때 따져볼 포인트 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 이 제품은 그 점에서 어떤지.
+- comparison 은 이 제품의 주요 특징 6~8개(values 는 값 1개짜리 배열).
+- recommendations 는 이 제품이 잘 맞는 상황 3~4개(pick 은 항상 0).
+- verdict 는 누가 사면 좋고 누가 다른 제품을 보는 게 나은지 정리.`;
 
 const SCHEMA = {
   type: "object",
@@ -208,16 +227,20 @@ export async function writePost(
   digests: (ProductDigest | null)[],
   opts: WriterOptions,
 ): Promise<WrittenPost> {
+  const single = research.length === 1;
   const names = research.map((r) => r.product.name).join(" vs ");
-  const prompt = `"${names}" 비교 글을 써줘.
-제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)
+  const task = single
+    ? `"${names}" 구매자 후기 분석 글을 써줘. products 는 이 제품 1개만.`
+    : `"${names}" 비교 글을 써줘.
+제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)`;
+  const prompt = `${task}
 ${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===
 ${research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n")}
 ===`;
 
   const r = await geminiGenerate(secrets, prompt, {
-    system: SYSTEM,
+    system: single ? SINGLE_RULES : COMPARE_RULES,
     jsonSchema: SCHEMA,
   });
   let parsed: unknown;

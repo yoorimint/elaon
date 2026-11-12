@@ -131,3 +131,43 @@ revoke execute on function public.admin_set_shop_secret(text, text) from public,
 revoke execute on function public.admin_shop_secret_status() from public, anon;
 grant execute on function public.admin_set_shop_secret(text, text) to authenticated;
 grant execute on function public.admin_shop_secret_status() to authenticated;
+
+-- ===================================================================
+-- 자동 작성된 비교글
+-- ===================================================================
+-- content  : 글 본문 구조 (src/lib/shop-post-types.ts 의 ShopPostContent)
+-- products : 입력 상품 [{name, link}] — 링크는 AI 가 아니라 관리자 입력값만 사용
+-- pair_key : 같은 상품 조합 중복 작성 방지용 (링크 정렬 후 연결)
+create table if not exists public.shop_posts (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  title text not null,
+  description text not null default '',
+  content jsonb not null,
+  products jsonb not null,
+  sources jsonb not null default '[]'::jsonb,
+  stats jsonb not null default '{}'::jsonb,
+  pair_key text not null,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  created_at timestamptz not null default now(),
+  published_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists shop_posts_published_idx on public.shop_posts (status, published_at desc);
+create index if not exists shop_posts_pair_idx on public.shop_posts (pair_key);
+
+alter table public.shop_posts enable row level security;
+
+-- 공개 글은 누구나, 초안은 관리자만 읽기
+drop policy if exists shop_posts_read on public.shop_posts;
+create policy shop_posts_read on public.shop_posts
+  for select using (status = 'published' or public.is_admin());
+
+-- 수정(발행/비공개 전환)·삭제는 관리자만. 작성은 스크립트(service role)만.
+drop policy if exists shop_posts_update on public.shop_posts;
+create policy shop_posts_update on public.shop_posts
+  for update using (public.is_admin());
+drop policy if exists shop_posts_delete on public.shop_posts;
+create policy shop_posts_delete on public.shop_posts
+  for delete using (public.is_admin());

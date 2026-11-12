@@ -1,0 +1,35 @@
+name: shop post
+
+# 쿠팡 비교글 자동 작성. 설정·키·상품은 관리자 페이지(/admin/shop)에서 관리.
+# - 스케줄: 매시간 실행, 스크립트가 "작성 시각·하루 글 수·활성화" 를 확인해 해당될 때만 작성
+# - 수동 실행: 조건 무시하고 지금 1회 작성 (발행 방식 설정은 그대로 따름)
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shop-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Generate post
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SHOP_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+        run: npx tsx --tsconfig tsconfig.json scripts/shop/generate-post.ts

@@ -1,0 +1,108 @@
+// 쿠팡 비교글 자동 작성.
+// 1) 설정·키 읽기 → 2) 실행 조건 확인 → 3) 상품별 후기 수집 → 4) Gemini 작성 → 5) 저장
+// 실행: GitHub Actions "shop post" (매시간 스케줄 / 수동 실행 = 조건 무시하고 즉시 1회)
+// 상품: 관리자 페이지 "직접 입력 상품" (쿠팡 API 승인 전)
+
+import { randomBytes } from "node:crypto";
+import type { ShopPostInputProduct } from "@/lib/shop-post-types";
+import { countPostsSince, insertPost, loadConfig, loadSecrets, pairExists } from "./db";
+import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
+import { writePost } from "./writer";
+
+const FORCE = process.env.SHOP_FORCE === "1";
+
+function kstNow() {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 3600 * 1000);
+  const midnightUtc = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) - 9 * 3600 * 1000);
+  return { hour: kst.getUTCHours(), ymd: kst.toISOString().slice(0, 10).replace(/-/g, ""), todayStartIso: midnightUtc.toISOString() };
+}
+
+// 같은 상품 조합 판별용 (순서 무관)
+function pairKeyOf(products: ShopPostInputProduct[]): string {
+  return products.map((p) => p.link.trim()).sort().join("|");
+}
+
+function skip(reason: string): never {
+  console.log(`⏭  건너뜀: ${reason}`);
+  process.exit(0);
+}
+
+async function main() {
+  const [config, secrets] = await Promise.all([loadConfig(), loadSecrets()]);
+  if (!secrets.GEMINI_API_KEY && process.env.GEMINI_API_KEY) secrets.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const t = kstNow();
+
+  // ---- 실행 조건 (수동 실행이면 무시) ----
+  if (!FORCE) {
+    if (!config.enabled) skip("자동글 비활성화 상태");
+    if (t.hour !== config.publish_hour) skip(`작성 시각 아님 (현재 ${t.hour}시, 설정 ${config.publish_hour}시 KST)`);
+    const today = await countPostsSince(t.todayStartIso);
+    if (today >= config.daily_count) skip(`오늘 이미 ${today}개 작성 (하루 ${config.daily_count}개)`);
+  }
+  if (!secrets.GEMINI_API_KEY) skip("Gemini 키 미등록");
+
+  const products = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
+  if (products.length < 2) skip("직접 입력 상품 2개(상품명+링크)가 필요");
+
+  const pairKey = pairKeyOf(products);
+  if (!FORCE && (await pairExists(pairKey))) skip("이 상품 조합은 이미 글이 있음 (새 상품을 입력하세요)");
+
+  // ---- 후기 수집 ----
+  const opts: ResearchOptions = {
+    useNaver: config.use_naver_reviews,
+    useYoutube: config.use_youtube,
+    useGeminiSearch: config.use_gemini_search,
+    reviewsPerProduct: config.reviews_per_product,
+    youtubeVideos: config.youtube_videos_per_product,
+    youtubeComments: config.youtube_comments_per_video,
+    adFilterWords: config.ad_filter_words ?? [],
+  };
+  console.log(`🔎 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
+  const research = [];
+  for (const p of products) {
+    const r = await researchProduct(secrets, p, opts);
+    console.log(
+      `  - ${p.name}: 네이버 ${r.reviews.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개 · 웹 출처 ${r.webSourceCount}곳`,
+    );
+    r.errors.forEach((e) => console.warn(`    ⚠ ${e}`));
+    research.push(r);
+  }
+  const empty = research.filter((r) => !hasEnoughEvidence(r));
+  if (empty.length) {
+    throw new Error(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")} — 상품명을 확인하세요`);
+  }
+
+  // ---- 작성 ----
+  console.log("✍️  Gemini 작성 중...");
+  const written = await writePost(secrets, research, {
+    titleStyle: config.title_style,
+    extraPrompt: config.extra_prompt,
+  });
+
+  // ---- 저장 ----
+  const status = config.publish_mode === "auto" ? "published" : "draft";
+  const slug = await insertPost({
+    slug: `${t.ymd}-${randomBytes(3).toString("hex")}`,
+    title: written.title,
+    description: written.description,
+    content: { ...written.content, disclosure: config.disclosure_text },
+    products,
+    sources: toSources(research),
+    stats: {
+      naverReviews: research.reduce((n, r) => n + r.reviews.length, 0),
+      youtubeVideos: research.reduce((n, r) => n + r.videos.length, 0),
+      youtubeComments: research.reduce((n, r) => n + r.comments.length, 0),
+      webSources: research.reduce((n, r) => n + r.webSourceCount, 0),
+    },
+    pair_key: pairKey,
+    status,
+  });
+  console.log(`✅ 저장 완료 (${status === "published" ? "발행" : "초안"}): ${written.title}`);
+  console.log(`   https://www.eloan.kr/shop/${slug}`);
+}
+
+main().catch((e) => {
+  console.error("❌", e instanceof Error ? e.message : e);
+  process.exit(1);
+});

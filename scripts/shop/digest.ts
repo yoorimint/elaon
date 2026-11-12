@@ -2,7 +2,7 @@
 // 구조화된 분석으로 압축한다. 2단계(writer)는 이 분석을 바탕으로 비교글을 쓴다.
 // 한 번에 비교글을 쓰게 하면 많은 자료 중 일부만 반영되므로, 상품별로 먼저 소화시킨다.
 
-import { SOURCE_LABEL } from "@/lib/shop-post-types";
+import { SOURCE_LABEL, type ShopPostInsight } from "@/lib/shop-post-types";
 import { geminiGenerate } from "./providers/gemini";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
@@ -133,4 +133,12 @@ ${d.specs.map((s) => `- ${s.label}: ${s.value}`).join("\n") || "(없음)"}
 구매자 질문:
 ${d.buyerQuestions.map((x) => `- Q. ${x.q} / A. ${x.a}`).join("\n") || "(없음)"}
 추천 대상: ${d.bestFor}`;
+}
+
+// 화면 막대그래프용: 언급 횟수를 상품 안에서 가장 많은 것 대비 0~1 로 (숫자 자체는 노출하지 않음)
+export function toInsight(d: ProductDigest): ShopPostInsight {
+  const max = Math.max(1, ...d.strengths.map((x) => x.mentions), ...d.weaknesses.map((x) => x.mentions));
+  const norm = (xs: { point: string; mentions: number }[]) =>
+    xs.slice(0, 5).map((x) => ({ point: x.point, weight: Math.max(0.08, Math.min(1, x.mentions / max)) }));
+  return { strengths: norm(d.strengths), weaknesses: norm(d.weaknesses) };
 }

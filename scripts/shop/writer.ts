@@ -28,7 +28,13 @@ const SYSTEM = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 �
 - 비교표 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
 - 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫에서도 잘 빨아들인다는 평이 많아요").
 - 상황별 추천 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
-- summary 는 2문장 이내, intro 는 2~3문장, verdict 는 2~3문장. 한 문장은 40자 안팎.`;
+- summary 는 2문장 이내. 한 문장은 40자 안팎.
+풍성함 규칙 (얇은 글은 검색엔진이 스팸으로 본다 — 근거 자료 안에서 최대한 깊게):
+- intro 는 이 제품군을 고르는 사람이 무엇을 고민하는지로 시작하는 3~4문장.
+- buyingGuide 는 이 제품군을 고를 때 볼 기준 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 두 제품이 어떻게 다른지.
+- 제품마다 review 는 후기 경향을 풀어 쓴 3~5문장 문단(칭찬과 불만이 어떤 상황에서 나오는지).
+- 제품마다 notFor 는 이 제품이 맞지 않는 사람 1~2문장.
+- comparison 은 6~8개, faq 는 4~6개(답은 2~3문장), verdict 는 3~5문장으로 상황별 선택을 정리.`;
 
 const SCHEMA = {
   type: "object",
@@ -47,13 +53,15 @@ const SCHEMA = {
           pros: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
           cons: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
           bestFor: { type: "string" },
+          review: { type: "string", description: "후기 경향 요약 3~5문장" },
+          notFor: { type: "string", description: "이 제품이 맞지 않는 사람 1~2문장" },
         },
-        required: ["name", "oneLiner", "pros", "cons", "bestFor"],
+        required: ["name", "oneLiner", "pros", "cons", "bestFor", "review", "notFor"],
       },
     },
     comparison: {
       type: "array",
-      description: "항목별 비교 4~7개. label 6자 이내, values 는 제품 순서대로 12자 이내 짧은 값",
+      description: "항목별 비교 6~8개. label 6자 이내, values 는 제품 순서대로 12자 이내 짧은 값",
       items: {
         type: "object",
         properties: { label: { type: "string" }, values: { type: "array", items: { type: "string" } } },
@@ -75,6 +83,15 @@ const SCHEMA = {
     },
     commonComplaints: { type: "array", items: { type: "string" } },
     verdict: { type: "string", description: "마무리 2~4문장" },
+    buyingGuide: {
+      type: "array",
+      description: "고르는 기준 3~5개",
+      items: {
+        type: "object",
+        properties: { criterion: { type: "string" }, detail: { type: "string" } },
+        required: ["criterion", "detail"],
+      },
+    },
     faq: {
       type: "array",
       description: "구매 전 자주 묻는 질문 3~5개",
@@ -96,6 +113,7 @@ const SCHEMA = {
     "commonComplaints",
     "verdict",
     "faq",
+    "buyingGuide",
   ],
 };
 
@@ -154,11 +172,13 @@ function validate(raw: unknown, productCount: number): WrittenPost {
       pros: cleanList(p.pros, 6),
       cons: cleanList(p.cons, 6),
       bestFor: str(p.bestFor),
+      review: str(p.review),
+      notFor: str(p.notFor),
     })),
     comparison: (Array.isArray(o.comparison) ? (o.comparison as Record<string, unknown>[]) : [])
       .map((c) => ({ label: str(c.label), values: cleanList(c.values, productCount) }))
       .filter((c) => c.label && c.values.length === productCount)
-      .slice(0, 8),
+      .slice(0, 10),
     recommendations: (Array.isArray(o.recommendations) ? (o.recommendations as Record<string, unknown>[]) : [])
       .map((r) => ({ situation: str(r.situation), pick: Number(r.pick), reason: str(r.reason) }))
       .filter((r) => r.situation && Number.isInteger(r.pick) && r.pick >= 0 && r.pick < productCount)
@@ -168,6 +188,10 @@ function validate(raw: unknown, productCount: number): WrittenPost {
     faq: (Array.isArray(o.faq) ? (o.faq as Record<string, unknown>[]) : [])
       .map((f) => ({ q: str(f.q), a: str(f.a) }))
       .filter((f) => f.q && f.a)
+      .slice(0, 8),
+    buyingGuide: (Array.isArray(o.buyingGuide) ? (o.buyingGuide as Record<string, unknown>[]) : [])
+      .map((g) => ({ criterion: str(g.criterion), detail: str(g.detail) }))
+      .filter((g) => g.criterion && g.detail)
       .slice(0, 6),
   };
 

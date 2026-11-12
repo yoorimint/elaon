@@ -8,11 +8,12 @@
 // 구매 링크는 상품 사진 카드 자체(제휴 링크라 rel="sponsored").
 
 import Link from "next/link";
-import { ArrowUpRight, ChevronDown, Info, Minus, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ImageIcon, Info, Minus, Plus, ShieldCheck } from "lucide-react";
 import {
   DEFAULT_POST_DISCLOSURE,
   type ShopPost,
   type ShopPostInputProduct,
+  type ShopPostInsight,
 } from "@/lib/shop-post-types";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -65,9 +66,45 @@ function ProductImage({ product, name, className = "" }: { product: ShopPostInpu
     // eslint-disable-next-line @next/next/no-img-element
     <img src={product.image} alt={name} loading="lazy" className={`object-contain ${className}`} />
   ) : (
-    <span className={`flex items-center justify-center text-sm font-medium text-neutral-300 ${className}`}>
-      {name.slice(0, 12)}
+    // 사진이 들어갈 자리 표시
+    <span
+      className={`flex flex-col items-center justify-center gap-1 rounded-[inherit] border-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 ${className}`}
+      aria-label={`${name} 상품 사진 자리`}
+    >
+      <ImageIcon className="h-5 w-5" strokeWidth={1.5} />
+      <span className="text-[11px] font-medium">상품 사진</span>
     </span>
+  );
+}
+
+// 1단계 분석의 언급 빈도 (숫자 없이 상대 길이만)
+function InsightBars({ insight }: { insight: ShopPostInsight }) {
+  const groups = [
+    { title: "자주 칭찬하는 점", items: insight.strengths, bar: "bg-emerald-600" },
+    { title: "자주 아쉬워하는 점", items: insight.weaknesses, bar: "bg-rose-500" },
+  ].filter((g) => g.items.length > 0);
+  if (!groups.length) return null;
+  return (
+    <div className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
+      <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">후기에서 자주 나온 이야기</div>
+      <div className="mt-3 grid gap-5 sm:grid-cols-2">
+        {groups.map((g) => (
+          <div key={g.title}>
+            <div className="text-xs text-neutral-500">{g.title}</div>
+            <ul className="mt-2 space-y-2.5">
+              {g.items.map((x) => (
+                <li key={x.point}>
+                  <div className="text-[14px] leading-snug text-neutral-800 dark:text-neutral-200">{x.point}</div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
+                    <div className={`h-full rounded-full ${g.bar}`} style={{ width: `${Math.round(x.weight * 100)}%` }} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -169,6 +206,25 @@ export function ShopPostView({ post }: { post: ShopPost }) {
         {c.intro && <p className="mt-8">{c.intro}</p>}
       </Section>
 
+      {/* 고르는 기준 (구매 가이드) */}
+      {c.buyingGuide && c.buyingGuide.length > 0 && (
+        <Section id="guide" no={no()} title="이렇게 고르세요">
+          <ol className="space-y-5">
+            {c.buyingGuide.map((g, i) => (
+              <li key={g.criterion} className="flex gap-4">
+                <span className="mt-0.5 text-[15px] font-semibold tabular-nums text-neutral-300">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <div className="font-semibold text-neutral-900 dark:text-white">{g.criterion}</div>
+                  <p className="mt-1 text-[15px] leading-relaxed">{g.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
+
       {/* 비교표 */}
       {c.comparison.length > 0 && (
         <Section id="compare" no={no()} title="한눈에 비교">
@@ -227,7 +283,20 @@ export function ShopPostView({ post }: { post: ShopPost }) {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-6 sm:grid-cols-2">
+              <a
+                href={products[i].link}
+                target="_blank"
+                rel="sponsored nofollow noopener"
+                className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
+              >
+                <ProductImage product={products[i]} name={names[i]} className="h-full w-full p-6" />
+              </a>
+
+              {p.review && <p className="mt-5">{p.review}</p>}
+
+              {c.insights?.[i] && <InsightBars insight={c.insights[i]!} />}
+
+              <div className="mt-6 grid gap-6 sm:grid-cols-2">
                 <div>
                   <div className="text-[13px] font-semibold tracking-wide text-neutral-900 dark:text-white">좋다는 평</div>
                   <ul className="mt-3 space-y-3 text-[15px] leading-relaxed">
@@ -256,12 +325,23 @@ export function ShopPostView({ post }: { post: ShopPost }) {
                 </div>
               </div>
 
-              {p.bestFor && (
-                <p className="mt-5 rounded-xl bg-neutral-50 dark:bg-neutral-900 px-4 py-3 text-[15px]">
-                  <span className="font-semibold text-neutral-900 dark:text-white">추천 대상</span>
-                  <span className="text-neutral-400"> · </span>
-                  {p.bestFor}
-                </p>
+              {(p.bestFor || p.notFor) && (
+                <div className="mt-5 divide-y divide-neutral-200 rounded-xl bg-neutral-50 px-4 text-[15px] dark:divide-neutral-800 dark:bg-neutral-900">
+                  {p.bestFor && (
+                    <p className="py-3">
+                      <span className="font-semibold text-neutral-900 dark:text-white">추천 대상</span>
+                      <span className="text-neutral-400"> · </span>
+                      {p.bestFor}
+                    </p>
+                  )}
+                  {p.notFor && (
+                    <p className="py-3">
+                      <span className="font-semibold text-neutral-900 dark:text-white">비추천 대상</span>
+                      <span className="text-neutral-400"> · </span>
+                      {p.notFor}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           ))}

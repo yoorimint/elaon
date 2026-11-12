@@ -4,7 +4,7 @@
 //  - Gemini 구글 검색 요약 (그라운딩)
 
 import type { ShopPostInputProduct, ShopPostSource } from "@/lib/shop-post-types";
-import { geminiGenerate } from "./providers/gemini";
+import { GroundingUnavailableError, geminiGenerate } from "./providers/gemini";
 import { cleanNaverText, naverSearch, type NaverSearchType } from "./providers/naver";
 import { searchVideos, topComments, type YoutubeVideo } from "./providers/youtube";
 import type { Secrets } from "./providers/types";
@@ -32,6 +32,9 @@ export type ProductResearch = {
 };
 
 const COMMENT_MAX_CHARS = 300;
+
+// 무료 요금제 등으로 그라운딩이 막혀 있으면 첫 실패 후 같은 실행에서는 건너뛴다
+let groundingUnavailable = false;
 
 function isAd(text: string, words: string[]): boolean {
   return words.some((w) => w && text.includes(w));
@@ -77,7 +80,7 @@ async function collectWebSummary(secrets: Secrets, name: string) {
 - 구매 전 주의할 점
 - 주요 스펙(출처에 있는 것만)
 규칙: 출처에 없는 내용은 쓰지 말 것. 광고·협찬 리뷰는 제외. 가격은 쓰지 말 것.`;
-  const r = await geminiGenerate(secrets, prompt, { googleSearch: true, temperature: 0.2 });
+  const r = await geminiGenerate(secrets, prompt, { googleSearch: true });
   return { summary: r.text.slice(0, 4000), sourceCount: r.webSources.length };
 }
 
@@ -110,12 +113,13 @@ export async function researchProduct(
       result.errors.push(`유튜브: ${e instanceof Error ? e.message : e}`);
     }
   }
-  if (opts.useGeminiSearch) {
+  if (opts.useGeminiSearch && !groundingUnavailable) {
     try {
       const w = await collectWebSummary(secrets, product.name);
       result.webSummary = w.summary;
       result.webSourceCount = w.sourceCount;
     } catch (e) {
+      if (e instanceof GroundingUnavailableError) groundingUnavailable = true;
       result.errors.push(`구글 검색: ${e instanceof Error ? e.message : e}`);
     }
   }

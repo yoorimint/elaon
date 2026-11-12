@@ -155,6 +155,7 @@ export default function AdminShopPage() {
             />
             <NumberField
               label="작성 시각 (KST, 시)"
+              hint="이 시각부터, 오늘 글 수를 채울 때까지 매시간 시도"
               value={form.publish_hour}
               {...SHOP_LIMITS.publish_hour}
               onChange={(v) => set("publish_hour", v)}
@@ -224,7 +225,7 @@ export default function AdminShopPage() {
             />
             <ToggleField
               label="Gemini 구글 검색"
-              hint="웹 리뷰 본문을 읽고 요약 (무료 한도 있음)"
+              hint="유료 요금제 전용 (AI Studio 결제 등록 필요). 무료 키면 자동으로 건너뜀"
               checked={form.use_gemini_search}
               onChange={(v) => set("use_gemini_search", v)}
             />

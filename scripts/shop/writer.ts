@@ -24,56 +24,56 @@ const SYSTEM = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 �
 7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.`;
 
 const SCHEMA = {
-  type: "OBJECT",
+  type: "object",
   properties: {
-    title: { type: "STRING", description: "검색에 걸리고 클릭하고 싶은 제목, 40자 이내, 두 제품명 포함" },
-    description: { type: "STRING", description: "검색 결과 설명문, 120자 이내" },
-    summary: { type: "STRING", description: "한 줄 결론 2~3문장" },
-    intro: { type: "STRING", description: "도입 2~4문장" },
+    title: { type: "string", description: "검색에 걸리고 클릭하고 싶은 제목, 40자 이내, 두 제품명 포함" },
+    description: { type: "string", description: "검색 결과 설명문, 120자 이내" },
+    summary: { type: "string", description: "한 줄 결론 2~3문장" },
+    intro: { type: "string", description: "도입 2~4문장" },
     products: {
-      type: "ARRAY",
+      type: "array",
       items: {
-        type: "OBJECT",
+        type: "object",
         properties: {
-          name: { type: "STRING" },
-          oneLiner: { type: "STRING" },
-          pros: { type: "ARRAY", items: { type: "STRING" } },
-          cons: { type: "ARRAY", items: { type: "STRING" } },
-          bestFor: { type: "STRING" },
+          name: { type: "string" },
+          oneLiner: { type: "string" },
+          pros: { type: "array", items: { type: "string" } },
+          cons: { type: "array", items: { type: "string" } },
+          bestFor: { type: "string" },
         },
         required: ["name", "oneLiner", "pros", "cons", "bestFor"],
       },
     },
     comparison: {
-      type: "ARRAY",
+      type: "array",
       description: "항목별 비교 4~7개. values 는 제품 순서대로",
       items: {
-        type: "OBJECT",
-        properties: { label: { type: "STRING" }, values: { type: "ARRAY", items: { type: "STRING" } } },
+        type: "object",
+        properties: { label: { type: "string" }, values: { type: "array", items: { type: "string" } } },
         required: ["label", "values"],
       },
     },
     recommendations: {
-      type: "ARRAY",
+      type: "array",
       description: "상황별 추천 3~5개. pick 은 제품 번호(0부터)",
       items: {
-        type: "OBJECT",
+        type: "object",
         properties: {
-          situation: { type: "STRING" },
-          pick: { type: "INTEGER" },
-          reason: { type: "STRING" },
+          situation: { type: "string" },
+          pick: { type: "integer" },
+          reason: { type: "string" },
         },
         required: ["situation", "pick", "reason"],
       },
     },
-    commonComplaints: { type: "ARRAY", items: { type: "STRING" } },
-    verdict: { type: "STRING", description: "마무리 2~4문장" },
+    commonComplaints: { type: "array", items: { type: "string" } },
+    verdict: { type: "string", description: "마무리 2~4문장" },
     faq: {
-      type: "ARRAY",
+      type: "array",
       description: "구매 전 자주 묻는 질문 3~5개",
       items: {
-        type: "OBJECT",
-        properties: { q: { type: "STRING" }, a: { type: "STRING" } },
+        type: "object",
+        properties: { q: { type: "string" }, a: { type: "string" } },
         required: ["q", "a"],
       },
     },
@@ -176,7 +176,6 @@ ${research.map((r, i) => evidenceBlock(r, i)).join("\n\n")}
   const r = await geminiGenerate(secrets, prompt, {
     system: SYSTEM,
     jsonSchema: SCHEMA,
-    temperature: 0.5,
   });
   let parsed: unknown;
   try {

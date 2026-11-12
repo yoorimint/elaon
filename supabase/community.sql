@@ -840,3 +840,11 @@ create policy "candle cache update" on public.candle_cache
 
 -- PostgREST 스키마 캐시 리로드
 notify pgrst, 'reload schema';
+
+-- ===== 프로필 권한 컬럼 보호 =====
+-- profiles_update_own 정책은 "자기 행"만 제한하고 컬럼은 제한하지 않아서,
+-- 로그인한 누구나 브라우저에서 is_admin / banned / is_bot 을 스스로 바꿀 수 있었다.
+-- 일반 사용자가 직접 수정하는 컬럼은 username 뿐이므로 그 컬럼만 허용한다.
+-- (관리자 기능은 security definer RPC, 봇은 service role 이라 영향 없음)
+revoke update on public.profiles from anon, authenticated;
+grant update (username) on public.profiles to authenticated;

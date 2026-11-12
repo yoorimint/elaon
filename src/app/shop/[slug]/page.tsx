@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
-import { getPostBySlugAnyStatus, getPublishedPost } from "@/lib/shop-posts-server";
+import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
 export const revalidate = 60;
@@ -34,7 +34,11 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
           <div className="bg-amber-100 dark:bg-amber-950/50 px-5 py-2 text-center text-sm font-semibold text-amber-900 dark:text-amber-200">
             초안 미리보기 — 아직 공개되지 않은 글이에요 (주소를 아는 사람만 볼 수 있고 검색에 안 나와요)
           </div>
-          <ShopPostView post={draft} preview />
+          <ShopPostView
+            post={draft}
+            preview
+            related={await listRelatedPosts(draft.content.category, draft.slug)}
+          />
         </main>
       );
     }
@@ -52,7 +56,7 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
         ])}
       />
       {post.content.faq.length > 0 && <JsonLd data={faqLd(post.content.faq)} />}
-      <ShopPostView post={post} />
+      <ShopPostView post={post} related={await listRelatedPosts(post.content.category, post.slug)} />
     </main>
   );
 }

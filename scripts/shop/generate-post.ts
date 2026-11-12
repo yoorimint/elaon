@@ -10,6 +10,7 @@ import { nextKind, pairKeyOf } from "./select-products";
 import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
 import { pingIndexNow } from "@/lib/indexnow";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
+import { reviewAndFix } from "./qa";
 import { writePost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
@@ -106,10 +107,14 @@ async function main() {
 
   // ---- 2단계: 비교글 작성 ----
   console.log("✍️  Gemini 작성 중...");
-  const written = await writePost(secrets, research, digests, {
+  const draftPost = await writePost(secrets, research, digests, {
     titleStyle: config.title_style,
     extraPrompt: config.extra_prompt,
   });
+
+  // ---- 자동 검수: 작성 가이드·수집 자료와 대조, 틀린 곳 수정 ----
+  console.log("🔍 자동 검수 중...");
+  const { post: written, qa } = await reviewAndFix(secrets, draftPost, research, digests);
 
   // ---- 저장 ----
   // 링크가 없는 자동 선정 글은 관리자가 링크를 넣을 때까지 초안
@@ -123,6 +128,7 @@ async function main() {
       insights: digests.map((d) => (d ? toInsight(d) : null)),
       ...(category ? { category } : {}),
       ...(alternatives.length ? { alternatives } : {}),
+      qa,
       disclosure: config.disclosure_text,
     },
     products,

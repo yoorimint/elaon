@@ -229,6 +229,27 @@ function validate(raw: unknown, productCount: number): WrittenPost {
   return { title, description: str(o.description).slice(0, 160), content };
 }
 
+// 근거 자료 텍스트 (작성·검수·수정이 같은 자료를 본다)
+export function buildEvidence(research: ProductResearch[], digests: (ProductDigest | null)[]): string {
+  return research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n");
+}
+
+function rulesFor(productCount: number) {
+  return productCount === 1 ? SINGLE_RULES : COMPARE_RULES;
+}
+
+async function generateJson(secrets: Secrets, prompt: string, productCount: number): Promise<WrittenPost> {
+  const r = await geminiGenerate(secrets, prompt, { system: rulesFor(productCount), jsonSchema: SCHEMA });
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(r.text);
+  } catch {
+    throw new Error("Gemini 응답이 JSON 형식이 아님");
+  }
+  // 저장 전 검사: 한자 섞임 수정
+  return fixHanja(secrets, validate(parsed, productCount));
+}
+
 export async function writePost(
   secrets: Secrets,
   research: ProductResearch[],
@@ -244,19 +265,31 @@ export async function writePost(
   const prompt = `${task}
 ${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===
-${research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n")}
+${buildEvidence(research, digests)}
 ===`;
+  return generateJson(secrets, prompt, research.length);
+}
 
-  const r = await geminiGenerate(secrets, prompt, {
-    system: single ? SINGLE_RULES : COMPARE_RULES,
-    jsonSchema: SCHEMA,
-  });
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(r.text);
-  } catch {
-    throw new Error("Gemini 응답이 JSON 형식이 아님");
-  }
-  // 저장 전 검사: 한자 섞임 수정
-  return fixHanja(secrets, validate(parsed, research.length));
+// 검수에서 나온 지적사항대로 글을 고친다 (지적 안 된 부분은 유지)
+export async function revisePost(
+  secrets: Secrets,
+  research: ProductResearch[],
+  digests: (ProductDigest | null)[],
+  written: WrittenPost,
+  issues: string[],
+): Promise<WrittenPost> {
+  const prompt = `아래 글(JSON)을 검수 지적사항대로 고쳐서 같은 형식의 JSON 전체로 다시 줘.
+- 지적된 부분만 고치고, 나머지 내용·구성은 최대한 그대로 둔다.
+- 근거 자료에 없는 내용은 새로 넣지 않는다. 근거가 없는 항목은 빼거나 "후기에서 확인되지 않음"으로 바꾼다.
+
+=== 검수 지적사항 ===
+${issues.map((x, i) => `${i + 1}. ${x}`).join("\n")}
+
+=== 현재 글 ===
+${JSON.stringify({ title: written.title, description: written.description, ...written.content })}
+
+=== 근거 자료 ===
+${buildEvidence(research, digests)}
+===`;
+  return generateJson(secrets, prompt, research.length);
 }

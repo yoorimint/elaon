@@ -36,7 +36,7 @@ export function ShopDraftPreview({ slug }: { slug: string }) {
       <div className="bg-amber-100 dark:bg-amber-950/50 px-5 py-2 text-center text-sm font-semibold text-amber-900 dark:text-amber-200">
         초안 미리보기 — 아직 공개되지 않은 글입니다 (관리자만 보임)
       </div>
-      <ShopPostView post={post} />
+      <ShopPostView post={post} preview />
     </main>
   );
 }

@@ -138,6 +138,10 @@ async function main() {
     assert.equal(parseWebReviewResponse(content, AD_WORDS).dropped["협찬·광고 표시"], 1);
     assert.equal(isSponsored("사용기", ["소음은 괜찮았어요"], `${PAGE_TEXT} 광고 문의`, AD_WORDS), false);
     assert.equal(isSponsored("[체험단] 사용기", [], "", AD_WORDS), true);
+    // 데이터 진단: 커뮤니티 글이 메뉴·다른 글 목록의 "체험단" 글자로 버려졌음 → 본문은 고지 문장 꼴만 본다
+    assert.equal(isSponsored("비스포크 큐커는 좀 애매합니다", ["전자레인지 기능이 너무 부실해서 방출했습니다"], `${PAGE_TEXT} 체험단 모집 게시판 · 광고 문의`, AD_WORDS), false);
+    assert.equal(isSponsored("사용기", [], `${PAGE_TEXT} 이 포스팅은 쿠팡 파트너스 활동의 일환으로 수수료를 제공받습니다.`, AD_WORDS), true);
+    assert.equal(isSponsored("사용기", [], `${PAGE_TEXT} 체험단으로 선정되어 작성한 글입니다.`, AD_WORDS), true);
   });
 
   await test("본문을 못 읽은 글은 검색 인용(cited_text)과 맞는 발췌만 인정 — 인용이 쪼개져 와도 파싱", () => {

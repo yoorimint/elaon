@@ -25,10 +25,16 @@ import { recordUsage, recordWebSearches } from "../usage";
 import { CLAUDE_MODEL, PRICE_PER_MTOK, client } from "./claude";
 import type { Secrets } from "./types";
 
+// 2026-11-13 데이터 진단(probe: 로보락 S10·다이슨 V15·비스포크 큐커)으로 바꾼 값:
+//  - 검색 3 → 2: 검색 2번으로도 쓸 만한 후기 주소가 9~14개 나온다. 검색 결과(본문 포함)가 입력 토큰의 대부분이라
+//    3번이면 입력이 11만~20만 토큰까지 커졌다(검색 2번은 8만).
+//  - 읽기 3 → 5: 병목은 여기였다. 좋은 주소(기자 [써보니]·커뮤니티 후기)를 찾아 놓고 2~3개만 읽어 제품당 발췌 2~5문장.
+//    robots 로 막힌 곳(url_not_allowed)이 섞이므로 여유를 둔다.
+//  - 페이지당 6천 → 9천 토큰: 한국어 기사 본문(9천 자 안팎)이 6천 토큰에서 잘려 뒷부분 발췌가 "원문과 다름"으로 버려짐(이데일리 V15 기사)
 export const WEB_REVIEWS = {
-  searchMaxUses: 3, // 웹 검색 횟수 상한 (1회 $0.01)
-  fetchMaxUses: 3, // 본문을 읽을 페이지 수 상한
-  fetchMaxContentTokens: 6000, // 페이지 하나에서 읽는 본문 토큰 상한 (넘으면 도구가 자름)
+  searchMaxUses: 2, // 웹 검색 횟수 상한 (1회 $0.01)
+  fetchMaxUses: 5, // 본문을 읽을 페이지 수 상한
+  fetchMaxContentTokens: 9000, // 페이지 하나에서 읽는 본문 토큰 상한 (넘으면 도구가 자름)
   maxTokens: 12000, // 응답 토큰 상한 (생각 포함) — 발췌 목록만 쓰므로 이 정도면 충분
   maxContinuations: 2, // pause_turn(긴 검색 중 일시정지) 이어받기 횟수 상한
   timeoutMs: 3 * 60 * 1000, // 한 요청 시간 상한 (워크플로 30분 안에 끝내야 함)
@@ -62,9 +68,6 @@ export const BLOCKED_DOMAINS = [
 
 // 협찬 표시 단어 기본값 (supabase/shop.sql 의 ad_filter_words 기본값과 같음 — 설정이 비었을 때만 씀)
 const DEFAULT_AD_WORDS = ["협찬", "제공받아", "체험단", "소정의", "원고료", "광고"];
-// 페이지 본문 전체에서 찾으면 오탐이 많은 단어 (사이트 메뉴의 "광고 문의", 광고 영역 표시 등).
-// 이 단어들은 제목·발췌에서만 본다.
-const PAGE_WIDE_EXEMPT = new Set(["광고"]);
 
 export type WebReviewKind = "blog" | "article" | "community" | "other";
 export const WEB_REVIEW_KIND_LABEL: Record<WebReviewKind, string> = {
@@ -122,11 +125,17 @@ export function isBlockedUrl(raw: string): boolean {
 
 // ---------- 협찬 판정 (research.ts 의 isAd 와 같은 단어 목록을 쓴다) ----------
 
+// 본문 전체에서는 단어 하나가 아니라 "고지 문장" 꼴만 본다. 데이터 진단: 클리앙 실사용 글(비스포크 큐커 비판 글)이
+// 사이트 메뉴·다른 글 목록의 "체험단" 글자 때문에 협찬 글로 버려졌다. 제목·발췌는 예전처럼 단어 하나로도 버린다.
+// 제휴(쿠팡 파트너스 등) 수수료 고지 글도 판매 목적 글이라 버린다.
+const PAGE_DISCLOSURE =
+  /(제품|물건|상품|원고료|소정의|대가)[^.。\n]{0,20}(제공\s*받|지원\s*받)|체험단(으로|에\s*선정|에\s*참여|\s*활동|\s*자격)|협찬(을|으로|받|\s*제품)|업체로부터|파트너스\s*활동|수수료를\s*(제공|지급)?\s*받/;
+
 export function isSponsored(title: string, excerpts: string[], pageText: string, adWords: string[]): boolean {
   const words = (adWords.length ? adWords : DEFAULT_AD_WORDS).filter(Boolean);
   const head = `${title} ${excerpts.join(" ")}`;
   if (words.some((w) => head.includes(w))) return true;
-  return words.some((w) => !PAGE_WIDE_EXEMPT.has(w) && pageText.includes(w));
+  return PAGE_DISCLOSURE.test(pageText);
 }
 
 // ---------- 모델이 쓴 보고서 파싱 ----------
@@ -320,9 +329,10 @@ export function diagnoseWebReviews(content: Anthropic.ContentBlock[], adWords: s
     if (isBlockedUrl(c.url)) verdict = " → 버림: 차단 도메인";
     else if (!page && !hit) verdict = " → 버림: 검색·읽기 결과에 없는 주소";
     else if (isSponsored(c.title || page?.title || hit?.title || "", c.excerpts, page?.text ?? "", adWords)) {
-      const all = `${c.title} ${c.excerpts.join(" ")} ${page?.text ?? ""}`;
-      const words = (adWords.length ? adWords : DEFAULT_AD_WORDS).filter((w) => w && all.includes(w));
-      verdict = ` → 버림: 협찬·광고 표시 (걸린 단어: ${words.join(", ")})`;
+      const head = `${c.title} ${c.excerpts.join(" ")}`;
+      const words = (adWords.length ? adWords : DEFAULT_AD_WORDS).filter((w) => w && head.includes(w));
+      const pageHit = PAGE_DISCLOSURE.exec(page?.text ?? "")?.[0];
+      verdict = ` → 버림: 협찬·광고 표시 (${[words.length ? `제목·발췌 단어 ${words.join(", ")}` : "", pageHit ? `본문 고지 "${pageHit}"` : ""].filter(Boolean).join(" / ")})`;
     }
     lines.push(`[후보] ${domainOf(c.url)} | ${c.title.slice(0, 50)} | ${where} | 검색 인용 ${cited.length}개${verdict}`);
     const pageNorm = page ? norm(page.text) : "";
@@ -361,16 +371,22 @@ export function webReviewCost(usage: { input: number; output: number; searches: 
 // ---------- 호출 ----------
 
 const SYSTEM = `너는 제품 리뷰 원문 조사원이야. 웹 검색(web_search)과 웹 페이지 읽기(web_fetch) 도구로 한국어 실사용 리뷰를 찾아, 실제 사용 경험 문장을 원문 그대로 옮긴다.
-찾을 글: 장기 사용기, 전문 리뷰 기사, 개인 블로그·커뮤니티 사용 후기 (한국어).
-제외할 글:
-- 협찬·체험단·광고·원고료·제품 제공을 표시한 글
-- 쇼핑몰 상품 페이지, 가격비교, 단순 스펙 나열, 보도자료, 구매 링크 모음
+찾을 글 (우선순위 순 — 위의 것부터 읽는다):
+ 1. 기자가 직접 써 본 사용기 기사 (제목에 [써보니], [체험], [사용기], [리뷰], 내돈내산, "~주 써 보니" 같은 표시)
+ 2. 커뮤니티 실사용 글 (클리앙, 디시인사이드, 뽐뿌, 마일모아, 루리웹, 블라인드, 82쿡 등 — 사용자끼리 묻고 답한 글 포함)
+ 3. 개인의 장기 사용기 (몇 달·1년 써 본 블로그·브런치 글)
+ 4. 그 밖의 리뷰 기사
+읽지 말 글 (주소·제목만 보고 건너뛴다):
+- 협찬·체험단·광고·원고료·제품 제공을 표시한 글, 쿠팡 파트너스 등 제휴 수수료를 고지한 글
+- "구매자 후기를 바탕으로 정리", "장단점 총정리", "추천 TOP" 같은 정리·비교·추천 글 (직접 써 본 글이 아님)
+- 제조사·판매처·렌털 업체가 쓴 글과 사용 설명서, 쇼핑몰 상품 페이지, 가격비교, 단순 스펙 나열, 보도자료, 구매 링크 모음
 - 다른 모델(이전·다음 세대 포함)의 리뷰
 방법:
-- 검색 결과 중 실사용 후기로 보이는 글을 골라 web_fetch 로 본문을 읽는다. 읽을 수 없는 페이지는 건너뛴다.
-- 각 글에서 실제로 써 본 경험(사용 상황·기간·느낀 점·불편)이 담긴 문장을 2~5개 고른다.
+- 검색은 "제품명 써보니", "제품명 사용기"처럼 한두 번만 하고, 결과에서 위 우선순위대로 서로 다른 사이트의 글을 골라
+  web_fetch 로 본문을 최대 ${WEB_REVIEWS.fetchMaxUses}개까지 읽는다. 읽을 수 없는 페이지(robots 차단 등)는 건너뛰고 다음 글을 읽는다.
+- 각 글에서 제품을 실제로 써 본 경험(어떤 상황에서 무엇을 해 보니 어땠는지, 사용 기간, 불편했던 점)이 담긴 문장을 3~5개 고른다.
+  기사 도입부의 일반론("청소는 고역이다"), 스펙 소개, 가격, 판매 문구, 글쓴이의 다짐·인사는 고르지 않는다.
 - 발췌는 본문에서 글자 그대로 복사한다. 요약·번역·맞춤법 고치기·여러 문장 이어 붙이기·말 바꾸기 금지. 발췌 하나는 이어진 1~2문장, 300자 이하.
-- 스펙·가격만 있는 문장, 판매 문구는 고르지 않는다.
 출력 형식 (설명·인사 없이 이 형식만. 글마다 빈 줄로 구분):
 URL: 글 주소 (검색·읽기 결과에 나온 주소 그대로)
 제목: 글 제목

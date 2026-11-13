@@ -8,6 +8,7 @@
 //  4) 문제가 있으면 writer.revisePost 로 고쳐 쓰고 다시 검사 (최대 2회), 마지막에 한 번 더 검사
 // 결과는 content.qa 에 기록 → 관리자 글 목록에 표시, 문제가 남으면 발행 전에 경고
 
+import { rawParagraphs, sentencesOf } from "@/lib/paragraphs";
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
 import { autoFix, isUnknownValue } from "./autofix";
 import type { ProductDigest } from "./digest";
@@ -17,7 +18,7 @@ import { generationMentions } from "./names";
 import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
-import { MAX_CHECK_PHRASES, SECTION_GOALS, buildEvidence, revisePost, type WrittenPost } from "./writer";
+import { MAX_CHECK_PHRASES, READABILITY, SECTION_GOALS, buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 export { locallySupported, quoteFound };
 
@@ -175,35 +176,152 @@ export function repeatedEndingIssues(w: WrittenPost): string[] {
     const where = [...new Set(hits.map((p) => p.replace(/\[\d+\]/g, "")))].slice(0, 6).join(", ");
     return [
       `"${label}" 꼴 말꼬리가 ${hits.length}번(${where}) → ${MAX_SAME_ENDING}번 이하로. 내용은 그대로 두고 끝맺음만 바꾸기 ` +
-        `(문단 첫머리에 "후기를 모아 보면"처럼 한 번 밝히고 이어지는 문장은 "~해요", "~로 꼽혀요", "~한 사람도 있어요" 등으로)`,
+        `(문단 첫머리에 "후기를 모아 보면"처럼 한 번 밝히고 이어지는 문장은 "~해요", "~로 꼽혀요", "~편이에요" 등으로)`,
     ];
   });
 }
 
-// 잘 맞는 상황(recommendations) 이유들이 같은 시작 구로 찍어낸 듯 반복되는지
-// (점검 글 닌자 크리스피: 이유 4개가 모두 "이 상황에서는 ~가 중요해요/핵심이에요/제일 먼저 걸려요"로 시작 —
-//  작성 규칙이 "그 상황에서 무엇이 중요한지 →" 순서를 고정해서 생김)
+// ---------- 읽기 쉬운 글: 목록 틀 반복·근거 표시 반복·긴 문단 ----------
+// 점검 글(닌자 크리스피)을 휴대폰에서 본 운영자 지적 (2026-11-13):
+//  1) 추천 이유 4개가 모두 "이 상황에서는 ~가 중요해요"로 시작 — 다른 목록 구역도 같은 위험이 있음
+//  2) 한 구역에 "~후기가 있어", "~평가가 나와요", "언급돼요", "반응도 보여요", "~사용자가 있어요"가 문장마다 붙음
+//  3) 5~7문장 후기 문단이 한 덩어리 → 벽글
+
+// "핵심어: 설명" 꼴 항목은 설명 부분만 본다 (화면 LeadText 와 같은 규칙 — 핵심어는 항목마다 다르니 틀 비교에서 뺀다)
+const LEAD = /^(.{1,14}?)\s*[:：]\s*([\s\S]+)$/;
+const bodyOf = (x: string) => LEAD.exec(x.trim())?.[2] ?? x.trim();
+
+// 화면에서 항목들이 한 구역에 나란히 보이는 목록 (독자가 같은 틀 반복을 바로 느끼는 단위)
+// name 은 지적 문구 앞머리 — 사람이 읽는 구역 이름 + 수정 AI 가 찾을 JSON 키
+type ListSection = { name: string; unit: string; items: string[] };
+function listSections(w: WrittenPost): ListSection[] {
+  const c = w.content;
+  const multi = c.products.length > 1;
+  return [
+    { name: "잘 맞는 상황", unit: "이유", items: c.recommendations.map((r) => r.reason) },
+    { name: "구매 전 확인(commonComplaints)", unit: "항목", items: c.commonComplaints.map(bodyOf) },
+    { name: "FAQ 답(faq[].a)", unit: "답", items: c.faq.map((f) => f.a) },
+    { name: "고르는 기준 설명(buyingGuide[].detail)", unit: "설명", items: (c.buyingGuide ?? []).map((g) => g.detail) },
+    ...c.products.flatMap((p, i) => {
+      const who = multi ? `${p.name} ` : "";
+      return [
+        { name: `${who}장점(products[${i}].pros)`, unit: "항목", items: p.pros.map(bodyOf) },
+        { name: `${who}단점(products[${i}].cons)`, unit: "항목", items: p.cons.map(bodyOf) },
+      ];
+    }),
+  ].filter((s) => s.items.length);
+}
+
+// 문단으로 보이는 글 (화면에서 Paragraphs 로 나오는 필드 + 목록 항목 하나하나)
+function proseFields(w: WrittenPost): { name: string; text: string }[] {
+  const c = w.content;
+  const out: { name: string; text: string }[] = [
+    { name: "결론(summary)", text: c.summary },
+    { name: "도입(intro)", text: c.intro },
+    { name: "정리(verdict)", text: c.verdict },
+  ];
+  c.products.forEach((p, i) => {
+    out.push({ name: `${p.name} 후기 문단(products[${i}].review)`, text: p.review ?? "" });
+    out.push({ name: `${p.name} 비추천 대상(products[${i}].notFor)`, text: p.notFor ?? "" });
+  });
+  c.recommendations.forEach((r, i) => out.push({ name: `잘 맞는 상황 이유(recommendations[${i}].reason)`, text: r.reason }));
+  (c.buyingGuide ?? []).forEach((g, i) => out.push({ name: `고르는 기준 설명(buyingGuide[${i}].detail)`, text: g.detail }));
+  c.faq.forEach((f, i) => out.push({ name: `FAQ 답(faq[${i}].a)`, text: f.a }));
+  c.commonComplaints.forEach((x, i) => out.push({ name: `구매 전 확인(commonComplaints[${i}])`, text: x }));
+  return out.filter((x) => x.text?.trim());
+}
+
+// 1) 목록 항목들이 같은 시작 구로 찍어낸 듯 반복되는지 (처음엔 추천 이유만 봤다 → 모든 목록 구역으로 넓힘)
 // 시작 구 = 첫 어절 + 둘째 어절의 앞 2글자. 둘째 어절을 줄이는 이유: "이 상황에서는"·"이 상황이라면"처럼
 //   조사만 바꾼 같은 틀을 한 묶음으로 보기 위해서. 첫 어절만 보면 "아이가", "이" 같은 흔한 첫 단어로 오탐이 나고,
 //   세 어절 이상 보면 "이 상황에서는 세척이"/"…소음이"처럼 뒤만 바꾼 틀을 놓친다.
-// 기준: 같은 시작 구가 MAX_SAME_OPENING(2)번을 넘으면(3번 이상) 지적. 이유는 3~5개라 두 번 겹치는 건 우연일 수 있지만,
-//   세 번이면 독자 눈에 같은 틀로 보인다.
-const MAX_SAME_OPENING = 2;
+// 기준: 한 구역에서 같은 시작 구가 MAX_SAME_OPENING(2)번을 넘으면(3번 이상) 지적. 목록은 3~6개라 두 번 겹치는 건
+//   우연일 수 있지만, 세 번이면 독자 눈에 같은 틀로 보인다.
+const MAX_SAME_OPENING = READABILITY.sameOpening;
+const openingOf = (text: string): string | null => {
+  const words = text.trim().split(/\s+/).map((x) => x.replace(/[^가-힣a-zA-Z0-9]/g, "")).filter(Boolean);
+  return words.length < 2 ? null : `${words[0]} ${words[1].slice(0, 2)}`;
+};
 export function repeatedOpeningIssues(w: WrittenPost): string[] {
-  const openings = new Map<string, number>();
-  for (const r of w.content.recommendations) {
-    const words = r.reason.trim().split(/\s+/).map((x) => x.replace(/[^가-힣a-zA-Z0-9]/g, "")).filter(Boolean);
-    if (words.length < 2) continue;
-    const key = `${words[0]} ${words[1].slice(0, 2)}`;
-    openings.set(key, (openings.get(key) ?? 0) + 1);
-  }
-  return [...openings]
-    .filter(([, n]) => n > MAX_SAME_OPENING)
-    .map(
-      ([key, n]) =>
-        `잘 맞는 상황: 이유 ${n}개가 같은 말("${key}…")로 시작 → ${MAX_SAME_OPENING}개 이하로. 내용·근거는 그대로 두고 ` +
-        `이유마다 첫 문장을 그 상황에 맞는 구체적인 내용으로 바꾸기 (같은 틀 반복 금지)`,
-    );
+  return listSections(w).flatMap(({ name, unit, items }) => {
+    const openings = new Map<string, number>();
+    for (const x of items) {
+      const key = openingOf(x);
+      if (key) openings.set(key, (openings.get(key) ?? 0) + 1);
+    }
+    return [...openings]
+      .filter(([, n]) => n > MAX_SAME_OPENING)
+      .map(
+        ([key, n]) =>
+          `${name}: ${unit} ${n}개가 같은 말("${key}…")로 시작 → ${MAX_SAME_OPENING}개 이하로. 내용·근거는 그대로 두고 ` +
+          `${unit}마다 첫 문장을 그 ${unit}에 맞는 구체적인 내용으로 바꾸기 (같은 틀 반복 금지)`,
+      );
+  });
+}
+
+// 2) 한 구역 안의 근거 표시 반복.
+// 세는 것: 문장을 "~후기가 있어(요)", "~평가가 나와요", "~평가도 함께 나와", "언급돼요", "반응도 보여요",
+//   "~느낀 사용자가 있어요"처럼 출처를 서술어로 붙여 맺는 꼬리형 근거 표시.
+// 세지 않는 것: "후기를 보면", "사용자들은"처럼 문단·항목 첫머리에 한 번 밝히는 머리형(작성 규칙이 권하는 꼴),
+//   제조사 설명 "~라고 소개돼요", 다양한 맺음으로 권하는 "~로 꼽혀요".
+// 명사 앞이 한글이면 세지 않는다 ("부분이 있어요"의 "분이", "주말이"의 "말이" 오탐 방지).
+const EVIDENCE_TAIL = new RegExp(
+  "(?<![가-힣])(후기|리뷰|평가|평|호평|혹평|의견|반응|이야기|얘기|말|불만|칭찬)(이|가|도)\\s*(함께\\s*|자주\\s*|많이\\s*|꽤\\s*|종종\\s*|여럿\\s*|더러\\s*|간혹\\s*|가끔\\s*)?" +
+    "(나와|나오|나옵|있어|있었|있습|있고|있는\\s*편|많아|많은|많고|많습|보여|보이|보입|적지\\s*않)" +
+    "|(?<![가-힣])언급(돼|되어|됩|되고|되곤|된다)" +
+    "|(?<![가-힣])(사용자|사람|분|구매자|이용자)(가|도|이|들이|들도)\\s*(있어|있었|있습|있고|많아|많고|많습|적지\\s*않)",
+  "g",
+);
+// 기준: 한 구역(목록 하나 전체, 또는 문단 필드 하나)에서 MAX_EVIDENCE_TAILS(2)번을 넘으면(3번 이상) 지적.
+// 실제 글로 시험한 값 (2026-11-13 칼럼 점검 글 5편):
+//  - 닌자 크리스피: 추천 이유 4개 = 6번, FAQ 6개 = 6번, 장점·단점 각 3번 → 운영자가 반복이라고 본 구역이 모두 걸림
+//  - 다른 4편: 걸린 구역은 장단점·FAQ 처럼 항목마다 "~평이 많아요/의견이 있어요"를 붙인 곳(3~5번)뿐이고,
+//    첫머리에 한 번 밝히고 나머지를 "~해요"로 맺은 결론·고르는 기준·구매 전 확인은 0~2번으로 통과
+//  - 2번까지 허용하는 이유: 목록이 4~6개면 근거를 밝힐 자리가 한두 곳은 필요하다. 1번으로 낮추면 근거 표시를 아예 빼다
+//    단정 문장(BANNED "근거 없는 단정")이 되기 쉽다. 장단점 칸은 제목("좋다는 평"·"아쉽다는 평")이 이미 후기임을 밝힌다.
+const MAX_EVIDENCE_TAILS = READABILITY.evidenceTails;
+export function evidenceTailCount(text: string): number {
+  return [...(text ?? "").matchAll(EVIDENCE_TAIL)].length;
+}
+export function repeatedEvidenceIssues(w: WrittenPost): string[] {
+  const c = w.content;
+  const units: { name: string; texts: string[] }[] = [
+    ...listSections(w).map((s) => ({ name: s.name, texts: s.items })),
+    { name: "도입(intro)", texts: [c.intro] },
+    { name: "정리(verdict)", texts: [c.verdict] },
+    ...c.products.map((p, i) => ({ name: `${p.name} 후기 문단(products[${i}].review)`, texts: [p.review ?? ""] })),
+  ];
+  return units.flatMap(({ name, texts }) => {
+    const hits = texts.flatMap((t) => [...(t ?? "").matchAll(EVIDENCE_TAIL)].map((m) => m[0].trim()));
+    if (hits.length <= MAX_EVIDENCE_TAILS) return [];
+    const shown = [...new Set(hits)].slice(0, 6).map((x) => `"${x}"`).join(", ");
+    return [
+      `${name}: 근거 표시가 ${hits.length}번 반복(${shown}) → ${MAX_EVIDENCE_TAILS}번 이하로. 구역 첫머리에 "후기를 모아 보면"처럼 ` +
+        `한 번만 밝히고, 이어지는 문장은 근거 꼬리를 떼고 담백하게 "~해요", "~편이에요"로 맺기 (내용은 그대로, 단정 표현은 쓰지 않기)`,
+    ];
+  });
+}
+
+// 3) 긴 문단: 빈 줄("\n\n")로 나눈 한 문단이 너무 길면 휴대폰에서 벽처럼 보인다.
+// 기준: 4문장 초과 또는 250자 초과.
+//  - 작성 목표는 문단당 2~3문장. 4문장까지는 허용(화면이 2+2로 나눠 보여줌), 5문장부터는 글쓴이가 문단을 나눠야 한다.
+//  - 250자: 390px 휴대폰에서 17px 글자로 한 줄 약 20자 → 12~13줄. 문장이 길어 4문장 이하인데도 벽이 되는 경우를 잡는다.
+//  - 실제 글 5편: 닌자 크리스피 후기 문단 6문장·307자, 다른 글 후기 문단 5~7문장·260~278자 → 걸림.
+//    4문장·236자 후기 문단, 3문장 안팎의 고르는 기준·FAQ 답은 통과.
+export const MAX_PARAGRAPH_SENTENCES = READABILITY.paragraphSentences;
+export const MAX_PARAGRAPH_CHARS = READABILITY.paragraphChars;
+export function longParagraphIssues(w: WrittenPost): string[] {
+  return proseFields(w).flatMap(({ name, text }) =>
+    rawParagraphs(text).flatMap((para, i, all) => {
+      const n = sentencesOf(para).length;
+      if (n <= MAX_PARAGRAPH_SENTENCES && para.length <= MAX_PARAGRAPH_CHARS) return [];
+      const which = all.length > 1 ? ` ${i + 1}번째 문단이` : " 한 문단이";
+      return [
+        `${name}:${which} ${n}문장·${para.length}자 → 문단당 2~3문장(${MAX_PARAGRAPH_SENTENCES}문장·${MAX_PARAGRAPH_CHARS}자 이하)으로 ` +
+          `나누고 문단 사이에 빈 줄("\\n\\n") 넣기. 문장 내용은 그대로 두고 나누기만 (너무 긴 문장은 둘로 끊기)`,
+      ];
+    }),
+  );
 }
 
 export function lintPost(w: WrittenPost, productCount: number): string[] {
@@ -293,6 +411,8 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   }
   issues.push(...repeatedEndingIssues(w));
   issues.push(...repeatedOpeningIssues(w));
+  issues.push(...repeatedEvidenceIssues(w));
+  issues.push(...longParagraphIssues(w));
   if (c.faq.length < MIN_SECTION.faq) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → ${SECTION_GOALS.faq} (근거로 답할 수 있는 질문만)`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {

@@ -9,12 +9,14 @@ import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, pairTypeLabel, sameType } from "./discover";
-import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repeatedOpeningIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { MAX_PARAGRAPH_CHARS, STRUCTURAL, checkNumbers, evidenceTailCount, isNonAnswer, judgeAudit, lintPost, locallySupported, longParagraphIssues, quoteFound, repeatedEndingIssues, repeatedEvidenceIssues, repeatedOpeningIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { rawParagraphs, sentencesOf, splitParagraphs } from "@/lib/paragraphs";
+import { fixHanja } from "./hanja";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
-import { SECTION_GOALS, buildEvidence, rulesFor, type WrittenPost } from "./writer";
+import { READABILITY, SECTION_GOALS, buildEvidence, rulesFor, type WrittenPost } from "./writer";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -60,6 +62,119 @@ const real: WrittenPost = {
 // 수집 자료 (440cc 는 일부러 뺌, 온도는 ℃ 표기)
 const evidence = `케어팟 X50V 스펙: 수조 용량 4.2L, 연속 가습 최대 30시간, 소비전력 29W~150W, 미스트 온도 약 40℃.
 후기: 통세척이 가능하고 스테인리스 수조라 위생적이에요. 물이 1/3 정도 남았는데 진동자 보호 때문에 멈춰요.`;
+
+// 2026-11-13 발행된 닌자 크리스피 글 (운영자가 휴대폰에서 보고 "술술 안 읽힌다"고 지적한 부분 그대로)
+//  - 추천 이유 4개가 모두 "이 상황에서는 ~"으로 시작, 이유마다 "~후기가 있어/평가가 나와요/언급돼요"
+//  - 후기 문단 6문장이 빈 줄 없이 한 덩어리, FAQ 답마다 근거 꼬리
+const ninja: WrittenPost = {
+  title: "닌자 크리스피 후기 장단점 총정리 유리 용기 에어프라이어",
+  description: "닌자 크리스피 후기 분석",
+  content: {
+    summary:
+      "닌자 크리스피는 유리 용기에서 조리하고 그대로 식탁과 보관으로 이어 쓰기 좋은 제품으로 꼽혀요. 다만 유리 무게와 세부 온도 설정이 없다는 점은 사용자들이 자주 짚는 부분이에요.",
+    intro:
+      "요리에 익숙하지 않아도 집밥은 챙기고 싶은 워킹맘이라면, 밥상 차리는 시간과 설거지 부담을 함께 줄이고 싶을 거예요. 그렇다면 이 제품이 나에게도 맞을지 궁금해질 거예요.",
+    products: [
+      {
+        name: "닌자 크리스피",
+        oneLiner: "투명 유리 용기에서 조리하고 그릇째 식탁과 보관까지 이어 쓰는 에어프라이어예요.",
+        pros: [
+          "설거지 감소: 그릇째 식탁에 올리고 보관까지 할 수 있어 설거지가 줄어든다고 느끼는 사용자가 많아요.",
+          "고기 요리: 삼겹살, 닭다리, 고등어를 겉은 바삭하고 속은 촉촉하게 익힌 후기가 있어요.",
+          "세척 편의: 유리라 뽀득하게 닦이고 식기세척기 사용도 가능한 편으로 꼽혀요.",
+          "용기 크기: 양에 따라 큰 용기와 작은 용기를 골라 쓸 수 있어 편하다는 반응이 있어요.",
+        ],
+        cons: [
+          "용기 무게: 유리 용기가 무거워 설거지와 이동이 부담스럽다는 쪽으로 꼽혀요.",
+          "온도 설정: 세부 온도 조절 기능이 없어 메뉴가 제한적이라고 느끼는 사람이 있어요.",
+          "상단 세척: 본체 윗부분과 뚜껑 쪽 틈에 기름과 양념이 잘 안 닦인다는 불만이 나와요.",
+        ],
+        bestFor: "요리 초보이거나 간단한 조작을 원하는 1~2인 가구",
+        notFor: "대용량 요리가 잦은 가족이나 온도를 세밀하게 맞추고 싶은 분에게는 맞지 않을 수 있어요.",
+        review:
+          "요리에 익숙하지 않은 사용자들이 편하다고 말하는 쪽이에요. 한 워킹맘 사용자는 재료 보관과 조리, 차리기까지 한 용기에서 해결되고 설거지도 거의 없다며 3개월째 쓰고 있어요. " +
+          "삼겹살을 구울 때도 기름이 덜 튀고 유리라서 뽀득하게 닦인다고 느낀 사용자가 있어요. 그릇째 가져가 먹고 설거지하는 흐름이 편하다는 반응도 보여요. " +
+          "다만 메뉴를 다양하게 시도하거나 온도를 세밀하게 맞추고 싶은 분에게는 아쉬움이 남을 수 있어요. 그래서 설거지 줄이기와 간단한 조리가 목표라면 잘 맞고, 여러 메뉴를 세심하게 다루고 싶다면 다른 제품과 비교해 보는 게 좋아요.",
+      },
+    ],
+    comparison: [
+      { label: "용량", values: ["3.8L·1.4L"] },
+      { label: "용기 재질", values: ["투명 유리"] },
+      { label: "식기세척기", values: ["사용 가능"] },
+      { label: "용기 무게", values: ["무거운 편"] },
+    ],
+    recommendations: [
+      {
+        situation: "요리가 익숙하지 않아 간단한 조작을 원한다면",
+        pick: 0,
+        reason: "이 상황에서는 메뉴를 고르고 돌리는 과정이 단순한지가 중요해요. 요리 초보 사용자 후기에서 집밥을 짧은 시간에 차렸다는 이야기가 나와요. 세부 온도를 맞추는 기능은 기대하지 않는 편이 좋아요.",
+      },
+      {
+        situation: "유리 용기째 조리하고 바로 식탁에 올리고 싶다면",
+        pick: 0,
+        reason: "이 상황에서는 설거지를 얼마나 줄일 수 있는지가 핵심이에요. 그릇째 식탁에 올리고 보관까지 할 수 있어 설거지가 줄어든다는 후기가 자주 나와요. 유리가 뜨거우니 식힌 뒤 덜어 먹는 방법도 떠올려 두세요.",
+      },
+      {
+        situation: "삼겹살이나 생선처럼 기름 튀는 고기를 자주 굽는다면",
+        pick: 0,
+        reason: "이 상황에서는 기름이 얼마나 튀는지와 조리 후 정리가 편한지가 중요해요. 기름이 덜 튀고 유리라 닦기 쉽다는 후기가 있어 고기 요리에 잘 맞는다는 평가가 나와요. 겉바속촉으로 익는다는 평가도 함께 나와 고기 요리를 자주 하는 분에게 기대할 만해요.",
+      },
+      {
+        situation: "주방 자리가 좁은 1~2인 가구라면",
+        pick: 0,
+        reason: "이 상황에서는 설치 자리와 수납 공간이 제일 먼저 걸려요. 본체를 용기 위에 올려 쓰는 방식이라 자리를 적게 차지한다는 점이 후기에서 언급돼요. 설치 전에 자리 폭을 먼저 재 보세요.",
+      },
+    ],
+    commonComplaints: [
+      "조리 직후 유리가 많이 뜨거워 바로 식탁에서 먹기 어려워요. 다른 접시에 덜어 먹는 게 사용자들이 알려 준 요령이에요.",
+      "종이 호일을 깔면 공기 순환이 잘 안 돼요. 호일 없이 용기 바닥을 그대로 쓰는 쪽이 낫다고 해요.",
+    ],
+    verdict:
+      "후기를 모아 보면 닌자 크리스피의 핵심은 유리 용기에서 조리하고 그대로 식탁과 보관으로 이어 쓰는 편리함이에요. 세부 온도를 세밀하게 맞춰야 한다면 다른 제품과 함께 보는 게 나아요. 쿠팡에서 현재 가격을 확인하세요.",
+    faq: [
+      { q: "냉동피자도 잘 되나요?", a: "한 후기에서는 냉동피자는 잘 안 됐다는 답이 있었어요. 고기와 생선 요리 위주라면 후기에서 좋게 보는 평가가 많은 편이에요." },
+      { q: "식기세척기에 돌려도 되나요?", a: "여러 후기에서 식기세척기 사용이 가능하다고 답했어요. 유리 용기라 세척이 간편하다는 말도 있어요." },
+      { q: "소음은 어떤가요?", a: "작동음이 있다는 의견이 있었어요. 다만 소리 크기를 수치로 비교한 정보는 찾기 어려워요." },
+      { q: "고기 요리는 어떻게 하면 좋나요?", a: "삼겹살을 구울 때 아래에 김치를 깔아 함께 익힌 후기가 있어요. 고기와 생선이 겉바속촉으로 잘 익는다는 평가도 나와요." },
+      { q: "냉장고에 보관해도 되나요?", a: "전용 뚜껑이 있어 냉장고 보관도 가능하다고 소개돼요. 재료를 유리 용기에 담아 보관하는 데 쓴다는 사용자가 있어요." },
+    ],
+    buyingGuide: [
+      { criterion: "설치 자리와 보관", detail: "본체를 용기 위에 올려 쓰는 구조라 주방에서 차지하는 자리가 중요해요. 설치 전 자리 폭을 먼저 재 보세요." },
+      { criterion: "용기 무게", detail: "유리 용기라 무게가 있어요. 설거지와 이동이 잦다면 작은 용기를 함께 쓰는 쪽이 편해요." },
+    ],
+  } as ShopPostContent,
+};
+
+// 위 글을 작성 규칙대로 고친 모습 (근거는 구역 첫머리에 한 번, 후기 문단은 빈 줄로 나눔, 이유마다 다른 시작)
+const readableNinja: WrittenPost = structuredClone(ninja);
+readableNinja.content.products[0].review =
+  "후기를 모아 보면 요리에 익숙하지 않은 사람이 특히 편하게 써요. 한 워킹맘 사용자는 재료 보관과 조리, 차리기까지 한 용기에서 해결돼 3개월째 쓰고 있어요.\n\n" +
+  "삼겹살을 구워도 기름이 덜 튀고, 유리라서 뽀득하게 닦여요. 그릇째 가져가 먹고 바로 설거지하는 흐름도 편해요.\n\n" +
+  "다만 온도를 세밀하게 맞추고 싶다면 아쉬움이 남을 수 있어요. 설거지를 줄이고 간단히 조리하려는 사람에게 잘 맞아요.";
+readableNinja.content.recommendations = [
+  { situation: "요리가 익숙하지 않아 간단한 조작을 원한다면", pick: 0, reason: "메뉴를 고르고 돌리기만 하면 돼서 조작이 단순해요. 요리 초보 사용자도 집밥을 짧은 시간에 차렸다는 이야기가 나와요." },
+  { situation: "유리 용기째 조리하고 바로 식탁에 올리고 싶다면", pick: 0, reason: "그릇째 식탁에 올리고 그대로 보관까지 이어져 설거지가 줄어요. 유리가 뜨거우니 잠시 식힌 뒤 덜어 드세요." },
+  { situation: "삼겹살이나 생선처럼 기름 튀는 고기를 자주 굽는다면", pick: 0, reason: "기름이 덜 튀고 유리라 닦기 쉬워요. 겉은 바삭하고 속은 촉촉하게 익는 편이에요." },
+  { situation: "주방 자리가 좁은 1~2인 가구라면", pick: 0, reason: "본체를 용기 위에 올려 쓰는 방식이라 자리를 적게 차지해요. 설치 전에 자리 폭을 먼저 재 보세요." },
+];
+readableNinja.content.faq = [
+  { q: "냉동피자도 잘 되나요?", a: "냉동피자는 잘 안 됐다는 답이 있었어요. 고기와 생선 요리 쪽이 만족도가 높아요." },
+  { q: "식기세척기에 돌려도 되나요?", a: "식기세척기 사용이 가능해요. 유리 용기라 손으로 닦기도 간편해요." },
+  { q: "소음은 어떤가요?", a: "작동음은 들리는 편이에요. 다만 소리 크기를 수치로 비교한 정보는 찾기 어려워요." },
+  { q: "고기 요리는 어떻게 하면 좋나요?", a: "삼겹살 아래에 김치를 깔아 함께 익히는 방법이 있어요. 고기와 생선이 겉바속촉으로 잘 익어요." },
+  { q: "냉장고에 보관해도 되나요?", a: "전용 뚜껑이 있어 냉장고 보관도 가능하다고 소개돼요. 재료를 담아 두는 보관 용기로도 써요." },
+];
+readableNinja.content.products[0].pros = [
+  "설거지 감소: 그릇째 식탁에 올리고 보관까지 할 수 있어 설거지가 줄어요.",
+  "고기 요리: 삼겹살, 닭다리, 고등어가 겉은 바삭하고 속은 촉촉하게 익어요.",
+  "세척 편의: 유리라 뽀득하게 닦이고 식기세척기 사용도 가능한 편으로 꼽혀요.",
+  "용기 크기: 양에 따라 큰 용기와 작은 용기를 골라 쓸 수 있어 편해요.",
+];
+readableNinja.content.products[0].cons = [
+  "용기 무게: 유리 용기가 무거워 설거지와 이동이 부담스럽다는 쪽으로 꼽혀요.",
+  "온도 설정: 세부 온도 조절 기능이 없어 메뉴가 제한적이에요.",
+  "상단 세척: 본체 윗부분과 뚜껑 쪽 틈에 기름과 양념이 잘 안 닦인다는 불만이 나와요.",
+];
 
 let passed = 0;
 function test(name: string, fn: () => void | Promise<void>) {
@@ -388,7 +503,7 @@ async function main() {
       assert.ok(rules.includes('직접 써본 것처럼 쓰지 않는다'));
     }
     assert.deepEqual(SECTION_GOALS, {
-      review: "5~7문장", faq: "6개", faqAnswer: "2~3문장", commonComplaints: "4~5개",
+      review: "5~7문장", reviewParagraphs: "2~3개", faq: "6개", faqAnswer: "2~3문장", commonComplaints: "4~5개",
       recommendationReason: "2~3문장", buyingGuide: "3~5개", buyingGuideDetail: "3문장",
     });
   });
@@ -458,6 +573,100 @@ async function main() {
       assert.ok(!rules.includes("그 상황에서 무엇이 중요한지 →"), "고정 틀 문구가 남아 있으면 안 됨");
       assert.ok(rules.includes("문장 구조와 순서는 이유마다 자유롭게 바꾼다. 이유들을 같은 말로 시작하지 않는다"));
     }
+  });
+  // ---- 읽기 쉬운 글 (2026-11-13 닌자 크리스피 휴대폰 지적) ----
+  await test("문단 나누기: 빈 줄 우선, 3문장 이하는 그대로, 긴 문단은 2~3문장씩 고르게", () => {
+    // 3문장 이하 → 한 문단
+    assert.deepEqual(splitParagraphs("좋아요. 편해요. 가벼워요."), ["좋아요. 편해요. 가벼워요."]);
+    // 4문장 → 2+2, 5 → 3+2, 7 → 3+2+2 (한 문장만 남는 문단 없음)
+    const many = (n: number) => Array.from({ length: n }, (_, i) => `문장${i + 1}이에요.`).join(" ");
+    assert.deepEqual(splitParagraphs(many(4)).map((p) => sentencesOf(p).length), [2, 2]);
+    assert.deepEqual(splitParagraphs(many(5)).map((p) => sentencesOf(p).length), [3, 2]);
+    assert.deepEqual(splitParagraphs(many(7)).map((p) => sentencesOf(p).length), [3, 2, 2]);
+    // 빈 줄이 있으면 그 경계를 그대로 쓴다 (2문장 + 2문장이 4문장 하나로 합쳐지지 않음)
+    assert.deepEqual(splitParagraphs("첫째예요. 둘째예요.\n\n셋째예요. 넷째예요."), ["첫째예요. 둘째예요.", "셋째예요. 넷째예요."]);
+    assert.deepEqual(rawParagraphs("가예요.\n \n나예요.\n다예요."), ["가예요.", "나예요. 다예요."], "공백만 있는 줄도 경계, 줄바꿈 하나는 공백");
+    // 숫자 소수점·모델명은 문장 끝이 아님, "?" "!" "다." "죠." 는 끝
+    assert.equal(sentencesOf("용량은 1.5L이고 v2.0 펌웨어예요. 정말 될까? 된다! 그렇습니다. 그렇죠. 끝이에요.").length, 6);
+    assert.equal(sentencesOf("3.8L 용기와 1.4L 용기로 나뉘어요.").length, 1);
+    assert.deepEqual(splitParagraphs(""), []);
+    // 실제 닌자 후기 문단(6문장, 빈 줄 없음) → 3+3 두 문단
+    assert.deepEqual(splitParagraphs(ninja.content.products[0].review ?? "").map((p) => sentencesOf(p).length), [3, 3]);
+  });
+  await test("긴 문단 검출: 빈 줄 없는 6문장 후기 문단은 지적, 빈 줄로 나누면 통과", () => {
+    const issues = longParagraphIssues(ninja);
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].startsWith("닌자 크리스피 후기 문단(products[0].review)") && issues[0].includes("6문장"), issues[0]);
+    assert.ok(issues[0].includes("→") && issues[0].includes("빈 줄"), "수정 지시(어떻게 고칠지)가 있어야 함");
+    assert.ok(lintPost(ninja, 1).some((x) => x.includes("products[0].review") && x.includes("6문장")), "lintPost 에도 포함");
+    // 같은 문장을 빈 줄로 3+3 나누면 통과
+    const split = structuredClone(ninja);
+    split.content.products[0].review = splitParagraphs(ninja.content.products[0].review ?? "").join("\n\n");
+    assert.deepEqual(longParagraphIssues(split), []);
+    // 4문장이어도 글자 수가 기준을 넘으면 지적
+    const wordy = structuredClone(split);
+    wordy.content.verdict = Array.from({ length: 4 }, () => "가".repeat(Math.ceil(MAX_PARAGRAPH_CHARS / 4)) + "요.").join(" ");
+    assert.ok(longParagraphIssues(wordy).some((x) => x.startsWith("정리(verdict)")));
+    // 회귀 테스트의 다른 글(짧은 문단)은 걸리지 않음
+    assert.deepEqual(longParagraphIssues(real), []);
+  });
+  await test("근거 표시 반복 검출: 추천 이유·FAQ 처럼 한 구역에 근거 꼬리가 3번 이상이면 지적", () => {
+    const issues = repeatedEvidenceIssues(ninja);
+    const rec = issues.find((x) => x.startsWith("잘 맞는 상황:"));
+    assert.ok(rec && rec.includes("6번"), issues.join("\n"));
+    assert.ok(rec.includes("평가가 나와") && rec.includes("언급돼"), "어떤 표현이 반복됐는지 보여줘야 고칠 수 있음");
+    assert.ok(rec.includes("→") && rec.includes("첫머리"), "수정 지시가 있어야 함");
+    assert.ok(issues.some((x) => x.startsWith("FAQ 답(faq[].a)")), "FAQ 답마다 근거 꼬리");
+    assert.ok(issues.some((x) => x.startsWith("장점(products[0].pros)")), "장점 칸은 제목이 이미 '좋다는 평'");
+    assert.ok(!issues.some((x) => x.includes("후기 문단")), "후기 문단은 2번 — 허용 범위");
+    assert.ok(lintPost(ninja, 1).some((x) => x.startsWith("잘 맞는 상황:") && x.includes("근거 표시")), "lintPost 에도 포함");
+    // 고친 모습: 첫머리에 한 번 밝히고 나머지는 담백하게 → 통과
+    const fixed = structuredClone(ninja);
+    fixed.content.recommendations[2].reason = "후기를 보면 기름이 덜 튀고 유리라 닦기 쉬워요. 겉은 바삭하고 속은 촉촉하게 익는 편이에요.";
+    fixed.content.recommendations[3].reason = "본체를 용기 위에 올려 쓰는 방식이라 자리를 적게 차지해요. 설치 전에 자리 폭을 먼저 재 보세요.";
+    assert.ok(!repeatedEvidenceIssues(fixed).some((x) => x.startsWith("잘 맞는 상황:")), repeatedEvidenceIssues(fixed).join("\n"));
+    // 오탐 없음: "부분이 있어요", "주말이 있어", 제조사 설명 "소개돼요", "~로 꼽혀요"는 세지 않음
+    assert.equal(evidenceTailCount("아쉬운 부분이 있어요. 주말이 있어 좋아요. 52dB로 소개돼요. 편한 편으로 꼽혀요."), 0);
+    assert.equal(evidenceTailCount("닦기 쉽다는 후기가 있어 좋아요. 평가도 함께 나와요. 후기에서 언급돼요. 반응도 보여요. 느낀 사용자가 있어요."), 5);
+    assert.deepEqual(repeatedEvidenceIssues(real), [], "근거 표시가 적은 글은 통과");
+  });
+  await test("같은 시작 반복을 추천 이유뿐 아니라 모든 목록 구역(FAQ 답·고르는 기준·구매 전 확인·장단점)에서 검출", () => {
+    const issues = repeatedOpeningIssues(ninja);
+    assert.ok(issues.some((x) => x.startsWith("잘 맞는 상황:") && x.includes("4개") && x.includes("이 상황")), issues.join("\n"));
+    const w = structuredClone(ninja);
+    w.content.faq = w.content.faq.map((f) => ({ ...f, a: `후기를 보면 ${f.a}` }));
+    w.content.buyingGuide = [
+      { criterion: "용량", detail: "두 제품 모두 3.8L예요." },
+      { criterion: "세척", detail: "두 제품 모두 유리 용기예요." },
+      { criterion: "소음", detail: "두 제품은 작동음이 비슷해요." },
+    ];
+    // "핵심어: 설명" 꼴은 핵심어가 달라도 설명이 같은 말로 시작하면 같은 틀
+    w.content.commonComplaints = ["뜨거움: 사용자들이 알려 준 요령은 덜어 먹기예요.", "호일: 사용자들이 알려 준 방법은 호일 빼기예요.", "세척: 사용자들이 알려 준 팁은 바로 닦기예요."];
+    w.content.products[0].cons = ["무게: 후기를 보면 무거워요.", "온도: 후기를 보면 설정이 없어요.", "세척: 후기를 보면 틈이 안 닦여요."];
+    const all = repeatedOpeningIssues(w);
+    for (const head of ["FAQ 답(faq[].a)", "고르는 기준 설명(buyingGuide[].detail)", "구매 전 확인(commonComplaints)", "단점(products[0].cons)"]) {
+      assert.ok(all.some((x) => x.startsWith(head) && x.includes("→")), `${head} 이 안 걸림\n${all.join("\n")}`);
+    }
+    assert.ok(all.some((x) => x.includes("두 제품")), "'두 제품 모두'·'두 제품은'은 같은 틀");
+    // 핵심어만 같은 모양이고 설명이 다르면 통과 (닌자 장점은 핵심어 뒤 설명이 서로 다름)
+    assert.ok(!issues.some((x) => x.includes("장점")), issues.join("\n"));
+  });
+  await test("작성 규칙: 후기는 빈 줄로 나눈 짧은 문단, 근거 꼬리는 구역마다 2번까지, 목록 시작을 다르게", () => {
+    assert.deepEqual(READABILITY, { paragraphSentences: 4, paragraphChars: 250, sameOpening: 2, evidenceTails: 2 });
+    for (const n of [1, 2]) {
+      const rules = rulesFor(n);
+      assert.ok(rules.includes(`빈 줄("\\n\\n")로 나눈 짧은 문단 ${SECTION_GOALS.reviewParagraphs}로 쓴다(문단당 2~3문장)`), "후기 문단 나누기");
+      assert.ok(rules.includes(`문장 끝에 출처를 붙이는 근거 꼬리는 한 구역에서 ${READABILITY.evidenceTails}번까지`), "근거 꼬리 상한");
+      assert.ok(rules.includes("후기에서 언급돼요") && rules.includes("반응도 보여요"), "운영자가 지적한 표현을 예로 듦");
+      assert.ok(rules.includes(`한 목록에서 같은 말로 시작하는 항목은 ${READABILITY.sameOpening}개까지`), "모든 목록의 시작 반복");
+      assert.ok(rules.includes(`${READABILITY.paragraphSentences}문장이나 ${READABILITY.paragraphChars}자를 넘는 문단은 쓰지 않는다`), "긴 문단 금지");
+      assert.ok(!rules.includes('"~한 사람도 있어요"처럼 다양하게'), "근거 꼬리를 대안으로 권하던 예전 문구가 남으면 안 됨");
+    }
+  });
+  await test("한자 교정이 문단 경계(빈 줄)를 지우지 않음", async () => {
+    // 키가 없어 AI 수정이 실패해도 한자만 지우고 빈 줄은 그대로
+    const out = await fixHanja({} as never, { review: "内部 세척이 쉬워요.  편해요.\n\n다만 무거워요." });
+    assert.equal(out.review, " 세척이 쉬워요. 편해요.\n\n다만 무거워요.");
   });
   // 점검 글(닌자 크리스피) 구매 전 확인: "품절이 잦고 공구나 할인에 따라 가격이 바뀌어 구매 시점이 까다로울 수 있어요"
   await test("품절·재입고·공구·할인·구매 시점 같은 판매 문구 검출, 제품 기능·연장 '공구' 설명은 통과", () => {
@@ -822,7 +1031,8 @@ async function main() {
   const reply = (obj: unknown) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }));
   const err429 = (msg: string) => new Response(JSON.stringify({ error: { code: 429, message: msg } }), { status: 429 });
   const calls: string[] = [];
-  let mode: "loop" | "worse" | "quota" = "loop";
+  let mode: "loop" | "worse" | "quota" | "readable" = "loop";
+  let revisePrompt = "";
   let minuteHits = 0;
   const claudeBodies: { model: string; output_config?: { format: { schema: { additionalProperties?: boolean; properties: Record<string, { items?: { additionalProperties?: boolean } }> } } } }[] = [];
   let claudeFails = false;
@@ -873,6 +1083,12 @@ async function main() {
     }
     if (prompt.includes("검수 지적사항")) {
       calls.push("revise");
+      if (mode === "readable") {
+        // 읽기 지적을 받은 수정본: 후기 문단을 빈 줄로 나누고, 추천 이유·FAQ·장단점의 근거 꼬리와 같은 시작을 정리
+        if (!revisePrompt) revisePrompt = prompt; // 첫 수정 지시만 본다
+        const ok = structuredClone(readableNinja);
+        return reply({ title: ok.title, description: ok.description, ...ok.content });
+      }
       if (mode === "worse") {
         const bad = structuredClone(real);
         bad.content.intro += " 최저가 보장";
@@ -909,6 +1125,19 @@ async function main() {
     assert.equal(r.post.content.intro, real.content.intro);
     assert.equal(r.qa.revisions, 2);
     assert.equal(r.qa.remaining.length, Math.min(10, r.qa.issuesFound));
+  });
+
+  await test("읽기 지적(긴 문단·근거 표시 반복·같은 시작)이 수정 지시로 전달되고 고친 버전은 그 지적이 사라짐", async () => {
+    mode = "readable";
+    calls.length = 0;
+    const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, ninja, research, [null]);
+    assert.ok(revisePrompt.includes("products[0].review") && revisePrompt.includes("6문장"), "긴 문단 지적이 전달돼야 함");
+    assert.ok(revisePrompt.includes("잘 맞는 상황: 근거 표시가 6번"), "근거 표시 반복 지적이 전달돼야 함");
+    assert.ok(revisePrompt.includes('같은 말("이 상황…")로 시작'), "같은 시작 지적이 전달돼야 함");
+    assert.ok(revisePrompt.includes("긴 문단 지적은 문단 사이에 빈 줄"), "어떻게 고칠지(문단 나누기) 안내가 있어야 함");
+    const readability = /근거 표시가|같은 말\(|문장·\d+자/;
+    assert.ok(!r.qa.remaining.some((x) => readability.test(x)), r.qa.remaining.join("\n"));
+    assert.ok((r.post.content.products[0].review ?? "").includes("\n\n"), "수정본의 문단 경계가 저장까지 유지돼야 함");
   });
 
   mode = "quota";

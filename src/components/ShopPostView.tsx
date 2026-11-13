@@ -19,6 +19,7 @@ import {
   type ShopPost,
   type ShopPostInputProduct,
 } from "@/lib/shop-post-types";
+import { splitParagraphs } from "@/lib/paragraphs";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -38,6 +39,19 @@ function LeadText({ text }: { text: string }) {
       <span className="text-neutral-400"> · </span>
       {m[2]}
     </>
+  );
+}
+
+// 본문 문단: 긴 글을 2~3문장씩 여러 <p> 로 나눠 보여준다 (휴대폰에서 5~7문장이 한 덩어리 벽글로 보이지 않게).
+// 나누는 기준은 src/lib/paragraphs.ts — 빈 줄("\n\n")이 있으면 그것을 먼저 쓰므로 예전 글·새 글 모두 바로 적용된다.
+// 글자 크기·색은 감싸는 div 의 className 으로 받아 문단들이 물려받게 한다.
+function Paragraphs({ text, className = "", gap = "space-y-4" }: { text: string; className?: string; gap?: string }) {
+  return (
+    <div className={`${gap} ${className}`}>
+      {splitParagraphs(text).map((t, i) => (
+        <p key={i}>{t}</p>
+      ))}
+    </div>
   );
 }
 
@@ -269,7 +283,7 @@ export function ShopPostView({
 
       {/* 결론 먼저 */}
       <Section id="verdict" no={no()} title="결론부터">
-        <p className="text-[19px] font-medium leading-[1.7] text-neutral-900 dark:text-white">{c.summary}</p>
+        <Paragraphs text={c.summary} gap="space-y-3" className="text-[19px] font-medium leading-[1.7] text-neutral-900 dark:text-white" />
         {c.recommendations.length > 0 && (
           <div className={`mt-6 grid gap-3 ${single ? "" : products.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
             {products.map((p, i) =>
@@ -285,7 +299,7 @@ export function ShopPostView({
                     {picksByProduct[i].map((r) => (
                       <li key={r.situation} className="text-[15px] leading-relaxed">
                         <div className="font-medium text-neutral-900 dark:text-white">{r.situation}</div>
-                        <div className="text-[14px] text-neutral-500">{r.reason}</div>
+                        <Paragraphs text={r.reason} gap="space-y-1.5" className="text-[14px] text-neutral-500" />
                       </li>
                     ))}
                   </ul>
@@ -294,7 +308,7 @@ export function ShopPostView({
             )}
           </div>
         )}
-        {c.intro && <p className="mt-8">{c.intro}</p>}
+        {c.intro && <Paragraphs text={c.intro} className="mt-8" />}
       </Section>
 
       {/* 고르는 기준 (구매 가이드) */}
@@ -308,7 +322,7 @@ export function ShopPostView({
                 </span>
                 <div>
                   <div className="font-semibold text-neutral-900 dark:text-white">{g.criterion}</div>
-                  <p className="mt-1 text-[15px] leading-relaxed">{g.detail}</p>
+                  <Paragraphs text={g.detail} gap="space-y-2" className="mt-1 text-[15px] leading-relaxed" />
                 </div>
               </li>
             ))}
@@ -399,7 +413,7 @@ export function ShopPostView({
               )}
 
               {single && <BodyPhoto product={products[0]} name={names[0]} spot="detail" preview={preview} className="mb-6" />}
-              {p.review && <p className={single ? "" : "mt-5"}>{p.review}</p>}
+              {p.review && <Paragraphs text={p.review} className={single ? "" : "mt-5"} />}
 
               <div className="mt-6 grid gap-6 sm:grid-cols-2">
                 <div>
@@ -486,7 +500,7 @@ export function ShopPostView({
                   {f.q}
                   <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition group-open:rotate-180" />
                 </summary>
-                <p className="pb-4 text-[15px] leading-relaxed">{f.a}</p>
+                <Paragraphs text={f.a} gap="space-y-2" className="pb-4 text-[15px] leading-relaxed" />
               </details>
             ))}
           </div>
@@ -495,7 +509,7 @@ export function ShopPostView({
 
       {c.verdict && (
         <Section id="end" no={no()} title="정리">
-          <p>{c.verdict}</p>
+          <Paragraphs text={c.verdict} />
         </Section>
       )}
 

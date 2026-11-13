@@ -245,6 +245,20 @@ async function main() {
     assert.equal(photoFor(withPhoto(base, "bottom", "b.jpg"), "main"), undefined, "아래만 넣으면 위는 비어 있음");
     assert.equal(withPhoto(both, "table", "t.jpg").images?.bottom, "bottom.jpg", "다른 자리 유지");
   });
+  await test("비교표: 한쪽만 확인된 행이 3개 이상이면 지적, 모델명 행은 자동 삭제", () => {
+    const base = structuredClone(real);
+    const two = { ...base, content: { ...base.content, products: [base.content.products[0], base.content.products[0]] } };
+    const rows = (oneSided: number) => [
+      { label: "블루투스", values: ["5.3", "5.2"] },
+      { label: "착용", values: ["커널형", "커널형"] },
+      ...Array.from({ length: oneSided }, (_, i) => ({ label: `항목${i}`, values: ["있음", "확인 안 됨"] })),
+    ];
+    const issuesWith = (n: number) => lintPost({ ...two, content: { ...two.content, comparison: rows(n) } }, 2);
+    assert.ok(!issuesWith(2).some((x) => x.includes("한쪽만 확인된")));
+    assert.ok(issuesWith(3).some((x) => x.includes("한쪽만 확인된 항목이 3개")));
+    const named = autoFix({ ...two, content: { ...two.content, comparison: [{ label: "모델명", values: ["SM-R630N", "확인 안 됨"] }, ...rows(0)] } });
+    assert.ok(!named.post.content.comparison.some((r) => r.label === "모델명"));
+  });
   await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
     const w = structuredClone(real);
     w.content.buyingGuide = [{ criterion: "소음", detail: "자료에는 31.8dB로 나와요. 자료를 보면" }];

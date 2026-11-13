@@ -278,7 +278,7 @@ async function main() {
     const named = autoFix({ ...two, content: { ...two.content, comparison: [{ label: "모델명", values: ["SM-R630N", "확인 안 됨"] }, ...rows(0)] } });
     assert.ok(!named.post.content.comparison.some((r) => r.label === "모델명"));
   });
-  await test("글 쓰기 전 근거 검사: 스펙·장단점이 얇거나 두 상품 공통 스펙이 적으면 쓰지 않음", () => {
+  await test("글 쓰기 전 근거 검사: 상품마다 스펙·장단점이 얇으면 쓰지 않음 (스펙 이름이 서로 달라도 각자 충분하면 씀)", () => {
     const digest = (specs: string[], points: number): ProductDigest => ({
       summary: "",
       strengths: Array.from({ length: points }, (_, i) => ({ point: `장점${i}`, mentions: 1 })),
@@ -295,11 +295,10 @@ async function main() {
     assert.ok(evidenceGaps(["A"], [digest(["무게"], 6)])[0].includes("스펙 1개"));
     assert.ok(evidenceGaps(["A"], [digest(["무게", "소음", "색상", "크기"], 2)])[0].includes("장단점 2개"));
     assert.ok(evidenceGaps(["A"], [null])[0].includes("분석 실패"));
-    // 비교: 공통 스펙 ("정격 소비전력" ≈ "소비전력")
-    const other = digest(["정격 소비전력", "무게", "물통용량", "색상"], 6);
-    assert.deepEqual(evidenceGaps(["A", "B"], [rich, other]), []);
-    const unrelated = digest(["색상", "보증", "원산지", "구성품"], 6);
-    assert.ok(evidenceGaps(["A", "B"], [rich, unrelated]).some((x) => x.includes("공통 스펙 0개")));
+    // 비교: 점검 실행 50 — 스펙 이름이 제품마다 달라 공통 항목으로 막으면 쓸 수 있는 짝까지 막힘
+    const differentNames = digest(["블루투스 버전", "재생 시간", "무게", "방수 등급"], 6);
+    assert.deepEqual(evidenceGaps(["A", "B"], [rich, differentNames]), []);
+    assert.ok(evidenceGaps(["A", "B"], [rich, digest(["무게"], 6)]).some((x) => x.startsWith("B: 스펙 1개")));
   });
   await test("코드 검사: 블로그 수집 경로·장단점 5개·장단점 칸의 엇갈림·문장형 표 값·'확인하세요' 과다", () => {
     const w = structuredClone(real);

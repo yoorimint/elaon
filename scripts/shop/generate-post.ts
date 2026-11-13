@@ -34,6 +34,9 @@ import { writePost, type WrittenPost } from "./writer";
 const FORCE = process.env.SHOP_FORCE === "1";
 const MAX_ATTEMPTS = 2; // 글을 쓴 횟수 상한: 합격선 미달이면 다른 상품으로 한 번 더
 const MAX_PICKS = 4; // 상품을 고른 횟수 상한: 근거가 얇아 쓰지 않고 넘긴 것까지 포함
+// 이 시간이 지나면 새 상품을 고르지 않음 (워크플로 제한 30분 안에 저장까지 끝내도록. 글 1편 작성·검수에 최대 약 10분)
+const MAX_PICK_MINUTES = 18;
+const startedAt = Date.now();
 
 function kstNow() {
   const now = new Date();
@@ -175,6 +178,12 @@ async function main() {
   const tried: string[] = [];
   let writes = 0;
   for (let attempt = 1; attempt <= (useManual ? 1 : MAX_PICKS) && writes < (useManual ? 1 : MAX_ATTEMPTS); attempt++) {
+    const minutes = (Date.now() - startedAt) / 60000;
+    if (attempt > 1 && minutes > MAX_PICK_MINUTES) {
+      console.log(`  ⏱ 실행 ${minutes.toFixed(0)}분 경과 — 새 상품은 다음 실행에서`);
+      tried.push(`시간 상한(${MAX_PICK_MINUTES}분)으로 중단`);
+      break;
+    }
     let sel: Selection;
     if (useManual) {
       sel = { products: manual, alternatives: [] };

@@ -89,7 +89,7 @@ async function main() {
     const w = structuredClone(real);
     w.content.faq = [
       { q: "케이블 길이는?", a: "케이블 길이는 후기에서 확인되지 않음이에요. 자료에도 길이 정보는 나와 있지 않아요." },
-      { q: "출력은?", a: "자료에 따르면 최대 22.5W예요." },
+      { q: "출력은?", a: "자료에 따르면 최대 22.5W예요. 무게는 자료 없음." },
       { q: "무게는?", a: "후기에서는 가볍다는 의견이 많아요." },
     ];
     const issues = lintPost(w, 1);

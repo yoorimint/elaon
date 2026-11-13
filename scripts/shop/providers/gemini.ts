@@ -109,6 +109,8 @@ export type GeminiOptions = {
   maxOutputTokens?: number;
   // 글 작성·수정·검수처럼 품질이 중요한 호출: flash-lite 는 쓰지 않는다 (없으면 StrongModelUnavailableError)
   strongOnly?: boolean;
+  // 응답 대기 한도. 짧은 답만 받는 호출은 줄여서, 멈춘 모델 하나에 실행 시간을 낭비하지 않는다
+  timeoutMs?: number;
 };
 
 export type GeminiResult = {
@@ -158,7 +160,7 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify(buildBody(prompt, opts, withThinking)),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? REQUEST_TIMEOUT_MS),
       });
     } catch (e) {
       const secs = Math.round((Date.now() - started) / 1000);

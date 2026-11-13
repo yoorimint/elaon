@@ -133,7 +133,8 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<{ 
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
-  const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true });
+  // 짧은 목록만 받는 호출이라 60초 넘게 걸리면 멈춘 것으로 보고 다음 모델로 (run #16: 3.8-flash 150초 낭비)
+  const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true, timeoutMs: 60_000 });
   const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
   const all = (o.products ?? []).map((p) => ({
     name: String(p.name ?? "").trim(),

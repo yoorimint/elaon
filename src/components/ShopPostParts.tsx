@@ -59,7 +59,8 @@ export function BuyButton({
 }
 
 // 글 머리: 경로·종류·제목·작성일 + 공정위 고지 (예전 구성·칼럼 공통)
-// label: 직접 쓴 글은 "후기 분석"이 아니므로 머리 문구를 따로 받는다
+// label: 직접 쓴 글은 "후기 분석"·"쇼핑 비교"가 아니므로 머리 문구를 따로 받는다
+//  - section: 경로(홈 / …)에 보일 목록 이름, kicker: 제목 위 작은 분류 (빈 값이면 안 보임)
 export function PostHeader({
   post,
   single,
@@ -67,20 +68,21 @@ export function PostHeader({
 }: {
   post: ShopPost;
   single: boolean;
-  label?: { kicker: string; byline: string };
+  label?: { kicker?: string; byline: string; section?: string };
 }) {
-  const kicker = label?.kicker ?? (single ? "REVIEW" : "COMPARISON");
+  const kicker = label ? label.kicker?.trim() : single ? "REVIEW" : "COMPARISON";
   const byline = label?.byline ?? (single ? "eloan 후기 분석" : "eloan 쇼핑 비교");
+  const section = label?.section ?? "쇼핑 비교";
   return (
     <>
       <nav className="text-[13px] text-neutral-400">
         <Link href="/" className="hover:text-neutral-600">홈</Link>
         <span className="mx-1.5">/</span>
-        <Link href="/shop" className="hover:text-neutral-600">쇼핑 비교</Link>
+        <Link href="/shop" className="hover:text-neutral-600">{section}</Link>
       </nav>
 
-      <div className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand">{kicker}</div>
-      <h1 className="mt-2 text-[28px] sm:text-[34px] font-bold leading-[1.3] tracking-tight text-neutral-900 dark:text-white">
+      {kicker && <div className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand">{kicker}</div>}
+      <h1 className={`${kicker ? "mt-2" : "mt-6"} text-[28px] sm:text-[34px] font-bold leading-[1.3] tracking-tight text-neutral-900 dark:text-white`}>
         {post.title}
       </h1>
       <div className="mt-3 text-[13px] text-neutral-400">

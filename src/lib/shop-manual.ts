@@ -34,6 +34,8 @@ export function makeBlock(type: ShopManualBlockType, id: string = newBlockId()):
       return { id, type, alt: "" };
     case "link":
       return { id, type, product: 0 };
+    case "table":
+      return { id, type, head: ["", ""], rows: [["", ""]] };
   }
 }
 
@@ -84,13 +86,52 @@ export function removeProduct(
   };
 }
 
+// ---------- 표 편집 (칸 수는 언제나 머리행과 같게) ----------
+
+type TableBlock = Extract<ShopManualBlock, { type: "table" }>;
+export const TABLE_MAX_COLS = 8;
+export const TABLE_MAX_ROWS = 40;
+
+// 행마다 칸 수를 맞춘다: 모자라면 빈 칸, 넘치면 마지막 칸에 이어 붙인다 (글자를 버리지 않게)
+export function fitRow(cells: string[], cols: number): string[] {
+  if (cells.length === cols) return cells;
+  if (cells.length < cols) return [...cells, ...Array(cols - cells.length).fill("")];
+  return [...cells.slice(0, cols - 1), cells.slice(cols - 1).filter((c) => c.trim()).join(" ")];
+}
+
+export function setTableCell(t: TableBlock, row: number, col: number, text: string): Pick<TableBlock, "head" | "rows"> {
+  // row -1 = 머리행
+  if (row < 0) return { head: t.head.map((c, j) => (j === col ? text : c)), rows: t.rows };
+  return { head: t.head, rows: t.rows.map((r, i) => (i === row ? r.map((c, j) => (j === col ? text : c)) : r)) };
+}
+
+export function addTableRow(t: TableBlock): Pick<TableBlock, "head" | "rows"> {
+  if (t.rows.length >= TABLE_MAX_ROWS) return { head: t.head, rows: t.rows };
+  return { head: t.head, rows: [...t.rows, Array(t.head.length).fill("")] };
+}
+
+export function removeTableRow(t: TableBlock, row: number): Pick<TableBlock, "head" | "rows"> {
+  return { head: t.head, rows: t.rows.filter((_, i) => i !== row) };
+}
+
+export function addTableColumn(t: TableBlock): Pick<TableBlock, "head" | "rows"> {
+  if (t.head.length >= TABLE_MAX_COLS) return { head: t.head, rows: t.rows };
+  return { head: [...t.head, ""], rows: t.rows.map((r) => [...r, ""]) };
+}
+
+// 칸은 최소 1개 남긴다
+export function removeTableColumn(t: TableBlock, col: number): Pick<TableBlock, "head" | "rows"> {
+  if (t.head.length <= 1) return { head: t.head, rows: t.rows };
+  return { head: t.head.filter((_, j) => j !== col), rows: t.rows.map((r) => r.filter((_, j) => j !== col)) };
+}
+
 // ---------- 요약·검사 ----------
 
-export type BlockCounts = { images: number; links: number; headings: number; paragraphs: number; lists: number };
+export type BlockCounts = { images: number; links: number; headings: number; paragraphs: number; lists: number; tables: number };
 
 export function countBlocks(blocks: ShopManualBlock[]): BlockCounts {
   const n = (t: ShopManualBlockType) => blocks.filter((b) => b.type === t).length;
-  return { images: n("image"), links: n("link"), headings: n("heading"), paragraphs: n("paragraph"), lists: n("list") };
+  return { images: n("image"), links: n("link"), headings: n("heading"), paragraphs: n("paragraph"), lists: n("list"), tables: n("table") };
 }
 
 // 검색 설명(meta description) 자동: 본문 첫 문단부터 이어 붙여 이 길이 안에서 자른다.
@@ -216,6 +257,12 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
     } else if (o.type === "image") {
       const src = str(o.src, 1000).trim();
       blocks.push({ id, type: "image", alt: str(o.alt, 200), ...(src ? { src } : {}) });
+    } else if (o.type === "table") {
+      const cells = (v: unknown) => (Array.isArray(v) ? v.slice(0, TABLE_MAX_COLS).map((x) => str(x, 300)) : []);
+      const head = cells(o.head);
+      if (!head.length) continue;
+      const rows = Array.isArray(o.rows) ? o.rows.slice(0, TABLE_MAX_ROWS).map((r) => fitRow(cells(r), head.length)) : [];
+      blocks.push({ id, type: "table", head, rows });
     } else if (o.type === "link") {
       const n = Number(o.product);
       blocks.push({ id, type: "link", product: Number.isInteger(n) && n >= 0 && n < products.length ? n : 0 });

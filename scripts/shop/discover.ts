@@ -133,7 +133,8 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<{ 
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
-  const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true });
+  // 짧은 목록만 받는 호출이라 60초 넘게 걸리면 멈춘 것으로 보고 다음 모델로 (run #16: 3.8-flash 150초 낭비)
+  const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true, timeoutMs: 60_000 });
   const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
   const all = (o.products ?? []).map((p) => ({
     name: String(p.name ?? "").trim(),
@@ -173,6 +174,37 @@ export function countRealReviews(name: string, category: string, items: { title:
     const text = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
     return mentionedIn(name, category, text) && REVIEW_SIGNAL.test(text) && !AD_SIGNAL.test(text);
   }).length;
+}
+
+// ---------- 안전 이슈 (리콜·화재 등) ----------
+// 쿠팡 파트너스로 추천하는 글이라, 해당 브랜드의 같은 종류 제품에 리콜·화재·안전기준 위반 뉴스가 있으면 고르지 않는다.
+// (run #17: 보바 보조배터리 — 같은 브랜드 모델 리콜·과충전 안전기준 미흡 보도)
+const SAFETY_SIGNAL = /리콜|회수\s*(조치|명령)|화재|폭발|발화|안전\s*기준\s*(미흡|부적합|위반)|사용\s*(중지|중단)\s*권고/;
+
+export function brandOf(name: string): string {
+  return name.split(/\s+/)[0] ?? "";
+}
+
+export function isSafetyRisk(name: string, category: string, items: { title: string; description: string }[]): boolean {
+  return safetyNews(name, category, items) !== null;
+}
+
+// 안전 이슈 근거 기사 제목 (없으면 null) — 왜 제외했는지 로그에 남겨 오탐을 확인할 수 있게
+export function safetyNews(name: string, category: string, items: { title: string; description: string }[]): string | null {
+  const brand = normText(brandOf(name));
+  const cat = normText(category);
+  const hit = items.find((it) => {
+    const raw = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
+    const text = normText(raw);
+    const aboutThis = mentionedIn(name, category, raw) || (brand.length >= 2 && text.includes(brand) && text.includes(cat));
+    return aboutThis && SAFETY_SIGNAL.test(raw);
+  });
+  return hit ? cleanNaverText(hit.title) : null;
+}
+
+async function safetyIssue(secrets: Secrets, name: string, category: string): Promise<string | null> {
+  const items = await naverSearch(secrets, "news", `${brandOf(name)} ${category} 리콜`, 30).catch(() => []);
+  return safetyNews(name, category, items);
 }
 
 async function realReviewCount(secrets: Secrets, name: string, category: string): Promise<number> {
@@ -252,7 +284,17 @@ export async function discoverProducts(
       if (!reviewCounts.has(name)) {
         const n = await realReviewCount(secrets, name, category);
         reviewCounts.set(name, n);
-        console.log(`    · ${name}: 실사용 후기 ${n}건${n < MIN_REAL_REVIEWS ? ` → 부족(${MIN_REAL_REVIEWS}건 미만), 제외` : ""}`);
+        if (n < MIN_REAL_REVIEWS) {
+          console.log(`    · ${name}: 실사용 후기 ${n}건 → 부족(${MIN_REAL_REVIEWS}건 미만), 제외`);
+        } else {
+          const news = await safetyIssue(secrets, name, category);
+          if (news) {
+            reviewCounts.set(name, -1); // 안전 이슈 표시
+            console.log(`    · ${name}: 실사용 후기 ${n}건이지만 안전 이슈 보도로 제외 — "${news.slice(0, 80)}"`);
+          } else {
+            console.log(`    · ${name}: 실사용 후기 ${n}건 · 안전 이슈 보도 없음`);
+          }
+        }
       }
       return reviewCounts.get(name)! >= MIN_REAL_REVIEWS;
     };

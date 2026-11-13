@@ -98,8 +98,12 @@ const EXTRACT_SCHEMA = {
         properties: {
           name: { type: "string", description: "브랜드 + 모델명 (예: 로보락 Q8 Max)" },
           mentions: { type: "integer" },
+          type: {
+            type: "string",
+            description: "제품 종류 2~4단어 (예: 등유 팬히터, 카본 전기히터, 로봇청소기 물걸레형). 같은 종류면 똑같은 표현",
+          },
         },
-        required: ["name", "mentions"],
+        required: ["name", "mentions", "type"],
       },
     },
   },
@@ -124,20 +128,32 @@ async function collectTitles(secrets: Secrets, category: string): Promise<string
   return lines.slice(0, 150);
 }
 
-async function extractCandidates(secrets: Secrets, category: string): Promise<{ name: string; mentions: number }[]> {
+// 후보 상품. type = 제품 종류 (비교글은 같은 종류끼리만 짝지음)
+type Candidate = { name: string; mentions: number; type: string };
+
+// 같은 종류인지 (띄어쓰기 무시, 한쪽이 다른 쪽을 포함해도 같은 종류로 봄: "팬히터" ⊂ "등유 팬히터")
+export function sameType(a: string, b: string): boolean {
+  const x = normText(a);
+  const y = normText(b);
+  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+}
+
+async function extractCandidates(secrets: Secrets, category: string): Promise<Candidate[]> {
   const lines = await collectTitles(secrets, category);
   if (lines.length < 10) return [];
   const prompt = `다음은 "${category}" 관련 네이버 블로그·카페·지식iN 글의 제목과 요약이야.
 여기서 소비자들이 실제로 많이 언급하는 구체적인 제품(브랜드 + 모델명)을 언급이 많은 순서로 최대 ${MAX_CANDIDATES}개 뽑아줘.
 규칙: 자료에 나온 것만. 카테고리 이름·일반명사·쇼핑몰 이름·브랜드만 있는 것(모델명 없음)은 제외. 같은 제품의 다른 표기는 하나로 합쳐.
+type 에는 제품 종류를 적어. 용도나 방식이 다르면 다른 종류야(예: 캠핑용 등유 팬히터 ≠ 실내용 카본 전기히터).
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
   // 짧은 목록만 받는 호출이라 60초 넘게 걸리면 멈춘 것으로 보고 다음 모델로 (run #16: 3.8-flash 150초 낭비)
   const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true, timeoutMs: 60_000 });
-  const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
+  const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number; type?: string }[] };
   const all = (o.products ?? []).map((p) => ({
     name: String(p.name ?? "").trim(),
+    type: String(p.type ?? "").trim(),
     mentions: Math.max(0, Number(p.mentions) || 0),
   }));
   const source = lines.join("\n");
@@ -225,8 +241,8 @@ export function isModelName(name: string, category: string): boolean {
 // ---------- 3) 후보를 검색 관심도로 정렬 ----------
 async function rankCandidates(
   secrets: Secrets,
-  cands: { name: string; mentions: number }[],
-): Promise<{ name: string; mentions: number; trend: number }[]> {
+  cands: Candidate[],
+): Promise<(Candidate & { trend: number })[]> {
   const out = cands.map((c) => ({ ...c, trend: 0 }));
   try {
     const { start, end } = trendRange();
@@ -267,7 +283,7 @@ export async function discoverProducts(
   console.log(`  카테고리 순위(상위): ${categories.slice(0, 6).join(", ")}`);
 
   for (const category of categories.slice(0, CATEGORY_TRIES)) {
-    let cands: { name: string; mentions: number; trend: number }[] = [];
+    let cands: (Candidate & { trend: number })[] = [];
     try {
       cands = await rankCandidates(secrets, await extractCandidates(secrets, category));
     } catch (e) {
@@ -275,7 +291,7 @@ export async function discoverProducts(
       console.warn(`  ⚠ ${category} 후보 추출 실패: ${e instanceof Error ? e.message.slice(0, 150) : e}`);
       continue;
     }
-    console.log(`  ${category} 후보: ${cands.map((c) => c.name).join(", ") || "(없음)"}`);
+    console.log(`  ${category} 후보: ${cands.map((c) => `${c.name}(${c.type || "종류 미상"})`).join(", ") || "(없음)"}`);
     const asProduct = (name: string): ManualProduct => ({ name, link: "" });
 
     // 후보마다 실제 사용 후기 수 확인 (필요할 때만 조회해서 네이버 호출 절약)
@@ -310,17 +326,21 @@ export async function discoverProducts(
         }
       }
     } else {
-      // 후기가 충분한 후보만 모아 순서대로 짝짓기
-      const ok: string[] = [];
+      // 후기가 충분한 후보만 모아 순서대로 짝짓기. 용도·방식이 다른 제품은 비교하지 않음
+      // (run #19: 캠핑용 등유 팬히터 vs 실내용 카본 전기히터)
+      const ok: Candidate[] = [];
       for (const c of cands) {
-        if (await hasReviews(c.name)) ok.push(c.name);
-        for (let i = 0; i < ok.length - 1; i++) {
-          const pair = [asProduct(ok[i]), asProduct(ok[ok.length - 1])];
+        if (!(await hasReviews(c.name))) continue;
+        for (const prev of ok) {
+          if (!sameType(prev.type, c.type)) continue;
+          const pair = [asProduct(prev.name), asProduct(c.name)];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
-            const names = [ok[i], ok[ok.length - 1]];
+            const names = [prev.name, c.name];
+            console.log(`  짝: ${prev.name} vs ${c.name} (같은 종류: ${c.type})`);
             return { category, products: pair, alternatives: others(names), realReviews: pick(names) };
           }
         }
+        ok.push(c);
       }
     }
     console.log(`  ${category}: 실사용 후기가 충분한 새 상품이 없어 다음 카테고리로`);

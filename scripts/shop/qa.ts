@@ -144,11 +144,12 @@ const UNITS: [RegExp, string][] = [
   [/^(mm|cm|m)$/i, "len"],
   [/^(db|데시벨)$/i, "db"],
   [/^mah$/i, "mah"],
-  [/^(평|㎡)$/i, "평"],
+  [/^평$/, "평"],
+  [/^(㎡|m2|제곱미터)$/i, "㎡"],
   [/^%$/, "%"],
 ];
 // 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
-const NUM_UNIT = /(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|평|%|L)(?![a-zA-Z가-힣])/g;
+const NUM_UNIT = /(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|제곱미터|㎡|m2|평|%|L)(?![a-zA-Z가-힣])/g;
 
 function unitOf(raw: string): string | null {
   for (const [re, u] of UNITS) if (re.test(raw)) return u;
@@ -265,13 +266,51 @@ export function quoteFound(quote: string, evidenceNorm: string): boolean {
   return chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length >= 0.6;
 }
 
+// ---------- 근거 확인 보완 ----------
+// 검수 AI 가 근거 문장을 글자 그대로 옮기지 않는 일이 잦아(run #19: 비교글에서 대부분 오탐),
+// 인용을 못 찾으면 주장의 핵심 단어들이 자료의 한 부분(약 600자 범위)에 함께 나오는지 코드로 확인한다.
+// 서로 떨어진 곳의 단어를 짜깁기한 주장은 이 확인을 통과하지 못한다.
+const PARTICLE = /(으로|에서|에게|까지|부터|이나|이라|하고|해서|해야|하는|하게|되는|되고|된다|이다|있다|없다|한다|는|은|이|가|을|를|에|의|도|로|와|과|만|요)$/;
+const GENERIC = new Set(["후기", "의견", "언급", "평가", "제품", "소개", "정도", "경우", "사용", "기준", "많다", "있어", "없어", "블로그", "댓글"]);
+const WINDOW = 300;
+
+function keyTokens(claim: string, exclude: string[]): string[] {
+  const out = new Set<string>();
+  for (const raw of claim.toLowerCase().match(/[가-힣a-z0-9.~]+/g) ?? []) {
+    const t = norm(raw.replace(PARTICLE, ""));
+    if (t.length < 2 || GENERIC.has(t) || exclude.some((e) => e.includes(t) || t.includes(e))) continue;
+    // 긴 한글 단어는 앞 3글자만 (활용형 차이 흡수: "발열체를" → "발열체")
+    out.add(/[가-힣]/.test(t) && t.length > 3 ? t.slice(0, 3) : t);
+  }
+  return [...out];
+}
+
+export function locallySupported(claim: string, evidenceNorm: string, productWords: string[] = []): boolean {
+  const tokens = keyTokens(claim, productWords);
+  if (tokens.length < 2) return false;
+  const need = Math.ceil(tokens.length * 0.7);
+  const positions = (t: string) => {
+    const out: number[] = [];
+    for (let i = evidenceNorm.indexOf(t); i >= 0 && out.length < 300; i = evidenceNorm.indexOf(t, i + 1)) out.push(i);
+    return out;
+  };
+  const found = tokens.map((t) => ({ t, pos: positions(t) })).filter((x) => x.pos.length);
+  if (found.length < need) return false;
+  const anchor = found.reduce((a, b) => (b.pos.length < a.pos.length ? b : a)); // 가장 드문 단어 기준
+  return anchor.pos.some((p) => {
+    const win = evidenceNorm.slice(Math.max(0, p - WINDOW), p + WINDOW);
+    return tokens.filter((t) => win.includes(t)).length >= need;
+  });
+}
+
 const isPriceGuidance = (s: string) => /쿠팡/.test(s) && /가격/.test(s) && /확인/.test(s);
 const isUnknownStatement = (s: string) => /확인되지 않|확인 안 됨|확인되지 못|정보가 없|언급이 없/.test(s);
 const NO_FIX_NEEDED = /수정\s*(없음|불필요|필요\s*없)|모순\s*(은\s*)?없|오류\s*(는\s*)?없|문제\s*(는\s*)?없|일치함/;
 
 // AI 가 뽑은 목록을 코드가 판정
-export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): string[] {
+export function judgeAudit(a: Audit, evidence: string, sectionNames: string[], productNames: string[] = []): string[] {
   const evidenceNorm = norm(evidence);
+  const productWords = productNames.flatMap((n) => n.split(/\s+/)).map(norm).filter((w) => w.length >= 2);
   const evidenceNums = numbersIn(evidence);
   const issues: string[] = [];
   for (const c of a.claims ?? []) {
@@ -280,6 +319,8 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): 
     // AI 가 인용을 글자 그대로 못 옮겨도, 주장의 수치(315g, 22.5W …)가 모두 자료에 있으면 근거 있음
     const nums = [...numbersIn(c.claim)];
     if (nums.length && nums.every((n) => evidenceNums.has(n))) continue;
+    // 인용이 없거나 못 찾아도, 핵심 단어가 자료 한 부분에 함께 나오면 근거 있음
+    if (!(c.quote?.trim() && quoteFound(c.quote, evidenceNorm)) && locallySupported(c.claim, evidenceNorm, productWords)) continue;
     if (!c.quote?.trim()) issues.push(`${c.section}: "${c.claim}" — 수집 자료에 근거 없음 → 삭제하거나 자료에 있는 내용으로`);
     else if (!quoteFound(c.quote, evidenceNorm)) {
       issues.push(`${c.section}: "${c.claim}" — 근거로 든 문장이 자료에 없음(지어냄 의심) → 삭제하거나 자료에 있는 내용으로`);
@@ -336,7 +377,8 @@ ${evidence}`;
     const audit = JSON.parse(r.text) as Audit;
     console.log(`     (AI 추출: 주장 ${audit.claims?.length ?? 0} · 반복 후보 ${audit.topics?.length ?? 0} · 기타 ${audit.others?.length ?? 0})`);
     const names = sections.map((s) => s.name);
-    return { issues: judgeAudit(audit, evidence, names), notes: repetitionNotes(audit, names) };
+    const productNames = w.content.products.map((p) => p.name);
+    return { issues: judgeAudit(audit, evidence, names, productNames), notes: repetitionNotes(audit, names) };
   } catch (e) {
     console.warn(`  ⚠ AI 검수 못함: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
     return null;

@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isSafetyRisk, mentionedIn } from "./discover";
-import { checkNumbers, isNonAnswer, judgeAudit, lintPost, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isSafetyRisk, mentionedIn, sameType } from "./discover";
+import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -220,6 +220,29 @@ async function main() {
     assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", news), true);
     assert.equal(isSafetyRisk("포켓쉴 20000", "보조배터리", news), false);
     assert.equal(isSafetyRisk("케어팟 X50V", "가습기", [{ title: "가습기 살균제 리콜", description: "다른 회사" }]), false);
+  });
+
+  // ---- 2026-11-13 run #19 (신일 팬히터 1200 vs 에디르 오방난로) ----
+  await test("비교 짝짓기: 같은 종류만 (캠핑용 등유 팬히터 ≠ 카본 전기히터)", () => {
+    assert.equal(sameType("등유 팬히터", "카본 전기히터"), false);
+    assert.equal(sameType("등유 팬히터", "등유팬히터"), true);
+    assert.equal(sameType("팬히터", "등유 팬히터"), true);
+    assert.equal(sameType("", "등유 팬히터"), false);
+  });
+  await test("근거 보완: 핵심 단어가 자료 한 부분에 함께 있으면 근거 있음, 흩어져 있으면 없음", () => {
+    const filler = "가".repeat(2000);
+    const ev = (`에디르 오방난로는 상단과 옆면까지 5면을 개별로 켤 수 있어 편해요. ${filler} 텐트 안에서는 냄새가 나요. ${filler} 신일은 빠르게 데워요.`)
+      .toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
+    const products = ["에디르", "오방난로", "신일", "팬히터"];
+    assert.equal(locallySupported("에디르 오방난로는 5면을 개별로 켤 수 있다", ev, products), true);
+    assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
+    assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
+  });
+  await test("33㎡(제곱미터)와 33평은 다른 단위", () => {
+    const w = structuredClone(real);
+    w.content.comparison[0] = { label: "난방 면적", values: ["33㎡"] };
+    assert.ok(checkNumbers(w, "난방 면적 33평").some((x) => x.includes("33㎡")));
+    assert.ok(!checkNumbers(w, "난방 면적 33㎡").some((x) => x.includes("33㎡")));
   });
 
   // ---- 숫자 검사 ----

@@ -2,5 +2,4 @@
 # list → 목록 출력 / delete: slug1, slug2 → 적힌 글만 삭제
 # restore-photos: all → 올라가 있는데 글에서 빠진 사진 다시 연결
 # check → 저장된 글을 지금 규칙 검사로 다시 검사
-check
 list

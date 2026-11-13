@@ -57,6 +57,7 @@ ${bad.map((s, i) => `${i}. ${s}`).join("\n")}`,
   } catch (e) {
     console.warn(`  ⚠ 한자 수정 실패 → 한자 글자 제거: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
   }
-  // 고친 문장으로 바꾸고, 그래도 남은 한자는 지운다
-  return mapStrings(value, (s) => (fixedMap.get(s) ?? s).replace(HAN_ALL, "").replace(/\s{2,}/g, " "));
+  // 고친 문장으로 바꾸고, 그래도 남은 한자는 지운다.
+  // 지운 자리에 남는 겹친 공백만 줄이고 줄바꿈은 그대로 둔다 — 문단 경계("\n\n")가 사라지면 후기 문단이 다시 한 덩어리가 됨
+  return mapStrings(value, (s) => (fixedMap.get(s) ?? s).replace(HAN_ALL, "").replace(/[ \t]{2,}/g, " "));
 }

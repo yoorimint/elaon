@@ -4,7 +4,8 @@
 //   delete: slug1, slug2 …    → 적힌 slug 만 삭제 (적지 않은 글은 절대 건드리지 않음)
 //   restore-photos: all       → 사진 보관함에 올라가 있는데 글 데이터에서 빠진 사진을 다시 연결
 //                               (이미 사진이 있는 자리는 건드리지 않음)
-//   check                     → 저장된 글을 지금의 코드 검사(규칙 검사)로 다시 검사해 문제를 출력 (비용 없음, 읽기만)
+//   check                     → 저장된 글을 지금의 코드 검사(규칙 검사 lintPost)로 다시 검사해 글마다 "완벽(문제 0)/문제 N개"와
+//                               문제를 출력하고, 마지막에 요약(완벽 몇 개, 문제 있는 slug 목록)을 출력 (비용 없음, 읽기만)
 // 한 파일에 list 와 delete 를 같이 적으면 삭제 후 목록을 다시 출력한다.
 
 import { readFileSync } from "node:fs";
@@ -126,6 +127,7 @@ async function checkPosts(): Promise<void> {
   if (error) throw new Error(`목록 읽기 실패: ${error.message}`);
   const rows = (data ?? []) as { slug: string; title: string; description: string; status: string; content: ShopPostContent; products: unknown[] }[];
   console.log(`🔎 지금 규칙으로 다시 검사 (${rows.length}개)`);
+  const withIssues: { slug: string; status: string; count: number }[] = [];
   for (const r of rows) {
     // 화면에 나오지 않는 기록(qa·run·insights)은 빼고 글 본문만 검사
     const { qa: _qa, run: _run, insights: _insights, ...body } = r.content as ShopPostContent & Record<string, unknown>;
@@ -133,8 +135,16 @@ async function checkPosts(): Promise<void> {
     void _run;
     void _insights;
     const issues = lintPost({ title: r.title, description: r.description, content: body as ShopPostContent }, r.products.length);
-    console.log(`- ${r.slug} | ${r.status} | 문제 ${issues.length}개 | ${r.title}`);
+    const verdict = issues.length ? `문제 ${issues.length}개` : "완벽(문제 0)";
+    console.log(`- ${r.slug} | ${r.status} | ${verdict} | ${r.title}`);
     for (const x of issues) console.log(`    · ${x.slice(0, 150)}`);
+    if (issues.length) withIssues.push({ slug: r.slug, status: r.status, count: issues.length });
+  }
+  // 요약: 어떤 글을 고쳐야 하는지 한눈에 (공개 글부터)
+  withIssues.sort((a, b) => Number(b.status === "published") - Number(a.status === "published") || b.count - a.count);
+  console.log(`\n📊 요약: ${rows.length}개 중 완벽 ${rows.length - withIssues.length}개 · 문제 있음 ${withIssues.length}개`);
+  if (withIssues.length) {
+    console.log(`   문제 있는 글: ${withIssues.map((x) => `${x.slug}(${x.status} ${x.count}개)`).join(", ")}`);
   }
 }
 

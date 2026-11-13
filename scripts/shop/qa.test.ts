@@ -312,6 +312,12 @@ async function main() {
     const issues = lintPost(w, 1);
     const has = (s: string) => issues.some((x) => x.includes(s));
     assert.ok(has("수집 경로"), "블로그 수집 경로");
+    const tagged = structuredClone(real);
+    tagged.content.comparison = [{ label: "소음", values: ["23.4dB(블로그)"] }];
+    tagged.content.summary = "블로그 기준 23.4dB로 소개돼요.";
+    const tIssues = lintPost(tagged, 1);
+    assert.ok(tIssues.some((x) => x.startsWith("comparison[0]") && x.includes("수집 경로")), "(블로그) 표기");
+    assert.ok(tIssues.some((x) => x.startsWith("summary") && x.includes("수집 경로")), "블로그 기준");
     assert.ok(has("장점 5개"), "장점 상한");
     assert.ok(has("엇갈리는 의견은 장단점 칸에서 빼고"), "장단점 칸 엇갈림");
     assert.ok(has('"조용하다는 평"'), "문장형 표 값");

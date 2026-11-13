@@ -4,6 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { GeminiOptions, GeminiResult } from "./gemini";
+import { recordUsage } from "../usage";
 import type { CheckResult, Secrets } from "./types";
 
 export const CLAUDE_MODEL = "claude-haiku-5-5";
@@ -46,6 +47,7 @@ export async function claudeGenerate(secrets: Secrets, prompt: string, opts: Gem
   const { input_tokens, output_tokens } = res.usage;
   const usd = (input_tokens * PRICE_PER_MTOK.input + output_tokens * PRICE_PER_MTOK.output) / 1_000_000;
   console.log(`  (Claude ${CLAUDE_MODEL} 사용: 입력 ${input_tokens} · 출력 ${output_tokens} 토큰 ≈ $${usd.toFixed(4)})`);
+  recordUsage(CLAUDE_MODEL, usd);
 
   if (res.stop_reason === "refusal") throw new Error("Claude 가 요청을 거절함");
   if (res.stop_reason === "max_tokens") throw new Error(`Claude 응답이 길이 제한(${MAX_TOKENS} 토큰)에서 잘림`);

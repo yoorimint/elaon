@@ -9,6 +9,7 @@ import { POST_WORKFLOW_URL } from "@/lib/shop-config";
 import type { ShopPostQa, ShopPostRunInfo } from "@/lib/shop-post-types";
 import {
   deletePost,
+  refreshShopPages,
   listAllPosts,
   notifySearchEngines,
   setPostStatus,
@@ -20,6 +21,11 @@ export function ShopPostsAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // 발행한 글은 초안 목록에서 빠지고 "발행된 글" 탭으로 (비공개 전환·삭제는 거기서)
+  const [tab, setTab] = useState<"draft" | "published">("draft");
+  const drafts = posts.filter((p) => p.status !== "published");
+  const publishedPosts = posts.filter((p) => p.status === "published");
+  const shown = tab === "draft" ? drafts : publishedPosts;
 
   const reload = useCallback(async () => {
     try {
@@ -50,7 +56,7 @@ export function ShopPostsAdmin() {
     <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="font-bold">작성된 글 ({posts.length})</h2>
+          <h2 className="font-bold">작성된 글</h2>
           <p className="mt-1 text-xs text-neutral-500">
             지금 글 쓰기 → Run workflow → 2~3분 뒤 새로고침. 위의 직접 입력 상품 2개로 작성합니다.
           </p>
@@ -73,15 +79,36 @@ export function ShopPostsAdmin() {
         </div>
       </div>
 
+      <div className="mt-4 flex gap-2">
+        {(
+          [
+            ["draft", `검토할 초안 (${drafts.length})`],
+            ["published", `발행된 글 (${publishedPosts.length})`],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              tab === key
+                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                : "border border-neutral-300 dark:border-neutral-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {error && <p className="mt-3 text-sm text-red-600">글 목록 불러오기 실패: {error}</p>}
 
-      {posts.length === 0 && !error ? (
+      {shown.length === 0 && !error ? (
         <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-center text-sm text-neutral-500">
-          아직 작성된 글이 없습니다.
+          {tab === "draft" ? "검토할 초안이 없어요." : "아직 발행된 글이 없어요."}
         </div>
       ) : (
         <ul className="mt-4 grid gap-2">
-          {posts.map((p) => {
+          {shown.map((p) => {
             const published = p.status === "published";
             // 자동 선정 글은 쿠팡 링크가 비어 있음 → 링크를 넣어야 발행 가능
             const needsLink = p.products.some((x) => !x.link?.trim());
@@ -127,6 +154,8 @@ export function ShopPostsAdmin() {
                       if (!published && st && !st.ok && !confirm(`${st.label}\n\n${st.detail}\n\n그래도 발행할까요?`)) return;
                       run(p.id, async () => {
                         await setPostStatus(p, published ? "draft" : "published");
+                        // 사이트 목록·글 화면을 바로 갱신 (안 하면 최대 5분 뒤에 보임)
+                        await refreshShopPages(p.slug);
                         if (!published) void notifySearchEngines(p.slug);
                       });
                     }}
@@ -147,7 +176,11 @@ export function ShopPostsAdmin() {
                   <button
                     disabled={busy}
                     onClick={() => {
-                      if (confirm("이 글을 삭제할까요? 되돌릴 수 없습니다.")) run(p.id, () => deletePost(p.id));
+                      if (confirm("이 글을 삭제할까요? 되돌릴 수 없습니다."))
+                        run(p.id, async () => {
+                          await deletePost(p.id);
+                          if (published) await refreshShopPages(p.slug);
+                        });
                     }}
                     className="rounded-full bg-red-600 text-white px-3 py-1 text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
                   >

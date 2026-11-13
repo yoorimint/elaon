@@ -44,6 +44,19 @@ export async function deletePost(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// 발행·비공개·삭제 직후 사이트의 쇼핑 목록·글 화면·RSS 를 바로 새로 만들게 요청 (관리자 로그인 필요).
+// 실패해도 발행 자체에는 영향 없음 (화면은 최대 5분 뒤 자동 갱신).
+export async function refreshShopPages(slug: string): Promise<void> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
+  await fetch("/api/shop/revalidate", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ slug }),
+  }).catch(() => undefined);
+}
+
 // 발행 직후 검색엔진(네이버 등)에 새 글 알림. 실패해도 발행에는 영향 없음.
 export async function notifySearchEngines(slug: string): Promise<void> {
   await fetch("/api/indexnow", {

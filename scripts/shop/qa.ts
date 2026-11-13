@@ -69,6 +69,13 @@ function similarity(a: string, b: string): number {
   return inter / Math.min(A.size, B.size);
 }
 
+// 문장 대부분이 "확인되지 않아요/판매 페이지에서 확인하세요"인 답 (실제 정보가 한 문장도 없음)
+export function isNonAnswer(answer: string): boolean {
+  const sentences = answer.split(/(?<=[.!?요다])\s+/).map((x) => x.trim()).filter(Boolean);
+  const informative = sentences.filter((x) => !/확인되지 않|확인 안 됨|확인해\s*보|확인하세요|참고해\s*보|살펴보세요|고려해\s*보세요/.test(x));
+  return informative.length === 0;
+}
+
 export function lintPost(w: WrittenPost, productCount: number): string[] {
   const issues: string[] = [];
   const c: ShopPostContent = w.content;
@@ -97,6 +104,10 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     if (!p.review || p.review.length < 60) issues.push(`${name}: 후기 요약 문단이 짧음 → 3~5문장`);
   });
   if (c.faq.length < 3) issues.push(`FAQ ${c.faq.length}개 → 4~6개`);
+  // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
+  c.faq.forEach((f, i) => {
+    if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
+  });
   if ((c.buyingGuide?.length ?? 0) < 2) issues.push("고르는 기준(buyingGuide)이 부족 → 3~5개");
   if (productCount === 1 && c.recommendations.some((r) => r.pick !== 0)) issues.push("단일 글인데 추천 상품 번호가 0이 아님");
 

@@ -232,6 +232,25 @@ async function main() {
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
   });
+  await test("비교글: 두 제품 공통 특징을 한쪽 선택 이유로 쓴 지적은 수정 대상", () => {
+    const issues = judgeAudit(
+      {
+        claims: [],
+        others: [
+          {
+            section: "정리",
+            problem: "두 제품 모두 원두 머신이라 캡슐 쓰레기는 차이가 아닌 공통 특징인데 B를 고르는 이유로 씀",
+            fix: "두 제품의 실제 차이(크기·우유 메뉴)로 바꾸기",
+          },
+          { section: "정리", problem: "문장을 조금 더 짧게 하면 좋겠음", fix: "다듬기" },
+        ],
+      },
+      "",
+      ["정리"],
+    );
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("공통 특징"));
+  });
   await test("수집 경로('웹문서 기재')·다른 제품 후기 섞기 검출, 일반 비교 권유는 통과", () => {
     const w = structuredClone(real);
     w.content.comparison = [{ label: "품질보증", values: ["5년(웹문서 기재)"] }];

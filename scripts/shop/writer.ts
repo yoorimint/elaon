@@ -70,7 +70,9 @@ ${COMMON_RULES}
 - buyingGuide 는 이 제품군을 고를 때 볼 기준 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 두 제품이 어떻게 다른지.
 - comparison 은 항목별 비교 6~8개(values 는 제품 순서대로).
 - recommendations 는 상황별로 어느 제품이 맞는지 3~5개(pick = 제품 번호).
-- verdict 는 상황별 선택을 정리.`;
+- verdict 는 상황별 선택을 정리.
+- 한 제품을 고르는 이유(summary·recommendations·verdict)는 두 제품의 "차이"여야 한다. 두 제품 모두 해당하는 특징은
+  한쪽을 고르는 이유로 쓰지 않는다(예: 둘 다 원두를 갈아 쓰는 머신인데 "캡슐 쓰레기를 줄이려면 B").`;
 
 const SINGLE_RULES = `너는 한국 소비자를 위한 제품 후기 분석 글을 쓰는 에디터야. 한 제품의 구매자 후기를 모아 분석한다.
 ${COMMON_RULES}

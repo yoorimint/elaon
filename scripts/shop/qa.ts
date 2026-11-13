@@ -114,6 +114,9 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   if (c.faq.length < 3) issues.push(`FAQ ${c.faq.length}개 → 4~6개`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {
+    if (/가격|어디서\s*(사|구매|확인)|구매처|할인/.test(f.q)) {
+      issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 가격·구매처 질문은 채우기용 → 후기로 답할 수 있는 사용 관련 질문으로 바꾸기`);
+    }
     if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
   });
   if ((c.buyingGuide?.length ?? 0) < 2) issues.push("고르는 기준(buyingGuide)이 부족 → 3~5개");

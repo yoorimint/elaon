@@ -194,6 +194,9 @@ async function main() {
     const w = structuredClone(real);
     w.content.faq[0] = { q: "X60과 어떻게 다른가요?", a: "후기에서는 X60과의 직접 비교가 확인되지 않아요." };
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[0]") && x.includes("다른 질문")));
+    // run #20: "가격은 어디서 확인하나요?" 채우기용 FAQ
+    w.content.faq[1] = { q: "가격은 어디서 확인하나요?", a: "가격은 쿠팡에서 현재 가격을 확인하세요. 옵션과 배송 조건도 살펴보면 좋아요." };
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[1]") && x.includes("가격·구매처")));
   });
 
   // ---- 2026-11-13 run #17 (보바 VA-123 vs 포켓쉴 20000) ----

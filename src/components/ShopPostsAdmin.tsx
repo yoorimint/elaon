@@ -120,12 +120,15 @@ export function ShopPostsAdmin() {
                   <button
                     disabled={busy || (!published && needsLink)}
                     title={!published && needsLink ? "쿠팡 링크를 먼저 넣어야 발행할 수 있어요" : undefined}
-                    onClick={() =>
+                    onClick={() => {
+                      // 검수를 통과하지 못한 글은 발행 전에 남은 문제를 보여주고 확인
+                      const st = qaState(p.qa);
+                      if (!published && st && !st.ok && !confirm(`${st.label}\n\n${st.detail}\n\n그래도 발행할까요?`)) return;
                       run(p.id, async () => {
                         await setPostStatus(p, published ? "draft" : "published");
                         if (!published) void notifySearchEngines(p.slug);
-                      })
-                    }
+                      });
+                    }}
                     className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-60 ${
                       published
                         ? "border border-neutral-300 dark:border-neutral-700"
@@ -166,20 +169,31 @@ export function ShopPostsAdmin() {
   );
 }
 
-// 자동 검수 결과 배지: 남은 문제가 있으면 마우스를 올려 목록 확인
-function QaBadge({ qa }: { qa?: ShopPostQa | null }) {
+// 자동 검수 결과: 통과 / 문제 남음 / AI 검수 못함
+function qaState(qa?: ShopPostQa | null): { label: string; ok: boolean; detail: string } | null {
   if (!qa) return null;
   const left = qa.remaining.length;
+  if (left) return { label: `검수 문제 ${left}`, ok: false, detail: qa.remaining.join("\n") };
+  if (qa.aiChecked === false) {
+    return { label: "AI 검수 못함", ok: false, detail: "AI 모델이 막혀 규칙 검사만 했어요. 미리보기에서 내용을 직접 확인하세요." };
+  }
+  return { label: "검수 통과", ok: true, detail: `처음 ${qa.issuesFound}개 발견 → 자동 수정 완료` };
+}
+
+// 마우스를 올리면(휴대폰은 길게 누르면) 남은 문제 목록
+function QaBadge({ qa }: { qa?: ShopPostQa | null }) {
+  const st = qaState(qa);
+  if (!st) return null;
   return (
     <span
-      title={left ? qa.remaining.join("\n") : `처음 ${qa.issuesFound}개 발견 → 자동 수정 완료`}
+      title={st.detail}
       className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 font-semibold ${
-        left
-          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+        st.ok
+          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
       }`}
     >
-      {left ? `검수 문제 ${left}` : "검수 통과"}
+      {st.label}
     </span>
   );
 }

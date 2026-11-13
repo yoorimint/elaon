@@ -11,6 +11,7 @@ import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } f
 import { pingIndexNow } from "@/lib/indexnow";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
 import { reviewAndFix } from "./qa";
+import { StrongModelUnavailableError } from "./providers/gemini";
 import { writePost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
@@ -107,10 +108,17 @@ async function main() {
 
   // ---- 2단계: 비교글 작성 ----
   console.log("✍️  Gemini 작성 중...");
-  const draftPost = await writePost(secrets, research, digests, {
-    titleStyle: config.title_style,
-    extraPrompt: config.extra_prompt,
-  });
+  let draftPost;
+  try {
+    draftPost = await writePost(secrets, research, digests, {
+      titleStyle: config.title_style,
+      extraPrompt: config.extra_prompt,
+    });
+  } catch (e) {
+    // 좋은 모델이 막혀 있으면 약한 모델로 대충 쓰지 않고 다음 시간(매시간 재시도)에 다시
+    if (e instanceof StrongModelUnavailableError) skip(`${e.message.slice(0, 200)} → 다음 실행에서 다시 시도`);
+    throw e;
+  }
 
   // ---- 자동 검수: 작성 가이드·수집 자료와 대조, 틀린 곳 수정 ----
   console.log("🔍 자동 검수 중...");
@@ -118,7 +126,9 @@ async function main() {
 
   // ---- 저장 ----
   // 링크가 없는 자동 선정 글은 관리자가 링크를 넣을 때까지 초안
-  const status = config.publish_mode === "auto" && !needsLink ? "published" : "draft";
+  // 자동 발행이어도 검수를 통과하지 못한 글(AI 검수 못함·문제 남음)은 초안으로
+  const qaPassed = qa.aiChecked === true && qa.remaining.length === 0;
+  const status = config.publish_mode === "auto" && !needsLink && qaPassed ? "published" : "draft";
   const slug = await insertPost({
     slug: `${t.ymd}-${randomBytes(3).toString("hex")}`,
     title: written.title,
@@ -143,7 +153,7 @@ async function main() {
     status,
   });
   console.log(
-    `✅ 저장 완료 (${status === "published" ? "발행" : needsLink ? "초안 — 쿠팡 링크 필요" : "초안"}): ${written.title}`,
+    `✅ 저장 완료 (${status === "published" ? "발행" : needsLink ? "초안 — 쿠팡 링크 필요" : qaPassed ? "초안" : "초안 — 검수 확인 필요"}): ${written.title}`,
   );
   console.log(`   https://www.eloan.kr/shop/${slug}`);
 

@@ -106,6 +106,8 @@ export type GeminiOptions = {
   googleSearch?: boolean; // 구글 검색 그라운딩 (유료 요금제 전용)
   jsonSchema?: Record<string, unknown>; // 표준 JSON Schema(소문자 type). 지정하면 JSON 으로만 응답
   maxOutputTokens?: number;
+  // 글 작성·수정·검수처럼 품질이 중요한 호출: flash-lite 는 쓰지 않는다 (없으면 StrongModelUnavailableError)
+  strongOnly?: boolean;
 };
 
 export type GeminiResult = {
@@ -214,6 +216,18 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
   return { ok: false, retryable: true, error: lastError };
 }
 
+// 품질 좋은 모델(flash)이 모두 막혀 있을 때. 약한 모델로 대충 쓰지 않고 이번 실행을 건너뛰게 한다.
+export class StrongModelUnavailableError extends Error {
+  constructor(detail: string) {
+    super(`품질 좋은 모델(flash)을 지금 쓸 수 없음 — ${detail.slice(0, 300)}`);
+    this.name = "StrongModelUnavailableError";
+  }
+}
+
+const isLite = (model: string) => model.endsWith("-lite");
+// 이번 실행에서 일일 한도·종료로 막힌 모델 (같은 실행에서 다시 시도하지 않음)
+const unavailable = new Set<string>();
+
 export async function geminiGenerate(
   secrets: Secrets,
   prompt: string,
@@ -221,7 +235,9 @@ export async function geminiGenerate(
 ): Promise<GeminiResult> {
   const key = secrets.GEMINI_API_KEY;
   if (!key) throw new Error("Gemini 키 미등록");
-  const models = await resolveGeminiModels(secrets);
+  const models = (await resolveGeminiModels(secrets)).filter(
+    (m) => !unavailable.has(m) && !(opts.strongOnly && isLite(m)),
+  );
 
   const errors: string[] = [];
   for (const model of models) {
@@ -236,7 +252,11 @@ export async function geminiGenerate(
     }
     errors.push(`[${model}] ${r.error}`);
     console.warn(`    ↪ ${model} 실패: ${r.error.slice(0, 300)}`);
+    // 종료·한도 초과(재시도 후에도)·150초 지연 → 이번 실행에서는 다시 기다리지 않음
+    if (/HTTP 404|HTTP 429|응답 지연/.test(r.error)) unavailable.add(model);
     if (!r.retryable) break;
   }
-  throw new Error(`Gemini 모든 모델 실패 — ${errors.join(" / ").slice(0, 600)}`);
+  const detail = errors.join(" / ") || "사용 가능한 모델 없음";
+  if (opts.strongOnly) throw new StrongModelUnavailableError(detail);
+  throw new Error(`Gemini 모든 모델 실패 — ${detail.slice(0, 600)}`);
 }

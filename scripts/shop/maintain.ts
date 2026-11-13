@@ -4,11 +4,13 @@
 //   delete: slug1, slug2 …    → 적힌 slug 만 삭제 (적지 않은 글은 절대 건드리지 않음)
 //   restore-photos: all       → 사진 보관함에 올라가 있는데 글 데이터에서 빠진 사진을 다시 연결
 //                               (이미 사진이 있는 자리는 건드리지 않음)
+//   check                     → 저장된 글을 지금의 코드 검사(규칙 검사)로 다시 검사해 문제를 출력 (비용 없음, 읽기만)
 // 한 파일에 list 와 delete 를 같이 적으면 삭제 후 목록을 다시 출력한다.
 
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { ownPhoto, withPhoto, type PhotoSpot, type ShopPostInputProduct } from "@/lib/shop-post-types";
+import { ownPhoto, withPhoto, type PhotoSpot, type ShopPostContent, type ShopPostInputProduct } from "@/lib/shop-post-types";
+import { lintPost } from "./qa";
 
 const REQUEST_FILE = ".github/shop-maintain-request";
 
@@ -30,14 +32,14 @@ function client() {
 }
 const sb = client();
 
-function parseRequest(text: string): { list: boolean; deletes: string[]; restore: boolean } {
+function parseRequest(text: string): { list: boolean; deletes: string[]; restore: boolean; check: boolean } {
   const lines = text.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
   const deletes = lines
     .filter((l) => l.startsWith("delete:"))
     .flatMap((l) => l.slice("delete:".length).split(","))
     .map((s) => s.trim())
     .filter(Boolean);
-  return { list: lines.includes("list"), deletes, restore: lines.includes("restore-photos: all") };
+  return { list: lines.includes("list"), deletes, restore: lines.includes("restore-photos: all"), check: lines.includes("check") };
 }
 
 async function listPosts(): Promise<void> {
@@ -115,8 +117,25 @@ async function restorePhotos(): Promise<void> {
   }
 }
 
+// 저장된 글을 지금 규칙 검사로 다시 검사 (예전 규칙으로 만든 초안을 발행해도 되는지 판단용)
+async function checkPosts(): Promise<void> {
+  const { data, error } = await sb
+    .from("shop_posts")
+    .select("slug,title,description,status,content,products")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`목록 읽기 실패: ${error.message}`);
+  const rows = (data ?? []) as { slug: string; title: string; description: string; status: string; content: ShopPostContent; products: unknown[] }[];
+  console.log(`🔎 지금 규칙으로 다시 검사 (${rows.length}개)`);
+  for (const r of rows) {
+    const issues = lintPost({ title: r.title, description: r.description, content: r.content }, r.products.length);
+    console.log(`- ${r.slug} | ${r.status} | 문제 ${issues.length}개 | ${r.title}`);
+    for (const x of issues) console.log(`    · ${x.slice(0, 150)}`);
+  }
+}
+
 async function main() {
   const req = parseRequest(readFileSync(REQUEST_FILE, "utf8"));
+  if (req.check) await checkPosts();
   if (req.restore) await restorePhotos();
   if (req.deletes.length) await deletePosts(req.deletes);
   if (req.list || !req.deletes.length) await listPosts();

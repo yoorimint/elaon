@@ -19,6 +19,12 @@ import type { ProductResearch } from "./research";
 import { buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 const MAX_REVISIONS = 2;
+// 제품별 장점·단점 최대 개수 (작성 규칙 3~4개)
+const MAX_POINTS = 4;
+const MIXED_OPINION = /엇갈|상반된|반대로\s*[가-힣]*\s*(평|의견)|의견이\s*나뉘/;
+const SENTENCE_VALUE = /다는\s*(평|의견|후기)|(평|의견|후기)이\s*(많|있)|[요다]\.?$/;
+const CHECK_PHRASE = /확인(하세요|해\s?보세요|해\s?두세요|하는\s*(것이|게)\s*좋|이\s*필요|하시)/g;
+const MAX_CHECK_PHRASES = 5;
 // 비교표에서 한 제품만 값이 있는 행 허용 개수
 const MAX_ONE_SIDED_ROWS = 2;
 // 검색 결과에서 잘리지 않는 제목 길이
@@ -50,7 +56,7 @@ const BANNED: { re: RegExp; why: string }[] = [
   { re: /않음이에요|않음입니다/, why: "어색한 문장 (\"확인되지 않아요\"처럼)" },
   // run #34: 표에 "품질보증 5년(웹문서 기재)" — 수집 경로 이야기
   {
-    re: /웹\s?문서|검색\s*결과(에서|에|로)|수집(한|된)\s*(후기|정보|글)/,
+    re: /웹\s?문서|검색\s*결과(에서|에|로)|수집(한|된)\s*(후기|정보|글)|(블로그|카페|커뮤니티)\s*(글)?(에서는|에서|에는|마다)/,
     why: "수집 경로 이야기는 독자에게 의미 없음 (\"판매처 표기 기준\", \"후기에서는\"처럼)",
   },
   // run #34: 단일 상품 글 FAQ 에 "세탁이 어렵다는 다른 제품 후기도 있어서"
@@ -174,7 +180,24 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
     if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
     if (!p.review || p.review.length < 60) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → 3~5문장`);
+    if (p.pros.length > MAX_POINTS) issues.push(`${name}: 장점 ${p.pros.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
+    if (p.cons.length > MAX_POINTS) issues.push(`${name}: 단점 ${p.cons.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
+    // 엇갈리는 의견은 장단점 칸이 아니라 한 곳(고르는 기준·구매 전 확인)에서 (점검 4·10번)
+    [...p.pros, ...p.cons].forEach((x) => {
+      if (MIXED_OPINION.test(x)) issues.push(`${name} 장단점 "${x.slice(0, 30)}…": 엇갈리는 의견은 장단점 칸에서 빼고 고르는 기준이나 구매 전 확인 한 곳에서`);
+    });
   });
+  // 표 값은 짧은 명사 (점검 10번: "조용하다는 평")
+  c.comparison.forEach((row) => {
+    row.values.forEach((v) => {
+      if (SENTENCE_VALUE.test(v)) issues.push(`표 "${row.label}" 값 "${v}": 문장 말고 짧은 값으로 (예: 조용함, 지원, 확인 필요)`);
+    });
+  });
+  // "확인하세요" 안내가 너무 많으면 글이 할 말 없이 미루는 것처럼 읽힘 (점검 5번)
+  const checkCount = allText(w).reduce((n, { text }) => n + (text.match(CHECK_PHRASE)?.length ?? 0), 0);
+  if (checkCount > MAX_CHECK_PHRASES) {
+    issues.push(`"확인하세요" 같은 안내가 ${checkCount}번 → ${MAX_CHECK_PHRASES}번 이하로 (꼭 필요한 곳만)`);
+  }
   if (c.faq.length < 3) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → 4~6개`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {

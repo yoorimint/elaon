@@ -4,6 +4,8 @@
 import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
+import type { ProductDigest } from "./digest";
+import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
@@ -275,6 +277,51 @@ async function main() {
     assert.ok(issuesWith(3).some((x) => x.includes("한쪽만 확인된 항목이 3개")));
     const named = autoFix({ ...two, content: { ...two.content, comparison: [{ label: "모델명", values: ["SM-R630N", "확인 안 됨"] }, ...rows(0)] } });
     assert.ok(!named.post.content.comparison.some((r) => r.label === "모델명"));
+  });
+  await test("글 쓰기 전 근거 검사: 스펙·장단점이 얇거나 두 상품 공통 스펙이 적으면 쓰지 않음", () => {
+    const digest = (specs: string[], points: number): ProductDigest => ({
+      summary: "",
+      strengths: Array.from({ length: points }, (_, i) => ({ point: `장점${i}`, mentions: 1 })),
+      weaknesses: [],
+      complaints: [],
+      specs: specs.map((label) => ({ label, value: "x" })),
+      buyerQuestions: [],
+      bestFor: "",
+      conflicts: [],
+      tips: [],
+    });
+    const rich = digest(["소비전력", "무게", "물통 용량", "소음"], 6);
+    assert.deepEqual(evidenceGaps(["A"], [rich]), []);
+    assert.ok(evidenceGaps(["A"], [digest(["무게"], 6)])[0].includes("스펙 1개"));
+    assert.ok(evidenceGaps(["A"], [digest(["무게", "소음", "색상", "크기"], 2)])[0].includes("장단점 2개"));
+    assert.ok(evidenceGaps(["A"], [null])[0].includes("분석 실패"));
+    // 비교: 공통 스펙 ("정격 소비전력" ≈ "소비전력")
+    const other = digest(["정격 소비전력", "무게", "물통용량", "색상"], 6);
+    assert.deepEqual(evidenceGaps(["A", "B"], [rich, other]), []);
+    const unrelated = digest(["색상", "보증", "원산지", "구성품"], 6);
+    assert.ok(evidenceGaps(["A", "B"], [rich, unrelated]).some((x) => x.includes("공통 스펙 0개")));
+  });
+  await test("코드 검사: 블로그 수집 경로·장단점 5개·장단점 칸의 엇갈림·문장형 표 값·'확인하세요' 과다", () => {
+    const w = structuredClone(real);
+    const p = w.content.products[0];
+    w.content.faq = [{ q: "몇 개까지 되나요?", a: "일부 블로그에서는 2개까지 가능하다고 안내해요." }];
+    p.cons = ["센서 · 반응이 느리다는 평과 반대로 민감하다는 평도 있어요.", "무게 · 무거워요"];
+    p.pros = ["a · 1", "b · 2", "c · 3", "d · 4", "e · 5"];
+    w.content.comparison = [{ label: "소음", values: ["조용하다는 평"] }, { label: "용량", values: ["6.3L"] }];
+    w.content.verdict = "확인하세요. 확인해 보세요. 확인이 필요해요. 확인하세요. 확인해 두세요. 확인하세요.";
+    const issues = lintPost(w, 1);
+    const has = (s: string) => issues.some((x) => x.includes(s));
+    assert.ok(has("수집 경로"), "블로그 수집 경로");
+    assert.ok(has("장점 5개"), "장점 상한");
+    assert.ok(has("엇갈리는 의견은 장단점 칸에서 빼고"), "장단점 칸 엇갈림");
+    assert.ok(has('"조용하다는 평"'), "문장형 표 값");
+    assert.ok(!has('"6.3L"'), "짧은 값은 통과");
+    assert.ok(has("안내가 6번"), "확인하세요 과다");
+  });
+  await test("자동 교정: '엇갈려요, 그래서' → 마침표, '필요, 중요,'는 그대로", () => {
+    const w = structuredClone(real);
+    w.content.summary = "의견이 엇갈려요, 그래서 확인이 필요해요. 확인 필요, 중요, 순서예요.";
+    assert.equal(autoFix(w).post.content.summary, "의견이 엇갈려요. 그래서 확인이 필요해요. 확인 필요, 중요, 순서예요.");
   });
   await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
     const w = structuredClone(real);

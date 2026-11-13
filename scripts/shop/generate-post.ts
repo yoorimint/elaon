@@ -24,6 +24,7 @@ import { pickTitleKeyword } from "./keywords";
 import { StrongModelUnavailableError } from "./providers/gemini";
 import type { Secrets } from "./providers/types";
 import { reviewAndFix } from "./qa";
+import { ThinEvidenceError, evidenceGaps } from "./readiness";
 import { MAX_BELOW_BAR_PER_DAY, MAX_COST_USD_PER_DAY, MAX_FAILURES_PER_DAY, better, judgeQuality } from "./quality";
 import { hasEnoughEvidence, researchProduct, toSources, type ProductResearch, type ResearchOptions } from "./research";
 import { nextKind, pairKeyOf } from "./select-products";
@@ -31,7 +32,8 @@ import { usageLine, usageSummary } from "./usage";
 import { writePost, type WrittenPost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
-const MAX_ATTEMPTS = 2; // 합격선 미달이면 다른 상품으로 한 번 더
+const MAX_ATTEMPTS = 2; // 글을 쓴 횟수 상한: 합격선 미달이면 다른 상품으로 한 번 더
+const MAX_PICKS = 4; // 상품을 고른 횟수 상한: 근거가 얇아 쓰지 않고 넘긴 것까지 포함
 
 function kstNow() {
   const now = new Date();
@@ -64,7 +66,8 @@ type Attempt = Selection & {
 };
 
 // ---- 한 상품(조합)으로 글 한 편 만들기: 수집 → 분석 → 작성 → 검수 ----
-async function produce(secrets: Secrets, config: ShopConfig, sel: Selection): Promise<Attempt> {
+// checkEvidence: 자동 선정 상품은 근거가 얇으면 쓰지 않음 (직접 지정한 상품은 그대로 씀)
+async function produce(secrets: Secrets, config: ShopConfig, sel: Selection, checkEvidence: boolean): Promise<Attempt> {
   const { products } = sel;
   const opts: ResearchOptions = {
     useNaver: config.use_naver_reviews,
@@ -86,7 +89,7 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection): Pr
     research.push(r);
   }
   const empty = research.filter((r) => !hasEnoughEvidence(r));
-  if (empty.length) throw new Error(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")}`);
+  if (empty.length) throw new ThinEvidenceError(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")}`);
 
   console.log("🧠 상품별 후기 분석 중...");
   const digests: (ProductDigest | null)[] = [];
@@ -102,6 +105,11 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection): Pr
       console.warn(`  ⚠ ${r.product.name} 분석 실패 → 원자료로 작성: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
       digests.push(null);
     }
+  }
+
+  if (checkEvidence) {
+    const gaps = evidenceGaps(products.map((p) => p.name), digests);
+    if (gaps.length) throw new ThinEvidenceError(`근거 부족 — ${gaps.join(" / ")}`);
   }
 
   // 제목 키워드: 네이버 데이터랩으로 가장 많이 검색되는 표현
@@ -165,7 +173,8 @@ async function main() {
 
   let best: Attempt | null = null;
   const tried: string[] = [];
-  for (let attempt = 1; attempt <= (useManual ? 1 : MAX_ATTEMPTS); attempt++) {
+  let writes = 0;
+  for (let attempt = 1; attempt <= (useManual ? 1 : MAX_PICKS) && writes < (useManual ? 1 : MAX_ATTEMPTS); attempt++) {
     let sel: Selection;
     if (useManual) {
       sel = { products: manual, alternatives: [] };
@@ -175,13 +184,28 @@ async function main() {
       if (!found) break;
       sel = found;
     }
-    const result = await produce(secrets, config, sel);
+    let result: Attempt;
+    try {
+      result = await produce(secrets, config, sel, !useManual);
+    } catch (e) {
+      if (!(e instanceof ThinEvidenceError)) throw e;
+      console.log(`  ⏭ ${e.message} → 쓰지 않고 다른 상품으로`);
+      tried.push(`${sel.products.map((p) => p.name).join(" vs ")}: ${e.message}`);
+      history.usedPairKeys.add(pairKeyOf(sel.products));
+      continue;
+    }
+    writes++;
     tried.push(`${sel.products.map((p) => p.name).join(" vs ")}: ${result.passed ? "합격" : result.reasons.join(", ")}`);
     best = better(best, result);
     if (result.passed) break;
     history.usedPairKeys.add(pairKeyOf(sel.products)); // 다음 시도에서는 다른 상품
   }
-  if (!best) await finish("skipped", "자동 선정 실패 — 조건에 맞는 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)", { detail: { tried } });
+  if (!best) {
+    const reason = useManual
+      ? "직접 지정한 상품의 후기를 찾지 못했어요"
+      : "자동 선정 실패 — 근거가 충분한 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)";
+    await finish("skipped", reason, { detail: { tried } });
+  }
   const chosen = best as Attempt;
 
   // ---- 저장 ----

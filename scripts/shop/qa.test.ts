@@ -5,7 +5,9 @@ import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
 import { isModelName } from "./discover";
 import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix } from "./qa";
+import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import type { ProductResearch } from "./research";
 import type { WrittenPost } from "./writer";
 
@@ -151,9 +153,25 @@ async function main() {
   const calls: string[] = [];
   let mode: "loop" | "quota" = "loop";
   let minuteHits = 0;
+  const claudeBodies: { model: string; output_config?: { format: { schema: { additionalProperties?: boolean; properties: Record<string, { items?: { additionalProperties?: boolean } }> } } } }[] = [];
+  let claudeFails = false;
 
   globalThis.fetch = (async (url: string, init?: { body?: string }) => {
     const u = String(url);
+    if (u.startsWith("https://api.anthropic.com/v1/messages")) {
+      const body = JSON.parse(init!.body!);
+      calls.push(`claude:${body.model}`);
+      claudeBodies.push(body);
+      if (claudeFails) return new Response(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "credit balance is too low" } }), { status: 400, headers: { "content-type": "application/json" } });
+      return new Response(
+        JSON.stringify({
+          id: "msg_1", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn",
+          content: [{ type: "text", text: JSON.stringify({ issues: [] }) }],
+          usage: { input_tokens: 1000, output_tokens: 200 },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }
     if (u.includes("/models?")) return models(["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
     const model = /models\/([^:]+):/.exec(u)?.[1] ?? "";
     const prompt = JSON.parse(init!.body!).contents[0].parts[0].text as string;
@@ -215,6 +233,26 @@ async function main() {
       StrongModelUnavailableError,
     );
     assert.ok(!calls.some((c) => c.endsWith("-lite")), calls.join(","));
+  });
+  await test("Gemini 가 막히면 Claude Haiku 5.5 로 대신 (구조화 출력 스키마 변환)", async () => {
+    calls.length = 0;
+    const schema = { type: "object", properties: { issues: { type: "array", items: { type: "object", properties: { a: { type: "string" } }, required: ["a"] } } }, required: ["issues"] };
+    const r = await generate({ GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" } as never, "작성", { strongOnly: true, jsonSchema: schema });
+    assert.equal(r.model, CLAUDE_MODEL);
+    assert.deepEqual(JSON.parse(r.text), { issues: [] });
+    assert.ok(!calls.some((c) => c.endsWith("-lite")), calls.join(","));
+    const sent = claudeBodies.at(-1)!;
+    assert.equal(sent.model, "claude-haiku-5-5");
+    assert.equal(sent.output_config!.format.schema.additionalProperties, false);
+    assert.equal(sent.output_config!.format.schema.properties.issues.items!.additionalProperties, false);
+  });
+  await test("Gemini·Claude 둘 다 안 되면 저장하지 않고 건너뜀(StrongModelUnavailableError)", async () => {
+    claudeFails = true;
+    await assert.rejects(
+      generate({ GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" } as never, "작성", { strongOnly: true }),
+      StrongModelUnavailableError,
+    );
+    claudeFails = false;
   });
   await test("AI 검수를 못 하면 '통과'가 아니라 aiChecked=false", async () => {
     const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, clean, research, [null]);

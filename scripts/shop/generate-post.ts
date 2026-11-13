@@ -41,7 +41,7 @@ async function main() {
     const today = await countPostsSince(t.todayStartIso);
     if (today >= config.daily_count) skip(`오늘 이미 ${today}개 작성 (하루 ${config.daily_count}개)`);
   }
-  if (!secrets.GEMINI_API_KEY) skip("Gemini 키 미등록");
+  if (!secrets.GEMINI_API_KEY && !secrets.ANTHROPIC_API_KEY) skip("AI 키 미등록 (Gemini 또는 Claude)");
 
   // ---- 상품 정하기 ----
   // 1) 직접 지정(테스트용) 칸에 상품이 있으면 그것으로 (1개 = 단일, 2개 = 비교)

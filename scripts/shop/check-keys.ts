@@ -3,6 +3,7 @@
 // 실행: GitHub Actions → shop key check (수동 실행)
 
 import { loadSecrets, saveKeyCheck, type KeyCheckMap } from "./db";
+import { checkClaude } from "./providers/claude";
 import { checkCoupang } from "./providers/coupang";
 import { checkGemini } from "./providers/gemini";
 import { checkNaver } from "./providers/naver";
@@ -29,6 +30,7 @@ async function main() {
   const checks: Record<string, (s: Secrets) => Promise<CheckResult>> = {
     coupang: checkCoupang,
     gemini: checkGemini,
+    claude: checkClaude,
     naver: checkNaver,
     youtube: checkYoutube,
   };

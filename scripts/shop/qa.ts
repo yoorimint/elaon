@@ -11,7 +11,7 @@
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
 import type { ProductDigest } from "./digest";
 import { hasHanja } from "./hanja";
-import { geminiGenerate } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
 import { buildEvidence, revisePost, type WrittenPost } from "./writer";
@@ -271,7 +271,7 @@ ${sections.map((s) => `[${s.name}]\n${s.text}`).join("\n\n")}
 === 근거 자료 ===
 ${evidence}`;
   try {
-    const r = await geminiGenerate(secrets, prompt, { jsonSchema: AUDIT_SCHEMA, maxOutputTokens: 8192, strongOnly: true });
+    const r = await generate(secrets, prompt, { jsonSchema: AUDIT_SCHEMA, maxOutputTokens: 8192, strongOnly: true });
     const audit = JSON.parse(r.text) as Audit;
     console.log(`     (AI 추출: 주장 ${audit.claims?.length ?? 0} · 반복 후보 ${audit.topics?.length ?? 0} · 기타 ${audit.others?.length ?? 0})`);
     return judgeAudit(audit, evidence, sections.map((s) => s.name));

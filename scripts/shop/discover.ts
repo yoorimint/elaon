@@ -7,7 +7,8 @@
 
 import type { ManualProduct } from "@/lib/shop-config";
 import { AUTO_CATEGORIES } from "./categories";
-import { StrongModelUnavailableError, geminiGenerate } from "./providers/gemini";
+import { StrongModelUnavailableError } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import { cleanNaverText, naverSearch, searchTrend, type NaverSearchType, type TrendResult } from "./providers/naver";
 import type { Secrets } from "./providers/types";
 import { pairKeyOf, type PostKind } from "./select-products";
@@ -123,7 +124,7 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<{ 
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
-  const r = await geminiGenerate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true });
+  const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true });
   const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
   const all = (o.products ?? []).map((p) => ({
     name: String(p.name ?? "").trim(),

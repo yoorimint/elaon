@@ -3,7 +3,7 @@
 // 한 번에 비교글을 쓰게 하면 많은 자료 중 일부만 반영되므로, 상품별로 먼저 소화시킨다.
 
 import { SOURCE_LABEL, type ShopPostInsight } from "@/lib/shop-post-types";
-import { geminiGenerate } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
 
@@ -88,7 +88,7 @@ ${r.webSummary ?? "(없음)"}`;
 const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 export async function digestProduct(secrets: Secrets, r: ProductResearch): Promise<ProductDigest> {
-  const res = await geminiGenerate(secrets, `다음 자료를 분석해줘.\n\n${material(r)}`, {
+  const res = await generate(secrets, `다음 자료를 분석해줘.\n\n${material(r)}`, {
     system: SYSTEM,
     jsonSchema: SCHEMA,
     strongOnly: true, // 분석이 얕으면 글도 얕아짐 → lite 금지

@@ -3,6 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
+import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
 import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
@@ -345,6 +346,24 @@ async function main() {
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("검색 키워드")));
     w.title = "케어팟 X50V 단점, 사기 전에 꼭 볼 것";
     assert.ok(!lintPost(w, 1).some((x) => x.includes("검색 키워드")));
+  });
+
+  // ---- 합격선 (사람 없이 내보낼 수 있는 글인지) ----
+  await test("합격선: AI 검수 + 남은 문제 1개 이하 + 근거 부족 경고 없음", () => {
+    const base = { checkedAt: "", issuesFound: 5, remaining: [] as string[], aiChecked: true };
+    assert.equal(judgeQuality(base).passed, true);
+    assert.equal(judgeQuality({ ...base, remaining: ["a"] }).passed, true);
+    assert.equal(judgeQuality({ ...base, remaining: ["a", "b"] }).passed, false);
+    assert.equal(judgeQuality({ ...base, aiChecked: false }).passed, false);
+    const thin = judgeQuality({ ...base, remaining: ['브리츠 MUSEPOP3: 표 8항목 중 5개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)'] });
+    assert.equal(thin.passed, false);
+    // 두 시도 중: 합격 우선, 그다음 남은 문제가 적은 쪽
+    const fail3 = { qa: { ...base, remaining: ["a", "b", "c"] }, passed: false };
+    const fail2 = { qa: { ...base, remaining: ["a", "b"] }, passed: false };
+    const ok1 = { qa: { ...base, remaining: ["a"] }, passed: true };
+    assert.equal(better(fail3, fail2), fail2);
+    assert.equal(better(ok1, fail2), ok1);
+    assert.equal(better(null, fail3), fail3);
   });
 
   // ---- 숫자 검사 ----

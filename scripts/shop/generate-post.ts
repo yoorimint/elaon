@@ -1,22 +1,36 @@
-// 쿠팡 비교글 자동 작성.
-// 1) 설정·키 읽기 → 2) 실행 조건 확인 → 3) 상품별 후기 수집 → 4) Gemini 작성 → 5) 저장
-// 실행: GitHub Actions "shop post" (매시간 스케줄 / 수동 실행 = 조건 무시하고 즉시 1회)
-// 상품: 관리자 페이지 "직접 입력 상품" (쿠팡 API 승인 전). 1개 = 단일 후기, 2개 = 비교글
+// 쿠팡 파트너스 후기·비교글 자동 작성 (사람 없이 돌아가는 것을 목표로 한다).
+// 1) 설정·키 읽기 → 2) 실행 조건 확인 → 3) 상품 선정 → 4) 후기 수집·분석 → 5) 작성 → 6) 검수·수정
+// → 7) 합격 판정: 미달이면 같은 실행에서 다른 상품으로 한 번 더 → 8) 저장 + 실행 기록
+// 실행: GitHub Actions "shop post" (매시간 스케줄 / 수동·점검 실행 = 조건 무시하고 즉시 1회)
 
 import { randomBytes } from "node:crypto";
-import { countPostsSince, insertPost, loadConfig, loadPostHistory, loadSecrets } from "./db";
-import { discoverProducts } from "./discover";
-import { nextKind, pairKeyOf } from "./select-products";
-import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
+import type { ManualProduct, ShopConfig } from "@/lib/shop-config";
+import type { ShopPostQa } from "@/lib/shop-post-types";
 import { pingIndexNow } from "@/lib/indexnow";
+import {
+  countPostsSince,
+  insertPost,
+  loadConfig,
+  loadPostHistory,
+  loadSecrets,
+  logRun,
+  type RunLog,
+  type RunOutcome,
+} from "./db";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
+import { discoverProducts } from "./discover";
 import { pickTitleKeyword } from "./keywords";
-import { reviewAndFix } from "./qa";
-import { usageLine, usageSummary } from "./usage";
 import { StrongModelUnavailableError } from "./providers/gemini";
-import { writePost } from "./writer";
+import type { Secrets } from "./providers/types";
+import { reviewAndFix } from "./qa";
+import { MAX_BELOW_BAR_PER_DAY, better, judgeQuality } from "./quality";
+import { hasEnoughEvidence, researchProduct, toSources, type ProductResearch, type ResearchOptions } from "./research";
+import { nextKind, pairKeyOf } from "./select-products";
+import { usageLine, usageSummary } from "./usage";
+import { writePost, type WrittenPost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
+const MAX_ATTEMPTS = 2; // 합격선 미달이면 다른 상품으로 한 번 더
 
 function kstNow() {
   const now = new Date();
@@ -25,53 +39,32 @@ function kstNow() {
   return { hour: kst.getUTCHours(), ymd: kst.toISOString().slice(0, 10).replace(/-/g, ""), todayStartIso: midnightUtc.toISOString() };
 }
 
-function skip(reason: string): never {
-  console.log(`⏭  건너뜀: ${reason}`);
+// 실행을 끝내며 기록 (routine = 매시간 반복되는 평범한 건너뜀은 기록하지 않음)
+async function finish(outcome: RunOutcome, reason: string, extra: Partial<RunLog> = {}, routine = false): Promise<never> {
+  console.log(`${outcome === "skipped" ? "⏭  건너뜀" : "■ 종료"}: ${reason}`);
+  if (!routine) await logRun({ outcome, reason, cost_usd: usageSummary().costUsd, ...extra });
   process.exit(0);
 }
 
-async function main() {
-  const [config, secrets] = await Promise.all([loadConfig(), loadSecrets()]);
-  if (!secrets.GEMINI_API_KEY && process.env.GEMINI_API_KEY) secrets.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const t = kstNow();
+type Selection = {
+  products: ManualProduct[];
+  category?: string;
+  alternatives: string[];
+  realReviews?: Record<string, number>;
+};
 
-  // ---- 실행 조건 (수동 실행이면 무시) ----
-  if (!FORCE) {
-    if (!config.enabled) skip("자동글 비활성화 상태");
-    // 작성 시각 이후면 오늘 글 수를 채울 때까지 매시간 시도 (일시적 오류가 나도 다음 시간에 재시도)
-    if (t.hour < config.publish_hour) skip(`작성 시각 전 (현재 ${t.hour}시, 설정 ${config.publish_hour}시 KST)`);
-    const today = await countPostsSince(t.todayStartIso);
-    if (today >= config.daily_count) skip(`오늘 이미 ${today}개 작성 (하루 ${config.daily_count}개)`);
-  }
-  if (!secrets.GEMINI_API_KEY && !secrets.ANTHROPIC_API_KEY) skip("AI 키 미등록 (Gemini 또는 Claude)");
+type Attempt = Selection & {
+  written: WrittenPost;
+  qa: ShopPostQa;
+  passed: boolean;
+  reasons: string[];
+  research: ProductResearch[];
+  digests: (ProductDigest | null)[];
+};
 
-  // ---- 상품 정하기 ----
-  // 1) 직접 지정(테스트용) 칸에 상품이 있으면 그것으로 (1개 = 단일, 2개 = 비교)
-  // 2) 없으면 자동 선정: 자동 글 종류(단일/비교/섞어서)에 따라 요즘 뜨는 상품을 고른다
-  const history = await loadPostHistory();
-  const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
-  let products = manual;
-  let category: string | undefined;
-  let alternatives: string[] = [];
-  let realReviews: Record<string, number> | undefined;
-  if (manual.length && !FORCE && history.usedPairKeys.has(pairKeyOf(manual))) {
-    products = []; // 직접 지정 상품은 이미 썼음 → 자동 선정으로
-  }
-  if (!products.length) {
-    const lastKind = history.lastProductCount == null ? null : history.lastProductCount === 1 ? "single" : "compare";
-    const kind = nextKind(config.auto_mode ?? "single", lastKind);
-    console.log(`🧭 자동 선정 (${config.auto_mode ?? "single"} → 이번 글: ${kind === "single" ? "단일" : "비교"})`);
-    const found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
-    if (!found) skip("자동 선정 실패 — 조건에 맞는 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)");
-    products = found.products;
-    category = found.category;
-    alternatives = found.alternatives;
-    realReviews = found.realReviews;
-  }
-  const pairKey = pairKeyOf(products);
-  const needsLink = products.some((p) => !p.link?.trim());
-
-  // ---- 후기 수집 ----
+// ---- 한 상품(조합)으로 글 한 편 만들기: 수집 → 분석 → 작성 → 검수 ----
+async function produce(secrets: Secrets, config: ShopConfig, sel: Selection): Promise<Attempt> {
+  const { products } = sel;
   const opts: ResearchOptions = {
     useNaver: config.use_naver_reviews,
     useYoutube: config.use_youtube,
@@ -82,7 +75,7 @@ async function main() {
     adFilterWords: config.ad_filter_words ?? [],
   };
   console.log(`🔎 ${products.length === 1 ? "단일 상품 후기 분석" : "비교글"} — 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
-  const research = [];
+  const research: ProductResearch[] = [];
   for (const p of products) {
     const r = await researchProduct(secrets, p, opts);
     console.log(
@@ -92,11 +85,8 @@ async function main() {
     research.push(r);
   }
   const empty = research.filter((r) => !hasEnoughEvidence(r));
-  if (empty.length) {
-    throw new Error(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")} — 상품명을 확인하세요`);
-  }
+  if (empty.length) throw new Error(`후기를 하나도 못 찾은 상품: ${empty.map((r) => r.product.name).join(", ")}`);
 
-  // ---- 1단계: 상품별 후기 분석 (실패해도 원자료로 작성은 진행) ----
   console.log("🧠 상품별 후기 분석 중...");
   const digests: (ProductDigest | null)[] = [];
   for (const r of research) {
@@ -113,29 +103,83 @@ async function main() {
     }
   }
 
-  // ---- 2단계: 비교글 작성 ----
-  console.log("✍️  Gemini 작성 중...");
   // 제목 키워드: 네이버 데이터랩으로 가장 많이 검색되는 표현
   const seo = await pickTitleKeyword(secrets, products.map((p) => p.name));
   console.log(
     `🔑 제목 키워드: "${seo.keyword}"${seo.scores.length ? ` (${seo.scores.map((s) => `${s.keyword} ${s.score.toFixed(1)}`).join(" · ")})` : ""}`,
   );
-  const draftPost = await writePost(secrets, research, digests, {
+  console.log("✍️  작성 중...");
+  const draft = await writePost(secrets, research, digests, {
     titleKeyword: seo.keyword,
     titleStyle: config.title_style,
     extraPrompt: config.extra_prompt,
   });
+  draft.content.seoKeyword = seo.keyword; // 검수에서 제목이 키워드로 시작하는지 확인
 
-  // ---- 자동 검수: 작성 가이드·수집 자료와 대조, 틀린 곳 수정 ----
   console.log("🔍 자동 검수 중...");
-  draftPost.content.seoKeyword = seo.keyword; // 검수에서 제목이 키워드로 시작하는지 확인
-  const { post: written, qa } = await reviewAndFix(secrets, draftPost, research, digests);
+  const { post: written, qa } = await reviewAndFix(secrets, draft, research, digests);
+  const verdict = judgeQuality(qa);
+  qa.passed = verdict.passed;
+  console.log(verdict.passed ? "🟢 합격선 통과" : `🔴 합격선 미달: ${verdict.reasons.join(" / ")}`);
+  return { ...sel, written, qa, passed: verdict.passed, reasons: verdict.reasons, research, digests };
+}
+
+async function main() {
+  const [config, secrets] = await Promise.all([loadConfig(), loadSecrets()]);
+  if (!secrets.GEMINI_API_KEY && process.env.GEMINI_API_KEY) secrets.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const t = kstNow();
+
+  // ---- 실행 조건 (수동·점검 실행이면 무시) ----
+  if (!FORCE) {
+    if (!config.enabled) await finish("skipped", "자동글 비활성화 상태", {}, true);
+    // 작성 시각 이후면 오늘 글 수를 채울 때까지 매시간 시도
+    if (t.hour < config.publish_hour) {
+      await finish("skipped", `작성 시각 전 (현재 ${t.hour}시, 설정 ${config.publish_hour}시 KST)`, {}, true);
+    }
+    const today = await countPostsSince(t.todayStartIso, { passed: true });
+    if (today >= config.daily_count) await finish("skipped", `오늘 합격 글 ${today}개 작성 완료 (하루 ${config.daily_count}개)`, {}, true);
+    const below = await countPostsSince(t.todayStartIso, { passed: false });
+    if (below >= MAX_BELOW_BAR_PER_DAY) {
+      await finish("skipped", `오늘 품질 미달 ${below}번 — 같은 문제로 비용을 쓰지 않도록 내일 다시 시도`);
+    }
+  }
+  if (!secrets.GEMINI_API_KEY && !secrets.ANTHROPIC_API_KEY) await finish("skipped", "AI 키 미등록 (Gemini 또는 Claude)");
+
+  // ---- 상품 정하기 ----
+  // 1) 직접 지정(테스트용) 칸에 상품이 있으면 그것으로 (1개 = 단일, 2개 = 비교) — 재시도 없음
+  // 2) 없으면 자동 선정. 합격선 미달이면 그 상품은 빼고 한 번 더
+  const history = await loadPostHistory();
+  const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
+  const useManual = manual.length > 0 && (FORCE || !history.usedPairKeys.has(pairKeyOf(manual)));
+  const lastKind = history.lastProductCount == null ? null : history.lastProductCount === 1 ? "single" : "compare";
+  const kind = nextKind(config.auto_mode ?? "single", lastKind);
+
+  let best: Attempt | null = null;
+  const tried: string[] = [];
+  for (let attempt = 1; attempt <= (useManual ? 1 : MAX_ATTEMPTS); attempt++) {
+    let sel: Selection;
+    if (useManual) {
+      sel = { products: manual, alternatives: [] };
+    } else {
+      console.log(`🧭 자동 선정 ${attempt}회차 (${config.auto_mode ?? "single"} → 이번 글: ${kind === "single" ? "단일" : "비교"})`);
+      const found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+      if (!found) break;
+      sel = found;
+    }
+    const result = await produce(secrets, config, sel);
+    tried.push(`${sel.products.map((p) => p.name).join(" vs ")}: ${result.passed ? "합격" : result.reasons.join(", ")}`);
+    best = better(best, result);
+    if (result.passed) break;
+    history.usedPairKeys.add(pairKeyOf(sel.products)); // 다음 시도에서는 다른 상품
+  }
+  if (!best) await finish("skipped", "자동 선정 실패 — 조건에 맞는 새 상품을 찾지 못했어요 (다음 실행에서 다시 시도)", { detail: { tried } });
+  const chosen = best as Attempt;
 
   // ---- 저장 ----
-  // 링크가 없는 자동 선정 글은 관리자가 링크를 넣을 때까지 초안
-  // 자동 발행이어도 검수를 통과하지 못한 글(AI 검수 못함·문제 남음)은 초안으로
-  const qaPassed = qa.aiChecked === true && qa.remaining.length === 0;
-  const status = config.publish_mode === "auto" && !needsLink && qaPassed ? "published" : "draft";
+  // 링크가 없는 자동 선정 글은 링크를 넣을 때까지 초안. 자동 발행은 합격한 글만
+  const needsLink = chosen.products.some((p) => !p.link?.trim());
+  const status = config.publish_mode === "auto" && !needsLink && chosen.passed ? "published" : "draft";
+  const { written, research, digests, products } = chosen;
   const slug = await insertPost({
     slug: `${t.ymd}-${randomBytes(3).toString("hex")}`,
     title: written.title,
@@ -143,10 +187,10 @@ async function main() {
     content: {
       ...written.content,
       insights: digests.map((d) => (d ? toInsight(d) : null)),
-      ...(category ? { category } : {}),
-      ...(alternatives.length ? { alternatives } : {}),
-      qa,
-      run: { ...usageSummary(), ...(realReviews ? { realReviews } : {}) },
+      ...(chosen.category ? { category: chosen.category } : {}),
+      ...(chosen.alternatives.length ? { alternatives: chosen.alternatives } : {}),
+      qa: chosen.qa,
+      run: { ...usageSummary(), ...(chosen.realReviews ? { realReviews: chosen.realReviews } : {}) },
       disclosure: config.disclosure_text,
     },
     products,
@@ -157,25 +201,38 @@ async function main() {
       youtubeComments: research.reduce((n, r) => n + r.comments.length, 0),
       webSources: research.reduce((n, r) => n + r.webSourceCount, 0),
     },
-    pair_key: pairKey,
+    pair_key: pairKeyOf(products),
     status,
   });
-  console.log(
-    `✅ 저장 완료 (${status === "published" ? "발행" : needsLink ? "초안 — 쿠팡 링크 필요" : qaPassed ? "초안" : "초안 — 검수 확인 필요"}): ${written.title}`,
-  );
+  const label =
+    status === "published" ? "발행" : !chosen.passed ? "초안 — 품질 미달" : needsLink ? "초안 — 쿠팡 링크 필요" : "초안";
+  console.log(`✅ 저장 완료 (${label}): ${written.title}`);
   console.log(`   https://www.eloan.kr/shop/${slug}`);
-  console.log(`📊 실행 리포트: ${usageLine()}${realReviews ? ` · 실사용 후기 ${Object.entries(realReviews).map(([n, c]) => `${n} ${c}건`).join(", ")}` : ""}`);
+  console.log(
+    `📊 실행 리포트: ${usageLine()}${chosen.realReviews ? ` · 실사용 후기 ${Object.entries(chosen.realReviews).map(([n, c]) => `${n} ${c}건`).join(", ")}` : ""}`,
+  );
 
   // 바로 공개된 글이면 검색엔진(네이버 등)에 즉시 알림
   if (status === "published") {
     const pings = await pingIndexNow([`/shop/${slug}`, "/shop"]);
     console.log(`🔔 검색엔진 알림: ${pings.map((p) => `${new URL(p.endpoint).host}=${p.status}`).join(", ")}`);
   }
+  await logRun({
+    outcome: status === "published" ? "published" : chosen.passed ? "draft" : "below_bar",
+    reason: chosen.passed ? label : chosen.reasons.join(" / "),
+    title: written.title,
+    slug,
+    cost_usd: usageSummary().costUsd,
+    detail: { tried, remaining: chosen.qa.remaining.length },
+  });
 }
 
-main().catch((e) => {
-  // 좋은 모델(flash)이 막혀 있으면 약한 모델로 대충 쓰지 않고 다음 시간(매시간 재시도)에 다시
-  if (e instanceof StrongModelUnavailableError) skip(`${e.message.slice(0, 200)} → 다음 실행에서 다시 시도`);
+main().catch(async (e) => {
+  // 좋은 모델(flash·Claude)이 막혀 있으면 약한 모델로 대충 쓰지 않고 다음 시간(매시간 재시도)에 다시
+  if (e instanceof StrongModelUnavailableError) {
+    await finish("skipped", `${e.message.slice(0, 200)} → 다음 실행에서 다시 시도`);
+  }
   console.error("❌", e instanceof Error ? e.message : e);
+  await logRun({ outcome: "error", reason: e instanceof Error ? e.message.slice(0, 300) : String(e) }).catch(() => {});
   process.exit(1);
 });

@@ -48,13 +48,30 @@ export async function loadConfig(): Promise<ShopConfig> {
   return data as ShopConfig;
 }
 
-export async function countPostsSince(sinceIso: string): Promise<number> {
-  const { count, error } = await sb
-    .from("shop_posts")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", sinceIso);
+// 기간 안에 쓴 글 수. passed 를 주면 합격선 통과/미달 글만 (content.qa.passed)
+export async function countPostsSince(sinceIso: string, filter: { passed?: boolean } = {}): Promise<number> {
+  let q = sb.from("shop_posts").select("id", { count: "exact", head: true }).gte("created_at", sinceIso);
+  if (filter.passed !== undefined) q = q.eq("content->qa->>passed", String(filter.passed));
+  const { count, error } = await q;
   if (error) throw new Error(`shop_posts 조회 실패: ${error.message}`);
   return count ?? 0;
+}
+
+// ---------- 실행 기록 (관리자 "최근 실행" 표시용, supabase/shop.sql 의 shop_runs) ----------
+export type RunOutcome = "published" | "draft" | "below_bar" | "skipped" | "error";
+export type RunLog = {
+  outcome: RunOutcome;
+  reason: string;
+  title?: string;
+  slug?: string;
+  cost_usd?: number;
+  detail?: Record<string, unknown>;
+};
+
+// 기록 실패(표가 아직 없음 등)는 글쓰기를 막지 않는다
+export async function logRun(run: RunLog): Promise<void> {
+  const { error } = await sb.from("shop_runs").insert(run);
+  if (error) console.warn(`  (실행 기록 저장 실패 — supabase/shop.sql 의 shop_runs 표가 필요: ${error.message.slice(0, 100)})`);
 }
 
 export async function pairExists(pairKey: string): Promise<boolean> {

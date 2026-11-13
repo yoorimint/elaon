@@ -14,6 +14,7 @@ import {
 import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { ShopManualProducts } from "@/components/ShopManualProducts";
 import { ShopPostsAdmin } from "@/components/ShopPostsAdmin";
+import { ShopRunsAdmin } from "@/components/ShopRunsAdmin";
 import { timeAgo } from "@/lib/community";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import {
@@ -138,6 +139,7 @@ export default function AdminShopPage() {
             onChange={(v) => set("manual_products", v)}
           />
 
+          <ShopRunsAdmin />
           <ShopPostsAdmin />
 
           <SettingsSection title="실행">

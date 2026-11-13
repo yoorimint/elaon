@@ -3,6 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
+import { isModelName } from "./discover";
 import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix } from "./qa";
 import { StrongModelUnavailableError, geminiGenerate } from "./providers/gemini";
 import type { ProductResearch } from "./research";
@@ -69,6 +70,16 @@ async function main() {
     const issues = lintPost(real, 1).filter((x) => x.includes("단정"));
     assert.ok(issues.some((x) => x.startsWith("faq[1].a")), issues.join("\n"));
     assert.ok(issues.some((x) => x.startsWith("recommendations[0]")), issues.join("\n"));
+  });
+
+  // ---- 자동 선정: 브랜드명만 있는 후보 제외 (2026-11-13 lite 모델이 뽑은 실제 후보) ----
+  await test("'조지루시 가습기' 같은 브랜드+카테고리는 제외, 실제 모델명은 통과", () => {
+    for (const bad of ["조지루시 가습기", "케어팟 가습기", "스텐팟 가습기", "가습기", "조지루시"]) {
+      assert.equal(isModelName(bad, "가습기"), false, bad);
+    }
+    for (const ok of ["케어팟 X50V", "미로 MH7000", "조지루시 EE-DVH35K", "에어메이드 더 위대한 2.0", "쿠쿠 인스퓨어 가습기"]) {
+      assert.equal(isModelName(ok, "가습기"), true, ok);
+    }
   });
 
   // ---- 숫자 검사 ----

@@ -7,7 +7,7 @@
 
 import type { ManualProduct } from "@/lib/shop-config";
 import { AUTO_CATEGORIES } from "./categories";
-import { geminiGenerate } from "./providers/gemini";
+import { StrongModelUnavailableError, geminiGenerate } from "./providers/gemini";
 import { cleanNaverText, naverSearch, searchTrend, type NaverSearchType, type TrendResult } from "./providers/naver";
 import type { Secrets } from "./providers/types";
 import { pairKeyOf, type PostKind } from "./select-products";
@@ -122,12 +122,23 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<{ 
 규칙: 자료에 나온 것만. 카테고리 이름·일반명사·쇼핑몰 이름·브랜드만 있는 것(모델명 없음)은 제외. 같은 제품의 다른 표기는 하나로 합쳐.
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
-  const r = await geminiGenerate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048 });
+  // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
+  const r = await geminiGenerate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true });
   const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
-  return (o.products ?? [])
-    .map((p) => ({ name: String(p.name ?? "").trim(), mentions: Math.max(0, Number(p.mentions) || 0) }))
-    .filter((p) => p.name.length >= 3 && p.name !== category)
-    .slice(0, MAX_CANDIDATES);
+  const all = (o.products ?? []).map((p) => ({
+    name: String(p.name ?? "").trim(),
+    mentions: Math.max(0, Number(p.mentions) || 0),
+  }));
+  const rejected = all.filter((p) => !isModelName(p.name, category)).map((p) => p.name);
+  if (rejected.length) console.log(`  (모델명이 아니라 제외: ${rejected.join(", ")})`);
+  return all.filter((p) => isModelName(p.name, category)).slice(0, MAX_CANDIDATES);
+}
+
+// 구체적인 제품(브랜드 + 모델명)인지. "조지루시 가습기"처럼 브랜드 + 카테고리뿐이면 아님.
+// 카테고리 단어를 뺀 나머지가 두 단어(브랜드 + 모델) 이상이어야 한다.
+export function isModelName(name: string, category: string): boolean {
+  const words = name.split(/\s+/).filter((w) => w && !category.includes(w));
+  return words.length >= 2;
 }
 
 // ---------- 3) 후보를 검색 관심도로 정렬 ----------
@@ -179,6 +190,7 @@ export async function discoverProducts(
     try {
       cands = await rankCandidates(secrets, await extractCandidates(secrets, category));
     } catch (e) {
+      if (e instanceof StrongModelUnavailableError) throw e; // 다른 카테고리도 똑같음 → 이번 실행 중단
       console.warn(`  ⚠ ${category} 후보 추출 실패: ${e instanceof Error ? e.message.slice(0, 150) : e}`);
       continue;
     }

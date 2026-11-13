@@ -3,12 +3,17 @@
 //  - 네이버 뉴스 (출시·스펙·이슈)
 //  - 유튜브 리뷰 영상(댓글 많은 순) + 댓글 + 영상 설명 (YouTube Data API)
 //  - Gemini 구글 검색 요약 (그라운딩)
+//  - 웹 리뷰 원문 발췌 (Claude 공식 웹 검색·읽기 도구, providers/webreviews.ts) — 위 수집 뒤에 보강용으로.
+//    Claude 키가 없거나 하루 비용 상한에 가까우면 건너뛰고, 실패해도 글 작성은 계속한다.
 
 import type { ShopPostInputProduct, ShopPostSource } from "@/lib/shop-post-types";
 import { GroundingUnavailableError, geminiGenerate } from "./providers/gemini";
 import { cleanNaverText, naverSearch, type NaverSearchType } from "./providers/naver";
 import { searchVideos, topComments, videoDetails, type YoutubeVideo } from "./providers/youtube";
 import type { Secrets } from "./providers/types";
+import { WEB_REVIEW_EST_MAX_USD, researchWebReviews, type WebReview } from "./providers/webreviews";
+import { MAX_COST_USD_PER_DAY } from "./quality";
+import { usageSummary } from "./usage";
 
 export type ResearchOptions = {
   useNaver: boolean;
@@ -38,8 +43,17 @@ export type ProductResearch = {
   news: { title: string; text: string; url: string }[];
   webSummary: string | null;
   webSourceCount: number;
+  webReviews: WebReview[]; // 웹 리뷰 원문 발췌 (원문과 대조를 통과한 것만)
   errors: string[];
 };
+
+// 웹 리뷰 원문 조사 켜기/끄기 (환경변수 SHOP_WEB_REVIEWS=0 이면 끔)
+export const WEB_REVIEWS_ENABLED = process.env.SHOP_WEB_REVIEWS !== "0";
+// 한 실행(글 1편 + 재시도)에서 웹 리뷰 조사에 쓰는 비용 상한 (USD). 재시도로 상품을 여러 번 고르면
+// 상품마다 약 $0.03~0.06 씩 들어 하루 상한($0.5)을 빨리 먹으므로 따로 묶는다
+export const WEB_REVIEW_MAX_USD_PER_RUN = 0.2;
+// 웹 리뷰 조사 뒤에도 분석·작성·검수에 쓸 몫으로 남겨 둘 하루 예산 (USD)
+const WEB_REVIEW_RESERVE_USD = 0.1;
 
 const COMMENT_MAX_CHARS = 300;
 const VIDEO_NOTE_MAX_CHARS = 1200;
@@ -66,6 +80,69 @@ const naverTypeUnavailable = new Set<NaverSearchType>();
 
 // 무료 요금제 등으로 그라운딩이 막혀 있으면 첫 실패 후 같은 실행에서는 건너뛴다
 let groundingUnavailable = false;
+
+// ---- 웹 리뷰 조사 예산 ----
+let webReviewSpent = 0; // 이번 실행에서 웹 리뷰 조사에 쓴 비용
+let webReviewDisabledReason: string | null = null; // 키 오류 등으로 이번 실행 동안 끔
+let spentTodayBeforeRun: number | null | undefined; // 오늘 앞선 실행들이 쓴 비용 (undefined = 아직 안 읽음, null = 못 읽음)
+
+// 오늘(KST) 앞선 실행들의 비용 합 — 실행 기록 표(shop_runs)에서 한 번만 읽는다.
+// db.ts 는 불러오는 순간 Supabase 환경변수를 요구하므로 필요할 때만 불러온다(테스트에서 불러오지 않게)
+async function spentToday(): Promise<number | null> {
+  if (spentTodayBeforeRun !== undefined) return spentTodayBeforeRun;
+  try {
+    const { todayRunStats } = await import("./db");
+    const kst = new Date(Date.now() + 9 * 3600 * 1000);
+    const since = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate()) - 9 * 3600 * 1000);
+    spentTodayBeforeRun = (await todayRunStats(since.toISOString()))?.costUsd ?? null;
+  } catch {
+    spentTodayBeforeRun = null;
+  }
+  return spentTodayBeforeRun;
+}
+
+// 웹 리뷰 조사를 건너뛸 이유 (없으면 null)
+async function webReviewSkipReason(secrets: Secrets): Promise<string | null> {
+  if (!WEB_REVIEWS_ENABLED) return "꺼짐 (SHOP_WEB_REVIEWS=0)";
+  if (!secrets.ANTHROPIC_API_KEY) return "Claude 키 미등록";
+  if (webReviewDisabledReason) return webReviewDisabledReason;
+  if (webReviewSpent + WEB_REVIEW_EST_MAX_USD > WEB_REVIEW_MAX_USD_PER_RUN) {
+    return `이번 실행 웹 리뷰 비용 $${webReviewSpent.toFixed(3)} — 실행당 상한 $${WEB_REVIEW_MAX_USD_PER_RUN}`;
+  }
+  // 실행 기록을 못 읽으면 이번 실행 비용만으로 판단 (실행당 상한이 따로 막아 줌)
+  const today = ((await spentToday()) ?? 0) + usageSummary().costUsd;
+  if (today + WEB_REVIEW_EST_MAX_USD + WEB_REVIEW_RESERVE_USD > MAX_COST_USD_PER_DAY) {
+    return `오늘 AI 비용 약 $${today.toFixed(3)} — 하루 상한 $${MAX_COST_USD_PER_DAY} 에 가까움`;
+  }
+  return null;
+}
+
+async function collectWebReviews(secrets: Secrets, name: string, opts: ResearchOptions, warnings: string[]): Promise<WebReview[]> {
+  const skip = await webReviewSkipReason(secrets);
+  if (skip) {
+    console.log(`    (${name}: 웹 리뷰 조사 건너뜀 — ${skip})`);
+    return [];
+  }
+  try {
+    const r = await researchWebReviews(secrets, { name }, { adFilterWords: opts.adFilterWords });
+    webReviewSpent += r.costUsd;
+    const excerpts = r.reviews.reduce((n, w) => n + w.excerpts.length, 0);
+    const dropped = Object.entries(r.dropped)
+      .map(([why, n]) => `${why} ${n}`)
+      .join(", ");
+    console.log(
+      `    (${name}: 웹 리뷰 ${r.reviews.length}곳 · 발췌 ${excerpts}문장 · 검색 ${r.searches}회 · 읽은 페이지 ${r.fetches}개 · 약 $${r.costUsd.toFixed(4)}${dropped ? ` · 버림: ${dropped}` : ""})`,
+    );
+    r.errors.forEach((e) => warnings.push(`웹 리뷰: ${e}`));
+    return r.reviews;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // 키·권한·기능 꺼짐 문제는 다른 상품에서도 같으므로 이번 실행 동안 끈다
+    if (/\b40[13]\b|authentication|permission|not enabled|credit balance/i.test(msg)) webReviewDisabledReason = `앞선 호출 실패 (${msg.slice(0, 80)})`;
+    warnings.push(`웹 리뷰: ${msg.slice(0, 150)}`);
+    return [];
+  }
+}
 
 function isAd(text: string, words: string[]): boolean {
   return words.some((w) => w && text.includes(w));
@@ -185,6 +262,7 @@ export async function researchProduct(
     news: [],
     webSummary: null,
     webSourceCount: 0,
+    webReviews: [],
     errors: [],
   };
 
@@ -221,6 +299,8 @@ export async function researchProduct(
       result.errors.push(`구글 검색: ${e instanceof Error ? e.message : e}`);
     }
   }
+  // 웹 리뷰 원문: 네이버·유튜브 수집 뒤에 보강 (건너뛰거나 실패해도 계속)
+  result.webReviews = await collectWebReviews(secrets, product.name, opts, result.errors);
   return result;
 }
 
@@ -235,5 +315,5 @@ export function toSources(research: ProductResearch[]): ShopPostSource[] {
 
 // 후기가 하나도 없으면 글을 쓰지 않는다 (근거 없는 글 방지)
 export function hasEnoughEvidence(r: ProductResearch): boolean {
-  return r.reviews.length > 0 || r.comments.length > 0 || r.videoNotes.length > 0 || !!r.webSummary;
+  return r.reviews.length > 0 || r.comments.length > 0 || r.videoNotes.length > 0 || !!r.webSummary || r.webReviews.length > 0;
 }

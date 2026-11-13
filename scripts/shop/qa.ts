@@ -106,6 +106,10 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
   }
 
+  // 같은 안내 문장 되풀이 (run #32: "정보가 엇갈려요, 판매 페이지에서 확인하세요"가 여러 곳에)
+  const conflictMentions = allText(w).reduce((n, { text }) => n + (text.match(/엇갈려요|엇갈립니다/g)?.length ?? 0), 0);
+  if (conflictMentions > 2) issues.push(`"엇갈려요"가 ${conflictMentions}번 나옴 → 두 번 이하로, 같은 안내 문장 되풀이 빼기`);
+
   // 분량·형식 (작성 가이드)
   if (!c.summary) issues.push("summary(한 줄 결론) 없음");
   if (c.seoKeyword && !norm(w.title).startsWith(norm(c.seoKeyword))) {

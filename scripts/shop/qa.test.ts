@@ -279,6 +279,15 @@ async function main() {
     assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
     assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
   });
+  await test("'엇갈려요' 안내 문장을 세 번 이상 되풀이하면 지적", () => {
+    const w = structuredClone(real);
+    w.content.faq = [
+      { q: "q1", a: "의견이 엇갈려요. 정보가 엇갈려요, 판매 페이지에서 확인하세요." },
+      { q: "q2", a: "물걸레 평가는 의견이 엇갈려요." },
+      { q: "q3", a: "매일 물을 갈라는 후기가 많아요." },
+    ];
+    assert.ok(lintPost(w, 1).some((x) => x.includes("엇갈려요") && x.includes("3번")));
+  });
   await test("비교표에서 모든 제품이 '확인 안 됨'인 행은 삭제 지적", () => {
     const w = structuredClone(real);
     w.content.comparison = [...w.content.comparison, { label: "무게", values: ["확인 안 됨"] }];

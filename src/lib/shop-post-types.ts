@@ -170,7 +170,9 @@ export type ShopManualBlock =
   // src: 올린 사진 주소 (없으면 빈 사진 자리 — 공개 글에선 안 보임). alt: 사진 설명(대체 텍스트)
   | { id: string; type: "image"; src?: string; alt: string }
   // product: 이 구매 버튼이 가리키는 상품 (shop_posts.products 의 index)
-  | { id: string; type: "link"; product: number };
+  | { id: string; type: "link"; product: number }
+  // 표: head = 머리행 칸, rows = 나머지 행 (행마다 칸 수는 head 와 같게 맞춰 저장한다)
+  | { id: string; type: "table"; head: string[]; rows: string[][] };
 
 export type ShopManualBlockType = ShopManualBlock["type"];
 

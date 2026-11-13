@@ -5,13 +5,17 @@
 //  - post 가 없으면 아직 저장 안 한 새 글 → "초안 저장" 만 (사진은 저장 뒤에 올릴 수 있음: 사진 폴더가 글 id 라서)
 //  - 사진을 올리면 글 전체를 바로 저장한다. 저장이 실패하면 그 사진 자리에 "저장 안 됨"을 띄운다
 //  - 발행: 구매 버튼 자리의 링크가 비었거나 파트너스 링크가 아니면 막고 이유를 보여 준다 (src/lib/shop-manual.ts publishProblems)
+//  - 원문은 저장하지 않는다. 인식이 잘못된 글은 "원문 다시 붙여넣기"로 본문 블록만 새로 만든다 (상품·링크·올린 사진은 유지)
 
 import { useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ImageIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ImageIcon, Loader2, Plus, Trash2, X } from "lucide-react";
 import { ShopManualArticle } from "@/components/ShopManualArticle";
 import { isPartnersLink, isPlainCoupangUrl, parsePartnersInput } from "@/lib/coupang-link";
 import { uploadBlockImage } from "@/lib/shop-images";
+import { looksLikeFlatTable, reparseInto, tableFromText } from "@/lib/shop-paste";
 import {
+  addTableColumn,
+  addTableRow,
   autoDescription,
   countBlocks,
   insertBlock,
@@ -21,7 +25,10 @@ import {
   publishProblems,
   removeBlock,
   removeProduct,
+  removeTableColumn,
+  removeTableRow,
   setBlockImage,
+  setTableCell,
   updateBlock,
   type ManualPostInput,
 } from "@/lib/shop-manual";
@@ -83,8 +90,9 @@ const BLOCK_LABEL: Record<ShopManualBlockType, string> = {
   list: "목록",
   image: "사진",
   link: "구매 버튼",
+  table: "표",
 };
-const INSERTABLE: ShopManualBlockType[] = ["image", "link", "paragraph", "heading", "list"];
+const INSERTABLE: ShopManualBlockType[] = ["image", "link", "paragraph", "heading", "list", "table"];
 
 const INPUT = "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm";
 const BTN = "rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-xs font-semibold disabled:opacity-50";
@@ -300,6 +308,7 @@ export function ShopManualEditor({
             <div className="text-xs text-neutral-500 sm:pt-6">
               사진 {counts.images} · 구매 버튼 {counts.links} · 소제목 {counts.headings} · 문단 {counts.paragraphs}
               {counts.lists ? ` · 목록 ${counts.lists}` : ""}
+              {counts.tables ? ` · 표 ${counts.tables}` : ""}
             </div>
           </div>
           <label className="block text-sm">
@@ -355,8 +364,21 @@ export function ShopManualEditor({
         <section>
           <h3 className="text-sm font-bold">본문 블록</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            블록마다 삭제·위아래 이동, 블록 사이 <b>+</b> 로 사진·구매 버튼 끼워 넣기. 사진은 자리마다 따로 올려요.
+            블록마다 삭제·위아래 이동, 블록 사이 <b>+</b> 로 사진·구매 버튼·표 끼워 넣기. 사진은 자리마다 따로 올려요.
           </p>
+          <Repaste
+            onApply={(text) => {
+              const r = reparseInto(latest.current, text);
+              const c = countBlocks(r.draft.blocks);
+              const lost = r.lostPhotos ? `\n올린 사진 ${r.lostPhotos}장은 옮길 자리가 없어 빠져요.` : "";
+              const ask = `본문 블록을 새로 인식한 내용으로 바꿀까요? (소제목 ${c.headings} · 사진 자리 ${c.images} · 구매 버튼 ${c.links} · 표 ${c.tables})`;
+              if (!confirm(`${ask}\n상품·링크와 올린 사진은 그대로 둬요.${lost}`)) return false;
+              setDraft(() => r.draft);
+              const warn = r.warnings.length ? ` · ⚠ ${r.warnings.join(" · ")}` : "";
+              setMsg({ text: `본문을 다시 인식했어요 — 저장을 눌러야 반영돼요${warn}`, tone: "info" });
+              return true;
+            }}
+          />
           <div className="mt-3">
             <InsertBar onInsert={(t) => setBlocks((bs) => insertBlock(bs, 0, makeBlock(t)))} />
             {draft.blocks.map((b, i) => (
@@ -368,6 +390,7 @@ export function ShopManualEditor({
                   products={draft.products}
                   imageSlot={b.type === "image" ? slot(b, true) : null}
                   onChange={(patch) => setBlocks((bs) => updateBlock(bs, b.id, patch))}
+                  onReplace={(next) => setBlocks((bs) => bs.map((x) => (x.id === b.id ? next : x)))}
                   onMove={(dir) => setBlocks((bs) => moveBlock(bs, b.id, dir))}
                   onRemove={() => setBlocks((bs) => removeBlock(bs, b.id))}
                 />
@@ -565,6 +588,7 @@ function BlockCard({
   products,
   imageSlot,
   onChange,
+  onReplace,
   onMove,
   onRemove,
 }: {
@@ -574,6 +598,7 @@ function BlockCard({
   products: ShopPostInputProduct[];
   imageSlot: React.ReactNode;
   onChange: (patch: Partial<ShopManualBlock>) => void;
+  onReplace: (block: ShopManualBlock) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
 }) {
@@ -605,13 +630,33 @@ function BlockCard({
       </div>
       <div className="mt-1.5">
         {b.type === "paragraph" && (
-          <textarea
-            value={b.text}
-            onChange={(e) => onChange({ text: e.target.value })}
-            rows={Math.min(10, Math.max(2, Math.ceil(b.text.length / 32)))}
-            className={`${INPUT} leading-relaxed`}
-          />
+          <>
+            <textarea
+              value={b.text}
+              onChange={(e) => onChange({ text: e.target.value })}
+              rows={Math.min(10, Math.max(2, Math.ceil(b.text.length / 32)))}
+              className={`${INPUT} leading-relaxed`}
+            />
+            {/* 표처럼 보이는 문단(탭·|·여러 줄·한 줄로 붙은 표)에만 보여 준다 */}
+            {(/[\t|\n]/.test(b.text.trim()) || looksLikeFlatTable(b.text)) && (
+              <button
+                type="button"
+                className="mt-1 text-[11px] text-neutral-500 underline"
+                onClick={() => {
+                  const t = tableFromText(b.text);
+                  if (!t) {
+                    alert("표로 바꿀 수 없어요 — 한 줄에 한 행씩, 칸은 | 로 나눠 쓴 뒤 다시 눌러 주세요.\n예)\n모드 | 최대 가습량\n일반모드 | 시간당 360mL");
+                    return;
+                  }
+                  onReplace({ id: b.id, type: "table", head: t.head, rows: t.rows });
+                }}
+              >
+                표로 바꾸기
+              </button>
+            )}
+          </>
         )}
+        {b.type === "table" && <TableEditor block={b} onChange={(patch) => onChange(patch)} />}
         {b.type === "heading" && (
           <div className="flex gap-2">
             <select
@@ -747,6 +792,114 @@ function ImageSlot({
           }}
         />
       )}
+    </div>
+  );
+}
+
+// 표 편집: 칸 글자 고치기, 행·열 추가/삭제. 휴대폰에서는 표만 가로로 밀어서 본다
+function TableEditor({
+  block: t,
+  onChange,
+}: {
+  block: Extract<ShopManualBlock, { type: "table" }>;
+  onChange: (patch: { head: string[]; rows: string[][] }) => void;
+}) {
+  const cell = "w-32 rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700";
+  const small = "rounded p-1 text-neutral-400 hover:text-red-600 disabled:opacity-30";
+  return (
+    <div>
+      <div className="overflow-x-auto pb-1">
+        <table className="border-separate border-spacing-1">
+          <tbody>
+            <tr>
+              {t.head.map((_, j) => (
+                <td key={j} className="text-center">
+                  <button
+                    type="button"
+                    className={small}
+                    disabled={t.head.length <= 1}
+                    onClick={() => onChange(removeTableColumn(t, j))}
+                    aria-label={`${j + 1}번째 열 삭제`}
+                    title="이 열 삭제"
+                  >
+                    <X className="mx-auto h-3 w-3" />
+                  </button>
+                </td>
+              ))}
+              <td />
+            </tr>
+            <tr>
+              {t.head.map((c, j) => (
+                <td key={j}>
+                  <input value={c} placeholder="머리 칸" onChange={(e) => onChange(setTableCell(t, -1, j, e.target.value))} className={`${cell} font-semibold`} />
+                </td>
+              ))}
+              <td className="text-[10px] text-neutral-400">머리행</td>
+            </tr>
+            {t.rows.map((r, i) => (
+              <tr key={i}>
+                {r.map((c, j) => (
+                  <td key={j}>
+                    <input value={c} onChange={(e) => onChange(setTableCell(t, i, j, e.target.value))} className={cell} />
+                  </td>
+                ))}
+                <td>
+                  <button type="button" className={small} onClick={() => onChange(removeTableRow(t, i))} aria-label={`${i + 1}번째 행 삭제`}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-1 flex gap-1.5">
+        <button type="button" className={BTN} onClick={() => onChange(addTableRow(t))}>
+          + 행
+        </button>
+        <button type="button" className={BTN} onClick={() => onChange(addTableColumn(t))}>
+          + 열
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 원문 다시 붙여넣기: 인식이 잘못 저장된 글을 원문으로 다시 인식해 본문 블록만 바꾼다 (원문은 저장하지 않으므로 다시 붙여넣어야 함)
+function Repaste({ onApply }: { onApply: (text: string) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-2 text-xs text-neutral-500 underline">
+        원문 다시 붙여넣어 본문 새로 인식하기
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2 rounded-xl border border-neutral-200 p-3 dark:border-neutral-800">
+      <p className="text-xs text-neutral-500">
+        원문은 저장해 두지 않아요. 원문을 다시 붙여넣으면 본문 블록만 새로 만들고, 상품·링크·올린 사진은 그대로 둬요.
+      </p>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className={`mt-2 ${INPUT}`} placeholder="원문 전체를 붙여넣으세요" />
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          disabled={!text.trim()}
+          className={BTN_PRIMARY}
+          onClick={() => {
+            if (onApply(text)) {
+              setText("");
+              setOpen(false);
+            }
+          }}
+        >
+          다시 인식하기
+        </button>
+        <button type="button" className={BTN} onClick={() => setOpen(false)}>
+          닫기
+        </button>
+      </div>
     </div>
   );
 }

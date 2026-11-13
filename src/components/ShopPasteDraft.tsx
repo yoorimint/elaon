@@ -45,7 +45,8 @@ export function ShopPasteDraft({
         <p className="mt-1 text-xs leading-relaxed text-neutral-500">
           다른 곳에서 쓴 글을 그대로 붙여넣으세요. <b>[사진]</b> <b>[이미지: 설명]</b> <b>(사진)</b> 📷 은 사진 자리로,{" "}
           <b>[쿠팡 링크]</b> <b>[구매하기 버튼]</b> <b>👉 … 보러가기</b> 와 쿠팡 파트너스 주소는 구매 버튼 자리로 바뀌어요.
-          표시가 없으면 소제목마다 사진 자리, 글 맨 위·맨 끝에 구매 버튼 자리를 넣어요.
+          표시가 없으면 소제목마다 사진 자리, 글 맨 위·맨 끝에 구매 버튼 자리를 넣어요. 서식이 빠진 소제목(앞뒤가 빈 줄인
+          짧은 줄)과 표(칸이 탭으로 나뉜 줄)도 알아봐요.
         </p>
         <textarea
           value={text}
@@ -71,6 +72,7 @@ export function ShopPasteDraft({
             <div className="font-semibold">
               인식 결과: 사진 자리 {c.images} · 구매 버튼 자리 {c.links} · 소제목 {c.headings} · 문단 {c.paragraphs}
               {c.lists ? ` · 목록 ${c.lists}` : ""}
+              {c.tables ? ` · 표 ${c.tables}` : ""}
               {result.info.title ? " · 제목 찾음" : " · 제목 못 찾음 (직접 입력)"}
             </div>
             {(result.info.autoPlaced.images || result.info.autoPlaced.links) && (

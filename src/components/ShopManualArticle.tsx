@@ -4,6 +4,9 @@
 //  - 문단은 src/lib/paragraphs.ts 기준으로 2~3문장씩 나눠 보여 준다 (휴대폰 벽글 방지)
 //  - 사진이 아직 없는 자리: 공개 글에선 숨기고, 미리보기에선 점선 자리로 보여 준다
 //  - 구매 버튼: 기존 AI 글과 같은 버튼·문구(BuyButton). 링크가 없으면 공개 글에선 숨김
+//  - 표: 휴대폰에서 칸이 많으면 표만 가로로 밀어 볼 수 있게 (글 전체가 옆으로 밀리지 않게)
+//  - "※"로 시작하는 안내 문단은 작은 회색 글씨로, 위 블록(특히 구매 버튼)과 넉넉히 띄운다
+//  - 머리: 경로는 "홈 / 쇼핑", 제목 위 분류는 카테고리(없으면 안 보임) — AI 글의 "쇼핑 비교 / REVIEW" 와 구분
 
 import { ImageIcon } from "lucide-react";
 import { BuyButton, Paragraphs, PostHeader, RelatedPosts } from "@/components/ShopPostParts";
@@ -18,7 +21,10 @@ const GAP: Record<ShopManualBlock["type"], string> = {
   list: "mt-5",
   image: "mt-8",
   link: "mt-8",
+  table: "mt-6",
 };
+
+const isNote = (text: string) => /^\s*※/.test(text);
 
 export function ShopManualArticle({
   post,
@@ -38,14 +44,55 @@ export function ShopManualArticle({
   return (
     // break-keep: 한국어 단어 단위 줄바꿈
     <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
-      <PostHeader post={post} single label={{ kicker: "REVIEW", byline: "eloan 쇼핑" }} />
+      <PostHeader post={post} single label={{ section: "쇼핑", kicker: post.content.category, byline: "eloan 쇼핑" }} />
 
       <div className="mt-8">
         {blocks.map((b, i) => {
           const gap = i === 0 ? "" : GAP[b.type];
           switch (b.type) {
             case "paragraph":
-              return b.text.trim() ? <Paragraphs key={b.id} text={b.text} className={gap} /> : null;
+              if (!b.text.trim()) return null;
+              return isNote(b.text) ? (
+                <Paragraphs key={b.id} text={b.text} gap="space-y-2" className={`${i === 0 ? "" : "mt-10"} text-[14px] leading-relaxed text-neutral-500`} />
+              ) : (
+                <Paragraphs key={b.id} text={b.text} className={gap} />
+              );
+            case "table": {
+              const rows = b.rows.filter((r) => r.some((c) => c.trim()));
+              if (!b.head.some((c) => c.trim()) && !rows.length) return null;
+              return (
+                <div key={b.id} className={`${gap} overflow-x-auto rounded-xl border border-neutral-200 dark:border-neutral-800`}>
+                  <table className="w-full border-collapse text-left text-[15px] leading-snug">
+                    <thead className="bg-neutral-50 text-[14px] text-neutral-900 dark:bg-neutral-900 dark:text-white">
+                      <tr>
+                        {b.head.map((c, j) => (
+                          <th key={j} scope="col" className="min-w-[5rem] px-3 py-2.5 align-bottom font-semibold">
+                            {c}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, k) => (
+                        <tr key={k} className="border-t border-neutral-200 dark:border-neutral-800">
+                          {r.map((c, j) =>
+                            j === 0 ? (
+                              <th key={j} scope="row" className="min-w-[5rem] px-3 py-2.5 align-top font-semibold text-neutral-900 dark:text-white">
+                                {c}
+                              </th>
+                            ) : (
+                              <td key={j} className="min-w-[5rem] px-3 py-2.5 align-top">
+                                {c}
+                              </td>
+                            ),
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
             case "heading":
               if (!b.text.trim()) return null;
               return b.level === 2 ? (

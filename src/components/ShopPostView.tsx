@@ -114,9 +114,9 @@ function BodyPhoto({
   return (
     <LinkOrDiv
       href={product.link}
-      className={`block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800 ${className}`}
+      className={`block aspect-[4/3] overflow-hidden rounded-2xl ${className}`}
     >
-      <ProductImage product={product} name={name} index={0} spot={spot} preview={preview} className="h-full w-full p-6" />
+      <ProductImage product={product} name={name} index={0} spot={spot} preview={preview} className="h-full w-full" />
     </LinkOrDiv>
   );
 }
@@ -152,14 +152,14 @@ function ProductCard({
   return (
     <div>
       <LinkOrDiv href={product.link} className="group block">
-        <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
+        <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl">
           <ProductImage
             product={product}
             name={name}
             index={index}
             spot={spot}
             preview={preview}
-            className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
+            className="h-full w-full transition duration-300 group-hover:scale-[1.03]"
           />
         </div>
         <div className="mt-3 flex items-start gap-2">
@@ -328,7 +328,7 @@ export function ShopPostView({
                 {products.map((p, i) => (
                   <th key={p.link} className="pb-3 align-bottom font-normal">
                     {hasPhoto(p, "table") && (
-                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
+                      <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg">
                         <ProductImage product={p} name={names[i]} index={i} spot="table" preview={preview} className="h-full w-full p-1" />
                       </div>
                     )}
@@ -374,7 +374,7 @@ export function ShopPostView({
                 <>
                   <div className="flex items-center gap-3">
                     {hasPhoto(products[i], "thumb") && (
-                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
                         <ProductImage product={products[i]} name={names[i]} index={i} spot="thumb" preview={preview} className="h-full w-full p-1" />
                       </div>
                     )}
@@ -390,9 +390,9 @@ export function ShopPostView({
                   {hasPhoto(products[i], "detail") && (
                     <LinkOrDiv
                       href={products[i].link}
-                      className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
+                      className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl"
                     >
-                      <ProductImage product={products[i]} name={names[i]} index={i} spot="detail" preview={preview} className="h-full w-full p-6" />
+                      <ProductImage product={products[i]} name={names[i]} index={i} spot="detail" preview={preview} className="h-full w-full" />
                     </LinkOrDiv>
                   )}
                 </>

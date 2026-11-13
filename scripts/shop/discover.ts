@@ -186,19 +186,25 @@ export function brandOf(name: string): string {
 }
 
 export function isSafetyRisk(name: string, category: string, items: { title: string; description: string }[]): boolean {
+  return safetyNews(name, category, items) !== null;
+}
+
+// 안전 이슈 근거 기사 제목 (없으면 null) — 왜 제외했는지 로그에 남겨 오탐을 확인할 수 있게
+export function safetyNews(name: string, category: string, items: { title: string; description: string }[]): string | null {
   const brand = normText(brandOf(name));
   const cat = normText(category);
-  return items.some((it) => {
+  const hit = items.find((it) => {
     const raw = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
     const text = normText(raw);
     const aboutThis = mentionedIn(name, category, raw) || (brand.length >= 2 && text.includes(brand) && text.includes(cat));
     return aboutThis && SAFETY_SIGNAL.test(raw);
   });
+  return hit ? cleanNaverText(hit.title) : null;
 }
 
-async function hasSafetyIssue(secrets: Secrets, name: string, category: string): Promise<boolean> {
+async function safetyIssue(secrets: Secrets, name: string, category: string): Promise<string | null> {
   const items = await naverSearch(secrets, "news", `${brandOf(name)} ${category} 리콜`, 30).catch(() => []);
-  return isSafetyRisk(name, category, items);
+  return safetyNews(name, category, items);
 }
 
 async function realReviewCount(secrets: Secrets, name: string, category: string): Promise<number> {
@@ -280,11 +286,14 @@ export async function discoverProducts(
         reviewCounts.set(name, n);
         if (n < MIN_REAL_REVIEWS) {
           console.log(`    · ${name}: 실사용 후기 ${n}건 → 부족(${MIN_REAL_REVIEWS}건 미만), 제외`);
-        } else if (await hasSafetyIssue(secrets, name, category)) {
-          reviewCounts.set(name, -1); // 안전 이슈 표시
-          console.log(`    · ${name}: 실사용 후기 ${n}건이지만 리콜·화재 등 안전 이슈 보도가 있어 제외`);
         } else {
-          console.log(`    · ${name}: 실사용 후기 ${n}건 · 안전 이슈 보도 없음`);
+          const news = await safetyIssue(secrets, name, category);
+          if (news) {
+            reviewCounts.set(name, -1); // 안전 이슈 표시
+            console.log(`    · ${name}: 실사용 후기 ${n}건이지만 안전 이슈 보도로 제외 — "${news.slice(0, 80)}"`);
+          } else {
+            console.log(`    · ${name}: 실사용 후기 ${n}건 · 안전 이슈 보도 없음`);
+          }
         }
       }
       return reviewCounts.get(name)! >= MIN_REAL_REVIEWS;

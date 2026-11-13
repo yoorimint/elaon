@@ -172,9 +172,12 @@ function unitOf(raw: string): string | null {
   for (const [re, u] of UNITS) if (re.test(raw)) return u;
   return null;
 }
+// 천 단위 쉼표 제거: "1,700W" = "1700W" (run #25: 표기 차이로 같은 수치를 없는 수치로 판정)
+const noThousands = (s: string) => s.replace(/(\d),(?=\d{3}(?!\d))/g, "$1");
+
 function numbersIn(text: string): Set<string> {
   const out = new Set<string>();
-  for (const m of text.matchAll(NUM_UNIT)) {
+  for (const m of noThousands(text).matchAll(NUM_UNIT)) {
     const u = unitOf(m[2]);
     if (u) out.add(`${Number(m[1])}${u}`);
   }
@@ -187,7 +190,7 @@ export function checkNumbers(w: WrittenPost, evidence: string): string[] {
   const nameNumbers = new Set(w.content.products.flatMap((p) => p.name.match(/\d+(?:\.\d+)?/g) ?? []));
   const issues: string[] = [];
   for (const { path, text } of allText(w)) {
-    for (const m of text.matchAll(NUM_UNIT)) {
+    for (const m of noThousands(text).matchAll(NUM_UNIT)) {
       const u = unitOf(m[2]);
       if (u === "도" && nameNumbers.has(m[1])) continue;
       if (u && !known.has(`${Number(m[1])}${u}`)) {

@@ -258,6 +258,14 @@ async function main() {
     assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
     assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
   });
+  await test("천 단위 쉼표 표기 차이는 같은 수치 (1,700W = 1700W)", () => {
+    const w = structuredClone(real);
+    w.content.comparison[0] = { label: "소비전력", values: ["1700W"] };
+    assert.ok(!checkNumbers(w, "소비전력 1,700W").some((x) => x.includes("1700W")));
+    w.content.comparison[0] = { label: "소비전력", values: ["1,700W"] };
+    assert.ok(!checkNumbers(w, "소비전력 1700W").some((x) => x.includes("700W")));
+    assert.ok(checkNumbers(w, "소비전력 700W").some((x) => x.includes("1,700W") || x.includes("700W")));
+  });
   await test("33㎡(제곱미터)와 33평은 다른 단위", () => {
     const w = structuredClone(real);
     w.content.comparison[0] = { label: "난방 면적", values: ["33㎡"] };

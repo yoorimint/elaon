@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
 import { better, judgeQuality } from "./quality";
-import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
+import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
 import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
@@ -244,6 +244,23 @@ async function main() {
     assert.equal(photoFor(withPhoto(both, "feature", "f.jpg"), "feature"), "f.jpg");
     assert.equal(photoFor(withPhoto(base, "bottom", "b.jpg"), "main"), undefined, "아래만 넣으면 위는 비어 있음");
     assert.equal(withPhoto(both, "table", "t.jpg").images?.bottom, "bottom.jpg", "다른 자리 유지");
+  });
+  await test("비교글 제품 번호 노출('0번이 맞아요')·긴 제목 검출, 횟수('하루 1번 세척')는 통과", () => {
+    const base = structuredClone(real);
+    const two = { ...base, content: { ...base.content, products: [base.content.products[0], base.content.products[0]] } };
+    const withSummary = (s: string) => lintPost({ ...two, content: { ...two.content, summary: s } }, 2);
+    assert.ok(withSummary("좁은 주방이 중요하다면 0번이 맞아요.").some((x) => x.includes("번호")));
+    assert.ok(withSummary("앱 관리를 원하면 1번이 더 잘 맞아요.").some((x) => x.includes("번호")));
+    assert.ok(!withSummary("필터는 하루 1번 세척하면 좋아요.").some((x) => x.includes("번호")));
+    const long = lintPost({ ...base, title: "가".repeat(51) }, 1);
+    assert.ok(long.some((x) => x.startsWith("제목이 51자")));
+  });
+  await test("제목용 이름: 긴 모델 코드는 빼고, 코드가 핵심인 짧은 이름은 그대로", () => {
+    assert.equal(titleName("SK매직 초소형 플러스 직수 냉온정수기 WPUJAC115D"), "SK매직 초소형 플러스 직수 냉온정수기");
+    assert.equal(titleName("삼성 비스포크 AI 정수기 RWP70F15ANW"), "삼성 비스포크 AI 정수기");
+    assert.equal(titleName("보이러 UB07"), "보이러 UB07");
+    assert.equal(titleName("유라 E6"), "유라 E6");
+    assert.equal(titleName("삼성 SM-R630N"), "삼성 SM-R630N", "남는 단어가 3개 미만이면 그대로");
   });
   await test("비교표: 한쪽만 확인된 행이 3개 이상이면 지적, 모델명 행은 자동 삭제", () => {
     const base = structuredClone(real);

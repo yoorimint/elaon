@@ -284,7 +284,8 @@ export async function writePost(
   const task = single
     ? `"${names}" 구매자 후기 분석 글을 써줘. products 는 이 제품 1개만.`
     : `"${names}" 비교 글을 써줘.
-제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)`;
+제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)
+이 번호는 데이터 순서일 뿐이다. 글에서 제품은 반드시 이름(짧게 줄인 이름도 가능)으로 부르고, "0번", "1번", "A제품" 같은 번호로 부르지 않는다.`;
   const prompt = `${task}
 ${opts.titleKeyword ? `제목은 반드시 "${opts.titleKeyword}"(실제로 많이 검색되는 표현)로 시작한다. description 첫 문장에도 이 표현을 넣는다.\n` : ""}${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===

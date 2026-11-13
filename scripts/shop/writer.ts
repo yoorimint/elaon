@@ -17,6 +17,22 @@ export type WriterOptions = {
 
 export type WrittenPost = { title: string; description: string; content: ShopPostContent };
 
+// 섹션별 작성 목표 — 작성 규칙·SCHEMA 와 검수 지적 문구(qa.ts lintPost)가 같은 값을 쓰도록 한 곳에 둔다.
+// 2026-11-13 운영자 검토(점검 실행 33~35): 구매 전 확인·추천 이유·FAQ·후기 문단이 얇아 "대충 쓴 글"로 보임 → 목표를 올림.
+// 검수의 최소 개수(구성 부족 판정)는 목표와 따로 낮게 둔다 — 이유는 qa.ts lintPost 주석.
+export const SECTION_GOALS = {
+  review: "5~7문장",
+  faq: "6개",
+  faqAnswer: "2~3문장",
+  commonComplaints: "4~5개",
+  recommendationReason: "2~3문장",
+  buyingGuide: "3~5개",
+  buyingGuideDetail: "3문장",
+} as const;
+const G = SECTION_GOALS;
+// "확인하세요" 꼴 안내의 글 전체 상한 (qa.ts 가 같은 값으로 검사). 확인 팁을 늘리면서 이 말만 되풀이하지 않도록 작성 규칙에도 적는다
+export const MAX_CHECK_PHRASES = 5;
+
 // 공통 규칙 + 글 종류별 규칙. 상품 1개 = 단일 상품 후기 분석, 2개 이상 = 비교글
 const COMMON_RULES = `반드시 지킬 규칙:
 1. 아래 "근거 자료"에 있는 내용만 쓴다. 근거에 없는 스펙·수치·기능은 절대 지어내지 않는다.
@@ -61,7 +77,8 @@ const COMMON_RULES = `반드시 지킬 규칙:
 20. 근거의 "실제 사용 장면"을 글에 녹인다. intro 는 그 장면에서 가져온 구체적 상황으로 시작하고
     (예: 가습기라면 "아기를 재운 뒤 기계 소리에 다시 깰까 신경 쓰이는 분이라면"), 제품마다 review 에 장면 1~2개를 넣어
     어떤 사람에게 어떤 경험이 되는지 보여준다. 장면은 "~했다는 사용자도 있어요"처럼 후기에서 나온 이야기임이 드러나게 쓴다.
-21. 장면·감정 묘사는 근거 자료(실제 사용 장면·원자료 발췌)에 있는 것만 쓴다. 근거에 없는 시간·장소·인물·행동·결과·감정을
+21. 장면·감정 묘사는 근거 자료(실제 사용 장면의 "원문"·원자료 발췌)에 있는 것만 쓴다. 장면을 옮길 때는 "원문"을 기준으로 삼고,
+    다듬은 "장면" 문장에 원문보다 더 나간 내용이 있으면 원문을 따른다. 근거에 없는 시간·장소·인물·행동·결과·감정을
     덧붙이거나 지어내지 않는다(근거가 "아기 방에서 약풍으로 틀었다"뿐이면 "새벽 세 시", "아기가 뒤척이다 다시 잠들었다"를 붙이지 않는다).
     독자의 감정을 넘겨짚는 문장("얼마나 답답하셨을까요")도 쓰지 않는다. 쓸 장면이 없으면 지어내지 말고 상황만 짧게 쓴다.
 22. 말꼬리를 바꿔 가며 쓴다. "~라는 의견이 많아요", "~다는 평이 많아요", "~다는 후기가 있어요" 같은 같은 꼴은 글 전체에서 합쳐 6번 이내,
@@ -74,19 +91,30 @@ const COMMON_RULES = `반드시 지킬 규칙:
 - 표의 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
 - 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫 위에서도 힘이 달리지 않는다는 쪽이 대부분이에요",
   "소음: 밤에 약풍으로 두면 거슬리지 않는 수준이라고 해요"). 항목마다 같은 말꼬리를 붙이지 않는다(22번).
-- 상황 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면), reason 은 한 문장.
+- 상황 situation 은 "~라면" 으로 끝나는 짧은 구(예: 반려동물을 키운다면).
 - summary 는 2문장 이내. 한 문장은 40자 안팎.
-풍성함 규칙 (얇은 글은 검색엔진이 스팸으로 본다 — 근거 자료 안에서 최대한 깊게):
-- 제품마다 review 는 3~5문장 문단: 실사용 장면 1~2개를 녹여 어떤 사람에게 어떤 경험이 되는지, 어떤 경우 불만이 나오는지(장단점 목록 반복 금지).
+풍성함 규칙 (얇은 글은 검색엔진이 스팸으로 보고 독자는 대충 쓴 글로 본다 — 근거 자료 안에서 최대한 깊게):
+- 제품마다 review 는 ${G.review} 문단: 실사용 장면 1~2개를 녹여 어떤 사람에게 어떤 경험이 되는지,
+  어떤 경우 불만이 나오는지, 그래서 어떤 사람에게 맞는지까지 이어서 쓴다(장단점 목록 반복 금지).
 - 제품마다 notFor 는 이 제품이 맞지 않는 사람 1~2문장.
-- faq 는 4~6개(답은 2~3문장), verdict 는 3~5문장.`;
+- recommendations 의 reason 은 ${G.recommendationReason}: 그 상황에서 무엇이 중요한지 → 이 제품의 어떤 점이 그걸 채워 주는지(후기 근거)
+  → 알아 둘 점이 있으면 한마디. "조용해서 좋아요" 같은 한 줄 이유 금지.
+- commonComplaints(구매 전 확인할 점)는 ${G.commonComplaints}. 항목마다 2문장: 어떤 상황에서 생기는 일인지 + 실제 사용자가 알려준 대처 팁
+  (예: "물을 반쯤 남긴 채로 두면 밤사이 멈췄다는 사용자가 있어요. 자기 전에 물을 가득 채워 두는 게 사용자들이 알려 준 요령이에요").
+  항목이 늘어도 말꼬리는 22번대로 바꿔 가며 쓴다.
+  상황 문장은 단점(cons)을 되풀이하지 말고 언제·어떤 환경에서 생기는지로 짧게 쓰고, 무게는 대처 팁에 둔다(10번).
+- 확인 팁(buyingGuide·commonComplaints)은 "설치할 자리 폭을 먼저 재 보세요"처럼 구체적인 행동으로 쓴다.
+  "확인하세요"라는 말은 글 전체에서 ${MAX_CHECK_PHRASES}번 이내.
+- faq 는 ${G.faq}(답은 ${G.faqAnswer}), verdict 는 3~5문장.
+- 분량은 근거 안에서만 채운다. 근거가 부족하면 개수·문장 수를 줄여도 된다 — 분량을 맞추려고 지어내지 않는다.
+  같은 내용을 말만 바꿔 늘리지도 않는다(10번).`;
 
 const COMPARE_RULES = `너는 한국 소비자를 위한 제품 비교 글을 쓰는 에디터야.
 ${COMMON_RULES}
 비교글 규칙:
 - 두 제품을 공정하게 비교한다.
 - intro 는 이 제품군을 고민하는 사람의 구체적 상황 장면(근거의 실제 사용 장면에서)으로 시작해, 두 제품 사이에서 무엇을 보고 고르면 되는지로 이어지는 3~4문장.
-- buyingGuide 는 이 제품군을 고를 때 볼 기준 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 두 제품이 어떻게 다른지.
+- buyingGuide 는 이 제품군을 고를 때 볼 기준 ${G.buyingGuide}. 각 detail 은 ${G.buyingGuideDetail}: 왜 중요한지 + 두 제품이 어떻게 다른지 + 살 때 확인하는 팁.
 - comparison 은 항목별 비교 6~8개(values 는 제품 순서대로).
 - recommendations 는 상황별로 어느 제품이 맞는지 3~5개(pick = 제품 번호).
 - verdict 는 후기를 모아 본 에디터의 정리: 두 제품이 갈리는 핵심을 한마디로 짚은 뒤 상황별 선택을 정리.
@@ -98,7 +126,7 @@ ${COMMON_RULES}
 단일 상품 글 규칙:
 - 제목은 상품명을 포함하고 "후기", "장단점" 같은 검색어를 자연스럽게 넣는다.
 - intro 는 이 제품을 고민하는 사람의 구체적 상황 장면(근거의 실제 사용 장면에서)으로 시작해, 살 만한지·어떤 사람에게 맞는지라는 궁금증으로 이어지는 3~4문장.
-- buyingGuide 는 이 제품을 살 때 따져볼 포인트 3~5개. 각 detail 은 2~3문장으로 왜 중요한지와 이 제품은 그 점에서 어떤지.
+- buyingGuide 는 이 제품을 살 때 따져볼 포인트 ${G.buyingGuide}. 각 detail 은 ${G.buyingGuideDetail}: 왜 중요한지 + 이 제품은 그 점에서 어떤지 + 살 때 확인하는 팁.
 - comparison 은 이 제품의 주요 특징 6~8개(values 는 값 1개짜리 배열).
 - recommendations 는 이 제품이 잘 맞는 상황 3~4개(pick 은 항상 0).
 - verdict 는 후기를 모아 본 에디터의 정리: 이 제품의 핵심을 한마디로 짚은 뒤 누가 사면 좋고 누가 다른 제품을 보는 게 나은지.`;
@@ -120,7 +148,7 @@ const SCHEMA = {
           pros: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
           cons: { type: "array", items: { type: "string" }, description: "3~4개, '핵심어: 한 문장'" },
           bestFor: { type: "string" },
-          review: { type: "string", description: "실사용 장면 1~2개를 녹인 후기 문단 3~5문장" },
+          review: { type: "string", description: `실사용 장면 1~2개를 녹인 후기 문단 ${G.review}` },
           notFor: { type: "string", description: "이 제품이 맞지 않는 사람 1~2문장" },
         },
         required: ["name", "oneLiner", "pros", "cons", "bestFor", "review", "notFor"],
@@ -141,30 +169,40 @@ const SCHEMA = {
       items: {
         type: "object",
         properties: {
-          situation: { type: "string" },
+          situation: { type: "string", description: "'~라면'으로 끝나는 짧은 구" },
           pick: { type: "integer" },
-          reason: { type: "string" },
+          reason: {
+            type: "string",
+            description: `왜 맞는지 ${G.recommendationReason}: 그 상황에서 중요한 점 → 이 제품이 채워 주는 점(후기 근거) → 알아 둘 점`,
+          },
         },
         required: ["situation", "pick", "reason"],
       },
     },
-    commonComplaints: { type: "array", items: { type: "string" } },
+    commonComplaints: {
+      type: "array",
+      items: { type: "string" },
+      description: `구매 전 확인할 점 ${G.commonComplaints}, 항목마다 2문장(어떤 상황에서 생기는 일 + 실사용자의 대처 팁). 근거가 부족하면 적게`,
+    },
     verdict: { type: "string", description: "후기를 모아 본 에디터의 정리 3~5문장" },
     buyingGuide: {
       type: "array",
-      description: "고르는 기준 3~5개",
+      description: `고르는 기준 ${G.buyingGuide}`,
       items: {
         type: "object",
-        properties: { criterion: { type: "string" }, detail: { type: "string" } },
+        properties: {
+          criterion: { type: "string" },
+          detail: { type: "string", description: `${G.buyingGuideDetail}: 왜 중요한지 + 이 제품은 어떤지 + 확인 팁` },
+        },
         required: ["criterion", "detail"],
       },
     },
     faq: {
       type: "array",
-      description: "구매 전 자주 묻는 질문 3~5개",
+      description: `구매 전 자주 묻는 질문 ${G.faq} (근거로 답할 수 있는 것만, 부족하면 적게)`,
       items: {
         type: "object",
-        properties: { q: { type: "string" }, a: { type: "string" } },
+        properties: { q: { type: "string" }, a: { type: "string", description: G.faqAnswer } },
         required: ["q", "a"],
       },
     },
@@ -274,7 +312,8 @@ export function buildEvidence(research: ProductResearch[], digests: (ProductDige
   return research.map((r, i) => evidenceBlock(r, digests[i] ?? null, i)).join("\n\n");
 }
 
-function rulesFor(productCount: number) {
+// 작성 지시(system). 테스트에서 분량·사실성 규칙이 들어갔는지 확인한다
+export function rulesFor(productCount: number) {
   return productCount === 1 ? SINGLE_RULES : COMPARE_RULES;
 }
 

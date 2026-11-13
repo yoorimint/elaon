@@ -5,15 +5,15 @@
 // 한글·영숫자만 남김 (띄어쓰기·문장부호 차이 무시)
 export const norm = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
 
-// 인용이 자료에 실제로 있는지: 통째로 있거나, 10글자 조각의 60% 이상이 자료에 있으면 인정
-export function quoteFound(quote: string, evidenceNorm: string): boolean {
+// 인용이 자료에 실제로 있는지: 통째로 있거나, 10글자 조각의 minRatio(기본 60%) 이상이 자료에 있으면 인정
+export function quoteFound(quote: string, evidenceNorm: string, minRatio = 0.6): boolean {
   const q = norm(quote);
   if (q.length < 4) return false;
   if (evidenceNorm.includes(q)) return true;
   const chunks: string[] = [];
   for (let i = 0; i + 10 <= q.length; i += 10) chunks.push(q.slice(i, i + 10));
   if (!chunks.length) return false;
-  return chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length >= 0.6;
+  return chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length >= minRatio;
 }
 
 // ---------- 근거 확인 보완 ----------
@@ -51,6 +51,23 @@ export function locallySupported(claim: string, evidenceNorm: string, productWor
     const win = evidenceNorm.slice(Math.max(0, p - WINDOW), p + WINDOW);
     return tokens.filter((t) => win.includes(t)).length >= need;
   });
+}
+
+// ---------- 다듬은 문장이 인용 안에 머무는지 ----------
+// 후기 분석의 사용 장면은 {장면(다듬은 문장), 인용(원문 그대로)} 쌍으로 받는다.
+// 인용이 원자료에 있는지는 quoteFound 로 보고, 여기서는 장면이 인용에 없는 내용을 덧붙이지 않았는지 본다:
+//  - 장면의 숫자는 인용에 그대로 있어야 한다 (인용에 없는 "10분", "3시"를 붙이면 0)
+//  - 핵심 단어는 앞 2글자로 비교해 활용형 차이("들렸다" ↔ "들려서")를 흡수한다
+//  - "사용자", "사람"처럼 3인칭으로 옮기며 붙는 말은 세지 않는다
+const FRAMING = new Set(["사용자", "사람", "구매자", "이용자", "리뷰어"]);
+
+export function coverage(claim: string, sourceNorm: string, exclude: string[] = []): number {
+  const numbers = claim.match(/\d+(?:\.\d+)?/g) ?? [];
+  if (numbers.some((n) => !sourceNorm.includes(norm(n)))) return 0;
+  const tokens = keyTokens(claim, exclude).filter((t) => !FRAMING.has(t));
+  if (!tokens.length) return 0;
+  const stem = (t: string) => (/[가-힣]/.test(t) && t.length > 2 ? t.slice(0, 2) : t);
+  return tokens.filter((t) => sourceNorm.includes(stem(t))).length / tokens.length;
 }
 
 // 상품명 단어 (근거 확인 때 핵심 단어에서 뺀다 — 상품명은 자료 어디에나 있어 근거가 되지 못함)

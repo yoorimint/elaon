@@ -17,7 +17,7 @@ import { generationMentions } from "./names";
 import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
-import { buildEvidence, revisePost, type WrittenPost } from "./writer";
+import { MAX_CHECK_PHRASES, SECTION_GOALS, buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 export { locallySupported, quoteFound };
 
@@ -27,7 +27,6 @@ const MAX_POINTS = 4;
 const MIXED_OPINION = /엇갈|상반된|반대로\s*[가-힣]*\s*(평|의견)|의견이\s*나뉘/;
 const SENTENCE_VALUE = /다는\s*(평|의견|후기)|(평|의견|후기)이\s*(많|있)|(?<![필중])요\.?$|다\.?$/;
 const CHECK_PHRASE = /확인(하세요|해\s?보세요|해\s?두세요|하는\s*(것이|게)\s*좋|이\s*필요|하시)/g;
-const MAX_CHECK_PHRASES = 5;
 // 같은 꼴의 말꼬리 반복 — 문장마다 "~라는 의견이 많아요"가 붙으면 보고서처럼 읽힌다 (운영자 분석 2026-11-13).
 // 한 꼴이 글 전체에서 MAX_SAME_ENDING 번을 넘으면 지적한다. 기준 6번의 이유:
 // - 단일 글은 문장이 약 50~70개이고, 후기를 근거로 드는 자리(장단점 6~8개·후기 문단·FAQ 4~6개·고르는 기준)가 20곳 넘게 있다.
@@ -64,6 +63,17 @@ const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
 // (run #36: 수정 중 '고르는 기준'이 통째로 빠진 버전이 단어 하나 문제 버전과 같은 점수로 저장됨)
 export const STRUCTURAL = "[구성] ";
 export const isStructuralIssue = (s: string) => s.startsWith(STRUCTURAL);
+
+// 구성 부족([구성]) 판정 하한. 작성 목표(writer.ts SECTION_GOALS)보다 일부러 낮게 둔다 (2026-11-13 목표를 올릴 때 하한은 그대로 둠):
+//  - 하한은 "섹션이 비었거나 망가졌는지"를 거르는 선이다. [구성] 문제가 남으면 합격선에서 떨어진다(quality.ts).
+//  - 작성 규칙은 "근거가 부족하면 개수를 줄여도 된다, 지어내지 않는다"이므로, 하한을 목표(FAQ 6개·후기 5~7문장)까지 올리면
+//    근거가 얇은 상품에서 미달이 늘거나, 수정 단계가 분량을 채우려고 지어내게 된다.
+//  - 구매 전 확인할 점·추천 이유에는 하한을 새로 두지 않는다 (새 [구성] 지적이 생기면 같은 이유로 미달만 늘어남).
+const MIN_SECTION = {
+  reviewChars: 60, // 제품별 후기 문단 (한두 문장도 못 되는 길이)
+  faq: 3,
+  buyingGuide: 2,
+};
 
 // ---------- 1) 규칙 검사 ----------
 const BANNED: { re: RegExp; why: string }[] = [
@@ -213,7 +223,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     const name = p.name || `제품 ${i + 1}`;
     if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
     if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
-    if (!p.review || p.review.length < 60) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → 3~5문장`);
+    if (!p.review || p.review.length < MIN_SECTION.reviewChars) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → ${SECTION_GOALS.review}`);
     if (p.pros.length > MAX_POINTS) issues.push(`${name}: 장점 ${p.pros.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
     if (p.cons.length > MAX_POINTS) issues.push(`${name}: 단점 ${p.cons.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
     // 엇갈리는 의견은 장단점 칸이 아니라 한 곳(고르는 기준·구매 전 확인)에서 (점검 4·10번)
@@ -233,7 +243,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     issues.push(`"확인하세요" 같은 안내가 ${checkCount}번 → ${MAX_CHECK_PHRASES}번 이하로 (꼭 필요한 곳만)`);
   }
   issues.push(...repeatedEndingIssues(w));
-  if (c.faq.length < 3) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → 4~6개`);
+  if (c.faq.length < MIN_SECTION.faq) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → ${SECTION_GOALS.faq} (근거로 답할 수 있는 질문만)`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {
     if (/가격|어디서\s*(사|구매|확인)|구매처|할인/.test(f.q)) {
@@ -241,7 +251,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
     if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
   });
-  if ((c.buyingGuide?.length ?? 0) < 2) issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → 3~5개`);
+  if ((c.buyingGuide?.length ?? 0) < MIN_SECTION.buyingGuide) issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → ${SECTION_GOALS.buyingGuide}`);
   if (productCount === 1 && c.recommendations.some((r) => r.pick !== 0)) issues.push("단일 글인데 추천 상품 번호가 0이 아님");
 
   // 섹션 중복: "구매 전 확인할 점"이 단점을 되풀이하면 안 됨

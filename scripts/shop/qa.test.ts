@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
-import { digestBlock, groundedScenes, type ProductDigest } from "./digest";
+import { SCENES_HEADER, digestBlock, groundedScenes, type ProductDigest } from "./digest";
 import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
@@ -14,7 +14,7 @@ import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
-import { buildEvidence, type WrittenPost } from "./writer";
+import { SECTION_GOALS, buildEvidence, rulesFor, type WrittenPost } from "./writer";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -302,34 +302,108 @@ async function main() {
     assert.ok(evidenceGaps(["A", "B"], [rich, digest(["무게"], 6)]).some((x) => x.startsWith("B: 스펙 1개")));
   });
   // ---- 2026-11-13 운영자 분석: 글이 보고서처럼 딱딱함 (사용 장면 누락·같은 말꼬리 반복) ----
-  await test("후기 분석의 사용 장면(scenes)이 작성 근거(digestBlock·buildEvidence)에 들어감", () => {
+  await test("후기 분석의 사용 장면이 원문 인용과 함께 작성 근거(digestBlock·buildEvidence)에 들어감", () => {
     const scene = "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자";
+    const quote = "아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.";
     const d: ProductDigest = {
       summary: "조용하다는 평가", strengths: [], weaknesses: [], complaints: [], specs: [], buyerQuestions: [],
-      bestFor: "", conflicts: [], tips: [], scenes: [scene],
+      bestFor: "", conflicts: [], tips: [], scenes: [{ scene, quote }],
     };
     const block = digestBlock(d);
-    assert.ok(block.includes("실제 사용 장면"), block);
-    assert.ok(block.includes(`- ${scene}`), block);
-    assert.ok(digestBlock({ ...d, scenes: [] }).includes("실제 사용 장면 (후기 원문에 나온 그대로 — 글에 옮길 때 시간·장소·감정을 덧붙이지 말 것):\n(없음)"));
+    assert.ok(block.includes(SCENES_HEADER), block);
+    assert.ok(block.includes(`- 장면: ${scene}\n  원문: "${quote}"`), "검수가 원문과 대조할 수 있게 인용도 함께\n" + block);
+    assert.ok(digestBlock({ ...d, scenes: [] }).includes(`${SCENES_HEADER}\n(없음)`));
     const r = { product: { name: "케어팟 X50V", link: "" }, reviews: [], comments: [], videoNotes: [], news: [], webSummary: null } as unknown as ProductResearch;
-    assert.ok(buildEvidence([r], [d]).includes(scene), "작성·검수·수정이 보는 근거 자료에도 장면이 있어야 함");
+    const ev = buildEvidence([r], [d]);
+    assert.ok(ev.includes(scene) && ev.includes(quote), "작성·검수·수정이 보는 근거 자료에도 장면·원문이 있어야 함");
   });
-  await test("사용 장면: 원자료에서 확인되는 장면만 남기고 지어낸 장면은 버림", () => {
+  // 점검 실행 33~35: 장면을 요약·재구성해 원문과 글자가 달라 대부분 버려짐(0개가 된 상품도) → 원문 인용으로 판정
+  await test("사용 장면: 원문 인용이 원자료에 있으면 다듬은 장면도 살고, 원자료에 없는 인용·인용에 없는 내용은 버림", () => {
     const raw = `# 케어팟 X50V
 - [블로그] 한 달 후기: 아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.
-- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.`;
-    const scenes = groundedScenes(
+- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.
+- [블로그] 거실 후기: 퇴근하고 거실에 틀어 두면 저녁 내내 습도가 50% 근처로 유지돼서 만족해요.`;
+    const { scenes, dropped } = groundedScenes(
       [
-        "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자",
-        "주말마다 수조를 통째로 분리해 베이킹소다로 닦는데 10분이면 끝난다는 사용자",
-        "캠핑장 텐트 안에서 밤새 틀어도 결로가 생기지 않았다는 사용자",
+        // 다듬어서 원문과 글자가 다르지만(들려서 → 들렸다는, 두고 → 에서) 인용은 원문 그대로 → 남김
+        {
+          scene: "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자",
+          quote: "아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.",
+        },
+        // 크게 재구성한 장면(예전 방식이면 원문 대조에서 버려지던 꼴)도 인용 안의 내용이면 남김
+        {
+          scene: "퇴근 후 거실에 틀어 두니 저녁 내내 습도가 50% 근처였다는 사용자",
+          quote: "퇴근하고 거실에 틀어 두면 저녁 내내 습도가 50% 근처로 유지돼서 만족해요.",
+        },
+        // 원자료에 없는 인용 → 버림
+        {
+          scene: "캠핑장 텐트 안에서 밤새 틀어도 결로가 생기지 않았다는 사용자",
+          quote: "캠핑장 텐트 안에서 밤새 틀었는데 결로가 하나도 안 생겼어요.",
+        },
+        // 인용은 진짜지만 장면이 인용에 없는 시간·결과를 덧붙임 → 버림
+        {
+          scene: "새벽 3시에 아기가 뒤척이다 다시 잠들 만큼 조용했다는 사용자",
+          quote: "아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.",
+        },
+        // 인용이 너무 짧아 근거가 못 됨 → 버림
+        { scene: "약풍으로 틀었다는 사용자", quote: "약풍" },
       ],
       raw,
       "케어팟 X50V",
     );
-    assert.equal(scenes.length, 2, scenes.join("\n"));
-    assert.ok(!scenes.some((s) => s.includes("캠핑")), "원자료에 없는 장면");
+    assert.deepEqual(
+      scenes.map((s) => s.scene.split(" ")[0]),
+      ["아기", "퇴근"],
+      JSON.stringify({ scenes, dropped }),
+    );
+    assert.deepEqual(dropped, { "인용이 원자료에 없음": 1, "장면이 인용에 없는 내용을 덧붙임": 1, "인용이 너무 짧거나 김": 1 });
+  });
+  await test("사용 장면: 장면에 인용에 없는 숫자를 붙이면 버림, 예전 형식(문자열 장면)도 원문 그대로면 인정", () => {
+    const raw = "- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.";
+    const quote = "주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.";
+    const { scenes } = groundedScenes(
+      [
+        { scene: "주말마다 수조를 통째로 분리해 베이킹소다로 5분 만에 닦는다는 사용자", quote },
+        { scene: "주말마다 수조를 통째로 분리해 베이킹소다로 닦는데 10분이면 끝난다는 사용자", quote },
+      ],
+      raw,
+      "케어팟 X50V",
+    );
+    assert.equal(scenes.length, 1, JSON.stringify(scenes));
+    assert.ok(scenes[0].scene.includes("10분"));
+  });
+  // 2026-11-13 운영자 검토: 구매 전 확인(2~3개)·추천 이유(한 문장)·FAQ·후기 문단이 얇음 → 작성 목표를 올림
+  await test("분량 규칙이 작성 지시에 들어감 (단일·비교 모두) + 근거가 부족하면 지어내지 않는다", () => {
+    for (const n of [1, 2]) {
+      const rules = rulesFor(n);
+      assert.ok(rules.includes(`commonComplaints(구매 전 확인할 점)는 ${SECTION_GOALS.commonComplaints}. 항목마다 2문장`), "구매 전 확인 4~5개·2문장");
+      assert.ok(rules.includes(`reason 은 ${SECTION_GOALS.recommendationReason}`), "추천 이유 2~3문장");
+      assert.ok(rules.includes(`faq 는 ${SECTION_GOALS.faq}(답은 ${SECTION_GOALS.faqAnswer})`), "FAQ 6개");
+      assert.ok(rules.includes(`review 는 ${SECTION_GOALS.review} 문단`), "후기 문단 5~7문장");
+      assert.ok(rules.includes(`각 detail 은 ${SECTION_GOALS.buyingGuideDetail}: 왜 중요한지 +`), "고르는 기준 3문장");
+      assert.ok(rules.includes("근거가 부족하면 개수·문장 수를 줄여도 된다 — 분량을 맞추려고 지어내지 않는다"), "분량보다 사실성");
+      assert.ok(!rules.includes("reason 은 한 문장"), "예전 '한 문장' 규칙이 남아 있으면 안 됨");
+      // 사실성 규칙은 그대로
+      assert.ok(rules.includes("근거에 없는 스펙·수치·기능은 절대 지어내지 않는다"));
+      assert.ok(rules.includes('직접 써본 것처럼 쓰지 않는다'));
+    }
+    assert.deepEqual(SECTION_GOALS, {
+      review: "5~7문장", faq: "6개", faqAnswer: "2~3문장", commonComplaints: "4~5개",
+      recommendationReason: "2~3문장", buyingGuide: "3~5개", buyingGuideDetail: "3문장",
+    });
+  });
+  await test("구성 하한은 그대로(FAQ 3개·고르는 기준 2개), 지적 문구는 새 작성 목표로", () => {
+    const w = structuredClone(real);
+    w.content.faq = w.content.faq.slice(0, 2);
+    w.content.buyingGuide = w.content.buyingGuide!.slice(0, 1);
+    w.content.products[0].review = "짧아요.";
+    const issues = lintPost(w, 1).filter((x) => x.startsWith(STRUCTURAL));
+    assert.ok(issues.some((x) => x.includes(`FAQ 2개 → ${SECTION_GOALS.faq}`)), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes(`고르는 기준(buyingGuide)이 부족 → ${SECTION_GOALS.buyingGuide}`)), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes(`후기 요약 문단이 짧음 → ${SECTION_GOALS.review}`)), issues.join("\n"));
+    // 실제 초안(FAQ 3개·고르는 기준 2개)은 목표보다 적어도 구성 미달이 아님 — 하한을 목표까지 올리지 않음
+    const base = lintPost(real, 1).filter((x) => x.startsWith(STRUCTURAL));
+    assert.ok(!base.some((x) => /FAQ|고르는 기준/.test(x)), base.join("\n"));
   });
   await test("같은 말꼬리('~라는 의견이 많아요') 반복 검출, 표현을 바꿔 쓴 글은 통과", () => {
     const w = structuredClone(real);
@@ -813,13 +887,16 @@ async function main() {
   // ---- Gemini 과부하(503·응답 지연)면 기다리지 않고 Claude 로 (2026-11 실행 22분 사례) ----
   {
     const baseFetch = globalThis.fetch;
-    let busy: Record<string, "503" | "slow"> = {}; // 모델별 가짜 상태 (없으면 정상 응답)
+    let busy: Record<string, "503" | "slow" | "404"> = {}; // 모델별 가짜 상태 (없으면 정상 응답)
     globalThis.fetch = (async (url: string, init?: { body?: string; signal?: AbortSignal }) => {
       const model = /models\/([^:]+):generateContent/.exec(String(url))?.[1];
       if (!model) return baseFetch(url, init as RequestInit); // 모델 목록·Claude 는 위 가짜 응답 그대로
       calls.push(model);
       if (busy[model] === "503") {
         return new Response(JSON.stringify({ error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }), { status: 503 });
+      }
+      if (busy[model] === "404") {
+        return new Response(JSON.stringify({ error: { code: 404, message: `This model models/${model} is no longer available to new users.`, status: "NOT_FOUND" } }), { status: 404 });
       }
       if (busy[model] === "slow") {
         // 응답하지 않다가 timeoutMs 가 지나 끊김.
@@ -854,24 +931,38 @@ async function main() {
       assert.equal(r.model, CLAUDE_MODEL);
       assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`]);
     });
-    await test("과부하 2번 누적 → 이번 실행의 다음 호출은 Gemini 시도 없이 Claude", async () => {
-      fresh({ "gemini-3.6-flash": "503", "gemini-3.5-flash-lite": "503" });
-      await generate(both, "작성 1");
-      await generate(both, "작성 2");
-      calls.length = 0;
-      busy = {}; // Gemini 가 회복돼도 이번 실행은 Claude 유지
-      const r = await generate(both, "작성 3");
-      assert.equal(r.model, CLAUDE_MODEL);
-      assert.deepEqual(calls, [`claude:${CLAUDE_MODEL}`]);
-    });
-    await test("과부하 1번이면 다음 호출은 다시 Gemini 부터 (실행 상태 초기화도 확인)", async () => {
+    // 점검 실행 33~35: 503 응답 자체가 30~74초 늦게 와서, 한 번 과부하면 그 실행은 Claude 로 가는 게 빠름
+    await test("과부하 1번 → 이번 실행의 남은 호출은 Gemini 시도 없이 Claude", async () => {
       fresh({ "gemini-3.6-flash": "503" });
       await generate(both, "작성 1");
-      busy = {};
+      busy = {}; // Gemini 가 회복돼도 이번 실행은 Claude 유지
+      for (const prompt of ["작성 2", "작성 3"]) {
+        calls.length = 0;
+        const r = await generate(both, prompt);
+        assert.equal(r.model, CLAUDE_MODEL);
+        assert.deepEqual(calls, [`claude:${CLAUDE_MODEL}`]);
+      }
+    });
+    await test("과부하가 없으면 Gemini 를 계속 쓰고, 실행 상태를 초기화하면 다시 Gemini 부터", async () => {
+      fresh({ "gemini-3.6-flash": "503" });
+      await generate(both, "작성 1"); // 과부하 1번 → Claude 전환
+      fresh({});
+      for (const prompt of ["작성 2", "작성 3"]) {
+        calls.length = 0;
+        const r = await generate(both, prompt);
+        assert.equal(r.model, "gemini-3.6-flash");
+        assert.deepEqual(calls, ["gemini-3.6-flash"]);
+      }
+    });
+    // 점검 실행 34: gemini-2.5-flash 는 목록에는 있지만 새 사용자는 404 ("no longer available to new users")
+    await test("404(새 사용자는 못 쓰는 모델)는 그 실행 동안 다시 시도하지 않음", async () => {
+      fresh({ "gemini-3.6-flash": "404" });
+      const r1 = await generate(geminiOnly, "작성 1");
+      assert.equal(r1.model, "gemini-3.5-flash-lite");
+      assert.deepEqual(calls, ["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
       calls.length = 0;
-      const r = await generate(both, "작성 2");
-      assert.equal(r.model, "gemini-3.6-flash");
-      assert.deepEqual(calls, ["gemini-3.6-flash"]);
+      await generate(geminiOnly, "작성 2");
+      assert.deepEqual(calls, ["gemini-3.5-flash-lite"], "404 난 모델을 또 부르면 안 됨");
     });
     await test("Claude 키가 없으면 과부하여도 예전처럼 다음 Gemini 모델 시도", async () => {
       fresh({ "gemini-3.6-flash": "slow" });

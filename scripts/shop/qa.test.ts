@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
-import { SCENES_HEADER, digestBlock, groundedScenes, type ProductDigest } from "./digest";
+import { SCENES_HEADER, digestBlock, groundedScenes, webReviewScenes, type ProductDigest } from "./digest";
 import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
@@ -459,7 +459,7 @@ async function main() {
           scene: "캠핑장 텐트 안에서 밤새 틀어도 결로가 생기지 않았다는 사용자",
           quote: "캠핑장 텐트 안에서 밤새 틀었는데 결로가 하나도 안 생겼어요.",
         },
-        // 인용은 진짜지만 장면이 인용에 없는 시간·결과를 덧붙임 → 버림
+        // 인용은 진짜지만 장면이 인용에 없는 시간·결과를 덧붙임 → 장면을 원문으로 바꿔 살림 (여기서는 같은 원문이 이미 있어 중복으로 빠짐)
         {
           scene: "새벽 3시에 아기가 뒤척이다 다시 잠들 만큼 조용했다는 사용자",
           quote: "아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.",
@@ -475,7 +475,23 @@ async function main() {
       ["아기", "퇴근"],
       JSON.stringify({ scenes, dropped }),
     );
-    assert.deepEqual(dropped, { "인용이 원자료에 없음": 1, "장면이 인용에 없는 내용을 덧붙임": 1, "인용이 너무 짧거나 김": 1 });
+    assert.deepEqual(dropped, { "인용이 원자료에 없음": 1, "같은 원문 중복": 1, "인용이 너무 짧거나 김": 1 });
+  });
+  // 데이터 진단 3: 버려진 장면 대부분이 "덧붙임" — 원문은 진짜인데 다듬은 문장만 나간 경우 → 원문으로 바꿔 살림
+  await test("사용 장면: 덧붙인 장면은 원문 그대로로 바꿔 살림, 웹 리뷰 원문 발췌는 출처와 함께 장면 후보로", () => {
+    const raw = "- [블로그] 거실 후기: 퇴근하고 거실에 틀어 두면 저녁 내내 습도가 50% 근처로 유지돼서 만족해요.";
+    const quote = "퇴근하고 거실에 틀어 두면 저녁 내내 습도가 50% 근처로 유지돼서 만족해요.";
+    const { scenes, rescued } = groundedScenes([{ scene: "새벽 3시까지 아이 방이 촉촉했다는 사용자", quote }], raw, "케어팟 X50V");
+    assert.equal(rescued, 1);
+    assert.deepEqual(scenes, [{ scene: quote, quote }], "지어낸 장면 문장은 사라지고 원문만 남음");
+    const r = {
+      product: { name: "케어팟 X50V", link: "" },
+      webReviews: [{ url: "https://example.com/a", title: "석 달 사용기", kind: "blog", verifiedBy: "page", excerpts: ["물통을 매일 비우는 게 생각보다 번거로워서 결국 주말에만 썼어요", "좋아요", quote] }],
+    } as unknown as ProductResearch;
+    const web = webReviewScenes(r, scenes);
+    assert.deepEqual(web, [{ scene: "물통을 매일 비우는 게 생각보다 번거로워서 결국 주말에만 썼어요", quote: "물통을 매일 비우는 게 생각보다 번거로워서 결국 주말에만 썼어요", source: "https://example.com/a" }], "짧은 말·이미 있는 원문은 뺌");
+    const block = digestBlock({ summary: "", strengths: [], weaknesses: [], complaints: [], specs: [], buyerQuestions: [], bestFor: "", conflicts: [], tips: [], scenes: [...scenes, ...web] });
+    assert.ok(block.includes(`- 원문(웹 리뷰): "물통을 매일`), block);
   });
   await test("사용 장면: 장면에 인용에 없는 숫자를 붙이면 버림, 예전 형식(문자열 장면)도 원문 그대로면 인정", () => {
     const raw = "- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.";

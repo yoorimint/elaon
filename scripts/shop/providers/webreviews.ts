@@ -352,6 +352,10 @@ export function diagnoseWebReviews(content: Anthropic.ContentBlock[], adWords: s
       lines.push(`     - ${why} 본문 ${sp.toFixed(2)} · 인용 ${sc.toFixed(2)} | ${e.slice(0, 120)}`);
     }
   }
+  const reportedKeys = new Set(report.map((c) => urlKey(c.url)));
+  for (const [k, pg] of ev.pages) {
+    if (!reportedKeys.has(k)) lines.push(`[읽었지만 발췌 없음] ${domainOf(pg.url)} | ${pg.title.slice(0, 60)}`);
+  }
   if (ev.toolErrors.length) lines.push(`[도구 오류] ${ev.toolErrors.join(", ")}`);
   return lines;
 }
@@ -420,7 +424,15 @@ function tools(): Anthropic.ToolUnion[] {
 // 그래서 첫 응답 뒤 읽은 페이지·발췌가 모자라면, 검색 결과 중 아직 안 읽은 좋은 글을 코드가 골라 "이 주소들을 읽어 줘"라고
 // 같은 대화에서 한 번 더 요청한다 (검색 결과에 나온 주소라 web_fetch 가 읽을 수 있다).
 // 고르는 기준(우선순위): 제목의 사용기 표시([써보니]·체험·내돈내산·개월 …)·커뮤니티 도메인 가산, 정리·추천·가격 글 감점.
-export const FOLLOW_UP = { minPages: 3, minExcerpts: 5, maxUrls: 4 } as const;
+// minExcerpts 5 → 8 (데이터 진단 3: 로보락은 4페이지를 읽고도 2곳·6문장 — 운영자 목표 제품당 8문장)
+export const FOLLOW_UP = { minPages: 3, minExcerpts: 8, maxUrls: 4 } as const;
+
+// 본문을 읽었는데 보고(발췌)에 없는 글 — 데이터 진단 3: 로보락에서 수야네24·다음 [정옥재] 글을 읽고도 발췌하지 않음
+export function readButUnreported(content: Anthropic.ContentBlock[]): { url: string; title: string }[] {
+  const ev = collectEvidence(content);
+  const reported = new Set(parseReport(ev.text).map((c) => urlKey(c.url)));
+  return [...ev.pages.entries()].filter(([k]) => !reported.has(k)).map(([, p]) => ({ url: p.url, title: p.title }));
+}
 const COMMUNITY = /(^|\.)(clien\.net|dcinside\.com|ppomppu\.co\.kr|milemoa\.com|ruliweb\.com|teamblind\.com|82cook\.com|todaysppc\.com|bobaedream\.co\.kr|theqoo\.net|fmkorea\.com|instiz\.net|brunch\.co\.kr)$/;
 const FIRST_HAND = /써\s*보니|써\s*봤|써\s*보고|써봤수다|사용기|사용\s*후기|실사용|체험|내돈내산|개월|1년|장기|솔직/;
 const NOT_FIRST_HAND = /추천\s*TOP|TOP\s*\d|총정리|비교|순위|최저가|가격|할인|사용\s*설명서|FAQ|구매\s*가이드/i;
@@ -524,16 +536,32 @@ export async function researchWebReviews(
   // 덜 읽고 끝냈으면 아직 안 읽은 좋은 글을 골라 한 번 더
   const first = parseWebReviewResponse(content, opts.adFilterWords);
   const excerpts = first.reviews.reduce((n, w) => n + w.excerpts.length, 0);
-  const unread = first.fetches < FOLLOW_UP.minPages || excerpts < FOLLOW_UP.minExcerpts ? pickUnreadUrls(content) : [];
-  if (unread.length && !errors.some((e) => e.includes("거절"))) {
-    if (opts.debug) console.log(`    [추가 요청] 읽은 페이지 ${first.fetches}개·발췌 ${excerpts}문장 → 안 읽은 글 ${unread.length}개 더 읽기: ${unread.map((u) => u.url).join(" , ")}`);
+  const short = first.fetches < FOLLOW_UP.minPages || excerpts < FOLLOW_UP.minExcerpts;
+  const unread = short ? pickUnreadUrls(content) : [];
+  const unreported = short ? readButUnreported(content) : [];
+  if ((unread.length || unreported.length) && !errors.some((e) => e.includes("거절"))) {
+    if (opts.debug) {
+      console.log(
+        `    [추가 요청] 읽은 페이지 ${first.fetches}개·발췌 ${excerpts}문장 → 안 읽은 글 ${unread.length}개 더 읽기` +
+          `${unread.length ? `: ${unread.map((u) => u.url).join(" , ")}` : ""} · 읽고 발췌 안 한 글 ${unreported.length}개 다시 보기`,
+      );
+    }
     messages.push({ role: "assistant", content: last });
     messages.push({
       role: "user",
-      content:
-        `아직 읽지 않은 아래 글을 web_fetch 로 차례로 읽고, 직접 써 본 경험 문장을 글마다 3~5개 같은 형식으로 덧붙여줘. ` +
-        `검색은 더 하지 마. 읽을 수 없거나 실사용 글이 아니면 건너뛰어.\n` +
-        unread.map((u) => `- ${u.url} (${u.title})`).join("\n"),
+      content: [
+        `발췌가 아직 적어. 같은 형식으로 덧붙여줘. 검색은 더 하지 마.`,
+        unreported.length
+          ? `이미 읽은 아래 글에서도 직접 써 본 경험 문장을 글마다 3~5개 골라줘(다른 모델 글이거나 경험 문장이 없으면 건너뛰어):\n` +
+            unreported.map((u) => `- ${u.url} (${u.title})`).join("\n")
+          : "",
+        unread.length
+          ? `아직 읽지 않은 아래 글을 web_fetch 로 차례로 읽고 글마다 3~5개 골라줘(읽을 수 없거나 실사용 글이 아니면 건너뛰어):\n` +
+            unread.map((u) => `- ${u.url} (${u.title})`).join("\n")
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
     await turn();
   }

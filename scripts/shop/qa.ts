@@ -24,6 +24,11 @@ const BANNED: { re: RegExp; why: string }[] = [
   { re: /써\s*보니|사용해\s*보니|써\s*봤|제가\s*(직접\s*)?(사용|써)/, why: "직접 써본 것처럼 쓴 표현" },
   { re: /최저가|업계\s*1위|판매\s*1위|무조건/, why: "확인되지 않은 과장 표현" },
   {
+    re: /자료(에서|에는|에도|에 따르면|만으로|에|를|가)/,
+    why: "독자는 '자료'가 뭔지 모름 (\"후기에서는\", \"판매 페이지에서\"처럼)",
+  },
+  { re: /않음이에요|않음입니다/, why: "어색한 문장 (\"확인되지 않아요\"처럼)" },
+  {
     re: /(위험|걱정|문제)(은|이|가)?\s*(전혀\s*)?없|전혀|완벽(하|히|한|해)|절대(로)?\s|100\s*%/,
     why: "근거 없는 단정 (후기 기반이면 \"~라는 의견이 많아요\")",
   },
@@ -234,11 +239,14 @@ export function quoteFound(quote: string, evidenceNorm: string): boolean {
   return chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length >= 0.6;
 }
 
+const isPriceGuidance = (s: string) => /쿠팡/.test(s) && /가격/.test(s) && /확인/.test(s);
+
 // AI 가 뽑은 목록을 코드가 판정
 export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): string[] {
   const evidenceNorm = norm(evidence);
   const issues: string[] = [];
   for (const c of a.claims ?? []) {
+    if (isPriceGuidance(c.claim)) continue; // "가격은 쿠팡에서 확인하세요"는 작성 규칙상 넣는 안내문
     if (!c.quote?.trim()) issues.push(`${c.section}: "${c.claim}" — 수집 자료에 근거 없음 → 삭제하거나 자료에 있는 내용으로`);
     else if (!quoteFound(c.quote, evidenceNorm)) {
       issues.push(`${c.section}: "${c.claim}" — 근거로 든 문장이 자료에 없음(지어냄 의심) → 삭제하거나 자료에 있는 내용으로`);
@@ -262,7 +270,9 @@ async function aiAudit(secrets: Secrets, w: WrittenPost, evidence: string): Prom
   const prompt = `너는 꼼꼼한 검수자야. 판단은 하지 말고 아래 목록만 빠짐없이 뽑아줘.
 1. claims: 글의 구체적 사실 주장 전부(수치·스펙·기능·소재·방식·안전성). quote 에는 "근거 자료"에서 그 주장을 뒷받침하는 부분을 글자 그대로 복사해. 자료에 없으면 빈 문자열. 비슷한 말을 지어내지 마.
 2. topics: 2개 이상 섹션에 나오는 같은 내용 전부와, 그 내용이 나온 섹션 이름 목록. 표현이 달라도 같은 내용이면 같은 것으로 봐(예: "물이 남아도 멈춤"과 "잔수 감지로 작동 중단").
-3. others: 잘못된 용어(예: 온수 온도를 "온실 온도"로 씀), 글 안에서 서로 모순되는 내용.
+3. others: 실제로 고쳐야 하는 것만 — 잘못된 용어(예: 온수 온도를 "온실 온도"로 씀), 글 안에서 서로 모순되는 내용
+   (예: 장점에 "가볍다", 단점에 "무겁다"). 고칠 필요 없는 참고 의견은 넣지 마.
+"가격은 쿠팡에서 확인하세요" 같은 안내 문구는 사실 주장이 아니니 claims 에 넣지 마.
 section 값은 반드시 다음 이름 중 하나: ${sections.map((s) => s.name).join(", ")}
 
 === 글 ===

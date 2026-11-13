@@ -3,10 +3,10 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { isModelName } from "./discover";
+import { isModelName, mentionedIn } from "./discover";
 import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
-import { StrongModelUnavailableError, geminiGenerate } from "./providers/gemini";
+import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
 import type { ProductResearch } from "./research";
 import type { WrittenPost } from "./writer";
@@ -82,6 +82,42 @@ async function main() {
     for (const ok of ["케어팟 X50V", "미로 MH7000", "조지루시 EE-DVH35K", "에어메이드 더 위대한 2.0", "쿠쿠 인스퓨어 가습기"]) {
       assert.equal(isModelName(ok, "가습기"), true, ok);
     }
+  });
+
+  // ---- 2026-11-13 Claude 작성 초안(보바 VA-123)에서 나온 표현 ----
+  await test("독자에게 '자료' 표현·'확인되지 않음이에요' 같은 어색한 문장 검출", () => {
+    const w = structuredClone(real);
+    w.content.faq = [
+      { q: "케이블 길이는?", a: "케이블 길이는 후기에서 확인되지 않음이에요. 자료에도 길이 정보는 나와 있지 않아요." },
+      { q: "출력은?", a: "자료에 따르면 최대 22.5W예요." },
+      { q: "무게는?", a: "후기에서는 가볍다는 의견이 많아요." },
+    ];
+    const issues = lintPost(w, 1);
+    assert.ok(issues.some((x) => x.startsWith("faq[0].a") && x.includes("어색한")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("faq[0].a") && x.includes("자료")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("faq[1].a") && x.includes("자료")), issues.join("\n"));
+    assert.ok(!issues.some((x) => x.startsWith("faq[2]")), issues.join("\n"));
+  });
+  await test("'가격은 쿠팡에서 확인하세요' 안내문은 근거 없는 주장으로 보지 않음", () => {
+    const issues = judgeAudit(
+      { claims: [{ section: "정리", claim: "현재 가격은 쿠팡에서 확인할 수 있다", quote: "" }] },
+      evidence,
+      ["정리"],
+    );
+    assert.deepEqual(issues, []);
+  });
+  await test("자동 선정: 모은 글에 없는 모델명(AI 가 지어낸 이름)은 제외", () => {
+    const titles = "보바 VA-122 보조배터리 후기 — 20000mAh 가볍고 좋아요\n삼성 EB-P4520 추천";
+    assert.equal(mentionedIn("보바 VA-122", "보조배터리", titles), true);
+    assert.equal(mentionedIn("삼성 EB-P4520", "보조배터리", titles), true);
+    assert.equal(mentionedIn("보바 VA-123", "보조배터리", titles), false);
+    assert.equal(mentionedIn("앤커 프라임 A1695", "보조배터리", titles), false);
+  });
+  await test("Gemini 한도 오류 로그는 한도 종류만 짧게 (일일/분당 구분)", () => {
+    const daily = 'HTTP 429 — {"error":{"message":"You exceeded your current quota, please check your plan and billing details. ... \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash"}}';
+    assert.match(shortError(daily), /한도 초과 — generativelanguage\.googleapis\.com\/generate_content_free_tier_requests \(한도 20\)/);
+    const minute = 'Quota exceeded for metric: input_token_count PerMinute. "retryDelay": "31s"';
+    assert.match(shortError(minute), /31초 뒤 재시도/);
   });
 
   // ---- 숫자 검사 ----
@@ -163,14 +199,17 @@ async function main() {
       calls.push(`claude:${body.model}`);
       claudeBodies.push(body);
       if (claudeFails) return new Response(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "credit balance is too low" } }), { status: 400, headers: { "content-type": "application/json" } });
-      return new Response(
-        JSON.stringify({
-          id: "msg_1", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn",
-          content: [{ type: "text", text: JSON.stringify({ issues: [] }) }],
-          usage: { input_tokens: 1000, output_tokens: 200 },
-        }),
-        { headers: { "content-type": "application/json" } },
-      );
+      assert.equal(body.stream, true, "Claude 는 스트리밍으로 받아야 함 (긴 출력 시간 초과 방지)");
+      const sse = (type: string, data: object) => `event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`;
+      const stream = [
+        sse("message_start", { message: { id: "msg_1", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1000, output_tokens: 1 } } }),
+        sse("content_block_start", { index: 0, content_block: { type: "text", text: "" } }),
+        sse("content_block_delta", { index: 0, delta: { type: "text_delta", text: JSON.stringify({ issues: [] }) } }),
+        sse("content_block_stop", { index: 0 }),
+        sse("message_delta", { delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 200 } }),
+        sse("message_stop", {}),
+      ].join("");
+      return new Response(stream, { headers: { "content-type": "text/event-stream" } });
     }
     if (u.includes("/models?")) return models(["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
     const model = /models\/([^:]+):/.exec(u)?.[1] ?? "";

@@ -2,7 +2,7 @@
 // 실행: npm run test:shop  (외부 호출 없음 — Gemini 응답은 가짜)
 
 import assert from "node:assert/strict";
-import type { ShopPostContent } from "@/lib/shop-post-types";
+import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
@@ -232,6 +232,16 @@ async function main() {
     const ev = "포켓쉴 20000 스펙: 무게 315g, 최대 22.5W 출력";
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
+  });
+  await test("상품 사진: 자리마다 따로 저장, 따로 없으면 대표 사진, 다른 자리는 그대로", () => {
+    const base = { name: "A", link: "" };
+    const top = withPhoto(base, "main", "top.jpg");
+    const both = withPhoto(top, "bottom", "bottom.jpg");
+    assert.equal(photoFor(both, "main"), "top.jpg");
+    assert.equal(photoFor(both, "bottom"), "bottom.jpg");
+    assert.equal(photoFor(both, "detail"), "top.jpg", "따로 없으면 대표 사진");
+    assert.equal(photoFor(withPhoto(base, "bottom", "b.jpg"), "main"), undefined, "아래만 넣으면 위는 비어 있음");
+    assert.equal(withPhoto(both, "table", "t.jpg").images?.bottom, "bottom.jpg", "다른 자리 유지");
   });
   await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
     const w = structuredClone(real);

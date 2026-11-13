@@ -49,7 +49,11 @@ export function ShopPostProductsEditor({
     setSaving(true);
     setMsg(null);
     try {
-      await updatePostProducts(postId, draft);
+      // 링크는 항상, 대표 사진은 여기서 붙여넣어 바꾼 경우에만 보낸다
+      await updatePostProducts(
+        postId,
+        draft.map((p, i) => ({ link: p.link, ...(p.image !== products[i].image ? { image: p.image } : {}) })),
+      );
       const complete = draft.every((p) => p.link.trim());
       setMsg(complete ? "저장됨 — 미리보기에서 확인 후 발행하세요" : "저장됨 (링크가 남았어요)");
       await onSaved();

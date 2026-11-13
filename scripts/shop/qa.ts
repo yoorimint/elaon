@@ -9,6 +9,7 @@
 // 결과는 content.qa 에 기록 → 관리자 글 목록에 표시, 문제가 남으면 발행 전에 경고
 
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
+import { autoFix, isUnknownValue } from "./autofix";
 import type { ProductDigest } from "./digest";
 import { hasHanja } from "./hanja";
 import { generationMentions } from "./names";
@@ -26,6 +27,11 @@ const MAX_REVISIONS = 2;
 const MAX_TOPIC_SECTIONS = 4;
 const MAX_TOPIC_SECTIONS_BEFORE_FIX = 6;
 const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
+
+// 구성 문제(섹션이 비거나 빈약함)는 표현 문제보다 무겁다 — 표시를 붙여 합격 판정·버전 비교에 쓴다
+// (run #36: 수정 중 '고르는 기준'이 통째로 빠진 버전이 단어 하나 문제 버전과 같은 점수로 저장됨)
+export const STRUCTURAL = "[구성] ";
+export const isStructuralIssue = (s: string) => s.startsWith(STRUCTURAL);
 
 // ---------- 1) 규칙 검사 ----------
 const BANNED: { re: RegExp; why: string }[] = [
@@ -121,13 +127,13 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   if (conflictMentions > 2) issues.push(`"엇갈려요"가 ${conflictMentions}번 나옴 → 두 번 이하로, 같은 안내 문장 되풀이 빼기`);
 
   // 분량·형식 (작성 가이드)
-  if (!c.summary) issues.push("summary(한 줄 결론) 없음");
+  if (!c.summary) issues.push(`${STRUCTURAL}summary(한 줄 결론) 없음`);
   if (c.seoKeyword && !norm(w.title).startsWith(norm(c.seoKeyword))) {
     issues.push(`제목: 검색 키워드 "${c.seoKeyword}"로 시작해야 함 (네이버에서 실제로 많이 찾는 표현)`);
   }
-  if (c.comparison.length < 4) issues.push(`표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
+  if (c.comparison.length < 4) issues.push(`${STRUCTURAL}표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
   c.comparison.forEach((row) => {
-    if (row.values.length && row.values.every((v) => /확인\s*안\s*됨|확인되지 않|확인 필요/.test(v))) {
+    if (row.values.length && row.values.every(isUnknownValue)) {
       issues.push(`표 항목 "${row.label}": 모든 제품이 확인 안 됨 → 이 행 삭제`);
     }
     if (row.label.length > 8) issues.push(`표 항목명 "${row.label}"이 김 → 6자 이내 명사`);
@@ -137,11 +143,11 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   });
   c.products.forEach((p, i) => {
     const name = p.name || `제품 ${i + 1}`;
-    if (p.pros.length < 3) issues.push(`${name}: 장점 ${p.pros.length}개 → 3~4개`);
-    if (p.cons.length < 2) issues.push(`${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
-    if (!p.review || p.review.length < 60) issues.push(`${name}: 후기 요약 문단이 짧음 → 3~5문장`);
+    if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
+    if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
+    if (!p.review || p.review.length < 60) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → 3~5문장`);
   });
-  if (c.faq.length < 3) issues.push(`FAQ ${c.faq.length}개 → 4~6개`);
+  if (c.faq.length < 3) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → 4~6개`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {
     if (/가격|어디서\s*(사|구매|확인)|구매처|할인/.test(f.q)) {
@@ -149,7 +155,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
     if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
   });
-  if ((c.buyingGuide?.length ?? 0) < 2) issues.push("고르는 기준(buyingGuide)이 부족 → 3~5개");
+  if ((c.buyingGuide?.length ?? 0) < 2) issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → 3~5개`);
   if (productCount === 1 && c.recommendations.some((r) => r.pick !== 0)) issues.push("단일 글인데 추천 상품 번호가 0이 아님");
 
   // 섹션 중복: "구매 전 확인할 점"이 단점을 되풀이하면 안 됨
@@ -468,6 +474,9 @@ async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, 
   };
 }
 
+// 버전 비교 점수: 구성 문제는 표현 문제 3개만큼 무겁게
+const issueScore = (issues: string[]) => issues.reduce((n, x) => n + (isStructuralIssue(x) ? 3 : 1), 0);
+
 export async function reviewAndFix(
   secrets: Secrets,
   written: WrittenPost,
@@ -476,7 +485,13 @@ export async function reviewAndFix(
 ): Promise<{ post: WrittenPost; qa: ShopPostQa }> {
   const evidence = buildEvidence(research, digests);
   const n = research.length;
-  let post = written;
+  // 기계적으로 고칠 수 있는 것은 검사 전에 코드로 (AI 수정 후에도 다시)
+  const fixed = (w: WrittenPost) => {
+    const r = autoFix(w);
+    if (r.fixes.length) console.log(`  🔧 자동 교정: ${r.fixes.join(", ")}`);
+    return r.post;
+  };
+  let post = fixed(written);
   let check = await checkAll(secrets, post, n, evidence);
   const found = check.issues.length;
   let revisions = 0;
@@ -492,7 +507,7 @@ export async function reviewAndFix(
   while (check.issues.length && revisions < MAX_REVISIONS) {
     try {
       const keyword = post.content.seoKeyword;
-      post = await revisePost(secrets, research, digests, post, check.issues);
+      post = fixed(await revisePost(secrets, research, digests, post, check.issues));
       if (keyword) post.content.seoKeyword = keyword;
     } catch (e) {
       console.warn(`  ⚠ 수정 실패: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
@@ -501,7 +516,7 @@ export async function reviewAndFix(
     revisions++;
     check = await checkAll(secrets, post, n, evidence);
     log(`수정 ${revisions}회 후 재검수`);
-    if (check.issues.length < best.check.issues.length) best = { post, check };
+    if (issueScore(check.issues) < issueScore(best.check.issues)) best = { post, check };
   }
   if (best.post !== post) console.log(`  ↩ 수정본이 더 나빠서 문제가 가장 적은 버전(${best.check.issues.length}개)을 저장`);
 
@@ -528,7 +543,7 @@ export function thinEvidenceWarnings(w: WrittenPost): string[] {
   const rows = w.content.comparison;
   if (rows.length < 4) return [];
   return w.content.products.flatMap((p, i) => {
-    const unknown = rows.filter((r) => /확인\s*안\s*됨|확인되지 않|확인 필요/.test(r.values[i] ?? "")).length;
+    const unknown = rows.filter((r) => isUnknownValue(r.values[i] ?? "")).length;
     return unknown * 2 >= rows.length
       ? [`${p.name}: 표 ${rows.length}항목 중 ${unknown}개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)`]
       : [];

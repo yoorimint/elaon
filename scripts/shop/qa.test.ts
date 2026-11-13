@@ -3,10 +3,11 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
+import { autoFix } from "./autofix";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
-import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -232,6 +233,20 @@ async function main() {
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
   });
+  await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
+    const w = structuredClone(real);
+    w.content.buyingGuide = [{ criterion: "소음", detail: "자료에는 31.8dB로 나와요. 자료를 보면" }];
+    w.content.comparison = [
+      { label: "품질보증", values: ["5년(웹문서 기재)"] },
+      { label: "소음", values: ["확인 필요"] },
+    ];
+    const { post, fixes } = autoFix(w);
+    assert.equal(post.content.buyingGuide![0].detail, "소개된 내용에는 31.8dB로 나와요. 자료를 보면");
+    assert.deepEqual(post.content.comparison, [{ label: "품질보증", values: ["5년"] }]);
+    assert.equal(fixes.length, 2);
+    assert.equal(w.content.comparison.length, 2, "원본은 그대로");
+    assert.equal(autoFix(post).fixes.length, 0, "두 번 적용해도 같은 결과");
+  });
   await test("비교글: 두 제품 공통 특징을 한쪽 선택 이유로 쓴 지적은 수정 대상", () => {
     const issues = judgeAudit(
       {
@@ -419,7 +434,7 @@ async function main() {
   });
 
   // ---- 합격선 (사람 없이 내보낼 수 있는 글인지) ----
-  await test("합격선: AI 검수 + 남은 문제 1개 이하 + 근거 부족 경고 없음", () => {
+  await test("합격선: AI 검수 + 남은 문제 1개 이하 + 근거 부족 경고·구성 부족 없음", () => {
     const base = { checkedAt: "", issuesFound: 5, remaining: [] as string[], aiChecked: true };
     assert.equal(judgeQuality(base).passed, true);
     assert.equal(judgeQuality({ ...base, remaining: ["a"] }).passed, true);
@@ -427,6 +442,10 @@ async function main() {
     assert.equal(judgeQuality({ ...base, aiChecked: false }).passed, false);
     const thin = judgeQuality({ ...base, remaining: ['브리츠 MUSEPOP3: 표 8항목 중 5개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)'] });
     assert.equal(thin.passed, false);
+    // run #36: 섹션이 빠진 글은 문제가 1개뿐이어도 불합격
+    const missing = judgeQuality({ ...base, remaining: [`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → 3~5개`] });
+    assert.equal(missing.passed, false);
+    assert.ok(missing.reasons[0].startsWith("글 구성 부족"));
     // 두 시도 중: 합격 우선, 그다음 남은 문제가 적은 쪽
     const fail3 = { qa: { ...base, remaining: ["a", "b", "c"] }, passed: false };
     const fail2 = { qa: { ...base, remaining: ["a", "b"] }, passed: false };

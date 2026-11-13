@@ -91,6 +91,7 @@ export async function digestProduct(secrets: Secrets, r: ProductResearch): Promi
   const res = await geminiGenerate(secrets, `다음 자료를 분석해줘.\n\n${material(r)}`, {
     system: SYSTEM,
     jsonSchema: SCHEMA,
+    strongOnly: true, // 분석이 얕으면 글도 얕아짐 → lite 금지
   });
   const o = JSON.parse(res.text) as Record<string, unknown>;
   const str = (v: unknown) => String(v ?? "").trim();

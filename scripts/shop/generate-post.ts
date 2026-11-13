@@ -101,6 +101,7 @@ async function main() {
       console.log(`  - ${r.product.name}: 장점 ${d.strengths.length} · 단점 ${d.weaknesses.length} · 스펙 ${d.specs.length} · 구매자 질문 ${d.buyerQuestions.length}`);
       digests.push(d);
     } catch (e) {
+      if (e instanceof StrongModelUnavailableError) throw e;
       console.warn(`  ⚠ ${r.product.name} 분석 실패 → 원자료로 작성: ${e instanceof Error ? e.message.slice(0, 200) : e}`);
       digests.push(null);
     }
@@ -108,17 +109,10 @@ async function main() {
 
   // ---- 2단계: 비교글 작성 ----
   console.log("✍️  Gemini 작성 중...");
-  let draftPost;
-  try {
-    draftPost = await writePost(secrets, research, digests, {
-      titleStyle: config.title_style,
-      extraPrompt: config.extra_prompt,
-    });
-  } catch (e) {
-    // 좋은 모델이 막혀 있으면 약한 모델로 대충 쓰지 않고 다음 시간(매시간 재시도)에 다시
-    if (e instanceof StrongModelUnavailableError) skip(`${e.message.slice(0, 200)} → 다음 실행에서 다시 시도`);
-    throw e;
-  }
+  const draftPost = await writePost(secrets, research, digests, {
+    titleStyle: config.title_style,
+    extraPrompt: config.extra_prompt,
+  });
 
   // ---- 자동 검수: 작성 가이드·수집 자료와 대조, 틀린 곳 수정 ----
   console.log("🔍 자동 검수 중...");
@@ -165,6 +159,8 @@ async function main() {
 }
 
 main().catch((e) => {
+  // 좋은 모델(flash)이 막혀 있으면 약한 모델로 대충 쓰지 않고 다음 시간(매시간 재시도)에 다시
+  if (e instanceof StrongModelUnavailableError) skip(`${e.message.slice(0, 200)} → 다음 실행에서 다시 시도`);
   console.error("❌", e instanceof Error ? e.message : e);
   process.exit(1);
 });

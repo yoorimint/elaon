@@ -44,6 +44,8 @@ export type ProductResearch = {
   webSummary: string | null;
   webSourceCount: number;
   webReviews: WebReview[]; // 웹 리뷰 원문 발췌 (원문과 대조를 통과한 것만)
+  // 네이버 검색 결과 수 (데이터 진단용): 받은 것 · 너무 짧아 버린 것 · 협찬 표시로 버린 것
+  naverStats?: { fetched: number; short: number; ad: number };
   errors: string[];
 };
 
@@ -163,6 +165,7 @@ async function collectNaver(
   name: string,
   opts: ResearchOptions,
   warnings: string[],
+  stats?: { fetched: number; short: number; ad: number },
 ): Promise<ReviewSnippet[]> {
   // 검색어 × 출처마다 받은 결과를 버킷에 담고, 돌아가며 하나씩 뽑아 다양성을 유지한다.
   // 한 종류가 실패해도 나머지는 계속. 앱에서 활성화 안 된 API 는 이후 검색어에서도 건너뛴다.
@@ -173,11 +176,15 @@ async function collectNaver(
       if (disabled.has(type) || naverTypeUnavailable.has(type)) continue;
       try {
         const items = await naverSearch(secrets, type, `${name} ${q}`, 100);
-        buckets.push(
-          items
-            .map((i) => ({ kind, title: cleanNaverText(i.title), text: cleanNaverText(i.description), url: i.link }))
-            .filter((r) => r.text.length >= 20 && !isAd(`${r.title} ${r.text}`, opts.adFilterWords)),
-        );
+        const mapped = items.map((i) => ({ kind, title: cleanNaverText(i.title), text: cleanNaverText(i.description), url: i.link }));
+        const long = mapped.filter((r) => r.text.length >= 20);
+        const kept = long.filter((r) => !isAd(`${r.title} ${r.text}`, opts.adFilterWords));
+        if (stats) {
+          stats.fetched += mapped.length;
+          stats.short += mapped.length - long.length;
+          stats.ad += long.length - kept.length;
+        }
+        buckets.push(kept);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         disabled.add(type);
@@ -278,7 +285,8 @@ export async function researchProduct(
   };
 
   if (opts.useNaver && secrets.NAVER_CLIENT_ID && secrets.NAVER_CLIENT_SECRET) {
-    result.reviews = await collectNaver(secrets, product.name, opts, result.errors);
+    result.naverStats = { fetched: 0, short: 0, ad: 0 };
+    result.reviews = await collectNaver(secrets, product.name, opts, result.errors, result.naverStats);
     if (!naverTypeUnavailable.has("news")) {
       try {
         result.news = await collectNews(secrets, product.name);

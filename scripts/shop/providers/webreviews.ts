@@ -20,7 +20,7 @@
 //  - 한 번에 검색 최대 3회 · 페이지 최대 3개 · 페이지당 6천 토큰 → 한 요청 프롬프트가 100K 를 넘지 않게 묶었다
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { norm, quoteFound } from "../grounding";
+import { norm, quoteFound, quoteScore } from "../grounding";
 import { recordUsage, recordWebSearches } from "../usage";
 import { CLAUDE_MODEL, PRICE_PER_MTOK, client } from "./claude";
 import type { Secrets } from "./types";
@@ -85,6 +85,7 @@ export type WebReview = {
 export type DropReason = "차단 도메인" | "검색·읽기 결과에 없는 주소" | "협찬·광고 표시" | "발췌가 원문과 다름" | "발췌 길이";
 
 export type WebReviewResult = {
+  diagnostics?: string[]; // opts.debug 일 때만 (probe 실행)
   reviews: WebReview[];
   searches: number;
   fetches: number;
@@ -268,6 +269,83 @@ export function verifyReviews(
   return { reviews, dropped };
 }
 
+// ---------- 진단 (웹 리뷰만 조사하는 probe 실행용) ----------
+// 무엇을 검색했고, 어떤 주소가 나왔고, 어느 페이지를 읽었는지(실패 사유), 모델이 낸 발췌 후보와 후보마다 버린 사유·대조 점수를
+// 사람이 읽을 수 있는 줄로 만든다. 운영 실행에서는 쓰지 않는다.
+const domainOf = (u: string) => parseUrl(u)?.hostname.replace(/^www\./, "") ?? u;
+
+export function diagnoseWebReviews(content: Anthropic.ContentBlock[], adWords: string[]): string[] {
+  const lines: string[] = [];
+  const toolInput = new Map<string, Record<string, unknown>>();
+  for (const b of content) {
+    if (b.type === "server_tool_use") toolInput.set(b.id, (b.input ?? {}) as Record<string, unknown>);
+  }
+  for (const b of content) {
+    if (b.type === "web_search_tool_result") {
+      const q = String(toolInput.get(b.tool_use_id)?.query ?? "?");
+      if (!Array.isArray(b.content)) {
+        lines.push(`[검색] "${q}" → 오류 ${b.content.error_code}`);
+        continue;
+      }
+      lines.push(`[검색] "${q}" → ${b.content.length}건`);
+      for (const r of b.content) {
+        lines.push(`   · ${domainOf(r.url)}${isBlockedUrl(r.url) ? " (차단 도메인)" : ""} | ${r.title.slice(0, 60)} | ${r.url}`);
+      }
+    } else if (b.type === "web_fetch_tool_result") {
+      const url = String(toolInput.get(b.tool_use_id)?.url ?? "?");
+      const c = b.content;
+      if (c.type === "web_fetch_tool_result_error") {
+        lines.push(`[읽기 실패] ${url} → ${c.error_code}`);
+        continue;
+      }
+      const src = c.content.source;
+      const body = src.type === "text" ? `본문 ${src.data.length}자` : `${src.type} (대조 불가)`;
+      lines.push(`[읽기 성공] ${c.url} → ${body} | 제목 ${(c.content.title ?? "").slice(0, 50)}`);
+    }
+  }
+  const ev = collectEvidence(content);
+  const report = parseReport(ev.text);
+  lines.push(
+    `[모델 보고] 후보 글 ${report.length}개` +
+      (report.length ? "" : ` — 보고 원문 앞부분: ${ev.text.replace(/\s+/g, " ").slice(0, 400)}`),
+  );
+  const X = WEB_REVIEWS.excerpt;
+  for (const c of report) {
+    const key = urlKey(c.url);
+    const page = ev.pages.get(key);
+    const hit = ev.searchHits.get(key);
+    const cited = ev.citedByUrl.get(key) ?? [];
+    const where = page ? "읽은 본문 있음" : hit ? "검색 결과에만 있음(본문 안 읽음)" : "검색·읽기 결과에 없음";
+    let verdict = "";
+    if (isBlockedUrl(c.url)) verdict = " → 버림: 차단 도메인";
+    else if (!page && !hit) verdict = " → 버림: 검색·읽기 결과에 없는 주소";
+    else if (isSponsored(c.title || page?.title || hit?.title || "", c.excerpts, page?.text ?? "", adWords)) {
+      const all = `${c.title} ${c.excerpts.join(" ")} ${page?.text ?? ""}`;
+      const words = (adWords.length ? adWords : DEFAULT_AD_WORDS).filter((w) => w && all.includes(w));
+      verdict = ` → 버림: 협찬·광고 표시 (걸린 단어: ${words.join(", ")})`;
+    }
+    lines.push(`[후보] ${domainOf(c.url)} | ${c.title.slice(0, 50)} | ${where} | 검색 인용 ${cited.length}개${verdict}`);
+    const pageNorm = page ? norm(page.text) : "";
+    const citedNorm = norm(cited.join(" "));
+    for (const e of c.excerpts) {
+      const n = norm(e);
+      const sp = quoteScore(e, pageNorm);
+      const sc = quoteScore(e, citedNorm);
+      const why =
+        n.length < X.minChars || n.length > X.maxChars
+          ? `버림(길이 ${n.length})`
+          : sp >= X.minFoundRatio
+            ? "통과(본문)"
+            : sc >= X.minFoundRatio
+              ? "통과(검색 인용)"
+              : "버림(원문과 다름)";
+      lines.push(`     - ${why} 본문 ${sp.toFixed(2)} · 인용 ${sc.toFixed(2)} | ${e.slice(0, 120)}`);
+    }
+  }
+  if (ev.toolErrors.length) lines.push(`[도구 오류] ${ev.toolErrors.join(", ")}`);
+  return lines;
+}
+
 // 응답 전체(이어받기 포함) → 결과. 실제 API 호출 없이 테스트할 수 있게 분리
 export function parseWebReviewResponse(content: Anthropic.ContentBlock[], adWords: string[]) {
   const ev = collectEvidence(content);
@@ -324,7 +402,7 @@ function tools(): Anthropic.ToolUnion[] {
 export async function researchWebReviews(
   secrets: Secrets,
   product: { name: string; form?: string },
-  opts: { adFilterWords: string[] },
+  opts: { adFilterWords: string[]; debug?: boolean },
 ): Promise<WebReviewResult> {
   const form = product.form ? ` (제품 형태: ${product.form})` : "";
   const messages: Anthropic.MessageParam[] = [
@@ -367,6 +445,9 @@ export async function researchWebReviews(
     recordUsage(`${CLAUDE_MODEL} 웹 리뷰`, usd);
     recordWebSearches(n);
 
+    if (opts.debug) {
+      console.log(`    [요청 ${i + 1}] 멈춘 이유 ${res.stop_reason} · 입력 ${inTok} · 출력 ${u.output_tokens} 토큰 · 검색 ${n}회 · 약 $${usd.toFixed(4)}`);
+    }
     content.push(...res.content);
     if (res.stop_reason === "refusal") {
       errors.push("Claude 가 요청을 거절함");
@@ -381,5 +462,13 @@ export async function researchWebReviews(
 
   const parsed = parseWebReviewResponse(content, opts.adFilterWords);
   console.log(`    (웹 리뷰 조사 토큰: 입력 ${input} · 출력 ${output})`);
-  return { reviews: parsed.reviews, searches, fetches: parsed.fetches, costUsd, dropped: parsed.dropped, errors: [...errors, ...parsed.toolErrors] };
+  return {
+    reviews: parsed.reviews,
+    searches,
+    fetches: parsed.fetches,
+    costUsd,
+    dropped: parsed.dropped,
+    errors: [...errors, ...parsed.toolErrors],
+    ...(opts.debug ? { diagnostics: diagnoseWebReviews(content, opts.adFilterWords) } : {}),
+  };
 }

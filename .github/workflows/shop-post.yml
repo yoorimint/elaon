@@ -34,10 +34,17 @@ jobs:
       # 자동 검수 회귀 테스트 (외부 호출 없음). 깨져 있으면 글을 쓰지 않는다
       - name: QA self-test
         run: npm run test:shop
+      # 점검 실행(push)에서만: shop-run-request 의 "type: single" 또는 "type: compare" 줄로 이번 글 종류 지정.
+      # 스케줄·수동 실행은 이 단계를 건너뛰어 관리자 설정(자동 글 종류)대로 돈다.
+      - name: Read run request
+        id: req
+        if: github.event_name == 'push'
+        run: echo "kind=$(sed -n -E 's/^type:[[:space:]]*(single|compare)[[:space:]]*$/\1/p' .github/shop-run-request | head -n 1)" >> "$GITHUB_OUTPUT"
       - name: Generate post
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SHOP_FORCE: ${{ github.event_name != 'schedule' && '1' || '' }}
+          SHOP_KIND: ${{ steps.req.outputs.kind }}
         run: npx tsx --tsconfig tsconfig.json scripts/shop/generate-post.ts

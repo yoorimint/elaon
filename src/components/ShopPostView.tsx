@@ -6,18 +6,23 @@
 //  - 위계: 글자 크기 종류는 적게, 여백은 넉넉하게, 구분은 색 대신 얇은 선
 //  - 결론 먼저 → 짧은 비교표 → 상품별 같은 틀 → 신뢰 박스(어떻게 만들었는지 정직하게)
 //  - 상품 1개면 "단일 상품 후기 분석": VS·A/B 배지 없이, 비교표 대신 주요 특징 표
+//  - 칼럼 글(content.column 있음, 2026-11-13~ 단일 상품): "후기 읽어주는 에디터" 순서 — ColumnArticle 참고.
+//    예전 구성으로 저장된 글(공개 글 포함)과 비교글은 아래 예전 화면 그대로 나온다.
 // 구매 링크는 상품 사진 카드 자체(제휴 링크라 rel="sponsored").
 
 import Link from "next/link";
 import { PhotoEditProvider, PhotoSlot } from "@/components/ShopPhotoEdit";
-import { ArrowUpRight, ChevronDown, Info, Minus, Plus, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Info, Lightbulb, Minus, Plus, ShieldCheck, X } from "lucide-react";
 import {
   DEFAULT_POST_DISCLOSURE,
+  isColumnPost,
   photoFor,
   type PhotoSpot,
   type RelatedPost,
   type ShopPost,
+  type ShopPostColumn,
   type ShopPostInputProduct,
+  type ShopPostStats,
 } from "@/lib/shop-post-types";
 import { splitParagraphs } from "@/lib/paragraphs";
 
@@ -223,32 +228,10 @@ function BuyButton({
   );
 }
 
-// preview: 관리자 초안 미리보기 (사진 자리 표시)
-// related: 함께 보면 좋은 글 (공개된 우리 글만, 페이지에서 조회해 넘김)
-export function ShopPostView({
-  post,
-  preview = false,
-  related = [],
-}: {
-  post: ShopPost;
-  preview?: boolean;
-  related?: RelatedPost[];
-}) {
-  const { content: c, products } = post;
-  const hasPhoto = (p: ShopPostInputProduct, spot: PhotoSpot) => preview || !!photoFor(p, spot);
-  const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
-  const single = products.length === 1;
-  const cols = single ? "mx-auto max-w-sm grid-cols-1" : products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
-  // 비교글에서만 A/B 배지
-  const badge = (i: number, size?: "sm" | "md") => (single ? null : <Letter index={i} size={size} />);
-  // 상황별 추천을 상품별로 묶기
-  const picksByProduct = products.map((_, i) => c.recommendations.filter((r) => r.pick === i));
-  let sectionNo = 0;
-  const no = () => String(++sectionNo).padStart(2, "0");
-
-  const article = (
-    // break-keep: 한국어 단어 단위 줄바꿈
-    <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
+// 글 머리: 경로·종류·제목·작성일 + 공정위 고지 (예전 구성·칼럼 공통)
+function PostHeader({ post, single }: { post: ShopPost; single: boolean }) {
+  return (
+    <>
       <nav className="text-[13px] text-neutral-400">
         <Link href="/" className="hover:text-neutral-600">홈</Link>
         <span className="mx-1.5">/</span>
@@ -266,8 +249,359 @@ export function ShopPostView({
       {/* 공정위 지침: 글 상단에 경제적 이해관계 표시 */}
       <p className="mt-5 flex gap-2 rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-[13px] leading-relaxed text-neutral-600 dark:text-neutral-400">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
-        {c.disclosure || DEFAULT_POST_DISCLOSURE}
+        {post.content.disclosure || DEFAULT_POST_DISCLOSURE}
       </p>
+    </>
+  );
+}
+
+function RelatedPosts({ related }: { related: RelatedPost[] }) {
+  if (!related.length) return null;
+  return (
+    <section className="mt-12">
+      <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">함께 보면 좋은 글</div>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        {related.map((r) => (
+          <li key={r.slug}>
+            <Link
+              href={`/shop/${r.slug}`}
+              className="group flex h-full items-start justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-neutral-400 dark:hover:border-neutral-600"
+            >
+              <span>
+                <span className="block text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white group-hover:underline">
+                  {r.title}
+                </span>
+                <span className="mt-1 block text-[13px] text-neutral-500">
+                  {r.products.map((p) => p.name).join(" · ")}
+                </span>
+              </span>
+              <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+// 신뢰 박스: 어떻게 만들었는지 정직하게
+function TrustBox() {
+  return (
+    <aside className="mt-14 rounded-2xl bg-neutral-50 dark:bg-neutral-900 p-5">
+      <div className="flex items-center gap-2 text-[15px] font-semibold text-neutral-900 dark:text-white">
+        <ShieldCheck className="h-4 w-4" />이 글은 이렇게 만들었어요
+      </div>
+      <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
+        <li>네이버 블로그·카페와 유튜브 리뷰 영상·댓글의 실사용 후기를 모아 분석했어요.</li>
+        <li>협찬·체험단 표시가 있는 후기는 분석에서 제외했어요.</li>
+        <li>가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.</li>
+      </ul>
+    </aside>
+  );
+}
+
+// ---------- 칼럼 글 ("후기 읽어주는 에디터") ----------
+// 순서: 상품 카드 → 도입(상황·핵심 질문) + 몇 건 읽었는지 → 한 줄 판정 박스 → 이야기 꼭지(h2) → 솔직한 단점
+//  → 에디터 판정(사세요 / 다른 걸 보세요) + 구매 줄 → 한눈에 보기(사양 표·장단점 칩·FAQ) → 아래 상품 카드.
+// 구매 버튼은 위 카드·판정 뒤·맨 아래 세 곳 (본문 중간에는 넣지 않음 — 노골적으로 보이지 않게).
+// 사진 자리: main(위 카드) · feature(첫 꼭지 뒤) · detail(셋째 꼭지 뒤) · thumb(판정 뒤 구매 줄) · table(한눈에 보기 머리) · bottom(아래 카드).
+
+// 몇 건을 읽었는지: AI 가 쓰지 않고 실제 수집 건수(post.stats)로 보여 준다 (지어낸 숫자가 들어갈 틈을 없앰)
+function ReadCount({ stats }: { stats?: ShopPostStats }) {
+  const parts = [
+    stats?.naverReviews ? `네이버 블로그·카페 등 글 ${stats.naverReviews}건` : "",
+    stats?.youtubeComments ? `유튜브 댓글 ${stats.youtubeComments}개` : "",
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return (
+    <p className="mt-5 text-[14px] leading-relaxed text-neutral-500">
+      {parts.join("과 ")}에 담긴 실사용 후기를 모아 읽고 정리했어요. 직접 써 본 리뷰가 아니라, 써 본 사람들의 이야기를 대신 읽어 드리는 글이에요.
+    </p>
+  );
+}
+
+// 실제 사용자 말 (원문 대조를 통과한 인용만 저장됨 — scripts/shop/qa.ts checkQuotes)
+function UserQuote({ text }: { text: string }) {
+  return (
+    <blockquote className="border-l-[3px] border-brand pl-4">
+      <p className="text-[18px] font-medium leading-[1.7] text-neutral-900 dark:text-white">“{text}”</p>
+      <footer className="mt-1 text-[13px] text-neutral-400">실사용 후기 중에서</footer>
+    </blockquote>
+  );
+}
+
+// 꼭지 본문 + 인용: 인용은 "무엇이·왜" 문단 뒤, 마지막 "주의점" 문단 앞에 둔다
+function StoryBody({ body, quote }: { body: string; quote?: string }) {
+  const paras = splitParagraphs(body);
+  const at = paras.length >= 3 ? paras.length - 1 : 1;
+  return (
+    <div className="space-y-4">
+      {paras.slice(0, at).map((t, i) => (
+        <p key={i}>{t}</p>
+      ))}
+      {quote?.trim() && (
+        <div className="py-2">
+          <UserQuote text={quote.trim()} />
+        </div>
+      )}
+      {paras.slice(at).map((t, i) => (
+        <p key={`r${i}`}>{t}</p>
+      ))}
+    </div>
+  );
+}
+
+function ColumnH2({ id, kicker, children }: { id: string; kicker?: string; children: React.ReactNode }) {
+  return (
+    <>
+      {kicker && <div className="text-xs font-semibold tracking-[0.2em] text-brand">{kicker}</div>}
+      <h2 id={id} className="mt-1 scroll-mt-20 text-[22px] font-bold leading-snug tracking-tight text-neutral-900 dark:text-white">
+        {children}
+      </h2>
+    </>
+  );
+}
+
+function Chips({ label, items, tone }: { label: string; items: string[]; tone: "good" | "bad" }) {
+  if (!items.length) return null;
+  const color =
+    tone === "good"
+      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+      : "bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
+  return (
+    <div>
+      <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">{label}</div>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {items.map((x) => (
+          <li key={x} className={`rounded-full px-3 py-1 text-[14px] leading-snug ${color}`}>
+            {x}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ColumnArticle({
+  post,
+  column,
+  preview,
+  related,
+}: {
+  post: ShopPost;
+  column: ShopPostColumn;
+  preview: boolean;
+  related: RelatedPost[];
+}) {
+  const { content: c } = post;
+  const product = post.products[0];
+  const pc = c.products[0];
+  const name = product.name || pc?.name || "제품";
+  const hasPhoto = (spot: PhotoSpot) => preview || !!photoFor(product, spot);
+  const detailAfter = Math.min(2, column.stories.length - 1); // 셋째 꼭지 뒤 (꼭지가 적으면 마지막 뒤)
+
+  return (
+    <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
+      <PostHeader post={post} single />
+
+      <div className="mx-auto mt-8 max-w-sm">
+        <ProductCard product={product} name={name} index={0} spot="main" sub={pc?.oneLiner} preview={preview} showBadge={false} />
+      </div>
+
+      {/* 도입: 독자의 상황 → 핵심 질문 → 어떻게 읽었는지 */}
+      <div className="mt-10">
+        <Paragraphs text={c.intro} className="text-[18px] leading-[1.8] text-neutral-800 dark:text-neutral-200" />
+        <ReadCount stats={post.stats} />
+      </div>
+
+      {/* 한 줄 판정: 훑는 독자용 */}
+      <aside className="mt-8 rounded-2xl bg-neutral-900 p-5 text-white dark:bg-white dark:text-neutral-900">
+        <div className="text-xs font-semibold tracking-[0.2em] text-brand">에디터 한 줄 판정</div>
+        <Paragraphs text={c.summary} gap="space-y-2" className="mt-2 text-[18px] font-semibold leading-[1.6]" />
+      </aside>
+
+      {/* 본문 이야기 꼭지 */}
+      {column.stories.map((x, i) => (
+        <section key={i} className="mt-14">
+          <ColumnH2 id={`story-${i + 1}`} kicker={String(i + 1).padStart(2, "0")}>
+            {x.heading}
+          </ColumnH2>
+          <div className="mt-5">
+            <StoryBody body={x.body} quote={x.quote} />
+          </div>
+          {i === 0 && <BodyPhoto product={product} name={name} spot="feature" preview={preview} className="mt-8" />}
+          {i === detailAfter && i !== 0 && <BodyPhoto product={product} name={name} spot="detail" preview={preview} className="mt-8" />}
+        </section>
+      ))}
+
+      {/* 솔직한 단점 */}
+      {column.downsides.length > 0 && (
+        <section className="mt-16">
+          <ColumnH2 id="downsides" kicker="HONEST">
+            {name} 솔직한 단점
+          </ColumnH2>
+          <ul className="mt-6 space-y-6">
+            {column.downsides.map((d) => (
+              <li key={d.title} className="border-t border-neutral-200 pt-5 first:border-t-0 first:pt-0 dark:border-neutral-800">
+                <div className="flex items-center gap-2 font-semibold text-neutral-900 dark:text-white">
+                  <Minus className="h-4 w-4 shrink-0 text-rose-500" strokeWidth={2.5} />
+                  {d.title}
+                </div>
+                <Paragraphs text={d.detail} gap="space-y-2" className="mt-2 text-[16px]" />
+                {d.tip && (
+                  <p className="mt-3 flex gap-2 rounded-xl bg-neutral-50 px-4 py-3 text-[15px] leading-relaxed dark:bg-neutral-900">
+                    <Lightbulb className="mt-1 h-4 w-4 shrink-0 text-brand" />
+                    <span>
+                      <span className="font-semibold text-neutral-900 dark:text-white">대처 팁</span>
+                      <span className="text-neutral-400"> · </span>
+                      {d.tip}
+                    </span>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 에디터 판정 */}
+      <section className="mt-16">
+        <ColumnH2 id="verdict" kicker="VERDICT">
+          에디터 판정
+        </ColumnH2>
+        {c.verdict && <Paragraphs text={c.verdict} className="mt-5" />}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {[
+            { title: "이런 분은 사세요", items: column.buyIf, icon: <Check className="mt-1 h-4 w-4 shrink-0 text-emerald-600" strokeWidth={2.5} /> },
+            { title: "이런 분은 다른 걸 보세요", items: column.skipIf, icon: <X className="mt-1 h-4 w-4 shrink-0 text-rose-500" strokeWidth={2.5} /> },
+          ].map((g) =>
+            g.items.length ? (
+              <div key={g.title} className="rounded-2xl border border-neutral-200 p-4 dark:border-neutral-800">
+                <div className="text-[15px] font-semibold text-neutral-900 dark:text-white">{g.title}</div>
+                <ul className="mt-3 space-y-2.5 text-[15px] leading-relaxed">
+                  {g.items.map((x) => (
+                    <li key={x} className="flex gap-2.5">
+                      {g.icon}
+                      <span>{x}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null,
+          )}
+        </div>
+        {/* 판정을 읽고 바로 가격을 보려는 독자용 구매 줄 */}
+        <div className="mt-6 flex items-center gap-3 rounded-2xl border border-neutral-200 p-3 dark:border-neutral-800">
+          {hasPhoto("thumb") && (
+            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+              <ProductImage product={product} name={name} index={0} spot="thumb" preview={preview} className="h-full w-full p-1" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1 text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">{name}</div>
+          <BuyButton product={product} preview={preview} label="가격 보기" className="shrink-0 px-4" />
+        </div>
+      </section>
+
+      {/* 한눈에 보기: 사양 표 · 장단점 칩 · FAQ */}
+      <section className="mt-16">
+        <div className="flex items-center gap-3">
+          {hasPhoto("table") && (
+            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+              <ProductImage product={product} name={name} index={0} spot="table" preview={preview} className="h-full w-full p-1" />
+            </div>
+          )}
+          <div>
+            <ColumnH2 id="summary-box" kicker="AT A GLANCE">
+              {name} 한눈에 보기
+            </ColumnH2>
+          </div>
+        </div>
+        {c.comparison.length > 0 && (
+          <table className="mt-6 w-full table-fixed border-t border-neutral-900 text-[15px] leading-snug dark:border-white">
+            <tbody>
+              {c.comparison.map((row) => (
+                <tr key={row.label} className="border-b border-neutral-200 dark:border-neutral-800">
+                  <th scope="row" className="w-[36%] py-3 pr-2 text-left text-sm font-normal text-neutral-500">
+                    {row.label}
+                  </th>
+                  <td className="py-3 font-medium text-neutral-900 dark:text-white">{row.values[0]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {pc && (
+          <div className="mt-6 space-y-4">
+            <Chips label="좋은 점" items={pc.pros} tone="good" />
+            <Chips label="아쉬운 점" items={pc.cons} tone="bad" />
+          </div>
+        )}
+        {c.faq.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-[17px] font-bold text-neutral-900 dark:text-white">{name} 자주 묻는 질문</h3>
+            <div className="mt-3 border-t border-neutral-200 dark:border-neutral-800">
+              {c.faq.map((f) => (
+                <details key={f.q} className="group border-b border-neutral-200 dark:border-neutral-800">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 font-medium text-neutral-900 dark:text-white [&::-webkit-details-marker]:hidden">
+                    {f.q}
+                    <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400 transition group-open:rotate-180" />
+                  </summary>
+                  <Paragraphs text={f.a} gap="space-y-2" className="pb-4 text-[15px] leading-relaxed" />
+                </details>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <div className="mx-auto mt-10 max-w-sm">
+        <ProductCard product={product} name={name} index={0} spot="bottom" preview={preview} showBadge={false} />
+      </div>
+
+      <RelatedPosts related={related} />
+      <TrustBox />
+    </article>
+  );
+}
+
+// preview: 관리자 초안 미리보기 (사진 자리 표시)
+// related: 함께 보면 좋은 글 (공개된 우리 글만, 페이지에서 조회해 넘김)
+export function ShopPostView({
+  post,
+  preview = false,
+  related = [],
+}: {
+  post: ShopPost;
+  preview?: boolean;
+  related?: RelatedPost[];
+}) {
+  const { content: c, products } = post;
+  // 칼럼 구성으로 저장된 단일 글만 칼럼 화면. 그 밖(예전 구성 글·비교글)은 아래 예전 화면 그대로
+  if (isColumnPost(c) && products.length === 1) {
+    const article = <ColumnArticle post={post} column={c.column} preview={preview} related={related} />;
+    return preview ? (
+      <PhotoEditProvider postId={post.id} initialProducts={products}>
+        {article}
+      </PhotoEditProvider>
+    ) : (
+      article
+    );
+  }
+  const hasPhoto = (p: ShopPostInputProduct, spot: PhotoSpot) => preview || !!photoFor(p, spot);
+  const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
+  const single = products.length === 1;
+  const cols = single ? "mx-auto max-w-sm grid-cols-1" : products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
+  // 비교글에서만 A/B 배지
+  const badge = (i: number, size?: "sm" | "md") => (single ? null : <Letter index={i} size={size} />);
+  // 상황별 추천을 상품별로 묶기
+  const picksByProduct = products.map((_, i) => c.recommendations.filter((r) => r.pick === i));
+  let sectionNo = 0;
+  const no = () => String(++sectionNo).padStart(2, "0");
+
+  const article = (
+    // break-keep: 한국어 단어 단위 줄바꿈
+    <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
+      <PostHeader post={post} single={single} />
 
       {/* 상품 사진 (비교글이면 두 상품 + VS) */}
       <div className={`relative mt-8 grid gap-4 ${cols}`}>
@@ -519,44 +853,8 @@ export function ShopPostView({
         ))}
       </div>
 
-      {/* 함께 보면 좋은 글: 우리가 이미 공개한 글만 링크 (안 쓴 제품은 표시하지 않음) */}
-      {related.length > 0 && (
-        <section className="mt-12">
-          <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">함께 보면 좋은 글</div>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {related.map((r) => (
-              <li key={r.slug}>
-                <Link
-                  href={`/shop/${r.slug}`}
-                  className="group flex h-full items-start justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-neutral-400 dark:hover:border-neutral-600"
-                >
-                  <span>
-                    <span className="block text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white group-hover:underline">
-                      {r.title}
-                    </span>
-                    <span className="mt-1 block text-[13px] text-neutral-500">
-                      {r.products.map((p) => p.name).join(" · ")}
-                    </span>
-                  </span>
-                  <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* 신뢰 박스: 어떻게 만들었는지 정직하게 */}
-      <aside className="mt-14 rounded-2xl bg-neutral-50 dark:bg-neutral-900 p-5">
-        <div className="flex items-center gap-2 text-[15px] font-semibold text-neutral-900 dark:text-white">
-          <ShieldCheck className="h-4 w-4" />이 글은 이렇게 만들었어요
-        </div>
-        <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-          <li>네이버 블로그·카페와 유튜브 리뷰 영상·댓글의 실사용 후기를 모아 분석했어요.</li>
-          <li>협찬·체험단 표시가 있는 후기는 분석에서 제외했어요.</li>
-          <li>가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.</li>
-        </ul>
-      </aside>
+      <RelatedPosts related={related} />
+      <TrustBox />
     </article>
   );
 

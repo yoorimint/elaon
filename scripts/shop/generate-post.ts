@@ -27,11 +27,15 @@ import { reviewAndFix } from "./qa";
 import { ThinEvidenceError, evidenceGaps } from "./readiness";
 import { MAX_BELOW_BAR_PER_DAY, MAX_COST_USD_PER_DAY, MAX_FAILURES_PER_DAY, better, judgeQuality } from "./quality";
 import { hasEnoughEvidence, researchProduct, toSources, type ProductResearch, type ResearchOptions } from "./research";
-import { nextKind, pairKeyOf } from "./select-products";
+import { nextKind, pairKeyOf, type PostKind } from "./select-products";
 import { usageLine, usageSummary } from "./usage";
 import { writePost, type WrittenPost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
+// 점검 실행에서만 글 종류 지정: .github/shop-run-request 의 "type: single|compare" 줄 → 워크플로가 SHOP_KIND 로 넘김.
+// 매시간 운영 실행·수동 실행에는 넘기지 않으므로 관리자 설정(자동 글 종류)대로 돈다.
+const KIND_OVERRIDE: PostKind | null =
+  process.env.SHOP_KIND === "single" || process.env.SHOP_KIND === "compare" ? process.env.SHOP_KIND : null;
 const MAX_ATTEMPTS = 2; // 글을 쓴 횟수 상한: 합격선 미달이면 다른 상품으로 한 번 더
 const MAX_PICKS = 4; // 상품을 고른 횟수 상한: 근거가 얇아 쓰지 않고 넘긴 것까지 포함
 // 이 시간이 지나면 새 상품을 고르지 않음 (워크플로 제한 30분 안에 저장까지 끝내도록. 글 1편 작성·검수에 최대 약 10분)
@@ -172,7 +176,8 @@ async function main() {
   const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
   const useManual = manual.length > 0 && (FORCE || !history.usedPairKeys.has(pairKeyOf(manual)));
   const lastKind = history.lastProductCount == null ? null : history.lastProductCount === 1 ? "single" : "compare";
-  const kind = nextKind(config.auto_mode ?? "single", lastKind);
+  const kind = KIND_OVERRIDE ?? nextKind(config.auto_mode ?? "single", lastKind);
+  if (KIND_OVERRIDE) console.log(`🧪 점검 실행 글 종류 지정: ${KIND_OVERRIDE === "single" ? "단일" : "비교"} (설정값 무시)`);
 
   let best: Attempt | null = null;
   const tried: string[] = [];

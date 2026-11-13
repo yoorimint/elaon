@@ -9,6 +9,7 @@ import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, pairTypeLabel, sameType } from "./discover";
+import { DIRECT_USE, MIN_COLUMN, checkQuotes, columnIssues, factUnits, hedgeNotes, quoteSourceOf, repeatedFacts } from "./qa";
 import { MAX_PARAGRAPH_CHARS, STRUCTURAL, checkNumbers, evidenceTailCount, isNonAnswer, judgeAudit, lintPost, locallySupported, longParagraphIssues, quoteFound, repeatedEndingIssues, repeatedEvidenceIssues, repeatedOpeningIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { rawParagraphs, sentencesOf, splitParagraphs } from "@/lib/paragraphs";
 import { fixHanja } from "./hanja";
@@ -16,7 +17,9 @@ import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
-import { READABILITY, SECTION_GOALS, buildEvidence, rulesFor, type WrittenPost } from "./writer";
+import { COLUMN_GOALS, READABILITY, SECTION_GOALS, buildEvidence, rulesFor, validateColumn, writerJson, type WrittenPost } from "./writer";
+import { roborockColumn, roborockEvidence, roborockOld } from "./test-fixtures";
+import { isColumnPost } from "@/lib/shop-post-types";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -488,8 +491,9 @@ async function main() {
     assert.ok(scenes[0].scene.includes("10분"));
   });
   // 2026-11-13 운영자 검토: 구매 전 확인(2~3개)·추천 이유(한 문장)·FAQ·후기 문단이 얇음 → 작성 목표를 올림
-  await test("분량 규칙이 작성 지시에 들어감 (단일·비교 모두) + 근거가 부족하면 지어내지 않는다", () => {
-    for (const n of [1, 2]) {
+  // 2026-11-13 칼럼 전환 뒤로 예전 구성 규칙(추천 상황·구매 전 확인·후기 문단)은 비교글 지시에만 남는다 — 칼럼 규칙은 따로 시험
+  await test("분량 규칙이 작성 지시에 들어감 (비교글) + 근거가 부족하면 지어내지 않는다", () => {
+    for (const n of [2]) {
       const rules = rulesFor(n);
       assert.ok(rules.includes(`commonComplaints(구매 전 확인할 점)는 ${SECTION_GOALS.commonComplaints}. 항목마다 2문장`), "구매 전 확인 4~5개·2문장");
       assert.ok(rules.includes(`reason 은 ${SECTION_GOALS.recommendationReason}`), "추천 이유 2~3문장");
@@ -567,8 +571,8 @@ async function main() {
     // 두 번까지는 허용, 시작이 다양하면 통과
     w.content.recommendations[2].reason = "책상 옆 좁은 자리에도 들어간다는 후기가 있어요.";
     assert.deepEqual(repeatedOpeningIssues(w), []);
-    // 작성 규칙: 예전의 고정 순서("그 상황에서 무엇이 중요한지 →") 대신 자유 구조 + 같은 시작 금지
-    for (const n of [1, 2]) {
+    // 작성 규칙: 예전의 고정 순서("그 상황에서 무엇이 중요한지 →") 대신 자유 구조 + 같은 시작 금지 (추천 상황은 비교글에만)
+    for (const n of [2]) {
       const rules = rulesFor(n);
       assert.ok(!rules.includes("그 상황에서 무엇이 중요한지 →"), "고정 틀 문구가 남아 있으면 안 됨");
       assert.ok(rules.includes("문장 구조와 순서는 이유마다 자유롭게 바꾼다. 이유들을 같은 말로 시작하지 않는다"));
@@ -653,7 +657,7 @@ async function main() {
   });
   await test("작성 규칙: 후기는 빈 줄로 나눈 짧은 문단, 근거 꼬리는 구역마다 2번까지, 목록 시작을 다르게", () => {
     assert.deepEqual(READABILITY, { paragraphSentences: 4, paragraphChars: 250, sameOpening: 2, evidenceTails: 2 });
-    for (const n of [1, 2]) {
+    for (const n of [2]) {
       const rules = rulesFor(n);
       assert.ok(rules.includes(`빈 줄("\\n\\n")로 나눈 짧은 문단 ${SECTION_GOALS.reviewParagraphs}로 쓴다(문단당 2~3문장)`), "후기 문단 나누기");
       assert.ok(rules.includes(`문장 끝에 출처를 붙이는 근거 꼬리는 한 구역에서 ${READABILITY.evidenceTails}번까지`), "근거 꼬리 상한");
@@ -1031,7 +1035,7 @@ async function main() {
   const reply = (obj: unknown) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }));
   const err429 = (msg: string) => new Response(JSON.stringify({ error: { code: 429, message: msg } }), { status: 429 });
   const calls: string[] = [];
-  let mode: "loop" | "worse" | "quota" | "readable" = "loop";
+  let mode: "loop" | "worse" | "quota" | "readable" | "column" = "loop";
   let revisePrompt = "";
   let minuteHits = 0;
   const claudeBodies: { model: string; output_config?: { format: { schema: { additionalProperties?: boolean; properties: Record<string, { items?: { additionalProperties?: boolean } }> } } } }[] = [];
@@ -1083,6 +1087,11 @@ async function main() {
     }
     if (prompt.includes("검수 지적사항")) {
       calls.push("revise");
+      if (mode === "column") {
+        // 칼럼 글 수정: 수정 지시에는 작성 때와 같은 펼친 모양(stories·buyIf …)으로 넘어가야 하고, 답도 그 모양으로 온다
+        revisePrompt = prompt;
+        return reply(writerJson(roborockColumn));
+      }
       if (mode === "readable") {
         // 읽기 지적을 받은 수정본: 후기 문단을 빈 줄로 나누고, 추천 이유·FAQ·장단점의 근거 꼬리와 같은 시작을 정리
         if (!revisePrompt) revisePrompt = prompt; // 첫 수정 지시만 본다
@@ -1138,6 +1147,157 @@ async function main() {
     const readability = /근거 표시가|같은 말\(|문장·\d+자/;
     assert.ok(!r.qa.remaining.some((x) => readability.test(x)), r.qa.remaining.join("\n"));
     assert.ok((r.post.content.products[0].review ?? "").includes("\n\n"), "수정본의 문단 경계가 저장까지 유지돼야 함");
+  });
+
+  await test("칼럼 글 검수 → 수정: 펼친 JSON 으로 고치고 칼럼 구성이 저장까지 유지됨", async () => {
+    mode = "column";
+    calls.length = 0;
+    const bad = structuredClone(roborockColumn);
+    bad.content.intro = "결론부터 말하면 살 만해요.";
+    const colResearch = [
+      { ...research[0], product: { name: "로보락 S10", link: "" }, reviews: [{ title: "후기", text: roborockEvidence, url: "", source: "blog" }] },
+    ] as unknown as ProductResearch[];
+    const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, bad, colResearch, [null]);
+    assert.ok(revisePrompt.includes('"stories":[') && revisePrompt.includes('"buyIf":['), "칼럼 필드가 펼쳐져 수정 지시로 가야 함");
+    assert.ok(!revisePrompt.includes('"column":'), "column 으로 감싼 모양이면 작성 스키마와 달라짐");
+    assert.ok(revisePrompt.includes('도입(intro)이 "결론부터"로 시작'), "도입 지적이 전달돼야 함");
+    assert.ok(revisePrompt.includes("이야기 꼭지 3개"), "칼럼 최소 분량 안내");
+    assert.ok(isColumnPost(r.post.content), "수정본도 칼럼 구성");
+    assert.deepEqual(r.qa.remaining, [], r.qa.remaining.join("\n"));
+  });
+
+  // ---- 2026-11-13 칼럼 전환 ("후기 읽어주는 에디터") ----
+  await test("칼럼: 정상 칼럼 글(로보락 S10 칼럼판)은 새 검사 전부 통과", () => {
+    assert.deepEqual(lintPost(roborockColumn, 1), []);
+    assert.deepEqual(checkNumbers(roborockColumn, roborockEvidence), []);
+    assert.deepEqual(checkQuotes(roborockColumn, roborockEvidence), []);
+    assert.deepEqual(hedgeNotes(roborockColumn), []);
+  });
+  await test("같은 사실 반복: 실제 로보락 S10 초안(예전 구성)의 4중 반복을 잡음 — 흡입력 수치·저상·문턱·직배수", () => {
+    const found = repeatedFacts(factUnits(roborockOld), ["로보락 S10"]);
+    const text = found.map((f) => `${f.why} ${f.a} ${f.b}`).join("\n");
+    assert.ok(found.some((f) => f.why.includes("36000")), text);
+    assert.ok(found.some((f) => f.why.includes("8.8")), text);
+    assert.ok(found.some((f) => f.why.includes("소파") && f.why.includes("침대")), text);
+    assert.ok(found.some((f) => f.a.includes("직배수") && f.b.includes("직배수")), text);
+    // 정상 칼럼(꼭지마다 다른 강점, 수치는 한 꼭지에서만)은 0건 — 오탐 없음
+    assert.deepEqual(repeatedFacts(factUnits(roborockColumn), ["로보락 S10"]), []);
+  });
+  await test("같은 사실 반복: 칼럼 꼭지끼리 같은 수치·같은 주장을 다시 쓰면 지적, 예전 구성 글에는 lintPost 가 적용하지 않음", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[2].body += "\n\n흡입력도 36,000Pa로 소개돼 문턱 너머 방에서도 힘이 달리지 않아요.";
+    w.content.column!.downsides[0].detail += " 소파와 침대 밑 공간까지 들어가는 몸체라도 값이 부담이에요.";
+    const issues = lintPost(w, 1).filter((x) => x.startsWith("같은 사실 반복"));
+    assert.ok(issues.some((x) => x.includes("같은 수치 36000") && x.includes("stories[0]") && x.includes("stories[2]")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes("소파") && x.includes("솔직한 단점")), issues.join("\n"));
+    // 옛 구성 글(공개 글 포함)은 예전 기준 그대로 — 새 검사로 갑자기 문제가 생기지 않게
+    assert.ok(!lintPost(roborockOld, 1).some((x) => x.startsWith("같은 사실 반복") || x.includes("이야기 꼭지")), lintPost(roborockOld, 1).join("\n"));
+    assert.deepEqual(columnIssues(roborockOld), []);
+  });
+  await test("칼럼 도입: '결론부터'로 시작·너무 짧음·핵심 질문 없음 검출", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.intro = "결론부터 말하면 흡입력이 좋아요. 설치는 따져 보세요.";
+    const issues = lintPost(w, 1);
+    assert.ok(issues.some((x) => x.includes('도입(intro)이 "결론부터"로 시작')), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes(`도입(intro)이 2문장`)), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes("도입(intro)에 핵심 질문이 없음")), issues.join("\n"));
+    w.content.column!.question = "";
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("핵심 질문(question) 없음")));
+    assert.equal(MIN_COLUMN.hookSentences, 3);
+  });
+  await test("칼럼 에디터 판정: 한쪽만 있으면 [구성], 하나뿐이면 지적 / 꼭지 부족·짧은 꼭지·단점 팁 없음·긴 칩", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.skipIf = [];
+    w.content.column!.buyIf = w.content.column!.buyIf.slice(0, 1);
+    w.content.column!.stories = w.content.column!.stories.slice(0, 2);
+    w.content.column!.stories[1].body = "몸체가 낮아요.";
+    w.content.column!.downsides[1].tip = "";
+    w.content.products[0].pros[0] = "머리카락 엉킴 방지 브러시로 손질이 줄어드는 점";
+    w.content.summary = "머리카락이 많은 집이라면 살 만해요. 가구 밑도 잘 들어가요. 물걸레가 우선이라면 다른 걸 보세요.";
+    const issues = lintPost(w, 1);
+    const structural = issues.filter((x) => x.startsWith(STRUCTURAL));
+    assert.ok(structural.some((x) => x.includes("skipIf") && x.includes("한쪽만")), structural.join("\n"));
+    assert.ok(issues.some((x) => x.includes("(buyIf)가 1개")), issues.join("\n"));
+    assert.ok(structural.some((x) => x.includes("이야기 꼭지(stories) 2개")), structural.join("\n"));
+    assert.ok(structural.some((x) => x.includes("stories[1].body)가 짧음")), structural.join("\n"));
+    assert.ok(issues.some((x) => x.includes("downsides[1].tip") && x.includes("대처 팁 없음")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.includes("장단점 칩(products[0].pros)")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("한 줄 판정(summary)이 3문장")), issues.join("\n"));
+    assert.equal(COLUMN_GOALS.chipChars, 15);
+  });
+  await test("직접 사용 가장 표현 검출 (써 보니·테스트해 보니·제가 돌려 보니), 3인칭·권유·사용자 인용은 통과", () => {
+    for (const bad of ["제가 직접 돌려 보니 조용했어요.", "일주일 테스트해 보니 흡입력이 좋아요.", "직접 써 봤는데 편해요.", "저는 거실에서 사용했는데 좋았어요.", "사용해 본 결과 무난해요."]) {
+      assert.ok(DIRECT_USE.test(bad), bad);
+    }
+    for (const ok of ["한 달 써 봤다는 사용자는 소음이 적다고 해요.", "매장에서 직접 써 보세요.", "후기를 모아 읽어 보니 머리카락 이야기가 가장 많아요.", "제가 눈여겨본 건 브러시예요."]) {
+      assert.ok(!DIRECT_USE.test(ok), ok);
+    }
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[0].body = "제가 직접 돌려 보니 머리카락이 잘 빨려요. " + w.content.column!.stories[0].body;
+    w.content.column!.stories[1].quote = "써 보니 소리가 전혀 안 거슬려요";
+    const issues = lintPost(w, 1);
+    assert.ok(issues.some((x) => x.startsWith("stories[0].body") && x.includes("직접 써본")), issues.join("\n"));
+    // 사용자 인용 속 1인칭·단정은 글쓴이 말이 아니라서 통과 (인용이 원문인지는 checkQuotes 가 따로 본다)
+    assert.ok(!issues.some((x) => x.startsWith("stories[1].quote")), issues.join("\n"));
+    assert.ok(rulesFor(1).includes('"테스트해 보니", "제가 사용"'), "작성 규칙에도 금지");
+  });
+  await test("따옴표 인용: 원문에 없는 인용은 지적(quote 필드·본문 속 따옴표), 원문 그대로·짧은 강조 따옴표는 통과", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[1].quote = "다른 로봇청소기보다 두 배는 깨끗해요";
+    w.content.column!.stories[2].body += '\n\n한 사용자는 "문턱을 넘다가 한 번도 걸린 적이 없어요"라고 남겼어요.';
+    w.content.column!.stories[3].body += '\n\n한 사용자는 "물통을 채우고 비울 필요가 없어 편한데"라고 했어요. "직배수형"은 따로 골라야 해요.';
+    const issues = checkQuotes(w, roborockEvidence);
+    assert.ok(issues.some((x) => x.startsWith("stories[1].quote")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("stories[2].body") && x.includes("문턱을 넘다가")), issues.join("\n"));
+    assert.ok(!issues.some((x) => x.startsWith("stories[3]")), issues.join("\n"));
+    assert.ok(!issues.some((x) => x.startsWith("stories[0]")), "원문 그대로 옮긴 인용은 통과");
+    // 대조 대상: 후기 원문 + 사용 장면 원문 (분석 요약 문장은 사용자 말이 아니라 빠짐)
+    const src = quoteSourceOf(
+      [{ reviews: [{ title: "t", text: "원문 후기" }], comments: ["댓글 원문"], videoNotes: [] }] as unknown as ProductResearch[],
+      [{ scenes: [{ scene: "장면", quote: "장면 원문 인용" }], strengths: [{ point: "분석 요약 장점", mentions: 3 }] } as unknown as ProductDigest],
+    );
+    assert.ok(src.includes("원문 후기") && src.includes("댓글 원문") && src.includes("장면 원문 인용"));
+    assert.ok(!src.includes("분석 요약 장점"));
+  });
+  await test("칼럼: 수정 단계용 펼친 JSON ↔ 저장 구조가 그대로 왕복, 검사 경로도 같은 이름(stories[0] …)", () => {
+    const back = validateColumn(writerJson(roborockColumn));
+    const { seoKeyword: _k, ...want } = roborockColumn.content;
+    void _k;
+    assert.deepEqual(back.content, want);
+    assert.equal(back.title, roborockColumn.title);
+    assert.ok(!("column" in writerJson(roborockColumn)));
+    // 예전 구성 글은 그대로
+    assert.deepEqual(writerJson(roborockOld), { title: roborockOld.title, description: roborockOld.description, ...roborockOld.content });
+    assert.equal(isColumnPost(roborockOld.content), false);
+    assert.equal(isColumnPost(roborockColumn.content), true);
+  });
+  await test("칼럼 작성 지시: 구성·인용·직접 사용 금지·수치 해석, 사실성 공통 문장은 비교글과 같음", () => {
+    const col = rulesFor(1);
+    for (const x of ["question:", "stories(본문 이야기 꼭지)", "downsides(솔직한 단점)", "buyIf(이런 분은 사세요)", "skipIf(이런 분은 다른 걸 보세요)",
+      "따옴표 인용(stories[].quote, 본문 속 큰따옴표)은", "수치는 나열하지 말고", `pros·cons 각 ${COLUMN_GOALS.chips}`, '"결론부터", "한마디로", "정리하면"으로 시작하지 않는다']) {
+      assert.ok(col.includes(x), x);
+    }
+    const cmp = rulesFor(2);
+    for (const shared of ["근거에 없는 스펙·수치·기능은 절대 지어내지 않는다", "품절·재입고·공구(공동구매)·할인·특가·구매 시점 이야기는", "독자의 감정을 넘겨짚는 문장"]) {
+      assert.ok(col.includes(shared) && cmp.includes(shared), shared);
+    }
+    assert.ok(cmp.includes("recommendations(잘 맞는 상황)") && !col.includes("recommendations(잘 맞는 상황)"), "비교글은 예전 구성 그대로");
+  });
+  await test("칼럼 AI 검수: 새 구역 이름으로 반복 판정 — 판정 박스·칩·표는 세지 않고 5곳 이상이면 수정", () => {
+    const names = ["제목", "도입", "판정", "이야기 1", "이야기 2", "이야기 3", "솔직한 단점", "에디터 판정", "표", "장단점 요약", "FAQ"];
+    const five = { topic: "흡입력", sections: ["도입", "판정", "이야기 1", "이야기 2", "솔직한 단점", "에디터 판정", "표", "장단점 요약"] };
+    assert.ok(judgeAudit({ topics: [five] }, roborockEvidence, names).some((x) => x.includes("5곳에서 반복") && x.includes("이야기 꼭지 한 곳에만")));
+    const ok = { topic: "머리카락", sections: ["도입", "판정", "이야기 1", "에디터 판정", "표", "장단점 요약"] };
+    assert.deepEqual(judgeAudit({ topics: [ok] }, roborockEvidence, names), []);
+    const four = { topic: "문턱", sections: ["도입", "이야기 3", "에디터 판정", "FAQ"] };
+    assert.ok(repetitionNotes({ topics: [four] }, names).some((x) => x.includes("4곳")));
+  });
+  await test("글쓴이 판정이 약한 칼럼(꼭지 문장 절반 이상 '~평이에요/~쪽이에요')은 참고로만 남김", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories.forEach((x) => (x.body = "흡입이 좋다는 평이에요. 머리카락에 강한 쪽이에요. 가구 밑도 잘 들어간다고 해요."));
+    const notes = hedgeNotes(w);
+    assert.ok(notes.length === 1 && notes[0].startsWith("[참고]"), notes.join("\n"));
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("한발")), "수정 대상(issue)은 아님");
   });
 
   mode = "quota";

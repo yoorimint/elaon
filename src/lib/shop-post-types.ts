@@ -61,9 +61,32 @@ export type ShopPostInsight = {
   weaknesses: { point: string; weight: number }[];
 };
 
+// "후기 읽어주는 에디터" 칼럼 구성 (2026-11-13~, 단일 상품 글). 이 필드가 있으면 화면이 칼럼 순서로 그린다.
+// 칼럼 글에서 기존 필드의 뜻: intro = 도입(hook), summary = 한 줄 판정 박스, verdict = 에디터 판정 첫머리 문장,
+//  comparison = 한눈에 보기 사양 표, products[0].pros/cons = 장단점 요약 칩, faq = 한눈에 보기 FAQ.
+//  recommendations·commonComplaints·buyingGuide 는 비워 둔다 (이야기 꼭지·솔직한 단점·에디터 판정이 그 역할을 맡음).
+// 이 필드가 없는 글(예전 8칸 양식, 비교글)은 예전 화면 그대로 나온다.
+export type ShopPostColumn = {
+  question: string; // 글을 끌고 가는 핵심 질문 (예: "로봇청소기 다 비슷한데 S10은 왜 비쌀까?")
+  stories: ShopPostStory[]; // 본문 이야기 꼭지 3~4개
+  downsides: { title: string; detail: string; tip: string }[]; // 솔직한 단점: 누구에게 문제/누구는 괜찮은지 + 대처 팁
+  buyIf: string[]; // 에디터 판정: 이런 분은 사세요
+  skipIf: string[]; // 에디터 판정: 이런 분은 다른 걸 보세요
+};
+export type ShopPostStory = {
+  heading: string; // 소제목(h2) — 제품마다 다르게, 검색 키워드를 자연스럽게
+  body: string; // 무엇이 → 왜 중요한지(생활 장면) → 주의점/누구에게. 빈 줄로 나눈 짧은 문단
+  quote?: string; // 실제 사용자 말 (원자료와 대조 — 지어낸 인용 금지)
+};
+
+export function isColumnPost(c: Pick<ShopPostContent, "column">): c is { column: ShopPostColumn } {
+  return !!c.column && Array.isArray(c.column.stories) && c.column.stories.length > 0;
+}
+
 export type ShopPostContent = {
-  summary: string; // 한 줄 결론 (2~3문장)
-  intro: string; // 도입
+  summary: string; // 한 줄 결론 (2~3문장). 칼럼 글은 한 줄 판정 박스 (1~2문장)
+  intro: string; // 도입. 칼럼 글은 hook
+  column?: ShopPostColumn; // 칼럼 구성 (있으면 칼럼 화면)
   products: ShopPostProductContent[]; // 입력 상품 순서와 같음
   comparison: { label: string; values: string[] }[]; // 항목별 비교, values[i] = 상품 i
   recommendations: { situation: string; pick: number; reason: string }[]; // pick = 상품 index

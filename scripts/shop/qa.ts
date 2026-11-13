@@ -12,13 +12,13 @@ import { rawParagraphs, sentencesOf } from "@/lib/paragraphs";
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
 import { autoFix, isUnknownValue } from "./autofix";
 import type { ProductDigest } from "./digest";
-import { locallySupported, norm, productWordsOf, quoteFound } from "./grounding";
+import { keyTokens, locallySupported, norm, productWordsOf, quoteFound } from "./grounding";
 import { hasHanja } from "./hanja";
 import { generationMentions } from "./names";
 import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
-import { MAX_CHECK_PHRASES, READABILITY, SECTION_GOALS, buildEvidence, revisePost, type WrittenPost } from "./writer";
+import { COLUMN_GOALS, MAX_CHECK_PHRASES, READABILITY, SECTION_GOALS, buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 export { locallySupported, quoteFound };
 
@@ -59,6 +59,16 @@ const PRODUCT_NUMBER = /(?<![0-9])(0번|[0-9]번(은|는|이|가|의|을|를|과
 const MAX_TOPIC_SECTIONS = 4;
 const MAX_TOPIC_SECTIONS_BEFORE_FIX = 6;
 const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
+// 칼럼 글: "같은 사실은 본문에서 한 번만 깊게, 요약 박스·한눈에 보기의 짧은 반복만 허용" (2026-11-13 사장님 지시)
+//  → 판정 박스·장단점 요약 칩도 세지 않고, 세는 구역(도입·이야기 꼭지·솔직한 단점·에디터 판정·FAQ)에서 4곳이면 참고, 5곳 이상이면 수정.
+//  도입에서 질문을 던지고 → 한 꼭지에서 깊게 → 에디터 판정에서 짧게 가리키는 3곳은 정상 흐름.
+//  꼭지끼리의 반복은 코드 검사(repeatedFactIssues)가 문장 단위로 먼저 잡는다.
+const COLUMN_TOPIC = { note: 3, fix: 4, notCounted: new Set(["표", "제목", "판정", "장단점 요약"]) };
+function topicRule(sectionNames: string[]) {
+  return sectionNames.some((x) => x.startsWith("이야기 "))
+    ? { note: COLUMN_TOPIC.note, fix: COLUMN_TOPIC.fix, notCounted: COLUMN_TOPIC.notCounted }
+    : { note: MAX_TOPIC_SECTIONS, fix: MAX_TOPIC_SECTIONS_BEFORE_FIX, notCounted: NOT_COUNTED_SECTIONS };
+}
 
 // 구성 문제(섹션이 비거나 빈약함)는 표현 문제보다 무겁다 — 표시를 붙여 합격 판정·버전 비교에 쓴다
 // (run #36: 수정 중 '고르는 기준'이 통째로 빠진 버전이 단어 하나 문제 버전과 같은 점수로 저장됨)
@@ -77,8 +87,16 @@ const MIN_SECTION = {
 };
 
 // ---------- 1) 규칙 검사 ----------
-const BANNED: { re: RegExp; why: string }[] = [
-  { re: /써\s*보니|사용해\s*보니|써\s*봤|제가\s*(직접\s*)?(사용|써)/, why: "직접 써본 것처럼 쓴 표현" },
+// quoteOk: 따옴표 인용(사용자 원문) 안이면 검사하지 않는 규칙 — 사용자 말 "써 보니 소리가 전혀 안 나요"는
+//  글쓴이의 직접 사용 가장·단정이 아니다 (인용이 원문 그대로인지는 checkQuotes 가 따로 본다).
+//  가격·판매 문구·건수 숫자는 인용 안이라도 글에 실리면 안 되므로 그대로 검사한다.
+// 직접 사용 가장 (칼럼 전환 2026-11-13: 글쓴이가 "에디터"로 나오면서 "제가 돌려 보니"류 위험이 커짐 → 범위 넓힘):
+//  "써 보니/써 봤/사용해 보니/테스트해 보니/직접 써·사용·테스트·측정", "제가·저는·저도 + (두 단어 이내) + 사용 동사".
+//  독자에게 권하는 "직접 써 보세요/확인해 보세요"는 가장이 아니므로 "보세요·보시"가 뒤따르면 뺀다.
+export const DIRECT_USE =
+  /(써|사용해|테스트해|체험해|돌려|측정해)\s*(보니|봤(?!다는|다고|던)|본\s*결과)|직접\s*(써|사용|테스트|체험|측정|돌려)(?!\s*보(세요|시))|(제가|저는|저도|저희가?)\s+(?:[가-힣]+\s+){0,2}(직접\s*)?(써|사용|테스트|체험|구매|구입|샀|돌려|청소해)/;
+const BANNED: { re: RegExp; why: string; quoteOk?: boolean }[] = [
+  { re: DIRECT_USE, why: "직접 써본 것처럼 쓴 표현 (글쓴이는 후기를 모아 읽은 사람 — \"후기를 모아 읽어 보니\"처럼)", quoteOk: true },
   { re: /최저가|업계\s*1위|판매\s*1위|무조건/, why: "확인되지 않은 과장 표현" },
   {
     re: /자료(에서|에는|에도|에 따르면|만으로|에|를|가)|자료\s*(없음|부족|미확인)/,
@@ -102,6 +120,7 @@ const BANNED: { re: RegExp; why: string }[] = [
   {
     re: /(위험|걱정|문제)(은|이|가)?\s*(전혀\s*)?없|전혀|완벽(하|히|한|해)|절대(로)?\s|100\s*%/,
     why: "근거 없는 단정 (후기 기반이면 후기에서 나온 말임이 드러나게, 제조사 설명이면 \"~라고 소개돼요\")",
+    quoteOk: true,
   },
   { re: /\d[\d,]*\s*원(?![가-힣])|\d+\s*만\s*원/, why: "가격 언급 (가격은 쿠팡에서 확인 안내만)" },
   // 점검 글(닌자 크리스피) 구매 전 확인: "품절이 잦고 공구나 할인에 따라 가격이 바뀌어 구매 시점이 까다로울 수 있어요"
@@ -130,6 +149,11 @@ const BANNED: { re: RegExp; why: string }[] = [
   { re: /(후기|리뷰|댓글|글)\s*\d+\s*(건|개)|\d+\s*(건|개)의?\s*(후기|리뷰|댓글)/, why: "후기·댓글 건수 숫자" },
 ];
 
+// 본문 속 따옴표 인용 (“…” 또는 "…"). 사용자 원문을 옮긴 자리라 일부 검사에서 빼고, checkQuotes 가 원문과 대조한다
+const QUOTE_SPAN = /[“"]([^“”"\n]{2,200})[”"]/g;
+export const quotesIn = (text: string) => [...(text ?? "").matchAll(QUOTE_SPAN)].map((m) => m[1].trim());
+const withoutQuotes = (text: string) => (text ?? "").replace(QUOTE_SPAN, "“”");
+
 function allText(w: WrittenPost): { path: string; text: string }[] {
   const out: { path: string; text: string }[] = [
     { path: "제목", text: w.title },
@@ -140,7 +164,10 @@ function allText(w: WrittenPost): { path: string; text: string }[] {
     else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`));
     else if (v && typeof v === "object") Object.entries(v).forEach(([k, x]) => walk(x, path ? `${path}.${k}` : k));
   };
-  walk(w.content, "");
+  // 칼럼 필드는 수정 단계에 넘기는 JSON(writer.writerJson)처럼 펼친 경로로 ("column.stories[0]" → "stories[0]")
+  const { column, ...rest } = w.content;
+  walk(rest, "");
+  if (column) walk(column, "");
   return out;
 }
 
@@ -209,6 +236,15 @@ function listSections(w: WrittenPost): ListSection[] {
         { name: `${who}단점(products[${i}].cons)`, unit: "항목", items: p.cons.map(bodyOf) },
       ];
     }),
+    ...(c.column
+      ? [
+          { name: "이야기 꼭지 본문(stories[].body)", unit: "꼭지", items: c.column.stories.map((x) => x.body) },
+          { name: "솔직한 단점(downsides[].detail)", unit: "항목", items: c.column.downsides.map((x) => x.detail) },
+          { name: "솔직한 단점 팁(downsides[].tip)", unit: "팁", items: c.column.downsides.map((x) => x.tip) },
+          { name: "이런 분은 사세요(buyIf)", unit: "항목", items: c.column.buyIf },
+          { name: "이런 분은 다른 걸 보세요(skipIf)", unit: "항목", items: c.column.skipIf },
+        ]
+      : []),
   ].filter((s) => s.items.length);
 }
 
@@ -228,6 +264,11 @@ function proseFields(w: WrittenPost): { name: string; text: string }[] {
   (c.buyingGuide ?? []).forEach((g, i) => out.push({ name: `고르는 기준 설명(buyingGuide[${i}].detail)`, text: g.detail }));
   c.faq.forEach((f, i) => out.push({ name: `FAQ 답(faq[${i}].a)`, text: f.a }));
   c.commonComplaints.forEach((x, i) => out.push({ name: `구매 전 확인(commonComplaints[${i}])`, text: x }));
+  c.column?.stories.forEach((x, i) => out.push({ name: `이야기 꼭지 "${x.heading.slice(0, 20)}"(stories[${i}].body)`, text: x.body }));
+  c.column?.downsides.forEach((x, i) => {
+    out.push({ name: `솔직한 단점(downsides[${i}].detail)`, text: x.detail });
+    out.push({ name: `솔직한 단점 팁(downsides[${i}].tip)`, text: x.tip });
+  });
   return out.filter((x) => x.text?.trim());
 }
 
@@ -290,6 +331,7 @@ export function repeatedEvidenceIssues(w: WrittenPost): string[] {
     { name: "도입(intro)", texts: [c.intro] },
     { name: "정리(verdict)", texts: [c.verdict] },
     ...c.products.map((p, i) => ({ name: `${p.name} 후기 문단(products[${i}].review)`, texts: [p.review ?? ""] })),
+    ...(c.column?.stories ?? []).map((x, i) => ({ name: `이야기 꼭지(stories[${i}].body)`, texts: [withoutQuotes(x.body)] })),
   ];
   return units.flatMap(({ name, texts }) => {
     const hits = texts.flatMap((t) => [...(t ?? "").matchAll(EVIDENCE_TAIL)].map((m) => m[0].trim()));
@@ -324,14 +366,263 @@ export function longParagraphIssues(w: WrittenPost): string[] {
   );
 }
 
+// ---------- 칼럼(후기 읽어주는 에디터) 구성 검사 ----------
+// 2026-11-13 사장님 판정 "뻔한 리뷰 나열식"의 원인을 코드로 막는다 (로보락 S10 초안 20261113-c5660c 분석):
+//  - 도입이 "결론부터" 두 문장 → 도입 길이·시작 말·핵심 질문
+//  - 에디터 판정이 없거나 한쪽만 → 사세요/다른 걸 보세요 양쪽
+//  - 같은 사실을 여러 꼭지에서 되풀이 → repeatedFactIssues
+// 구성 부족([구성]) 하한은 목표(COLUMN_GOALS)보다 낮게: 섹션이 비었거나 망가졌는지만 본다 (이유는 MIN_SECTION 주석과 같음).
+export const MIN_COLUMN = {
+  stories: 3, // 이야기 꼭지 수 — 칼럼의 뼈대라 목표(3~4개)의 아래 끝을 하한으로
+  storyChars: 100, // 꼭지 본문 (2~3문장 문단 하나도 못 되는 길이)
+  hookSentences: 3, // 도입: 상황 + 질문 + 방법 한 줄
+  hookChars: 90,
+  people: 2, // 사세요 / 다른 걸 보세요 각각
+};
+// 한 줄 판정 박스 상한 (1~2문장 목표, 휴대폰에서 박스가 길어지면 훑는 독자가 안 읽음)
+const VERDICT_BOX = { sentences: 2, chars: 130 };
+// 도입을 결론으로 여는 말 ("결론부터 말하면", "한마디로", "정리하면")
+const CONCLUSION_OPENING = /^\s*(결론부터|결론은|결론적으로|한마디로|한\s*줄로|정리하면|요약하면|먼저\s*결론)/;
+// 장단점 칩 최대 글자 수 (작성 목표 15자 + 여유)
+const MAX_CHIP_CHARS = COLUMN_GOALS.chipChars + 5;
+
+export function columnIssues(w: WrittenPost): string[] {
+  const c = w.content;
+  const col = c.column;
+  if (!col) return [];
+  const issues: string[] = [];
+  const S = STRUCTURAL;
+
+  // 도입(hook)
+  const hook = c.intro ?? "";
+  const hookSentences = sentencesOf(rawParagraphs(hook).join(" ")).length;
+  if (!hook.trim()) issues.push(`${S}도입(intro) 없음 → 독자의 구체적 상황 + 핵심 질문 + 후기를 모아 읽었다는 한 줄 (${COLUMN_GOALS.hookParagraphs} 짧은 문단)`);
+  else if (hookSentences < MIN_COLUMN.hookSentences || hook.length < MIN_COLUMN.hookChars) {
+    issues.push(`도입(intro)이 ${hookSentences}문장·${hook.length}자로 짧음 → 독자의 구체적 상황(근거의 사용 장면) + 핵심 질문 + 방법 한 줄, ${COLUMN_GOALS.hookParagraphs} 짧은 문단`);
+  }
+  const opening = CONCLUSION_OPENING.exec(hook);
+  if (opening) issues.push(`도입(intro)이 "${opening[0].trim()}"로 시작 → 결론은 판정 박스(summary)에 있으니 도입은 독자의 구체적 상황으로 시작`);
+  if (!col.question.trim()) issues.push(`핵심 질문(question) 없음 → 이 제품을 고민하는 사람이 궁금해할 질문 하나`);
+  else if (hook.trim() && !/[?？]/.test(hook)) issues.push(`도입(intro)에 핵심 질문이 없음 → "${col.question.slice(0, 40)}"를 도입에서 물음으로 던지기`);
+
+  // 한 줄 판정 박스 (summary)
+  const box = sentencesOf(c.summary).length;
+  if (box > VERDICT_BOX.sentences || c.summary.length > VERDICT_BOX.chars) {
+    issues.push(`한 줄 판정(summary)이 ${box}문장·${c.summary.length}자 → ${COLUMN_GOALS.verdictBox}·${VERDICT_BOX.chars}자 이내로 (자세한 이야기는 본문 꼭지에)`);
+  }
+
+  // 이야기 꼭지
+  if (col.stories.length < MIN_COLUMN.stories) issues.push(`${S}이야기 꼭지(stories) ${col.stories.length}개 → ${COLUMN_GOALS.stories} (서로 다른 강점·특징)`);
+  col.stories.forEach((x, i) => {
+    if (x.body.length < MIN_COLUMN.storyChars) issues.push(`${S}이야기 꼭지 "${x.heading.slice(0, 20)}"(stories[${i}].body)가 짧음 → 무엇이 → 왜 중요한지 → 주의점, ${COLUMN_GOALS.storyParagraphs} 짧은 문단`);
+  });
+  const headings = col.stories.map((x) => norm(x.heading));
+  headings.forEach((h, i) => {
+    if (h && headings.indexOf(h) !== i) issues.push(`이야기 꼭지 소제목 "${col.stories[i].heading}"이 겹침 → 꼭지마다 다른 소제목`);
+  });
+
+  // 솔직한 단점
+  if (!col.downsides.length) issues.push(`${S}솔직한 단점(downsides) 없음 → ${COLUMN_GOALS.downsides}, 누구에게 문제인지 + 대처 팁`);
+  col.downsides.forEach((x, i) => {
+    if (!x.tip.trim()) issues.push(`솔직한 단점 "${x.title}"(downsides[${i}].tip)에 대처 팁 없음 → 사용자들이 알려 준 요령이나 살 때 해 볼 확인 행동 하나`);
+  });
+
+  // 에디터 판정: 양쪽 모두
+  for (const [key, label, list] of [
+    ["buyIf", "이런 분은 사세요", col.buyIf],
+    ["skipIf", "이런 분은 다른 걸 보세요", col.skipIf],
+  ] as const) {
+    if (!list.length) issues.push(`${S}에디터 판정 "${label}"(${key}) 없음 → 판정이 한쪽만 있음. 구체적인 사람 ${COLUMN_GOALS.people}`);
+    else if (list.length < MIN_COLUMN.people) issues.push(`에디터 판정 "${label}"(${key})가 ${list.length}개 → 구체적인 사람 ${COLUMN_GOALS.people}`);
+  }
+
+  // 한눈에 보기 칩
+  c.products.forEach((p, i) =>
+    [...p.pros.map((x) => ["pros", x] as const), ...p.cons.map((x) => ["cons", x] as const)].forEach(([k, x]) => {
+      if (x.length > MAX_CHIP_CHARS) issues.push(`장단점 칩(products[${i}].${k}) "${x.slice(0, 20)}…"이 ${x.length}자 → ${COLUMN_GOALS.chipChars}자 이내 짧은 구 (설명은 본문 꼭지에)`);
+    }),
+  );
+
+  issues.push(...repeatedFactIssues(factUnits(w), c.products.map((p) => p.name)));
+  return issues;
+}
+
+// ---------- 같은 사실 반복 (본문 꼭지끼리) ----------
+// 예전 글의 가장 큰 문제: 흡입력·털·저상·문턱을 추천 상황·후기 문단·장단점·정리에서 4번씩 되풀이 (로보락 S10 초안).
+// AI 검수의 topics(같은 내용이 나온 섹션 목록)는 섹션 이름 단위라 거칠고 들쭉날쭉해서, 코드로 문장끼리 직접 비교한다.
+// 같은 사실로 보는 경우 (서로 다른 구역의 두 문장):
+//  1) 같은 수치+단위 ("36,000Pa", "8.8cm") — 수치는 한 곳에서 풀어 주면 된다
+//  2) 핵심 단어(조사 뗀 앞 2글자, 일반어·상품명 제외)가 FACT_SHARED(3)개 이상 겹치고, 짧은 문장 기준 FACT_RATIO(0.4) 이상 겹침
+// 기준값 근거 (2026-11-13 시험):
+//  - 로보락 S10 초안(예전 구성)에서 사장님이 짚은 반복(흡입력 36,000Pa, 소파·침대 밑 저상, 문턱 8.8cm, 털·머리카락)이 모두 잡힘
+//  - 같은 제품의 다른 강점을 이야기하는 정상 칼럼 꼭지끼리는 "머리카락", "청소" 같은 단어가 한두 개 겹칠 뿐이라 잡히지 않음 (qa.test.ts)
+//  - 2개만 겹쳐도 잡으면 "바닥 + 청소" 같은 흔한 짝으로 오탐이 나고, 비율 없이 개수만 보면 긴 문장끼리 우연히 겹친다
+// 칼럼 글에서 비교하는 구역: 이야기 꼭지 각각 + 솔직한 단점 (사용자 인용은 빼고).
+//  도입(상황·질문 제기)·판정 박스·에디터 판정·한눈에 보기(표·칩·FAQ)는 요약이라 짧은 반복을 허용한다.
+const FACT_SHARED = 3;
+const FACT_RATIO = 0.4;
+const MAX_FACT_ISSUES = 4; // 한 번에 너무 많이 넘기면 수정 단계가 글을 통째로 다시 씀
+// 구역 비교에서 빼는 흔한 말 (사실이 아니라 틀)
+const FACT_GENERIC = new Set([
+  "사용자", "사람", "집에", "집이", "집이라", "집에서", "경우", "느끼", "생각", "이런", "그런", "때문", "덕분", "편이", "쪽이",
+  "있어", "없어", "있는", "없는", "좋아", "좋은", "좋다", "많아", "많은", "많았", "부분", "다만", "특히", "그래", "이라", "라면",
+  "하면", "모아", "보면", "핵심", "정도", "수준", "느낌", "하는", "되는", "같은", "보는", "따라", "제품", "중요",
+]);
+
+export type FactUnit = { name: string; texts: string[] };
+
+// 반복 검사에 쓸 구역. 칼럼이면 이야기 꼭지·솔직한 단점, 예전 구성이면 본문 섹션들 (시험·관리용 — lintPost 는 칼럼에만 적용)
+export function factUnits(w: WrittenPost): FactUnit[] {
+  const c = w.content;
+  if (c.column) {
+    return [
+      ...c.column.stories.map((x, i) => ({ name: `이야기 꼭지 "${x.heading.slice(0, 20)}"(stories[${i}])`, texts: [x.body] })),
+      { name: "솔직한 단점(downsides)", texts: c.column.downsides.map((x) => `${x.detail} ${x.tip}`) },
+    ];
+  }
+  return [
+    { name: "결론(summary)", texts: [c.summary] },
+    { name: "잘 맞는 상황(recommendations)", texts: c.recommendations.map((r) => r.reason) },
+    { name: "고르는 기준(buyingGuide)", texts: (c.buyingGuide ?? []).map((g) => g.detail) },
+    ...c.products.map((p, i) => ({ name: `후기 문단(products[${i}].review)`, texts: [p.review ?? ""] })),
+    ...c.products.map((p, i) => ({ name: `장단점(products[${i}])`, texts: [...p.pros, ...p.cons].map(bodyOf) })),
+    { name: "구매 전 확인(commonComplaints)", texts: c.commonComplaints },
+    { name: "정리(verdict)", texts: [c.verdict] },
+  ];
+}
+
+type FactSentence = { unit: number; text: string; stems: Set<string>; nums: Set<string> };
+
+function factSentences(units: FactUnit[], productWords: string[]): FactSentence[] {
+  return units.flatMap((u, unit) =>
+    u.texts.flatMap((t) =>
+      rawParagraphs(withoutQuotes(t)).flatMap(sentencesOf).map((text) => ({
+        unit,
+        text,
+        // 문장부호를 떼고 단어를 뽑는다 (문장 끝 "있어요."처럼 마침표가 붙으면 조사·어미가 안 떨어짐)
+        // 한글 단어는 앞 2글자로 비교해 활용형 차이("들어가는"·"들어간다", "몸체가"·"몸체라도")를 흡수한다 (grounding.coverage 와 같은 방식)
+        stems: new Set(
+          keyTokens(text.replace(/[.,!?·]/g, " "), productWords)
+            .filter((x) => !FACT_GENERIC.has(x) && !/^\d/.test(x))
+            .map((x) => (/[가-힣]/.test(x) ? x.slice(0, 2) : x))
+            .filter((x) => !FACT_GENERIC.has(x)),
+        ),
+        nums: numbersIn(text),
+      })),
+    ),
+  );
+}
+
+export type RepeatedFact = { a: string; b: string; units: [string, string]; why: string };
+
+export function repeatedFacts(units: FactUnit[], productNames: string[] = []): RepeatedFact[] {
+  const sentences = factSentences(units, productWordsOf(productNames));
+  const found: RepeatedFact[] = [];
+  const seenPair = new Set<string>();
+  for (let i = 0; i < sentences.length; i++) {
+    for (let j = i + 1; j < sentences.length; j++) {
+      const A = sentences[i];
+      const B = sentences[j];
+      if (A.unit === B.unit) continue;
+      const pair = `${A.unit}:${B.unit}`;
+      const sameNum = [...A.nums].find((n) => B.nums.has(n));
+      const shared = [...A.stems].filter((x) => B.stems.has(x));
+      const small = Math.min(A.stems.size, B.stems.size);
+      const sameClaim = shared.length >= FACT_SHARED && small > 0 && shared.length / small >= FACT_RATIO;
+      if (!sameNum && !sameClaim) continue;
+      // 같은 두 구역 사이에서는 한 번만 알린다 (같은 반복을 문장마다 지적하면 수정이 흔들림)
+      const key = `${pair}:${sameNum ?? shared.slice(0, 2).join(",")}`;
+      if (seenPair.has(key)) continue;
+      seenPair.add(key);
+      found.push({
+        a: A.text,
+        b: B.text,
+        units: [units[A.unit].name, units[B.unit].name],
+        why: sameNum ? `같은 수치 ${sameNum.replace(/[a-z가-힣]+$/, "")}` : `같은 말 ${shared.slice(0, 4).join("·")}`,
+      });
+    }
+  }
+  return found;
+}
+
+export function repeatedFactIssues(units: FactUnit[], productNames: string[] = []): string[] {
+  return repeatedFacts(units, productNames)
+    .slice(0, MAX_FACT_ISSUES)
+    .map(
+      (f) =>
+        `같은 사실 반복(${f.why}): ${f.units[0]} "${f.a.slice(0, 40)}…" ↔ ${f.units[1]} "${f.b.slice(0, 40)}…" → ` +
+        `더 자세히 다룬 한 곳에만 남기고 다른 곳에서는 그 문장을 빼거나 그 꼭지만의 다른 내용으로 (같은 사실은 본문에서 한 번만 깊게)`,
+    );
+}
+
+// ---------- 따옴표 인용 대조 ----------
+// 칼럼은 실제 사용자 말을 따옴표로 살린다 → 인용은 지어내면 바로 거짓말이 된다.
+// 대조 대상(quoteSource): 원자료(후기·댓글·영상 설명 전부) + 후기 분석의 사용 장면 "원문"(이미 원자료와 대조됨).
+//  후기 분석의 요약 문장(장점·단점 목록)은 사용자 말이 아니라서 넣지 않는다.
+// 기준: grounding.quoteFound 를 장면 인용과 같은 0.8 로 (글자 그대로 옮기라고 했으므로 검수 일반 기준 0.6보다 엄격).
+// 본문 속 따옴표는 강조용 짧은 말("직배수형")이 많아 핵심 글자 8자 이상인 것만 사용자 말로 본다.
+const QUOTE_MATCH_RATIO = 0.8;
+const MIN_INLINE_QUOTE = 8;
+
+export function quoteSourceOf(research: ProductResearch[], digests: (ProductDigest | null)[]): string {
+  return research
+    .map((r, i) =>
+      [
+        ...r.reviews.map((x) => `${x.title} ${x.text}`),
+        ...r.comments,
+        ...r.videoNotes.map((x) => x.text),
+        ...(digests[i]?.scenes ?? []).map((x) => x.quote),
+      ].join("\n"),
+    )
+    .join("\n");
+}
+
+export function checkQuotes(w: WrittenPost, quoteSource: string): string[] {
+  const col = w.content.column;
+  if (!col) return [];
+  const src = norm(quoteSource);
+  const issues: string[] = [];
+  col.stories.forEach((x, i) => {
+    if (x.quote?.trim() && !quoteFound(x.quote, src, QUOTE_MATCH_RATIO)) {
+      issues.push(`stories[${i}].quote: 인용 "${x.quote.slice(0, 40)}"이 후기 원문에 없음(지어냄 의심) → 원문 그대로 바꾸거나 인용을 지우기(빈 문자열)`);
+    }
+  });
+  for (const { path, text } of allText(w)) {
+    if (/\.quote$/.test(path)) continue;
+    for (const q of quotesIn(text)) {
+      if (norm(q).length < MIN_INLINE_QUOTE) continue;
+      if (!quoteFound(q, src, QUOTE_MATCH_RATIO)) {
+        issues.push(`${path}: 따옴표 인용 "${q.slice(0, 40)}"이 후기 원문에 없음 → 원문 그대로 바꾸거나 따옴표를 빼고 풀어 쓰기`);
+      }
+    }
+  }
+  return [...new Set(issues)];
+}
+
+// 참고(수정 대상 아님): 이야기 꼭지 문장 대부분이 "~평이에요/~쪽이에요/~라고 해요"로 한발 빼면 글쓴이가 안 보인다.
+// 고치라고 넘기면 단정 문장(BANNED)으로 바뀔 위험이 있어 관리자 참고로만 남긴다.
+const HEDGE_ENDING = /(평이에요|쪽이에요|편이에요|다고\s*해요|라고\s*해요|꼽혀요|반응이에요|평가예요)[.!]?$/;
+const HEDGE_NOTE_RATIO = 0.5;
+export function hedgeNotes(w: WrittenPost): string[] {
+  const col = w.content.column;
+  if (!col) return [];
+  const sentences = col.stories.flatMap((x) => rawParagraphs(withoutQuotes(x.body)).flatMap(sentencesOf));
+  const hedged = sentences.filter((x) => HEDGE_ENDING.test(x)).length;
+  return sentences.length >= 6 && hedged / sentences.length >= HEDGE_NOTE_RATIO
+    ? [`[참고] 이야기 꼭지 문장 ${sentences.length}개 중 ${hedged}개가 "~평이에요/~쪽이에요/~라고 해요"로 끝남 — 글쓴이 판정이 약함`]
+    : [];
+}
+
 export function lintPost(w: WrittenPost, productCount: number): string[] {
   const issues: string[] = [];
   const c: ShopPostContent = w.content;
 
   if (hasHanja(w)) issues.push("한자·중국어 문자가 섞여 있음 → 한국어로");
   for (const { path, text } of allText(w)) {
+    const isQuoteField = /\.quote$/.test(path);
     for (const b of BANNED) {
-      const m = b.re.exec(text);
+      if (b.quoteOk && isQuoteField) continue;
+      const m = b.re.exec(b.quoteOk ? withoutQuotes(text) : text);
       if (m) issues.push(`${path}: ${b.why} ("${m[0]}") → 삭제하거나 고쳐 쓰기`);
     }
   }
@@ -390,7 +681,10 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     const name = p.name || `제품 ${i + 1}`;
     if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
     if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
-    if (!p.review || p.review.length < MIN_SECTION.reviewChars) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → ${SECTION_GOALS.review}`);
+    // 칼럼 글은 후기 문단 대신 이야기 꼭지 (columnIssues 가 검사)
+    if (!c.column && (!p.review || p.review.length < MIN_SECTION.reviewChars)) {
+      issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → ${SECTION_GOALS.review}`);
+    }
     if (p.pros.length > MAX_POINTS) issues.push(`${name}: 장점 ${p.pros.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
     if (p.cons.length > MAX_POINTS) issues.push(`${name}: 단점 ${p.cons.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
     // 엇갈리는 의견은 장단점 칸이 아니라 한 곳(고르는 기준·구매 전 확인)에서 (점검 4·10번)
@@ -421,7 +715,10 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
     if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
   });
-  if ((c.buyingGuide?.length ?? 0) < MIN_SECTION.buyingGuide) issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → ${SECTION_GOALS.buyingGuide}`);
+  if (!c.column && (c.buyingGuide?.length ?? 0) < MIN_SECTION.buyingGuide) {
+    issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → ${SECTION_GOALS.buyingGuide}`);
+  }
+  issues.push(...columnIssues(w));
   if (productCount === 1 && c.recommendations.some((r) => r.pick !== 0)) issues.push("단일 글인데 추천 상품 번호가 0이 아님");
 
   // 섹션 중복: "구매 전 확인할 점"이 단점을 되풀이하면 안 됨
@@ -519,6 +816,7 @@ export function checkNumbers(w: WrittenPost, evidence: string): string[] {
 // 글을 섹션 이름이 붙은 덩어리로 (AI 가 섹션을 같은 이름으로 가리키게)
 function sectionsOf(w: WrittenPost): { name: string; text: string }[] {
   const c = w.content;
+  if (c.column) return columnSectionsOf(w);
   const multi = c.products.length > 1;
   const per = (f: (p: (typeof c.products)[number]) => string) =>
     c.products.map((p) => (multi ? `[${p.name}] ` : "") + f(p)).join("\n");
@@ -536,6 +834,30 @@ function sectionsOf(w: WrittenPost): { name: string; text: string }[] {
     { name: "구매 전 확인", text: c.commonComplaints.join("\n") },
     { name: "FAQ", text: c.faq.map((f) => `Q. ${f.q} A. ${f.a}`).join("\n") },
     { name: "정리", text: c.verdict },
+  ].filter((s) => s.text.trim());
+}
+
+// 칼럼 글의 AI 검수 구역 (화면 순서). 새 필드(핵심 질문·이야기 꼭지·인용·솔직한 단점·에디터 판정)도 모두 근거 검사를 받는다
+function columnSectionsOf(w: WrittenPost): { name: string; text: string }[] {
+  const c = w.content;
+  const col = c.column!;
+  const p = c.products[0];
+  return [
+    { name: "제목", text: `${w.title}\n${w.description}` },
+    { name: "도입", text: `${col.question}\n${c.intro}` },
+    { name: "판정", text: c.summary },
+    ...col.stories.map((x, i) => ({
+      name: `이야기 ${i + 1}`,
+      text: `${x.heading}\n${x.body}${x.quote ? `\n사용자 인용: "${x.quote}"` : ""}`,
+    })),
+    { name: "솔직한 단점", text: col.downsides.map((x) => `${x.title}: ${x.detail} / 팁: ${x.tip}`).join("\n") },
+    {
+      name: "에디터 판정",
+      text: [c.verdict, ...col.buyIf.map((x) => `사세요: ${x}`), ...col.skipIf.map((x) => `다른 걸 보세요: ${x}`)].join("\n"),
+    },
+    { name: "표", text: c.comparison.map((r) => `${r.label}: ${r.values.join(" / ")}`).join("\n") },
+    { name: "장단점 요약", text: p ? `${p.oneLiner}\n장점: ${p.pros.join(" / ")}\n단점: ${p.cons.join(" / ")}` : "" },
+    { name: "FAQ", text: c.faq.map((f) => `Q. ${f.q} A. ${f.a}`).join("\n") },
   ].filter((s) => s.text.trim());
 }
 
@@ -615,11 +937,15 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[], p
       issues.push(`${c.section}: "${c.claim}" — 근거로 든 문장이 자료에 없음(지어냄 의심) → 삭제하거나 자료에 있는 내용으로`);
     }
   }
+  const rule = topicRule(sectionNames);
+  const column = rule.notCounted === COLUMN_TOPIC.notCounted;
   for (const t of a.topics ?? []) {
-    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
-    if (secs.length > MAX_TOPIC_SECTIONS_BEFORE_FIX) {
+    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !rule.notCounted.has(x)))];
+    if (secs.length > rule.fix) {
       issues.push(
-        `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 장단점과 결론·정리에만 남기고, 나머지 섹션에서는 그 문장을 빼거나 그 섹션 역할에 맞는 다른 정보로`,
+        column
+          ? `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 가장 자세히 다룬 이야기 꼭지 한 곳에만 남기고, 다른 곳에서는 그 문장을 빼거나 짧게 가리키기만`
+          : `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 장단점과 결론·정리에만 남기고, 나머지 섹션에서는 그 문장을 빼거나 그 섹션 역할에 맞는 다른 정보로`,
       );
     }
   }
@@ -636,9 +962,10 @@ export function repetitionNotes(a: Audit, sectionNames: string[]): string[] {
   const minor = (a.others ?? [])
     .filter((o) => !NO_FIX_NEEDED.test(`${o.problem} ${o.fix}`) && !isRealProblem(o.problem))
     .map((o) => `[참고] ${o.section}: ${o.problem.slice(0, 80)}`);
+  const rule = topicRule(sectionNames);
   return [...minor, ...(a.topics ?? []).flatMap((t) => {
-    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
-    return secs.length > MAX_TOPIC_SECTIONS && secs.length <= MAX_TOPIC_SECTIONS_BEFORE_FIX
+    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !rule.notCounted.has(x)))];
+    return secs.length > rule.note && secs.length <= rule.fix
       ? [`[참고] "${t.topic}"이 ${secs.length}곳에 나옴 (${secs.join(", ")})`]
       : [];
   })];
@@ -682,11 +1009,11 @@ ${evidence}`;
 }
 
 // ---------- 4) 검수 → 수정 반복 ----------
-async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, evidence: string) {
+async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, evidence: string, quoteSource: string) {
   const ai = await aiAudit(secrets, w, evidence);
   return {
-    issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...(ai?.issues ?? [])],
-    notes: ai?.notes ?? [],
+    issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...checkQuotes(w, quoteSource), ...(ai?.issues ?? [])],
+    notes: [...hedgeNotes(w), ...(ai?.notes ?? [])],
     aiChecked: ai !== null,
   };
 }
@@ -701,6 +1028,7 @@ export async function reviewAndFix(
   digests: (ProductDigest | null)[],
 ): Promise<{ post: WrittenPost; qa: ShopPostQa }> {
   const evidence = buildEvidence(research, digests);
+  const quoteSource = quoteSourceOf(research, digests);
   const n = research.length;
   // 기계적으로 고칠 수 있는 것은 검사 전에 코드로 (AI 수정 후에도 다시)
   const fixed = (w: WrittenPost) => {
@@ -709,7 +1037,7 @@ export async function reviewAndFix(
     return r.post;
   };
   let post = fixed(written);
-  let check = await checkAll(secrets, post, n, evidence);
+  let check = await checkAll(secrets, post, n, evidence, quoteSource);
   const found = check.issues.length;
   let revisions = 0;
 
@@ -731,7 +1059,7 @@ export async function reviewAndFix(
       break;
     }
     revisions++;
-    check = await checkAll(secrets, post, n, evidence);
+    check = await checkAll(secrets, post, n, evidence, quoteSource);
     log(`수정 ${revisions}회 후 재검수`);
     if (issueScore(check.issues) < issueScore(best.check.issues)) best = { post, check };
   }

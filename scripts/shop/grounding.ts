@@ -24,7 +24,7 @@ const PARTICLE = /(으로|에서|에게|까지|부터|이나|이라|하고|해�
 const GENERIC = new Set(["후기", "의견", "언급", "평가", "제품", "소개", "정도", "경우", "사용", "기준", "많다", "있어", "없어", "블로그", "댓글"]);
 const WINDOW = 300;
 
-function keyTokens(claim: string, exclude: string[]): string[] {
+export function keyTokens(claim: string, exclude: string[]): string[] {
   const out = new Set<string>();
   for (const raw of claim.toLowerCase().match(/[가-힣a-z0-9.~]+/g) ?? []) {
     const t = norm(raw.replace(PARTICLE, ""));

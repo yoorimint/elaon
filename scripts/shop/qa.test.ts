@@ -4,15 +4,17 @@
 import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
+import { digestBlock, groundedScenes, type ProductDigest } from "./digest";
+import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
-import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
-import { generate } from "./providers/llm";
+import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
-import type { WrittenPost } from "./writer";
+import { buildEvidence, type WrittenPost } from "./writer";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -275,6 +277,121 @@ async function main() {
     assert.ok(issuesWith(3).some((x) => x.includes("한쪽만 확인된 항목이 3개")));
     const named = autoFix({ ...two, content: { ...two.content, comparison: [{ label: "모델명", values: ["SM-R630N", "확인 안 됨"] }, ...rows(0)] } });
     assert.ok(!named.post.content.comparison.some((r) => r.label === "모델명"));
+  });
+  await test("글 쓰기 전 근거 검사: 상품마다 스펙·장단점이 얇으면 쓰지 않음 (스펙 이름이 서로 달라도 각자 충분하면 씀)", () => {
+    const digest = (specs: string[], points: number): ProductDigest => ({
+      summary: "",
+      strengths: Array.from({ length: points }, (_, i) => ({ point: `장점${i}`, mentions: 1 })),
+      weaknesses: [],
+      complaints: [],
+      specs: specs.map((label) => ({ label, value: "x" })),
+      buyerQuestions: [],
+      bestFor: "",
+      conflicts: [],
+      tips: [],
+      scenes: [],
+    });
+    const rich = digest(["소비전력", "무게", "물통 용량", "소음"], 6);
+    assert.deepEqual(evidenceGaps(["A"], [rich]), []);
+    assert.ok(evidenceGaps(["A"], [digest(["무게"], 6)])[0].includes("스펙 1개"));
+    assert.ok(evidenceGaps(["A"], [digest(["무게", "소음", "색상", "크기"], 2)])[0].includes("장단점 2개"));
+    assert.ok(evidenceGaps(["A"], [null])[0].includes("분석 실패"));
+    // 비교: 점검 실행 50 — 스펙 이름이 제품마다 달라 공통 항목으로 막으면 쓸 수 있는 짝까지 막힘
+    const differentNames = digest(["블루투스 버전", "재생 시간", "무게", "방수 등급"], 6);
+    assert.deepEqual(evidenceGaps(["A", "B"], [rich, differentNames]), []);
+    assert.ok(evidenceGaps(["A", "B"], [rich, digest(["무게"], 6)]).some((x) => x.startsWith("B: 스펙 1개")));
+  });
+  // ---- 2026-11-13 운영자 분석: 글이 보고서처럼 딱딱함 (사용 장면 누락·같은 말꼬리 반복) ----
+  await test("후기 분석의 사용 장면(scenes)이 작성 근거(digestBlock·buildEvidence)에 들어감", () => {
+    const scene = "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자";
+    const d: ProductDigest = {
+      summary: "조용하다는 평가", strengths: [], weaknesses: [], complaints: [], specs: [], buyerQuestions: [],
+      bestFor: "", conflicts: [], tips: [], scenes: [scene],
+    };
+    const block = digestBlock(d);
+    assert.ok(block.includes("실제 사용 장면"), block);
+    assert.ok(block.includes(`- ${scene}`), block);
+    assert.ok(digestBlock({ ...d, scenes: [] }).includes("실제 사용 장면 (후기 원문에 나온 그대로 — 글에 옮길 때 시간·장소·감정을 덧붙이지 말 것):\n(없음)"));
+    const r = { product: { name: "케어팟 X50V", link: "" }, reviews: [], comments: [], videoNotes: [], news: [], webSummary: null } as unknown as ProductResearch;
+    assert.ok(buildEvidence([r], [d]).includes(scene), "작성·검수·수정이 보는 근거 자료에도 장면이 있어야 함");
+  });
+  await test("사용 장면: 원자료에서 확인되는 장면만 남기고 지어낸 장면은 버림", () => {
+    const raw = `# 케어팟 X50V
+- [블로그] 한 달 후기: 아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.
+- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.`;
+    const scenes = groundedScenes(
+      [
+        "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자",
+        "주말마다 수조를 통째로 분리해 베이킹소다로 닦는데 10분이면 끝난다는 사용자",
+        "캠핑장 텐트 안에서 밤새 틀어도 결로가 생기지 않았다는 사용자",
+      ],
+      raw,
+      "케어팟 X50V",
+    );
+    assert.equal(scenes.length, 2, scenes.join("\n"));
+    assert.ok(!scenes.some((s) => s.includes("캠핑")), "원자료에 없는 장면");
+  });
+  await test("같은 말꼬리('~라는 의견이 많아요') 반복 검출, 표현을 바꿔 쓴 글은 통과", () => {
+    const w = structuredClone(real);
+    const p = w.content.products[0];
+    p.pros = [
+      "세척: 통세척이 쉽다는 의견이 많아요",
+      "위생: 스테인리스 수조라 깨끗하다는 평이 많아요",
+      "안전: 저온 가열이라 안심된다는 후기가 있어요",
+      "용량: 하룻밤 넉넉하다는 의견이 많은 편이에요",
+    ];
+    p.cons = ["작동 중단: 물이 남아도 멈춘다는 불만이 있어요", "온도: 미지근하다는 반응이 자주 보여요"];
+    w.content.verdict = "관리가 편하다는 평가가 많아요. 아이 있는 집에 맞다는 의견이 많아요.";
+    const issues = repeatedEndingIssues(w);
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("7번") && issues[0].includes("6번 이하"), issues[0]);
+    assert.ok(issues[0].includes("products.pros"), "어느 섹션인지 알려줘야 수정이 정확함");
+    assert.ok(lintPost(w, 1).some((x) => x.includes("말꼬리")), "lintPost 에도 포함");
+    // '~다고 해요'로 몰아 바꾼 것도 같은 문제
+    const tellMe = structuredClone(real);
+    tellMe.content.products[0].pros = ["a: 좋다고 해요", "b: 편하다고 해요", "c: 조용하다고 해요", "d: 가볍다고 해요"];
+    tellMe.content.verdict = "깨끗하다고 해요. 넉넉하다고 해요. 쉽다고 해요.";
+    assert.ok(repeatedEndingIssues(tellMe).some((x) => x.includes("~다고 해요") && x.includes("7번")));
+    // 정상: 근거 표시는 남기되 끝맺음이 다양함
+    const varied = structuredClone(real);
+    varied.content.products[0].pros = [
+      "세척: 후기를 보면 통세척이 쉽다는 의견이 많아요",
+      "위생: 스테인리스 수조라 물때 걱정이 덜해요",
+      "안전: 저온 가열이라 아이 방에 두기 편하다고 해요",
+      "용량: 하룻밤 쓰기에 넉넉한 편으로 꼽혀요",
+    ];
+    assert.deepEqual(repeatedEndingIssues(varied), []);
+  });
+  await test("코드 검사: 블로그 수집 경로·장단점 5개·장단점 칸의 엇갈림·문장형 표 값·'확인하세요' 과다", () => {
+    const w = structuredClone(real);
+    const p = w.content.products[0];
+    w.content.faq = [{ q: "몇 개까지 되나요?", a: "일부 블로그에서는 2개까지 가능하다고 안내해요." }];
+    p.cons = ["센서 · 반응이 느리다는 평과 반대로 민감하다는 평도 있어요.", "무게 · 무거워요"];
+    p.pros = ["a · 1", "b · 2", "c · 3", "d · 4", "e · 5"];
+    w.content.comparison = [{ label: "소음", values: ["조용하다는 평"] }, { label: "용량", values: ["6.3L"] }];
+    w.content.verdict = "확인하세요. 확인해 보세요. 확인이 필요해요. 확인하세요. 확인해 두세요. 확인하세요.";
+    const issues = lintPost(w, 1);
+    const has = (s: string) => issues.some((x) => x.includes(s));
+    assert.ok(has("수집 경로"), "블로그 수집 경로");
+    const tagged = structuredClone(real);
+    tagged.content.comparison = [{ label: "소음", values: ["23.4dB(블로그)"] }];
+    tagged.content.summary = "블로그 기준 23.4dB로 소개돼요.";
+    const tIssues = lintPost(tagged, 1);
+    assert.ok(tIssues.some((x) => x.startsWith("comparison[0]") && x.includes("수집 경로")), "(블로그) 표기");
+    assert.ok(tIssues.some((x) => x.startsWith("summary") && x.includes("수집 경로")), "블로그 기준");
+    assert.ok(has("장점 5개"), "장점 상한");
+    assert.ok(has("엇갈리는 의견은 장단점 칸에서 빼고"), "장단점 칸 엇갈림");
+    assert.ok(has('"조용하다는 평"'), "문장형 표 값");
+    assert.ok(!has('"6.3L"'), "짧은 값은 통과");
+    const ok = structuredClone(real);
+    ok.content.comparison = [{ label: "방수", values: ["확인 필요"] }, { label: "소음", values: ["조용함"] }];
+    assert.ok(!lintPost(ok, 1).some((x) => x.includes("문장 말고")), "'확인 필요'는 문장이 아님 (오탐 방지)");
+    assert.ok(has("안내가 6번"), "확인하세요 과다");
+  });
+  await test("자동 교정: '엇갈려요, 그래서' → 마침표, '필요, 중요,'는 그대로", () => {
+    const w = structuredClone(real);
+    w.content.summary = "의견이 엇갈려요, 그래서 확인이 필요해요. 확인 필요, 중요, 순서예요.";
+    assert.equal(autoFix(w).post.content.summary, "의견이 엇갈려요. 그래서 확인이 필요해요. 확인 필요, 중요, 순서예요.");
   });
   await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
     const w = structuredClone(real);
@@ -559,6 +676,9 @@ async function main() {
   ];
   clean.content.products[0].pros.push("관리: 통세척이 가능해요");
   clean.content.products[0].review += " 위생 관리가 쉽다는 의견이 많아요.";
+  await test("실제 초안 수정본(근거 표시 3번)은 말꼬리 반복 검사에 걸리지 않음", () => {
+    assert.deepEqual(repeatedEndingIssues(clean), []);
+  });
 
   const models = (names: string[]) =>
     new Response(JSON.stringify({ models: names.map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ["generateContent"] })) }));
@@ -689,6 +809,100 @@ async function main() {
     );
     claudeFails = false;
   });
+
+  // ---- Gemini 과부하(503·응답 지연)면 기다리지 않고 Claude 로 (2026-11 실행 22분 사례) ----
+  {
+    const baseFetch = globalThis.fetch;
+    let busy: Record<string, "503" | "slow"> = {}; // 모델별 가짜 상태 (없으면 정상 응답)
+    globalThis.fetch = (async (url: string, init?: { body?: string; signal?: AbortSignal }) => {
+      const model = /models\/([^:]+):generateContent/.exec(String(url))?.[1];
+      if (!model) return baseFetch(url, init as RequestInit); // 모델 목록·Claude 는 위 가짜 응답 그대로
+      calls.push(model);
+      if (busy[model] === "503") {
+        return new Response(JSON.stringify({ error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }), { status: 503 });
+      }
+      if (busy[model] === "slow") {
+        // 응답하지 않다가 timeoutMs 가 지나 끊김.
+        // AbortSignal.timeout 타이머는 프로세스를 붙잡지 않아서, 대기 타이머를 따로 둬야 테스트가 중간에 조용히 끝나지 않는다
+        return new Promise<Response>((_, reject) => {
+          const hold = setTimeout(() => reject(new Error("가짜 지연 응답이 끊기지 않음")), 10_000);
+          init!.signal!.addEventListener("abort", () => {
+            clearTimeout(hold);
+            reject(init!.signal!.reason);
+          });
+        });
+      }
+      return reply({ issues: [] });
+    }) as typeof fetch;
+    const both = { GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" } as never;
+    const geminiOnly = { GEMINI_API_KEY: "x" } as never;
+    const fresh = (state: typeof busy) => {
+      resetRunState();
+      busy = state;
+      calls.length = 0;
+    };
+
+    await test("Gemini 503 한 번 → 다음 Gemini 모델·재시도 없이 바로 Claude", async () => {
+      fresh({ "gemini-3.6-flash": "503", "gemini-3.5-flash-lite": "503" });
+      const r = await generate(both, "작성");
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`]);
+    });
+    await test("Gemini 응답 지연도 과부하 → 바로 Claude (지연 모델은 이번 실행에서 제외)", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(both, "작성", { timeoutMs: 30 });
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`]);
+    });
+    await test("과부하 2번 누적 → 이번 실행의 다음 호출은 Gemini 시도 없이 Claude", async () => {
+      fresh({ "gemini-3.6-flash": "503", "gemini-3.5-flash-lite": "503" });
+      await generate(both, "작성 1");
+      await generate(both, "작성 2");
+      calls.length = 0;
+      busy = {}; // Gemini 가 회복돼도 이번 실행은 Claude 유지
+      const r = await generate(both, "작성 3");
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, [`claude:${CLAUDE_MODEL}`]);
+    });
+    await test("과부하 1번이면 다음 호출은 다시 Gemini 부터 (실행 상태 초기화도 확인)", async () => {
+      fresh({ "gemini-3.6-flash": "503" });
+      await generate(both, "작성 1");
+      busy = {};
+      calls.length = 0;
+      const r = await generate(both, "작성 2");
+      assert.equal(r.model, "gemini-3.6-flash");
+      assert.deepEqual(calls, ["gemini-3.6-flash"]);
+    });
+    await test("Claude 키가 없으면 과부하여도 예전처럼 다음 Gemini 모델 시도", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(geminiOnly, "작성", { timeoutMs: 30 });
+      assert.equal(r.model, "gemini-3.5-flash-lite");
+      assert.deepEqual(calls, ["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
+      // 과부하가 쌓여도 Claude 가 없으니 계속 Gemini
+      await generate(geminiOnly, "작성", { timeoutMs: 30 });
+      assert.ok(!calls.some((c) => c.startsWith("claude:")), calls.join(","));
+    });
+    await test("과부하로 Claude 에 넘겼는데 Claude 도 실패하면 남은 Gemini 모델로 다시 시도", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      claudeFails = true;
+      try {
+        const r = await generate(both, "작성", { timeoutMs: 30 });
+        assert.equal(r.model, "gemini-3.5-flash-lite");
+        assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`, "gemini-3.5-flash-lite"]);
+      } finally {
+        claudeFails = false;
+      }
+    });
+    await test("구글 검색 그라운딩 호출은 Claude 가 대신 못 하니 과부하여도 다음 Gemini 모델", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(both, "검색", { googleSearch: true, timeoutMs: 30 });
+      assert.equal(r.model, "gemini-3.5-flash-lite");
+      assert.ok(!calls.some((c) => c.startsWith("claude:")), calls.join(","));
+    });
+
+    globalThis.fetch = baseFetch;
+    resetRunState();
+  }
   await test("AI 검수를 못 하면 '통과'가 아니라 aiChecked=false", async () => {
     const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, clean, research, [null]);
     assert.equal(r.qa.aiChecked, false);

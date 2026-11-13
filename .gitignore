@@ -5,3 +5,6 @@ out/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+
+# 에이전트 작업 사본(worktree) 등 Claude 작업용 폴더
+.claude/

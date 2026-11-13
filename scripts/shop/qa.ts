@@ -11,6 +11,7 @@
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
 import { autoFix, isUnknownValue } from "./autofix";
 import type { ProductDigest } from "./digest";
+import { locallySupported, norm, productWordsOf, quoteFound } from "./grounding";
 import { hasHanja } from "./hanja";
 import { generationMentions } from "./names";
 import { generate } from "./providers/llm";
@@ -18,7 +19,32 @@ import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
 import { buildEvidence, revisePost, type WrittenPost } from "./writer";
 
+export { locallySupported, quoteFound };
+
 const MAX_REVISIONS = 2;
+// 제품별 장점·단점 최대 개수 (작성 규칙 3~4개)
+const MAX_POINTS = 4;
+const MIXED_OPINION = /엇갈|상반된|반대로\s*[가-힣]*\s*(평|의견)|의견이\s*나뉘/;
+const SENTENCE_VALUE = /다는\s*(평|의견|후기)|(평|의견|후기)이\s*(많|있)|(?<![필중])요\.?$|다\.?$/;
+const CHECK_PHRASE = /확인(하세요|해\s?보세요|해\s?두세요|하는\s*(것이|게)\s*좋|이\s*필요|하시)/g;
+const MAX_CHECK_PHRASES = 5;
+// 같은 꼴의 말꼬리 반복 — 문장마다 "~라는 의견이 많아요"가 붙으면 보고서처럼 읽힌다 (운영자 분석 2026-11-13).
+// 한 꼴이 글 전체에서 MAX_SAME_ENDING 번을 넘으면 지적한다. 기준 6번의 이유:
+// - 단일 글은 문장이 약 50~70개이고, 후기를 근거로 드는 자리(장단점 6~8개·후기 문단·FAQ 4~6개·고르는 기준)가 20곳 넘게 있다.
+//   예전 규칙(가독성 예시 "~다는 평이 많아요")대로면 그 대부분에 같은 꼬리가 붙어 10번을 쉽게 넘는다.
+// - 6번이면 굵직한 섹션마다 한 번꼴로 근거 표시를 남길 수 있다. 이보다 낮추면 근거 표시 자체를 빼다
+//   단정 문장(BANNED "근거 없는 단정")으로 바뀔 위험이 커진다.
+// - 회귀 테스트의 실제 초안(케어팟 X50V) 수정본은 3번 — 정상 글이 걸리지 않는다.
+// 작성 규칙(writer.ts COMMON_RULES 22번)도 같은 값으로 안내하므로 바꿀 때 함께 바꾼다.
+const MAX_SAME_ENDING = 6;
+const REPEATED_ENDINGS: { re: RegExp; label: string }[] = [
+  {
+    re: /(라는|다는)\s*(의견|평가|평|후기|반응|이야기|얘기)(이|가|도)\s*(많아요|많은\s*편이에요|많습니다|대부분이에요|있어요|있습니다|자주\s*보여요|많이\s*보여요|꽤\s*있어요|적지\s*않아요)/g,
+    label: "~다는 의견·평·후기가 많아요/있어요",
+  },
+  // 위 꼴을 피하려다 이쪽으로 몰리는 것도 같은 문제 (반복만 막고 표현은 허용)
+  { re: /(다|라)고\s*(해요|합니다)/g, label: "~다고 해요" },
+];
 // 비교표에서 한 제품만 값이 있는 행 허용 개수
 const MAX_ONE_SIDED_ROWS = 2;
 // 검색 결과에서 잘리지 않는 제목 길이
@@ -50,7 +76,7 @@ const BANNED: { re: RegExp; why: string }[] = [
   { re: /않음이에요|않음입니다/, why: "어색한 문장 (\"확인되지 않아요\"처럼)" },
   // run #34: 표에 "품질보증 5년(웹문서 기재)" — 수집 경로 이야기
   {
-    re: /웹\s?문서|검색\s*결과(에서|에|로)|수집(한|된)\s*(후기|정보|글)/,
+    re: /웹\s?문서|검색\s*결과(에서|에|로)|수집(한|된)\s*(후기|정보|글)|(블로그|카페|커뮤니티)\s*(글)?(에서는|에서|에는|마다|기준|표기)|\(\s*(블로그|카페)\s*\)/,
     why: "수집 경로 이야기는 독자에게 의미 없음 (\"판매처 표기 기준\", \"후기에서는\"처럼)",
   },
   // run #34: 단일 상품 글 FAQ 에 "세탁이 어렵다는 다른 제품 후기도 있어서"
@@ -64,7 +90,7 @@ const BANNED: { re: RegExp; why: string }[] = [
   },
   {
     re: /(위험|걱정|문제)(은|이|가)?\s*(전혀\s*)?없|전혀|완벽(하|히|한|해)|절대(로)?\s|100\s*%/,
-    why: "근거 없는 단정 (후기 기반이면 \"~라는 의견이 많아요\")",
+    why: "근거 없는 단정 (후기 기반이면 후기에서 나온 말임이 드러나게, 제조사 설명이면 \"~라고 소개돼요\")",
   },
   { re: /\d[\d,]*\s*원(?![가-힣])|\d+\s*만\s*원/, why: "가격 언급 (가격은 쿠팡에서 확인 안내만)" },
   { re: /(후기|리뷰|댓글|글)\s*\d+\s*(건|개)|\d+\s*(건|개)의?\s*(후기|리뷰|댓글)/, why: "후기·댓글 건수 숫자" },
@@ -105,6 +131,20 @@ export function isNonAnswer(answer: string): boolean {
   const sentences = answer.split(/(?<=[.!?요다])\s+/).map((x) => x.trim()).filter(Boolean);
   const informative = sentences.filter((x) => !/확인되지 않|확인 안 됨|확인해\s*보|확인하세요|참고해\s*보|살펴보세요|고려해\s*보세요/.test(x));
   return informative.length === 0;
+}
+
+// 같은 말꼬리가 글 전체에서 너무 자주 나오는지 (꼴마다 따로 센다)
+export function repeatedEndingIssues(w: WrittenPost): string[] {
+  const texts = allText(w);
+  return REPEATED_ENDINGS.flatMap(({ re, label }) => {
+    const hits = texts.flatMap(({ path, text }) => [...text.matchAll(re)].map(() => path));
+    if (hits.length <= MAX_SAME_ENDING) return [];
+    const where = [...new Set(hits.map((p) => p.replace(/\[\d+\]/g, "")))].slice(0, 6).join(", ");
+    return [
+      `"${label}" 꼴 말꼬리가 ${hits.length}번(${where}) → ${MAX_SAME_ENDING}번 이하로. 내용은 그대로 두고 끝맺음만 바꾸기 ` +
+        `(문단 첫머리에 "후기를 모아 보면"처럼 한 번 밝히고 이어지는 문장은 "~해요", "~로 꼽혀요", "~한 사람도 있어요" 등으로)`,
+    ];
+  });
 }
 
 export function lintPost(w: WrittenPost, productCount: number): string[] {
@@ -174,7 +214,25 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
     if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
     if (!p.review || p.review.length < 60) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → 3~5문장`);
+    if (p.pros.length > MAX_POINTS) issues.push(`${name}: 장점 ${p.pros.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
+    if (p.cons.length > MAX_POINTS) issues.push(`${name}: 단점 ${p.cons.length}개 → ${MAX_POINTS}개 이하로 (핵심만)`);
+    // 엇갈리는 의견은 장단점 칸이 아니라 한 곳(고르는 기준·구매 전 확인)에서 (점검 4·10번)
+    [...p.pros, ...p.cons].forEach((x) => {
+      if (MIXED_OPINION.test(x)) issues.push(`${name} 장단점 "${x.slice(0, 30)}…": 엇갈리는 의견은 장단점 칸에서 빼고 고르는 기준이나 구매 전 확인 한 곳에서`);
+    });
   });
+  // 표 값은 짧은 명사 (점검 10번: "조용하다는 평")
+  c.comparison.forEach((row) => {
+    row.values.forEach((v) => {
+      if (SENTENCE_VALUE.test(v)) issues.push(`표 "${row.label}" 값 "${v}": 문장 말고 짧은 값으로 (예: 조용함, 지원, 확인 필요)`);
+    });
+  });
+  // "확인하세요" 안내가 너무 많으면 글이 할 말 없이 미루는 것처럼 읽힘 (점검 5번)
+  const checkCount = allText(w).reduce((n, { text }) => n + (text.match(CHECK_PHRASE)?.length ?? 0), 0);
+  if (checkCount > MAX_CHECK_PHRASES) {
+    issues.push(`"확인하세요" 같은 안내가 ${checkCount}번 → ${MAX_CHECK_PHRASES}번 이하로 (꼭 필요한 곳만)`);
+  }
+  issues.push(...repeatedEndingIssues(w));
   if (c.faq.length < 3) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → 4~6개`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {
@@ -348,56 +406,7 @@ type Audit = {
   others?: { section: string; problem: string; fix: string }[];
 };
 
-// 한글·영숫자만 남김 (띄어쓰기·문장부호 차이 무시)
-const norm = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
-
-// 인용이 자료에 실제로 있는지: 통째로 있거나, 10글자 조각의 60% 이상이 자료에 있으면 인정
-export function quoteFound(quote: string, evidenceNorm: string): boolean {
-  const q = norm(quote);
-  if (q.length < 4) return false;
-  if (evidenceNorm.includes(q)) return true;
-  const chunks: string[] = [];
-  for (let i = 0; i + 10 <= q.length; i += 10) chunks.push(q.slice(i, i + 10));
-  if (!chunks.length) return false;
-  return chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length >= 0.6;
-}
-
-// ---------- 근거 확인 보완 ----------
-// 검수 AI 가 근거 문장을 글자 그대로 옮기지 않는 일이 잦아(run #19: 비교글에서 대부분 오탐),
-// 인용을 못 찾으면 주장의 핵심 단어들이 자료의 한 부분(약 600자 범위)에 함께 나오는지 코드로 확인한다.
-// 서로 떨어진 곳의 단어를 짜깁기한 주장은 이 확인을 통과하지 못한다.
-const PARTICLE = /(으로|에서|에게|까지|부터|이나|이라|하고|해서|해야|하는|하게|되는|되고|된다|이다|있다|없다|한다|는|은|이|가|을|를|에|의|도|로|와|과|만|요)$/;
-const GENERIC = new Set(["후기", "의견", "언급", "평가", "제품", "소개", "정도", "경우", "사용", "기준", "많다", "있어", "없어", "블로그", "댓글"]);
-const WINDOW = 300;
-
-function keyTokens(claim: string, exclude: string[]): string[] {
-  const out = new Set<string>();
-  for (const raw of claim.toLowerCase().match(/[가-힣a-z0-9.~]+/g) ?? []) {
-    const t = norm(raw.replace(PARTICLE, ""));
-    if (t.length < 2 || GENERIC.has(t) || exclude.some((e) => e.includes(t) || t.includes(e))) continue;
-    // 긴 한글 단어는 앞 3글자만 (활용형 차이 흡수: "발열체를" → "발열체")
-    out.add(/[가-힣]/.test(t) && t.length > 3 ? t.slice(0, 3) : t);
-  }
-  return [...out];
-}
-
-export function locallySupported(claim: string, evidenceNorm: string, productWords: string[] = []): boolean {
-  const tokens = keyTokens(claim, productWords);
-  if (tokens.length < 2) return false;
-  const need = Math.ceil(tokens.length * 0.7);
-  const positions = (t: string) => {
-    const out: number[] = [];
-    for (let i = evidenceNorm.indexOf(t); i >= 0 && out.length < 300; i = evidenceNorm.indexOf(t, i + 1)) out.push(i);
-    return out;
-  };
-  const found = tokens.map((t) => ({ t, pos: positions(t) })).filter((x) => x.pos.length);
-  if (found.length < need) return false;
-  const anchor = found.reduce((a, b) => (b.pos.length < a.pos.length ? b : a)); // 가장 드문 단어 기준
-  return anchor.pos.some((p) => {
-    const win = evidenceNorm.slice(Math.max(0, p - WINDOW), p + WINDOW);
-    return tokens.filter((t) => win.includes(t)).length >= need;
-  });
-}
+// 인용 대조·근거 확인 보완(quoteFound·locallySupported)은 grounding.ts (후기 분석과 함께 씀)
 
 // 고쳐야 하는 진짜 오류: 서로 맞지 않음, 틀린 용어·사실 (run #29: "항목 성격이 다름" 같은 잔소리가 수정을 흔듦)
 export const isRealProblem = (s: string) =>
@@ -410,7 +419,7 @@ const NO_FIX_NEEDED = /수정\s*(없음|불필요|필요\s*없)|모순\s*(은\s*
 // AI 가 뽑은 목록을 코드가 판정
 export function judgeAudit(a: Audit, evidence: string, sectionNames: string[], productNames: string[] = []): string[] {
   const evidenceNorm = norm(evidence);
-  const productWords = productNames.flatMap((n) => n.split(/\s+/)).map(norm).filter((w) => w.length >= 2);
+  const productWords = productWordsOf(productNames);
   const evidenceNums = numbersIn(evidence);
   const issues: string[] = [];
   for (const c of a.claims ?? []) {

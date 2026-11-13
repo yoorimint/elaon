@@ -24,16 +24,44 @@ export async function checkGemini(secrets: Secrets): Promise<CheckResult> {
 //  1) 키로 쓸 수 있는 모델 목록에서 정식 "gemini-X.Y-flash" 를 최신순으로,
 //     그 다음 "gemini-X.Y-flash-lite" 를 최신순으로 후보에 올린다.
 //  2) 후보가 404(종료)·429(할당량)·503(과부하)로 거부하면 다음 후보로 넘어간다.
+//     단 호출하는 쪽이 대신할 모델(Claude)을 갖고 있으면(stopOnOverload) 503·응답 지연에서
+//     기다리지 않고 바로 GeminiOverloadedError 로 넘긴다 — 무료 Gemini 가 바쁠 때 모델마다 몇 분씩 낭비하지 않게.
 //  3) 성공한 모델을 기억해 다음 호출부터 먼저 쓴다.
 // 특정 모델을 강제하려면 환경변수 GEMINI_MODEL.
 
 const DEFAULT_CANDIDATES = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 const MAX_RETRY_WAIT_MS = 60_000; // "N초 후 재시도" 안내를 따를 최대 대기
 const RETRIES_PER_MODEL = 2;
-const OVERLOAD_WAITS_MS = [15_000, 30_000]; // 503 "high demand"(일시적) 재시도 간격
-const REQUEST_TIMEOUT_MS = 150_000; // 응답이 이보다 늦으면 끊고 다음 모델로 (Node 기본 5분 끊김 방지)
+const OVERLOAD_WAITS_MS = [15_000, 30_000]; // 503 "high demand"(일시적) 재시도 간격 (대신할 모델이 없을 때만)
+// 응답이 이보다 늦으면 끊고 다음 모델로 (Node 기본 5분 끊김 방지).
+// 글 작성·분석·검수처럼 출력이 긴 호출은 정상이어도 1~2분 걸려 넉넉히 둔다.
+const REQUEST_TIMEOUT_MS = 150_000;
+// 출력 한도가 작은(짧은 답만 받는) 호출은 60초면 충분하다. 넘으면 멈춘 것으로 본다
+// (run #16: 짧은 목록 호출에서 150초 낭비 → discover 는 60초로 지정했고, 한자 교정 같은 다른 짧은 호출도 같은 기준).
+const SHORT_REQUEST_TIMEOUT_MS = 60_000;
+const SHORT_OUTPUT_TOKENS = 4096;
 
-let candidates: string[] | null = null;
+function timeoutFor(opts: GeminiOptions): number {
+  if (opts.timeoutMs) return opts.timeoutMs;
+  return (opts.maxOutputTokens ?? Infinity) <= SHORT_OUTPUT_TOKENS ? SHORT_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+}
+
+// ---------- 실행(프로세스) 단위 상태 ----------
+let candidates: string[] | null = null; // 후보 모델 (성공한 모델이 맨 앞)
+const unavailable = new Set<string>(); // 이번 실행에서 일일 한도·종료·지연으로 막힌 모델 (다시 시도하지 않음)
+let overloadCount = 0; // 이번 실행에서 503(과부하)·응답 지연이 난 횟수
+
+/** 이번 실행에서 Gemini 과부하(503·응답 지연)가 난 횟수 */
+export function geminiOverloads(): number {
+  return overloadCount;
+}
+
+/** 실행 단위 상태 초기화 (테스트끼리 상태가 섞이지 않게) */
+export function resetGeminiRunState(): void {
+  candidates = null;
+  unavailable.clear();
+  overloadCount = 0;
+}
 
 type ModelInfo = { name?: string; supportedGenerationMethods?: string[] };
 
@@ -110,8 +138,24 @@ export type GeminiOptions = {
   // 글 작성·수정·검수처럼 품질이 중요한 호출: flash-lite 는 쓰지 않는다 (없으면 StrongModelUnavailableError)
   strongOnly?: boolean;
   // 응답 대기 한도. 짧은 답만 받는 호출은 줄여서, 멈춘 모델 하나에 실행 시간을 낭비하지 않는다
+  // (없으면 maxOutputTokens 로 정함: 4096 이하 60초, 그 외 150초)
   timeoutMs?: number;
 };
+
+// 실패했을 때 어떻게 할지 — 호출하는 쪽(llm.ts)이 정한다
+export type GeminiPolicy = {
+  // 503(과부하)·응답 지연이 한 번이라도 나면 남은 모델을 시도하지 않고 GeminiOverloadedError.
+  // 대신할 모델(Claude)이 있을 때만 켠다. 없으면 기다리더라도 다른 Gemini 모델을 끝까지 시도하는 편이 낫다.
+  stopOnOverload?: boolean;
+};
+
+// stopOnOverload 일 때 Gemini 가 과부하라 남은 모델을 건너뛰었다는 뜻
+export class GeminiOverloadedError extends Error {
+  constructor(detail: string) {
+    super(`Gemini 과부하 — ${detail.slice(0, 300)}`);
+    this.name = "GeminiOverloadedError";
+  }
+}
 
 export type GeminiResult = {
   text: string;
@@ -147,9 +191,18 @@ function buildBody(prompt: string, opts: GeminiOptions, withThinking: boolean) {
   return body;
 }
 
-type Attempt = { ok: true; result: GeminiResult } | { ok: false; retryable: boolean; error: string };
+// overloaded: 503(과부하)·응답 지연 — 모델 문제가 아니라 Gemini 가 지금 바쁜 것
+type Attempt =
+  | { ok: true; result: GeminiResult }
+  | { ok: false; retryable: boolean; error: string; overloaded?: boolean };
 
-async function callModel(key: string, model: string, prompt: string, opts: GeminiOptions): Promise<Attempt> {
+async function callModel(
+  key: string,
+  model: string,
+  prompt: string,
+  opts: GeminiOptions,
+  policy: GeminiPolicy,
+): Promise<Attempt> {
   let lastError = "";
   let withThinking = true;
   for (let attempt = 0; attempt <= RETRIES_PER_MODEL; attempt++) {
@@ -160,14 +213,14 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify(buildBody(prompt, opts, withThinking)),
-        signal: AbortSignal.timeout(opts.timeoutMs ?? REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(timeoutFor(opts)),
       });
     } catch (e) {
       const secs = Math.round((Date.now() - started) / 1000);
       const err = e as Error & { cause?: { code?: string } };
       if (err.name === "TimeoutError" || err.name === "AbortError") {
         // 이 모델이 지금 너무 느림 → 같은 모델을 또 기다리지 않고 다음 후보로
-        return { ok: false, retryable: true, error: `응답 지연 ${secs}초로 중단` };
+        return { ok: false, retryable: true, overloaded: true, error: `응답 지연 ${secs}초로 중단` };
       }
       lastError = `네트워크 오류(${err.cause?.code ?? err.message}) ${secs}초`;
       if (attempt < RETRIES_PER_MODEL) {
@@ -206,12 +259,15 @@ async function callModel(key: string, model: string, prompt: string, opts: Gemin
       return { ok: false, retryable: true, error: lastError };
     }
     if (res.status === 503 || res.status === 500) {
+      const overloaded = res.status === 503;
+      // 대신할 모델이 있으면 과부하가 풀리길 기다리지 않는다
+      if (overloaded && policy.stopOnOverload) return { ok: false, retryable: true, overloaded, error: lastError };
       // 일시적 과부하 → 조금 길게 기다렸다 같은 모델 재시도, 그래도 안 되면 다음 후보
       if (attempt < RETRIES_PER_MODEL) {
         await new Promise((r) => setTimeout(r, OVERLOAD_WAITS_MS[attempt] ?? MAX_RETRY_WAIT_MS));
         continue;
       }
-      return { ok: false, retryable: true, error: lastError };
+      return { ok: false, retryable: true, overloaded, error: lastError };
     }
     // 400 등: 이 모델이 요청 형식을 거부 → 다른 모델은 받아줄 수 있으니 다음 후보로
     return { ok: false, retryable: res.status === 400, error: lastError };
@@ -238,13 +294,11 @@ export function shortError(err: string): string {
   const delay = retryDelayMs(err);
   return `HTTP 429 한도 초과 — ${[...new Set(metrics)].join(" / ")}${delay ? ` · ${Math.round(delay / 1000)}초 뒤 재시도 가능` : ""}`;
 }
-// 이번 실행에서 일일 한도·종료로 막힌 모델 (같은 실행에서 다시 시도하지 않음)
-const unavailable = new Set<string>();
-
 export async function geminiGenerate(
   secrets: Secrets,
   prompt: string,
   opts: GeminiOptions = {},
+  policy: GeminiPolicy = {},
 ): Promise<GeminiResult> {
   const key = secrets.GEMINI_API_KEY;
   if (!key) throw new Error("Gemini 키 미등록");
@@ -254,7 +308,7 @@ export async function geminiGenerate(
 
   const errors: string[] = [];
   for (const model of models) {
-    const r = await callModel(key, model, prompt, opts);
+    const r = await callModel(key, model, prompt, opts, policy);
     if (r.ok) {
       recordUsage(model); // 무료 등급이라 비용 0
       // 성공한 모델을 맨 앞으로 → 같은 실행의 다음 호출은 바로 이 모델 사용
@@ -266,8 +320,12 @@ export async function geminiGenerate(
     }
     errors.push(`[${model}] ${r.error}`);
     console.warn(`    ↪ ${model} 실패: ${shortError(r.error)}`);
-    // 종료·한도 초과(재시도 후에도)·150초 지연 → 이번 실행에서는 다시 기다리지 않음
+    // 종료·한도 초과(재시도 후에도)·응답 지연 → 이번 실행에서는 다시 기다리지 않음
     if (/HTTP 404|HTTP 429|응답 지연/.test(r.error)) unavailable.add(model);
+    if (r.overloaded) {
+      overloadCount++;
+      if (policy.stopOnOverload) throw new GeminiOverloadedError(errors.join(" / "));
+    }
     if (!r.retryable) break;
   }
   const detail = errors.join(" / ") || "사용 가능한 모델 없음";

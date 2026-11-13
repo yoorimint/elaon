@@ -2,7 +2,8 @@
 //  1) 내장 카테고리 중 최근 쓰지 않은 것들을 네이버 검색어 트렌드로 점수화 (검색량 × 증가율)
 //  2) 상위 카테고리에서 블로그·카페·지식iN "추천 / 뭐 사" 글을 모아 AI 가 실제 모델명을 추출
 //  3) 후보 모델들을 검색어 트렌드로 다시 비교해 검색 관심도 순으로 정렬
-//  4) 이미 쓴 상품(조합)은 빼고 단일이면 1개, 비교면 2개 선택
+//  4) 후보마다 네이버 블로그·카페에서 "실제 사용 후기"가 충분한지 확인 (쇼핑·광고 글만 있는 상품 제외)
+//  5) 이미 쓴 상품(조합)은 빼고 단일이면 1개, 비교면 2개 선택
 // 트렌드 API 가 실패해도 언급 수·순환 순서로 계속 진행한다.
 
 import type { ManualProduct } from "@/lib/shop-config";
@@ -16,6 +17,8 @@ import { pairKeyOf, type PostKind } from "./select-products";
 const TREND_WEEKS = 8; // 최근 4주 vs 이전 4주
 const CATEGORY_TRIES = 4; // 후보가 안 나오면 다음 카테고리로
 const MAX_CANDIDATES = 8;
+// 블로그·카페 "모델명 후기" 상위 60건 중 실제 사용 후기가 이만큼은 있어야 글감으로 쓴다
+export const MIN_REAL_REVIEWS = 8;
 
 export type Discovery = { category: string; products: ManualProduct[]; alternatives: string[] };
 
@@ -137,14 +140,41 @@ ${lines.map((l) => `- ${l}`).join("\n")}`;
   return all.filter(ok).slice(0, MAX_CANDIDATES);
 }
 
-// 후보 이름의 단어(카테고리 단어 제외)가 모두 모은 글에 실제로 나오는지 (AI 가 지어낸 모델명 차단). 띄어쓰기·대소문자 무시
+const normText = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
+
+// 이름에서 제품을 가리키는 핵심 단어: 모델 번호(숫자·영문 포함)가 있으면 그것, 없으면 카테고리 단어를 뺀 전부
+// 예) "앤커 사운드코어 P31i" → ["P31i"], "쿠쿠 인스퓨어" → ["쿠쿠", "인스퓨어"]
+function coreTokens(name: string, category: string): string[] {
+  const words = name.split(/\s+/).filter((w) => w && !category.includes(w));
+  const codes = words.filter((w) => /[0-9]/.test(w) || /^[A-Za-z-]{2,}$/.test(w) && /[A-Z]/.test(w));
+  return codes.length ? codes : words;
+}
+
+// 후보가 모은 글에 실제로 나오는지 (AI 가 지어낸 모델명 차단). 띄어쓰기·대소문자 무시
 export function mentionedIn(name: string, category: string, source: string): boolean {
-  const norm = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
-  const text = norm(source);
-  return name
-    .split(/\s+/)
-    .filter((w) => w && !category.includes(w))
-    .every((w) => text.includes(norm(w)));
+  const text = normText(source);
+  const tokens = coreTokens(name, category);
+  return tokens.length > 0 && tokens.every((w) => text.includes(normText(w)));
+}
+
+// ---------- 실제 사용 후기가 충분한가 ----------
+const REVIEW_SIGNAL = /후기|사용기|리뷰|써\s*보|사용해|개월|한\s*달|일주일|솔직|장단점|실사용|내돈내산/;
+const AD_SIGNAL = /최저가|특가|할인|쿠폰|핫딜|공구|공동구매|구매\s*링크|협찬|제공받|원고료|체험단|소정의|판매합니다|판매중/;
+
+// 검색 결과 중 이 제품을 직접 다룬 실사용 후기 수 (광고·쇼핑 글 제외)
+export function countRealReviews(name: string, category: string, items: { title: string; description: string }[]): number {
+  return items.filter((it) => {
+    const text = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
+    return mentionedIn(name, category, text) && REVIEW_SIGNAL.test(text) && !AD_SIGNAL.test(text);
+  }).length;
+}
+
+async function realReviewCount(secrets: Secrets, name: string, category: string): Promise<number> {
+  const query = `${name} 후기`;
+  const lists = await Promise.all(
+    (["blog", "cafearticle"] as const).map((t) => naverSearch(secrets, t, query, 30).catch(() => [])),
+  );
+  return countRealReviews(name, category, lists.flat());
 }
 
 // 구체적인 제품(브랜드 + 모델명)인지. "조지루시 가습기"처럼 브랜드 + 카테고리뿐이면 아님.
@@ -209,22 +239,39 @@ export async function discoverProducts(
     }
     console.log(`  ${category} 후보: ${cands.map((c) => c.name).join(", ") || "(없음)"}`);
     const asProduct = (name: string): ManualProduct => ({ name, link: "" });
+
+    // 후보마다 실제 사용 후기 수 확인 (필요할 때만 조회해서 네이버 호출 절약)
+    const reviewCounts = new Map<string, number>();
+    const hasReviews = async (name: string) => {
+      if (!reviewCounts.has(name)) {
+        const n = await realReviewCount(secrets, name, category);
+        reviewCounts.set(name, n);
+        console.log(`    · ${name}: 실사용 후기 ${n}건${n < MIN_REAL_REVIEWS ? ` → 부족(${MIN_REAL_REVIEWS}건 미만), 제외` : ""}`);
+      }
+      return reviewCounts.get(name)! >= MIN_REAL_REVIEWS;
+    };
     // 고른 상품을 뺀 나머지 후보 (같은 카테고리 인기 제품)
     const others = (chosen: string[]) => cands.map((c) => c.name).filter((n) => !chosen.includes(n)).slice(0, 4);
 
     if (kind === "single") {
-      const c = cands.find((x) => !usedPairKeys.has(pairKeyOf([asProduct(x.name)])));
-      if (c) return { category, products: [asProduct(c.name)], alternatives: others([c.name]) };
+      for (const c of cands) {
+        if (usedPairKeys.has(pairKeyOf([asProduct(c.name)]))) continue;
+        if (await hasReviews(c.name)) return { category, products: [asProduct(c.name)], alternatives: others([c.name]) };
+      }
     } else {
-      for (let i = 0; i < cands.length; i++) {
-        for (let j = i + 1; j < cands.length; j++) {
-          const pair = [asProduct(cands[i].name), asProduct(cands[j].name)];
+      // 후기가 충분한 후보만 모아 순서대로 짝짓기
+      const ok: string[] = [];
+      for (const c of cands) {
+        if (await hasReviews(c.name)) ok.push(c.name);
+        for (let i = 0; i < ok.length - 1; i++) {
+          const pair = [asProduct(ok[i]), asProduct(ok[ok.length - 1])];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
-            return { category, products: pair, alternatives: others([cands[i].name, cands[j].name]) };
+            return { category, products: pair, alternatives: others([ok[i], ok[ok.length - 1]]) };
           }
         }
       }
     }
+    console.log(`  ${category}: 실사용 후기가 충분한 새 상품이 없어 다음 카테고리로`);
   }
   return null;
 }

@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { createServerClient } from "@/lib/supabase-server";
-import { PICK_CATEGORIES } from "@/lib/picks";
-import { getComparisonsMerged, listHubsMerged } from "@/lib/picks-auto";
+import { PICK_CATEGORIES, listHubs } from "@/lib/picks";
 import { CHECKLISTS } from "@/lib/checklists";
+import { COMPARISONS } from "@/lib/comparisons";
 import { STOCK_MARKETS } from "@/lib/market";
 import { symbolToSlug } from "@/lib/stock-resolver";
 
@@ -29,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...(await listHubsMerged()).map((e) => ({
+    ...listHubs().map((e) => ({
       url: `${SITE}/picks/${e.categorySlug}/${e.hubSlug}`,
       lastModified: now,
       changeFrequency: "weekly" as const,
@@ -61,7 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.55,
       })),
     { url: `${SITE}/picks/vs`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
-    ...(await getComparisonsMerged()).map((c) => ({
+    ...COMPARISONS.map((c) => ({
       url: `${SITE}/picks/vs/${c.slug}`,
       lastModified: new Date(c.updatedAt),
       changeFrequency: "weekly" as const,

@@ -3,8 +3,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { COMPARISONS } from "@/lib/comparisons";
-import { getComparisonMerged } from "@/lib/picks-auto";
+import { COMPARISONS, getComparison } from "@/lib/comparisons";
 import {
   JsonLd,
   breadcrumbLd,
@@ -23,12 +22,12 @@ export function generateStaticParams() {
   return COMPARISONS.map((c) => ({ slug: c.slug }));
 }
 
-export async function generateMetadata({
+export function generateMetadata({
   params,
 }: {
   params: { slug: string };
-}): Promise<Metadata> {
-  const c = await getComparisonMerged(params.slug);
+}): Metadata {
+  const c = getComparison(params.slug);
   if (!c) return { title: "비교 — eloan.kr" };
   const url = `${HUB_URL}/${c.slug}`;
   return {
@@ -52,12 +51,12 @@ export async function generateMetadata({
   };
 }
 
-export default async function ComparisonDetailPage({
+export default function ComparisonDetailPage({
   params,
 }: {
   params: { slug: string };
 }) {
-  const c = await getComparisonMerged(params.slug);
+  const c = getComparison(params.slug);
   if (!c) notFound();
 
   const url = `${HUB_URL}/${c.slug}`;

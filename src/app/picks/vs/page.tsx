@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getComparisonsMerged } from "@/lib/picks-auto";
+import { COMPARISONS, totalComparisonCount } from "@/lib/comparisons";
 import {
   JsonLd,
   breadcrumbLd,
@@ -37,9 +37,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ComparisonsHubPage() {
-  const comparisons = await getComparisonsMerged();
-  const total = comparisons.length;
+export default function ComparisonsHubPage() {
+  const total = totalComparisonCount();
 
   return (
     <>
@@ -62,7 +61,7 @@ export default async function ComparisonsHubPage() {
         data={itemListLd({
           name: "비교 목록",
           url: HUB_URL,
-          items: comparisons.map((c) => ({
+          items: COMPARISONS.map((c) => ({
             name: c.shortTitle,
             url: `${HUB_URL}/${c.slug}`,
             description: c.oneLiner,
@@ -94,7 +93,7 @@ export default async function ComparisonsHubPage() {
         </header>
 
         <section className="space-y-4">
-          {comparisons.map((c) => (
+          {COMPARISONS.map((c) => (
             <Link
               key={c.slug}
               href={`/picks/vs/${c.slug}`}

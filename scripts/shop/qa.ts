@@ -17,7 +17,10 @@ import type { ProductResearch } from "./research";
 import { buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 const MAX_REVISIONS = 2;
-const MAX_TOPIC_SECTIONS = 3; // 같은 내용은 글 전체에서 이 섹션 수까지만
+// 같은 내용은 이 섹션 수까지 허용 (표·제목은 요약이라 세지 않음). 결론·장단점·추천·정리에
+// 핵심이 한 번씩 나오는 건 자연스러워서 4곳까지, 그보다 많으면 반복으로 본다.
+const MAX_TOPIC_SECTIONS = 4;
+const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
 
 // ---------- 1) 규칙 검사 ----------
 const BANNED: { re: RegExp; why: string }[] = [
@@ -125,7 +128,8 @@ const UNITS: [RegExp, string][] = [
   [/^(평|㎡)$/i, "평"],
   [/^%$/, "%"],
 ];
-const NUM_UNIT = /(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|평|%|L)(?![a-zA-Z가-힣])/g;
+// 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
+const NUM_UNIT = /(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|평|%|L)(?![a-zA-Z가-힣])/g;
 
 function unitOf(raw: string): string | null {
   for (const [re, u] of UNITS) if (re.test(raw)) return u;
@@ -240,6 +244,8 @@ export function quoteFound(quote: string, evidenceNorm: string): boolean {
 }
 
 const isPriceGuidance = (s: string) => /쿠팡/.test(s) && /가격/.test(s) && /확인/.test(s);
+const isUnknownStatement = (s: string) => /확인되지 않|확인 안 됨|확인되지 못|정보가 없|언급이 없/.test(s);
+const NO_FIX_NEEDED = /수정\s*(없음|불필요|필요\s*없)|모순\s*(은\s*)?없|오류\s*(는\s*)?없|문제\s*(는\s*)?없|일치함/;
 
 // AI 가 뽑은 목록을 코드가 판정
 export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): string[] {
@@ -247,20 +253,24 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): 
   const issues: string[] = [];
   for (const c of a.claims ?? []) {
     if (isPriceGuidance(c.claim)) continue; // "가격은 쿠팡에서 확인하세요"는 작성 규칙상 넣는 안내문
+    if (isUnknownStatement(c.claim)) continue; // "~는 확인되지 않아요"는 근거가 없다는 말이라 주장이 아님
     if (!c.quote?.trim()) issues.push(`${c.section}: "${c.claim}" — 수집 자료에 근거 없음 → 삭제하거나 자료에 있는 내용으로`);
     else if (!quoteFound(c.quote, evidenceNorm)) {
       issues.push(`${c.section}: "${c.claim}" — 근거로 든 문장이 자료에 없음(지어냄 의심) → 삭제하거나 자료에 있는 내용으로`);
     }
   }
   for (const t of a.topics ?? []) {
-    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x)))];
+    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
     if (secs.length > MAX_TOPIC_SECTIONS) {
       issues.push(
-        `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 장단점 목록과 결론·정리 중 한 곳만 남기고, 나머지 섹션은 그 섹션 역할에 맞는 다른 정보로`,
+        `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 장단점과 결론·정리에만 남기고, 나머지 섹션에서는 그 문장을 빼거나 그 섹션 역할에 맞는 다른 정보로`,
       );
     }
   }
-  for (const o of a.others ?? []) issues.push(`${o.section}: ${o.problem} → ${o.fix}`);
+  for (const o of a.others ?? []) {
+    if (NO_FIX_NEEDED.test(`${o.problem} ${o.fix}`)) continue; // 검수자가 "문제 없음"이라고 적은 항목
+    issues.push(`${o.section}: ${o.problem} → ${o.fix}`);
+  }
   return [...new Set(issues)];
 }
 
@@ -268,7 +278,8 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): 
 async function aiAudit(secrets: Secrets, w: WrittenPost, evidence: string): Promise<string[] | null> {
   const sections = sectionsOf(w);
   const prompt = `너는 꼼꼼한 검수자야. 판단은 하지 말고 아래 목록만 빠짐없이 뽑아줘.
-1. claims: 글의 구체적 사실 주장 전부(수치·스펙·기능·소재·방식·안전성). quote 에는 "근거 자료"에서 그 주장을 뒷받침하는 부분을 글자 그대로 복사해. 자료에 없으면 빈 문자열. 비슷한 말을 지어내지 마.
+1. claims: 글의 구체적 사실 주장 전부(수치·스펙·기능·소재·방식·안전성·후기 내용). "누구에게 맞다" 같은 추천·판단 문장과
+   "~는 확인되지 않아요" 문장은 사실 주장이 아니니 넣지 마. quote 에는 "근거 자료"에서 그 주장을 뒷받침하는 부분을 글자 그대로 복사해. 자료에 없으면 빈 문자열. 비슷한 말을 지어내지 마.
 2. topics: 2개 이상 섹션에 나오는 같은 내용 전부와, 그 내용이 나온 섹션 이름 목록. 표현이 달라도 같은 내용이면 같은 것으로 봐(예: "물이 남아도 멈춤"과 "잔수 감지로 작동 중단").
 3. others: 실제로 고쳐야 하는 것만 — 잘못된 용어(예: 온수 온도를 "온실 온도"로 씀), 글 안에서 서로 모순되는 내용
    (예: 장점에 "가볍다", 단점에 "무겁다"). 고칠 필요 없는 참고 의견은 넣지 마.
@@ -319,6 +330,8 @@ export async function reviewAndFix(
   };
   log("검수");
 
+  // 수정이 오히려 나빠질 수 있으므로 문제가 가장 적은 버전을 저장한다
+  let best = { post, check };
   while (check.issues.length && revisions < MAX_REVISIONS) {
     try {
       post = await revisePost(secrets, research, digests, post, check.issues);
@@ -329,17 +342,35 @@ export async function reviewAndFix(
     revisions++;
     check = await checkAll(secrets, post, n, evidence);
     log(`수정 ${revisions}회 후 재검수`);
+    if (check.issues.length < best.check.issues.length) best = { post, check };
   }
+  if (best.post !== post) console.log(`  ↩ 수정본이 더 나빠서 문제가 가장 적은 버전(${best.check.issues.length}개)을 저장`);
+
+  // 고쳐 쓸 수 없는 경고(후기 자체가 부족)는 수정에 넘기지 않고 관리자에게만 보여준다
+  const warnings = thinEvidenceWarnings(best.post);
+  warnings.forEach((x) => console.log(`  ⚠ ${x}`));
 
   const qa: ShopPostQa = {
     checkedAt: new Date().toISOString(),
     issuesFound: found,
-    remaining: check.issues.slice(0, 10),
-    aiChecked: check.aiChecked,
+    remaining: [...warnings, ...best.check.issues].slice(0, 10),
+    aiChecked: best.check.aiChecked,
     revisions,
   };
   console.log(
     `  ✅ 검수 완료: 처음 ${found}개 → 수정 ${revisions}회 → 남은 문제 ${qa.remaining.length}개${qa.aiChecked ? "" : " (AI 검수 못함)"}`,
   );
-  return { post, qa };
+  return { post: best.post, qa };
+}
+
+// 비교표에서 한 상품의 값이 절반 이상 "확인 안 됨"이면 후기가 부족한 상품 → 비교 근거가 약함
+export function thinEvidenceWarnings(w: WrittenPost): string[] {
+  const rows = w.content.comparison;
+  if (rows.length < 4) return [];
+  return w.content.products.flatMap((p, i) => {
+    const unknown = rows.filter((r) => /확인\s*안\s*됨|확인되지 않|확인 필요/.test(r.values[i] ?? "")).length;
+    return unknown * 2 >= rows.length
+      ? [`${p.name}: 표 ${rows.length}항목 중 ${unknown}개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)`]
+      : [];
+  });
 }

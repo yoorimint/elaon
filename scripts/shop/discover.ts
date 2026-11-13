@@ -130,9 +130,21 @@ ${lines.map((l) => `- ${l}`).join("\n")}`;
     name: String(p.name ?? "").trim(),
     mentions: Math.max(0, Number(p.mentions) || 0),
   }));
-  const rejected = all.filter((p) => !isModelName(p.name, category)).map((p) => p.name);
-  if (rejected.length) console.log(`  (모델명이 아니라 제외: ${rejected.join(", ")})`);
-  return all.filter((p) => isModelName(p.name, category)).slice(0, MAX_CANDIDATES);
+  const source = lines.join("\n");
+  const ok = (p: { name: string }) => isModelName(p.name, category) && mentionedIn(p.name, category, source);
+  const rejected = all.filter((p) => !ok(p)).map((p) => p.name);
+  if (rejected.length) console.log(`  (모델명이 아니거나 모은 글에 없는 이름이라 제외: ${rejected.join(", ")})`);
+  return all.filter(ok).slice(0, MAX_CANDIDATES);
+}
+
+// 후보 이름의 단어(카테고리 단어 제외)가 모두 모은 글에 실제로 나오는지 (AI 가 지어낸 모델명 차단). 띄어쓰기·대소문자 무시
+export function mentionedIn(name: string, category: string, source: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
+  const text = norm(source);
+  return name
+    .split(/\s+/)
+    .filter((w) => w && !category.includes(w))
+    .every((w) => text.includes(norm(w)));
 }
 
 // 구체적인 제품(브랜드 + 모델명)인지. "조지루시 가습기"처럼 브랜드 + 카테고리뿐이면 아님.

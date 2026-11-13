@@ -225,6 +225,16 @@ export class StrongModelUnavailableError extends Error {
 }
 
 const isLite = (model: string) => model.endsWith("-lite");
+
+// 429 안내문은 길어서 핵심(한도 종류·재시도 시간)만 남긴다 → 일일 한도인지 분당 한도인지 로그에서 바로 보이게
+export function shortError(err: string): string {
+  const metrics = [...err.matchAll(/Quota exceeded for metric: ([\w./:-]+)(?:, limit: (\d+))?/g)].map(
+    (m) => `${m[1]}${m[2] ? ` (한도 ${m[2]})` : ""}`,
+  );
+  if (!metrics.length) return err.slice(0, 300);
+  const delay = retryDelayMs(err);
+  return `HTTP 429 한도 초과 — ${[...new Set(metrics)].join(" / ")}${delay ? ` · ${Math.round(delay / 1000)}초 뒤 재시도 가능` : ""}`;
+}
 // 이번 실행에서 일일 한도·종료로 막힌 모델 (같은 실행에서 다시 시도하지 않음)
 const unavailable = new Set<string>();
 
@@ -251,7 +261,7 @@ export async function geminiGenerate(
       return r.result;
     }
     errors.push(`[${model}] ${r.error}`);
-    console.warn(`    ↪ ${model} 실패: ${r.error.slice(0, 300)}`);
+    console.warn(`    ↪ ${model} 실패: ${shortError(r.error)}`);
     // 종료·한도 초과(재시도 후에도)·150초 지연 → 이번 실행에서는 다시 기다리지 않음
     if (/HTTP 404|HTTP 429|응답 지연/.test(r.error)) unavailable.add(model);
     if (!r.retryable) break;

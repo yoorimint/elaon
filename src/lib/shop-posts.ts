@@ -54,7 +54,14 @@ export async function notifySearchEngines(slug: string): Promise<void> {
 }
 
 // 이미 작성된 글의 상품 링크·사진 수정 (글을 다시 쓰지 않고 사진만 넣을 때)
-export async function updatePostProducts(id: string, products: ShopPostInputProduct[]): Promise<void> {
+// 상품별로 바뀐 값(링크, 붙여넣은 대표 사진)만 최신 상품 목록에 합쳐 저장한다.
+// (편집기를 연 뒤 미리보기에서 올린 사진을 예전 목록으로 덮어쓰지 않게)
+export type ProductPatch = Partial<Pick<ShopPostInputProduct, "link" | "image">>;
+
+export async function updatePostProducts(id: string, patches: ProductPatch[]): Promise<void> {
+  const cur = await supabase.from("shop_posts").select("products").eq("id", id).single();
+  if (cur.error) throw new Error(cur.error.message);
+  const products = (cur.data.products as ShopPostInputProduct[]).map((p, i) => ({ ...p, ...patches[i] }));
   const { error } = await supabase
     .from("shop_posts")
     .update({ products, updated_at: new Date().toISOString() })

@@ -13,6 +13,8 @@ import { PhotoEditProvider, PhotoSlot } from "@/components/ShopPhotoEdit";
 import { ArrowUpRight, ChevronDown, Info, Minus, Plus, ShieldCheck } from "lucide-react";
 import {
   DEFAULT_POST_DISCLOSURE,
+  photoFor,
+  type PhotoSpot,
   type RelatedPost,
   type ShopPost,
   type ShopPostInputProduct,
@@ -68,19 +70,22 @@ function ProductImage({
   product,
   name,
   index,
+  spot,
   preview,
   className = "",
 }: {
   product: ShopPostInputProduct;
   name: string;
   index: number;
+  spot: PhotoSpot;
   preview: boolean;
   className?: string;
 }) {
-  if (preview) return <PhotoSlot index={index} name={name} className={className} />;
-  if (product.image) {
+  if (preview) return <PhotoSlot index={index} spot={spot} name={name} className={className} />;
+  const src = photoFor(product, spot);
+  if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={product.image} alt={name} loading="lazy" className={`object-contain ${className}`} />;
+    return <img src={src} alt={name} loading="lazy" className={`object-contain ${className}`} />;
   }
   return (
     <span
@@ -106,6 +111,7 @@ function ProductCard({
   product,
   name,
   index,
+  spot,
   sub,
   preview,
   showBadge = true,
@@ -113,6 +119,7 @@ function ProductCard({
   product: ShopPostInputProduct;
   name: string;
   index: number;
+  spot: "main" | "bottom";
   sub?: string;
   preview: boolean;
   showBadge?: boolean;
@@ -124,6 +131,7 @@ function ProductCard({
           product={product}
           name={name}
           index={index}
+          spot={spot}
           preview={preview}
           className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
         />
@@ -154,7 +162,7 @@ export function ShopPostView({
   related?: RelatedPost[];
 }) {
   const { content: c, products } = post;
-  const hasPhoto = (p: ShopPostInputProduct) => preview || !!p.image;
+  const hasPhoto = (p: ShopPostInputProduct, spot: PhotoSpot) => preview || !!photoFor(p, spot);
   const names = products.map((p, i) => p.name || c.products[i]?.name || `제품 ${i + 1}`);
   const single = products.length === 1;
   const cols = single ? "mx-auto max-w-sm grid-cols-1" : products.length >= 3 ? "grid-cols-3" : "grid-cols-2";
@@ -191,7 +199,7 @@ export function ShopPostView({
       {/* 상품 사진 (비교글이면 두 상품 + VS) */}
       <div className={`relative mt-8 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={i} product={p} name={names[i]} index={i} sub={c.products[i]?.oneLiner} preview={preview} showBadge={!single} />
+          <ProductCard key={i} product={p} name={names[i]} index={i} spot="main" sub={c.products[i]?.oneLiner} preview={preview} showBadge={!single} />
         ))}
         {products.length === 2 && (
           <span className="pointer-events-none absolute left-1/2 top-[calc(50%-3.5rem)] flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-bold tracking-wider text-white ring-4 ring-white dark:bg-white dark:text-neutral-900 dark:ring-neutral-950">
@@ -259,9 +267,9 @@ export function ShopPostView({
                 <th className="w-[28%] pb-3" />
                 {products.map((p, i) => (
                   <th key={p.link} className="pb-3 align-bottom font-normal">
-                    {hasPhoto(p) && (
+                    {hasPhoto(p, "table") && (
                       <div className="mx-auto h-14 w-14 overflow-hidden rounded-lg bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                        <ProductImage product={p} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
+                        <ProductImage product={p} name={names[i]} index={i} spot="table" preview={preview} className="h-full w-full p-1" />
                       </div>
                     )}
                     <div className="mt-2 flex flex-col items-center gap-1">
@@ -305,9 +313,9 @@ export function ShopPostView({
               {!single && (
                 <>
                   <div className="flex items-center gap-3">
-                    {hasPhoto(products[i]) && (
+                    {hasPhoto(products[i], "thumb") && (
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                        <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
+                        <ProductImage product={products[i]} name={names[i]} index={i} spot="thumb" preview={preview} className="h-full w-full p-1" />
                       </div>
                     )}
                     <div className="min-w-0">
@@ -319,12 +327,12 @@ export function ShopPostView({
                     </div>
                   </div>
 
-                  {hasPhoto(products[i]) && (
+                  {hasPhoto(products[i], "detail") && (
                     <LinkOrDiv
                       href={products[i].link}
                       className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
                     >
-                      <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-6" />
+                      <ProductImage product={products[i]} name={names[i]} index={i} spot="detail" preview={preview} className="h-full w-full p-6" />
                     </LinkOrDiv>
                   )}
                 </>
@@ -425,7 +433,7 @@ export function ShopPostView({
 
       <div className={`mt-10 grid gap-4 ${cols}`}>
         {products.map((p, i) => (
-          <ProductCard key={i} product={p} name={names[i]} index={i} preview={preview} showBadge={!single} />
+          <ProductCard key={i} product={p} name={names[i]} index={i} spot="bottom" preview={preview} showBadge={!single} />
         ))}
       </div>
 
@@ -470,9 +478,9 @@ export function ShopPostView({
     </article>
   );
 
-  // 초안 미리보기: 사진 자리를 눌러 사진 등록 (관리자만, 등록한 사진은 모든 자리에 함께 반영)
+  // 초안 미리보기: 사진 자리를 눌러 그 자리 사진 등록 (관리자만). 따로 넣지 않은 자리는 대표 사진을 보여줌
   return preview ? (
-    <PhotoEditProvider postId={post.id} initialImages={products.map((p) => p.image)}>
+    <PhotoEditProvider postId={post.id} initialProducts={products}>
       {article}
     </PhotoEditProvider>
   ) : (

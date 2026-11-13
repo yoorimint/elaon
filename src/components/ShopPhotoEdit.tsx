@@ -1,18 +1,19 @@
 "use client";
 
 // 초안 미리보기에서 사진 자리를 눌러 상품 사진을 등록·변경 (관리자만).
-// 같은 상품 사진이 글 여러 곳에 나오므로 등록한 사진을 Provider 상태로 공유해 한 번에 바뀌게 한다.
+// 사진 자리(위 카드·표·장단점·아래 카드)마다 따로 등록한다. 따로 넣지 않은 자리는 대표 사진(위 카드)을 보여준다.
 // 관리자가 아니면 사진 자리 표시만 보인다.
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { isAdmin } from "@/lib/community";
 import { uploadProductImage } from "@/lib/shop-images";
+import { ownPhoto, photoFor, withPhoto, type PhotoSpot, type ShopPostInputProduct } from "@/lib/shop-post-types";
 
 type Ctx = {
   postId: string;
-  images: (string | undefined)[];
-  setImage: (index: number, url: string) => void;
+  products: ShopPostInputProduct[];
+  setPhoto: (index: number, spot: PhotoSpot, url: string) => void;
   admin: boolean;
 };
 
@@ -20,33 +21,46 @@ const PhotoEditContext = createContext<Ctx | null>(null);
 
 export function PhotoEditProvider({
   postId,
-  initialImages,
+  initialProducts,
   children,
 }: {
   postId: string;
-  initialImages: (string | undefined)[];
+  initialProducts: ShopPostInputProduct[];
   children: React.ReactNode;
 }) {
-  const [images, setImages] = useState(initialImages);
+  const [products, setProducts] = useState(initialProducts);
   const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     isAdmin().then(setAdmin).catch(() => setAdmin(false));
   }, []);
 
-  const setImage = (index: number, url: string) =>
-    setImages((prev) => prev.map((v, i) => (i === index ? url : v)));
+  const setPhoto = (index: number, spot: PhotoSpot, url: string) =>
+    setProducts((prev) => prev.map((p, i) => (i === index ? withPhoto(p, spot, url) : p)));
 
-  return <PhotoEditContext.Provider value={{ postId, images, setImage, admin }}>{children}</PhotoEditContext.Provider>;
+  return <PhotoEditContext.Provider value={{ postId, products, setPhoto, admin }}>{children}</PhotoEditContext.Provider>;
 }
 
-// 사진 자리 하나. 관리자면 누르면 사진 선택 → 업로드 → 즉시 반영
-export function PhotoSlot({ index, name, className = "" }: { index: number; name: string; className?: string }) {
+// 사진 자리 하나. 관리자면 누르면 사진 선택 → 업로드 → 이 자리에만 반영
+export function PhotoSlot({
+  index,
+  spot,
+  name,
+  className = "",
+}: {
+  index: number;
+  spot: PhotoSpot;
+  name: string;
+  className?: string;
+}) {
   const ctx = useContext(PhotoEditContext);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const image = ctx?.images[index];
+  const product = ctx?.products[index];
+  const image = product ? photoFor(product, spot) : undefined;
+  // 이 자리에 따로 넣은 사진이 없어 대표 사진을 빌려 보여주는 중
+  const borrowed = !!image && !!product && !ownPhoto(product, spot);
   const canEdit = !!ctx?.admin;
 
   async function onFile(file: File | undefined) {
@@ -54,7 +68,7 @@ export function PhotoSlot({ index, name, className = "" }: { index: number; name
     setBusy(true);
     setError("");
     try {
-      ctx.setImage(index, await uploadProductImage(ctx.postId, index, file));
+      ctx.setPhoto(index, spot, await uploadProductImage(ctx.postId, index, spot, file));
     } catch (e) {
       setError(e instanceof Error ? e.message : "업로드 실패");
     } finally {
@@ -92,7 +106,7 @@ export function PhotoSlot({ index, name, className = "" }: { index: number; name
 
       {canEdit && image && !busy && (
         <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
-          사진 변경
+          {borrowed ? "대표 사진 · 눌러서 따로 등록" : "사진 변경"}
         </span>
       )}
       {busy && (

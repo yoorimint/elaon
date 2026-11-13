@@ -3,8 +3,34 @@
 
 export type ShopPostStatus = "draft" | "published";
 
+// 글 안의 상품 사진 자리
+// main: 맨 위 상품 카드 (대표 사진 — 검색·공유 미리보기에도 씀)
+// table: 비교표 머리, thumb: 제품별 장단점 이름 옆, detail: 제품별 장단점 큰 사진, bottom: 맨 아래 상품 카드
+export type PhotoSpot = "main" | "table" | "thumb" | "detail" | "bottom";
+
 // 관리자가 입력한 상품 (링크는 항상 이 값만 사용)
-export type ShopPostInputProduct = { name: string; link: string; image?: string };
+// image: 대표 사진(main 자리). images: 다른 자리에 따로 넣은 사진 — 없으면 대표 사진을 보여준다
+export type ShopPostInputProduct = {
+  name: string;
+  link: string;
+  image?: string;
+  images?: Partial<Record<Exclude<PhotoSpot, "main">, string>>;
+};
+
+// 이 자리에 따로 넣은 사진 (없으면 undefined)
+export function ownPhoto(p: ShopPostInputProduct, spot: PhotoSpot): string | undefined {
+  return spot === "main" ? p.image : p.images?.[spot];
+}
+
+// 이 자리에 보여줄 사진: 따로 넣은 사진 → 없으면 대표 사진
+export function photoFor(p: ShopPostInputProduct, spot: PhotoSpot): string | undefined {
+  return ownPhoto(p, spot) ?? p.image;
+}
+
+// 상품 정보에 이 자리 사진을 넣은 새 객체
+export function withPhoto(p: ShopPostInputProduct, spot: PhotoSpot, url: string): ShopPostInputProduct {
+  return spot === "main" ? { ...p, image: url } : { ...p, images: { ...p.images, [spot]: url } };
+}
 
 // AI 가 작성하는 상품별 내용
 export type ShopPostProductContent = {

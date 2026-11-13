@@ -141,6 +141,12 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection, che
   return { ...sel, written, qa, passed: verdict.passed, reasons: verdict.reasons, research, digests };
 }
 
+// 다시 쓰는 도중 좋은 모델이 막혔을 때: 더 시도하지 않고 앞에서 쓴 글을 저장하러 간다
+function stopAfterOutage(e: Error, tried: string[]) {
+  console.log(`  ⏹ 다음 시도 중 모델 사용 불가 (${e.message.slice(0, 120)}) → 앞에서 쓴 글을 저장`);
+  tried.push(`모델 사용 불가로 추가 시도 중단: ${e.message.slice(0, 120)}`);
+}
+
 async function main() {
   const [config, secrets] = await Promise.all([loadConfig(), loadSecrets()]);
   if (!secrets.GEMINI_API_KEY && process.env.GEMINI_API_KEY) secrets.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -195,7 +201,14 @@ async function main() {
       sel = { products: manual, alternatives: [] };
     } else {
       console.log(`🧭 자동 선정 ${attempt}회차 (${config.auto_mode ?? "single"} → 이번 글: ${kind === "single" ? "단일" : "비교"})`);
-      const found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+      let found: Awaited<ReturnType<typeof discoverProducts>>;
+      try {
+        found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+      } catch (e) {
+        if (!(e instanceof StrongModelUnavailableError) || !best) throw e;
+        stopAfterOutage(e, tried);
+        break;
+      }
       if (!found) break;
       sel = found;
     }
@@ -203,6 +216,12 @@ async function main() {
     try {
       result = await produce(secrets, config, sel, !useManual);
     } catch (e) {
+      // 앞 시도에서 이미 쓴 글이 있으면 모델이 막혀도 그 글은 저장한다
+      // (점검 실행 45: 2회차 분석 중 Claude 503·Gemini 한도로 실행이 "건너뜀"으로 끝나 1회차 글까지 버려짐)
+      if (e instanceof StrongModelUnavailableError && best) {
+        stopAfterOutage(e, tried);
+        break;
+      }
       if (!(e instanceof ThinEvidenceError)) throw e;
       console.log(`  ⏭ ${e.message} → 쓰지 않고 다른 상품으로`);
       tried.push(`${sel.products.map((p) => p.name).join(" vs ")}: ${e.message}`);

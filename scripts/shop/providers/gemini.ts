@@ -1,5 +1,6 @@
 // Gemini API (Google AI Studio 키).
 
+import { recordUsage } from "../usage";
 import { MISSING, describeError, type CheckResult, type Secrets } from "./types";
 
 const HOST = "https://generativelanguage.googleapis.com/v1beta";
@@ -253,6 +254,7 @@ export async function geminiGenerate(
   for (const model of models) {
     const r = await callModel(key, model, prompt, opts);
     if (r.ok) {
+      recordUsage(model); // 무료 등급이라 비용 0
       // 성공한 모델을 맨 앞으로 → 같은 실행의 다음 호출은 바로 이 모델 사용
       if (candidates && candidates[0] !== model) {
         candidates = [model, ...candidates.filter((m) => m !== model)];

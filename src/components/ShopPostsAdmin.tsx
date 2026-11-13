@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
 import { timeAgo } from "@/lib/community";
 import { POST_WORKFLOW_URL } from "@/lib/shop-config";
-import type { ShopPostQa } from "@/lib/shop-post-types";
+import type { ShopPostQa, ShopPostRunInfo } from "@/lib/shop-post-types";
 import {
   deletePost,
   listAllPosts,
@@ -108,6 +108,7 @@ export function ShopPostsAdmin() {
                   <span className="min-w-0 truncate">{p.products.map((x) => x.name).join(" vs ")}</span>
                 </div>
                 <div className="mt-1 font-semibold text-sm">{p.title}</div>
+                <RunInfo run={p.run} />
                 <div className="mt-2 flex flex-wrap gap-2">
                   <a
                     href={`/shop/${p.slug}`}
@@ -195,5 +196,26 @@ function QaBadge({ qa }: { qa?: ShopPostQa | null }) {
     >
       {st.label}
     </span>
+  );
+}
+
+// 작성 실행 리포트: 쓴 AI·비용·상품 선정 근거 (원화는 1달러 1,400원 기준 대략치)
+const KRW_PER_USD = 1400;
+function RunInfo({ run }: { run?: ShopPostRunInfo | null }) {
+  if (!run) return null;
+  const models = Object.entries(run.calls)
+    .map(([m, n]) => `${m.replace(/^claude-|^gemini-/, "")} ${n}회`)
+    .join(" · ");
+  const won = Math.round(run.costUsd * KRW_PER_USD);
+  const reviews = run.realReviews
+    ? Object.entries(run.realReviews)
+        .map(([name, n]) => `${name} ${n}건`)
+        .join(", ")
+    : "";
+  return (
+    <div className="mt-1 text-[11px] leading-relaxed text-neutral-500">
+      AI 비용 {won > 0 ? `약 ${won}원` : "무료"} ({models || "기록 없음"})
+      {reviews && <> · 실사용 후기 {reviews}</>}
+    </div>
   );
 }

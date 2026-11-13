@@ -3,10 +3,15 @@ name: shop post
 # 쿠팡 비교글 자동 작성. 설정·키·상품은 관리자 페이지(/admin/shop)에서 관리.
 # - 스케줄: 매시간 실행, 스크립트가 "작성 시각·하루 글 수·활성화" 를 확인해 해당될 때만 작성
 # - 수동 실행: 조건 무시하고 지금 1회 작성 (발행 방식 설정은 그대로 따름)
+# - 점검 실행: 작업 브랜치(ccr-*)에서 .github/shop-run-request 파일이 바뀌면 그 브랜치 코드로 1회 작성
+#   (수정한 코드를 main 에 합치기 전에 실제로 돌려 보고 초안을 검토하는 용도. 다른 파일 변경으로는 실행 안 됨)
 on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
+  push:
+    branches: ["ccr-*"]
+    paths: [".github/shop-run-request"]
 
 permissions:
   contents: read
@@ -34,5 +39,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          SHOP_FORCE: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
+          SHOP_FORCE: ${{ github.event_name != 'schedule' && '1' || '' }}
         run: npx tsx --tsconfig tsconfig.json scripts/shop/generate-post.ts

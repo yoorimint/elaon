@@ -20,7 +20,13 @@ const MAX_CANDIDATES = 8;
 // 블로그·카페 "모델명 후기" 상위 60건 중 실제 사용 후기가 이만큼은 있어야 글감으로 쓴다
 export const MIN_REAL_REVIEWS = 8;
 
-export type Discovery = { category: string; products: ManualProduct[]; alternatives: string[] };
+// realReviews: 고른 상품별 실사용 후기 수 (선정 근거, 글에 기록)
+export type Discovery = {
+  category: string;
+  products: ManualProduct[];
+  alternatives: string[];
+  realReviews: Record<string, number>;
+};
 
 // ---------- 날짜 ----------
 function ymd(d: Date) {
@@ -250,13 +256,16 @@ export async function discoverProducts(
       }
       return reviewCounts.get(name)! >= MIN_REAL_REVIEWS;
     };
+    const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, reviewCounts.get(n) ?? 0]));
     // 고른 상품을 뺀 나머지 후보 (같은 카테고리 인기 제품)
     const others = (chosen: string[]) => cands.map((c) => c.name).filter((n) => !chosen.includes(n)).slice(0, 4);
 
     if (kind === "single") {
       for (const c of cands) {
         if (usedPairKeys.has(pairKeyOf([asProduct(c.name)]))) continue;
-        if (await hasReviews(c.name)) return { category, products: [asProduct(c.name)], alternatives: others([c.name]) };
+        if (await hasReviews(c.name)) {
+          return { category, products: [asProduct(c.name)], alternatives: others([c.name]), realReviews: pick([c.name]) };
+        }
       }
     } else {
       // 후기가 충분한 후보만 모아 순서대로 짝짓기
@@ -266,7 +275,8 @@ export async function discoverProducts(
         for (let i = 0; i < ok.length - 1; i++) {
           const pair = [asProduct(ok[i]), asProduct(ok[ok.length - 1])];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
-            return { category, products: pair, alternatives: others([ok[i], ok[ok.length - 1]]) };
+            const names = [ok[i], ok[ok.length - 1]];
+            return { category, products: pair, alternatives: others(names), realReviews: pick(names) };
           }
         }
       }

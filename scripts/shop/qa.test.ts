@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, mentionedIn } from "./discover";
-import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { checkNumbers, isNonAnswer, judgeAudit, lintPost, quoteFound, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -179,6 +179,20 @@ async function main() {
     assert.equal(mentionedIn("앤커 사운드코어 P31i", "무선이어폰", "사운드코어 p31i 후기"), true);
     assert.equal(mentionedIn("쿠쿠 인스퓨어", "가습기", "쿠쿠 인스퓨어 가습기 후기"), true);
     assert.equal(mentionedIn("쿠쿠 인스퓨어", "가습기", "인스퓨어 후기"), false);
+  });
+
+  // ---- 2026-11-13 run #16 초안: 답 없는 FAQ ----
+  await test("답이 '확인되지 않아요'뿐인 FAQ 검출, 정보가 있는 답은 통과", () => {
+    assert.equal(isNonAnswer("후기에서는 X60과의 직접 비교가 확인되지 않아요. X50과 비교한 글은 일부 있으니 참고해 보세요."), true);
+    assert.equal(
+      isNonAnswer("후기에서는 정해진 세척 주기나 소모품 교체 정보가 자세히 확인되지 않아요. 세척 방법과 관리 주기는 제조사 안내나 판매 페이지에서 확인해 보세요."),
+      true,
+    );
+    assert.equal(isNonAnswer("살균은 약 70℃에서 이뤄진다는 언급이 있어요. 살균과 가습 온도가 다르다는 점을 알고 쓰는 게 좋아요."), false);
+    assert.equal(isNonAnswer("매일 물을 갈고 주 1회 통세척하라는 후기가 많아요."), false);
+    const w = structuredClone(real);
+    w.content.faq[0] = { q: "X60과 어떻게 다른가요?", a: "후기에서는 X60과의 직접 비교가 확인되지 않아요." };
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[0]") && x.includes("다른 질문")));
   });
 
   // ---- 숫자 검사 ----

@@ -11,6 +11,7 @@ import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } f
 import { pingIndexNow } from "@/lib/indexnow";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
 import { reviewAndFix } from "./qa";
+import { usageLine, usageSummary } from "./usage";
 import { StrongModelUnavailableError } from "./providers/gemini";
 import { writePost } from "./writer";
 
@@ -51,6 +52,7 @@ async function main() {
   let products = manual;
   let category: string | undefined;
   let alternatives: string[] = [];
+  let realReviews: Record<string, number> | undefined;
   if (manual.length && !FORCE && history.usedPairKeys.has(pairKeyOf(manual))) {
     products = []; // 직접 지정 상품은 이미 썼음 → 자동 선정으로
   }
@@ -63,6 +65,7 @@ async function main() {
     products = found.products;
     category = found.category;
     alternatives = found.alternatives;
+    realReviews = found.realReviews;
   }
   const pairKey = pairKeyOf(products);
   const needsLink = products.some((p) => !p.link?.trim());
@@ -133,6 +136,7 @@ async function main() {
       ...(category ? { category } : {}),
       ...(alternatives.length ? { alternatives } : {}),
       qa,
+      run: { ...usageSummary(), ...(realReviews ? { realReviews } : {}) },
       disclosure: config.disclosure_text,
     },
     products,
@@ -150,6 +154,7 @@ async function main() {
     `✅ 저장 완료 (${status === "published" ? "발행" : needsLink ? "초안 — 쿠팡 링크 필요" : qaPassed ? "초안" : "초안 — 검수 확인 필요"}): ${written.title}`,
   );
   console.log(`   https://www.eloan.kr/shop/${slug}`);
+  console.log(`📊 실행 리포트: ${usageLine()}${realReviews ? ` · 실사용 후기 ${Object.entries(realReviews).map(([n, c]) => `${n} ${c}건`).join(", ")}` : ""}`);
 
   // 바로 공개된 글이면 검색엔진(네이버 등)에 즉시 알림
   if (status === "published") {

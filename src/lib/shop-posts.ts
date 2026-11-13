@@ -2,16 +2,17 @@
 // 권한은 Supabase RLS: 초안 조회·수정·삭제는 관리자만.
 
 import { supabase } from "./supabase";
-import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostStatus } from "./shop-post-types";
+import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostRunInfo, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products"> & {
   qa?: ShopPostQa | null; // 자동 검수 결과 (content.qa)
+  run?: ShopPostRunInfo | null; // 작성 실행 리포트 (content.run)
 };
 
 export async function listAllPosts(limit = 100): Promise<AdminPostRow[]> {
   const { data, error } = await supabase
     .from("shop_posts")
-    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa")
+    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);

@@ -1,4 +1,4 @@
-// 1단계: 상품별 근거 자료(후기 최대 100건 + 댓글 + 영상 설명 + 뉴스)를 빠짐없이 읽고
+// 1단계: 상품별 근거 자료(후기 최대 100건 + 댓글 + 영상 설명 + 뉴스 + 웹 리뷰 원문 발췌)를 빠짐없이 읽고
 // 구조화된 분석으로 압축한다. 2단계(writer)는 이 분석을 바탕으로 비교글을 쓴다.
 // 한 번에 비교글을 쓰게 하면 많은 자료 중 일부만 반영되므로, 상품별로 먼저 소화시킨다.
 
@@ -6,6 +6,7 @@ import { SOURCE_LABEL, type ShopPostInsight } from "@/lib/shop-post-types";
 import { coverage, norm, productWordsOf, quoteFound } from "./grounding";
 import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
+import { WEB_REVIEW_KIND_LABEL } from "./providers/webreviews";
 import type { ProductResearch } from "./research";
 
 export type ProductDigest = {
@@ -140,6 +141,10 @@ function material(r: ProductResearch): string {
   const news = r.news.map((n) => `- ${n.title}: ${n.text}`).join("\n");
   const notes = r.videoNotes.map((n) => `- [${n.title}] ${n.text}`).join("\n");
   const comments = r.comments.map((c) => `- ${c}`).join("\n");
+  // 웹 리뷰 원문 발췌 (원문과 글자 대조를 통과한 문장만 들어 있음 — 장면 인용의 근거로도 쓰인다)
+  const webReviews = (r.webReviews ?? [])
+    .map((w) => `- [${WEB_REVIEW_KIND_LABEL[w.kind]}] ${w.title}\n${w.excerpts.map((e) => `  · ${e}`).join("\n")}`)
+    .join("\n");
   return `# ${r.product.name}
 ## 네이버 블로그·카페·지식iN·웹문서 (${r.reviews.length}건)
 ${reviews || "(없음)"}
@@ -150,7 +155,9 @@ ${notes || "(없음)"}
 ## 유튜브 댓글 (${r.comments.length}개)
 ${comments || "(없음)"}
 ## 웹 후기 요약 (구글 검색)
-${r.webSummary ?? "(없음)"}`;
+${r.webSummary ?? "(없음)"}
+## 웹 리뷰 원문 발췌 (${(r.webReviews ?? []).length}곳)
+${webReviews || "(없음)"}`;
 }
 
 const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);

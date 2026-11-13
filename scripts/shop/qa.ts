@@ -443,8 +443,133 @@ export function columnIssues(w: WrittenPost): string[] {
     }),
   );
 
+  // 소제목은 명사형·질문형 (점검 실행 42: "주방 냄새 제거에도 도움 된다는 사용 후기예요")
+  col.stories.forEach((x, i) => {
+    if (SENTENCE_HEADING.test(x.heading.trim())) {
+      issues.push(`이야기 꼭지 소제목(stories[${i}].heading) "${x.heading}"이 문장으로 끝남 → 명사형이나 질문형으로 (예: "~에서의 차이", "~해도 괜찮을까?")`);
+    }
+  });
+
   issues.push(...repeatedFactIssues(factUnits(w), c.products.map((p) => p.name)));
+  issues.push(...evidenceHabitIssues(w));
+  issues.push(...duplicateInFieldIssues(w));
+  issues.push(...personalNumberIssues(w));
   return issues;
+}
+
+// 소제목이 "~예요/~해요/~다"처럼 문장으로 끝남 (물음표로 끝나는 질문형은 통과)
+const SENTENCE_HEADING = /(요|다|니다|죠)[.!]?$/;
+
+// ---------- 근거 말버릇 (글 전체) ----------
+// 운영자 지적 (점검 실행 42 벤타 LW-15W): "후기를 모아 보면"이 글에 5번 넘게, "꼽혀요"가 꼭지마다.
+// 구역별 검사(repeatedEvidenceIssues)는 구역마다 2번까지 허용해 꼭지가 4개면 글 전체로는 8번까지 통과했다 → 글 전체로 센다.
+// 상한은 COLUMN_GOALS(작성 규칙과 같은 값): 머리말류 3번 = 도입·첫 꼭지·단점 정도에서만 밝힐 수 있는 수,
+// "꼽혀요"류 2번. 사용자 인용 안은 세지 않는다. 칼럼 글에만 적용 (비교글은 예전 기준).
+const EVIDENCE_HABITS: { re: RegExp; label: string; max: number }[] = [
+  {
+    re: /후기를\s*(?:모아|종합해|살펴|쭉|정리해)?\s*(?:보면|봐도|읽어\s*보면)|후기에서는|후기에\s*따르면|후기들?을\s*보면/g,
+    label: "후기를 모아 보면·후기에서는",
+    max: COLUMN_GOALS.evidenceLeads,
+  },
+  { re: /꼽(?:혀요|힙니다|히는|혔|히고|혀|힌다)/g, label: "꼽혀요·꼽히는", max: COLUMN_GOALS.picked },
+];
+export function evidenceHabitIssues(w: WrittenPost): string[] {
+  if (!w.content.column) return [];
+  const texts = allText(w).filter((x) => !/\.quote$/.test(x.path) && x.path !== "제목" && x.path !== "설명");
+  return EVIDENCE_HABITS.flatMap(({ re, label, max }) => {
+    const hits = texts.flatMap(({ path, text }) => [...withoutQuotes(text).matchAll(re)].map(() => path.replace(/\[\d+\]/g, "")));
+    if (hits.length <= max) return [];
+    return [
+      `근거 말버릇 "${label}"이 글 전체에 ${hits.length}번(${[...new Set(hits)].slice(0, 5).join(", ")}) → ${max}번 이하로. ` +
+        `여러 후기가 같은 말을 하는 내용은 에디터 목소리로 "~해요"라고 쓰고, 후기에서 나온 말임은 도입이나 꼭지 첫머리 한 곳에서만 (근거 없는 내용을 단정하지는 않기)`,
+    ];
+  });
+}
+
+// ---------- 한 칸 안의 같은 내용 두 번 ----------
+// 운영자 지적 (점검 실행 42): 대처 팁에 "한 사용자는 생수통 하나를 준비해 두고 나눠 붓는 방식이 쉬웠다고 말했어요." 뒤에
+// 원문 "생수통 하나 준비해두고 한 2번정도 왔다갔다하면서 부어주니까 쉬워요."가 그대로 또 붙음.
+// 같은 칸(꼭지 본문 하나, 단점 하나의 설명+팁) 안의 두 문장이 핵심 단어 3개·절반 이상 겹치면 같은 내용으로 본다
+// (구역끼리 보는 repeatedFacts 보다 비율을 높여 이웃 문장이 같은 주제어를 쓰는 정상 흐름은 통과시킨다).
+const DUP_IN_FIELD_RATIO = 0.5;
+export function duplicateInFieldIssues(w: WrittenPost): string[] {
+  const col = w.content.column;
+  if (!col) return [];
+  const productWords = productWordsOf(w.content.products.map((p) => p.name));
+  const fields = [
+    ...col.stories.map((x, i) => ({ name: `stories[${i}].body`, text: x.body })),
+    ...col.downsides.map((x, i) => ({ name: `downsides[${i}]`, text: `${x.detail}\n\n${x.tip}` })),
+  ];
+  return fields.flatMap(({ name, text }) => {
+    const ss = factSentences([{ name, texts: [text] }], productWords);
+    for (let i = 0; i < ss.length; i++) {
+      for (let j = i + 1; j < ss.length; j++) {
+        const shared = [...ss[i].stems].filter((x) => ss[j].stems.has(x));
+        const small = Math.min(ss[i].stems.size, ss[j].stems.size);
+        if (shared.length >= FACT_SHARED && small > 0 && shared.length / small >= DUP_IN_FIELD_RATIO) {
+          return [
+            `${name}: 같은 내용이 두 번("${ss[i].text.slice(0, 30)}…" / "${ss[j].text.slice(0, 30)}…") → 하나만 남기기 ` +
+              `(사용자 말은 따옴표 인용 원문 그대로 또는 3인칭 풀어쓰기 중 하나로만)`,
+          ];
+        }
+      }
+    }
+    return [];
+  });
+}
+
+// ---------- 개인 사례 수치를 일반 사실처럼 ----------
+// 운영자 지적 (점검 실행 42): "36평 집 안방에서는 습도가 28~31%까지만 올랐어요." — 한 사용자의 경험을 제품의 사실처럼 씀.
+// 본문(도입·꼭지·단점·판정) 문장에 사양 표에 없는 수치(숫자+단위)가 있으면 누구의 경험·설명인지 밝혀야 한다:
+// "한 사용자는", "~라는 후기", "~로 소개돼요", "~다고 해요" 같은 주체·출처 표시가 같은 문장에 없으면 지적.
+const ATTRIBUTION = /사용자|구매자|이용자|리뷰어|한\s*분|어떤\s*분|분은|분도|후기|소개|표기|안내|제조사|판매|스펙|사양|설명서|다고|라고|기준/;
+export function personalNumberIssues(w: WrittenPost): string[] {
+  const c = w.content;
+  const col = c.column;
+  if (!col) return [];
+  const known = new Set([...c.comparison.flatMap((r) => r.values.flatMap((v) => [...numbersIn(v)])), ...c.products.flatMap((p) => [...numbersIn(p.name)])]);
+  const fields = [
+    { name: "intro", text: c.intro },
+    ...col.stories.map((x, i) => ({ name: `stories[${i}].body`, text: x.body })),
+    ...col.downsides.map((x, i) => ({ name: `downsides[${i}].detail`, text: x.detail })),
+    ...col.downsides.map((x, i) => ({ name: `downsides[${i}].tip`, text: x.tip })),
+    ...col.buyIf.map((x, i) => ({ name: `buyIf[${i}]`, text: x })),
+    ...col.skipIf.map((x, i) => ({ name: `skipIf[${i}]`, text: x })),
+  ];
+  return fields.flatMap(({ name, text }) =>
+    rawParagraphs(withoutQuotes(text))
+      .flatMap(sentencesOf)
+      .filter((x) => [...numbersIn(x)].some((n) => !known.has(n)) && !ATTRIBUTION.test(x))
+      .map((x) => `${name}: "${x.slice(0, 50)}" — 사양 표에 없는 수치를 출처 없이 씀 → 한 사람의 경험이면 "한 사용자는 ~했다고 해요"처럼, 제조사 설명이면 "~로 소개돼요"처럼 밝히기`),
+  );
+}
+
+// ---------- 이야기 꼭지는 여러 후기로 뒷받침되는 주제만 ----------
+// 운영자 지적 (점검 실행 42): 후기 1개뿐인 "주방 냄새 제거"로 본문 꼭지를 세움.
+// 작성 때 꼭지마다 근거(basis)로 후기 분석의 장점·단점 항목을 적게 하고, 그 항목이 분석에 있는지·언급 수가
+// COLUMN_GOALS.storyMinMentions(2) 이상인지 코드로 본다. 후기 분석이 없으면(분석 실패) 확인할 수 없어 건너뛴다.
+export function storyBasisIssues(w: WrittenPost, digests: (ProductDigest | null)[]): string[] {
+  const col = w.content.column;
+  const d = digests[0];
+  if (!col || !d) return [];
+  const points = [...d.strengths, ...d.weaknesses];
+  const matches = (basis: string, point: string) => {
+    const a = norm(basis.replace(/\(약\s*\d+회\s*언급\)/, ""));
+    const b = norm(point);
+    if (!a || !b) return false;
+    return a === b || a.includes(b) || b.includes(a) || quoteFound(basis, b, 0.6) || quoteFound(point, a, 0.6);
+  };
+  return col.stories.flatMap((x, i) => {
+    const hit = points.find((p) => matches(x.basis ?? "", p.point));
+    const where = `이야기 꼭지 "${x.heading.slice(0, 20)}"(stories[${i}])`;
+    if (!x.basis?.trim() || !hit) {
+      return [`${where}: 근거(basis)가 후기 분석의 장점·단점 항목에 없음 → 여러 후기가 함께 말하는 장점·단점 항목을 근거로 고르고 그 항목을 basis 에 그대로 적기`];
+    }
+    if (hit.mentions < COLUMN_GOALS.storyMinMentions) {
+      return [`${where}: "${hit.point}"는 후기 ${hit.mentions}곳뿐인 이야기 → 꼭지로 세우지 말고 여러 후기가 말하는 다른 장점·단점으로 바꾸기 (한 사람 경험은 다른 꼭지 안에 "한 사용자는 ~"으로 짧게)`];
+    }
+    return [];
+  });
 }
 
 // ---------- 같은 사실 반복 (본문 꼭지끼리) ----------
@@ -495,10 +620,14 @@ export function factUnits(w: WrittenPost): FactUnit[] {
 
 type FactSentence = { unit: number; text: string; stems: Set<string>; nums: Set<string> };
 
+// 다른 꼭지·단점을 가리키기만 하는 문장 ("다만 상부 급수 청소는 아래 단점에서 따로 볼게요") — 작성 규칙이 권하는 꼴이라
+// 반복으로 세지 않는다 (점검 실행 42 글로 시험: 이 문장이 단점 꼭지와 겹친다고 잡혔음)
+const POINTER_SENTENCE = /아래\s*(단점|꼭지)|단점에서\s*(따로|다시|자세히)|앞에서\s*(본|다룬|말한)|아래에서\s*(따로|다시|자세히)/;
+
 function factSentences(units: FactUnit[], productWords: string[]): FactSentence[] {
   return units.flatMap((u, unit) =>
     u.texts.flatMap((t) =>
-      rawParagraphs(withoutQuotes(t)).flatMap(sentencesOf).map((text) => ({
+      rawParagraphs(withoutQuotes(t)).flatMap(sentencesOf).filter((x) => !POINTER_SENTENCE.test(x)).map((text) => ({
         unit,
         text,
         // 문장부호를 떼고 단어를 뽑는다 (문장 끝 "있어요."처럼 마침표가 붙으면 조사·어미가 안 떨어짐)
@@ -561,11 +690,13 @@ export function repeatedFactIssues(units: FactUnit[], productNames: string[] = [
 
 // ---------- 따옴표 인용 대조 ----------
 // 칼럼은 실제 사용자 말을 따옴표로 살린다 → 인용은 지어내면 바로 거짓말이 된다.
-// 대조 대상(quoteSource): 원자료(후기·댓글·영상 설명 전부) + 후기 분석의 사용 장면 "원문"(이미 원자료와 대조됨).
+// 대조 대상(quoteSource): 원자료(후기·댓글·영상 설명·웹 리뷰 원문 발췌 전부) + 후기 분석의 사용 장면 "원문"(이미 원자료와 대조됨).
 //  후기 분석의 요약 문장(장점·단점 목록)은 사용자 말이 아니라서 넣지 않는다.
 // 기준: grounding.quoteFound 를 장면 인용과 같은 0.8 로 (글자 그대로 옮기라고 했으므로 검수 일반 기준 0.6보다 엄격).
 // 본문 속 따옴표는 강조용 짧은 말("직배수형")이 많아 핵심 글자 8자 이상인 것만 사용자 말로 본다.
 const QUOTE_MATCH_RATIO = 0.8;
+// 따옴표 없이 붙인 원문으로 볼 최소 길이 (norm 글자). 짧은 말("세척이 편해요")은 우연히 같을 수 있어 뺀다
+const RAW_PASTE_CHARS = 20;
 const MIN_INLINE_QUOTE = 8;
 
 export function quoteSourceOf(research: ProductResearch[], digests: (ProductDigest | null)[]): string {
@@ -575,6 +706,7 @@ export function quoteSourceOf(research: ProductResearch[], digests: (ProductDige
         ...r.reviews.map((x) => `${x.title} ${x.text}`),
         ...r.comments,
         ...r.videoNotes.map((x) => x.text),
+        ...(r.webReviews ?? []).flatMap((x) => x.excerpts), // 웹 리뷰 원문 발췌 (원문 대조를 통과한 문장)
         ...(digests[i]?.scenes ?? []).map((x) => x.quote),
       ].join("\n"),
     )
@@ -591,6 +723,17 @@ export function checkQuotes(w: WrittenPost, quoteSource: string): string[] {
       issues.push(`stories[${i}].quote: 인용 "${x.quote.slice(0, 40)}"이 후기 원문에 없음(지어냄 의심) → 원문 그대로 바꾸거나 인용을 지우기(빈 문자열)`);
     }
   });
+  // 원문 문장을 따옴표 없이 본문에 그대로 붙임 (점검 실행 42 대처 팁: "생수통 하나 준비해두고 … 부어주니까 쉬워요.")
+  // 글쓴이 말처럼 읽혀 인용인지 알 수 없다. 핵심 글자 RAW_PASTE_CHARS 이상인 문장이 원문에 통째로 있으면 지적.
+  for (const { path, text } of allText(w)) {
+    if (/\.quote$/.test(path) || !/^(intro|stories|downsides|buyIf|skipIf|verdict|summary)/.test(path)) continue;
+    for (const sentence of rawParagraphs(withoutQuotes(text)).flatMap(sentencesOf)) {
+      const n = norm(sentence);
+      if (n.length >= RAW_PASTE_CHARS && src.includes(n)) {
+        issues.push(`${path}: "${sentence.slice(0, 40)}" — 후기 원문을 따옴표 없이 그대로 붙임 → 따옴표 인용으로 바꾸거나 3인칭으로 풀어 쓰기 (같은 내용을 두 번 쓰지 않기)`);
+      }
+    }
+  }
   for (const { path, text } of allText(w)) {
     if (/\.quote$/.test(path)) continue;
     for (const q of quotesIn(text)) {
@@ -1013,10 +1156,23 @@ ${evidence}`;
 }
 
 // ---------- 4) 검수 → 수정 반복 ----------
-async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, evidence: string, quoteSource: string) {
+async function checkAll(
+  secrets: Secrets,
+  w: WrittenPost,
+  productCount: number,
+  evidence: string,
+  quoteSource: string,
+  digests: (ProductDigest | null)[],
+) {
   const ai = await aiAudit(secrets, w, evidence);
   return {
-    issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...checkQuotes(w, quoteSource), ...(ai?.issues ?? [])],
+    issues: [
+      ...lintPost(w, productCount),
+      ...checkNumbers(w, evidence),
+      ...checkQuotes(w, quoteSource),
+      ...storyBasisIssues(w, digests),
+      ...(ai?.issues ?? []),
+    ],
     notes: [...hedgeNotes(w), ...(ai?.notes ?? [])],
     aiChecked: ai !== null,
   };
@@ -1041,7 +1197,7 @@ export async function reviewAndFix(
     return r.post;
   };
   let post = fixed(written);
-  let check = await checkAll(secrets, post, n, evidence, quoteSource);
+  let check = await checkAll(secrets, post, n, evidence, quoteSource, digests);
   const found = check.issues.length;
   let revisions = 0;
 
@@ -1063,7 +1219,7 @@ export async function reviewAndFix(
       break;
     }
     revisions++;
-    check = await checkAll(secrets, post, n, evidence, quoteSource);
+    check = await checkAll(secrets, post, n, evidence, quoteSource, digests);
     log(`수정 ${revisions}회 후 재검수`);
     if (issueScore(check.issues) < issueScore(best.check.issues)) best = { post, check };
   }

@@ -23,6 +23,7 @@ import {
   type ShopPostColumn,
   type ShopPostInputProduct,
   type ShopPostStats,
+  readCountText,
 } from "@/lib/shop-post-types";
 import { splitParagraphs } from "@/lib/paragraphs";
 
@@ -285,14 +286,19 @@ function RelatedPosts({ related }: { related: RelatedPost[] }) {
 }
 
 // 신뢰 박스: 어떻게 만들었는지 정직하게
-function TrustBox() {
+// 웹 리뷰 원문을 함께 읽은 글만 웹 리뷰를 적는다 (웹 리뷰 수집 전 글은 예전 문구 그대로)
+function TrustBox({ webReviews = false }: { webReviews?: boolean }) {
   return (
     <aside className="mt-14 rounded-2xl bg-neutral-50 dark:bg-neutral-900 p-5">
       <div className="flex items-center gap-2 text-[15px] font-semibold text-neutral-900 dark:text-white">
         <ShieldCheck className="h-4 w-4" />이 글은 이렇게 만들었어요
       </div>
       <ul className="mt-3 space-y-1.5 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-        <li>네이버 블로그·카페와 유튜브 리뷰 영상·댓글의 실사용 후기를 모아 분석했어요.</li>
+        <li>
+          {webReviews
+            ? "블로그·카페 후기, 유튜브 리뷰 영상·댓글, 웹 리뷰 글의 실사용 후기를 모아 분석했어요."
+            : "네이버 블로그·카페와 유튜브 리뷰 영상·댓글의 실사용 후기를 모아 분석했어요."}
+        </li>
         <li>협찬·체험단 표시가 있는 후기는 분석에서 제외했어요.</li>
         <li>가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.</li>
       </ul>
@@ -306,18 +312,10 @@ function TrustBox() {
 // 구매 버튼은 위 카드·판정 뒤·맨 아래 세 곳 (본문 중간에는 넣지 않음 — 노골적으로 보이지 않게).
 // 사진 자리: main(위 카드) · feature(첫 꼭지 뒤) · detail(셋째 꼭지 뒤) · thumb(판정 뒤 구매 줄) · table(한눈에 보기 머리) · bottom(아래 카드).
 
-// 몇 건을 읽었는지: AI 가 쓰지 않고 실제 수집 건수(post.stats)로 보여 준다 (지어낸 숫자가 들어갈 틈을 없앰)
-function ReadCount({ stats }: { stats?: ShopPostStats }) {
-  const parts = [
-    stats?.naverReviews ? `네이버 블로그·카페 등 글 ${stats.naverReviews}건` : "",
-    stats?.youtubeComments ? `유튜브 댓글 ${stats.youtubeComments}개` : "",
-  ].filter(Boolean);
-  if (!parts.length) return null;
-  return (
-    <p className="mt-5 text-[14px] leading-relaxed text-neutral-500">
-      {parts.join("과 ")}에 담긴 실사용 후기를 모아 읽고 정리했어요. 직접 써 본 리뷰가 아니라, 써 본 사람들의 이야기를 대신 읽어 드리는 글이에요.
-    </p>
-  );
+function ReadCount({ stats, webReviews }: { stats?: ShopPostStats; webReviews: number }) {
+  const text = readCountText(stats, webReviews);
+  if (!text) return null;
+  return <p className="mt-5 text-[14px] leading-relaxed text-neutral-500">{text}</p>;
 }
 
 // 실제 사용자 말 (원문 대조를 통과한 인용만 저장됨 — scripts/shop/qa.ts checkQuotes)
@@ -411,7 +409,7 @@ function ColumnArticle({
       {/* 도입: 독자의 상황 → 핵심 질문 → 어떻게 읽었는지 */}
       <div className="mt-10">
         <Paragraphs text={c.intro} className="text-[18px] leading-[1.8] text-neutral-800 dark:text-neutral-200" />
-        <ReadCount stats={post.stats} />
+        <ReadCount stats={post.stats} webReviews={post.sources?.filter((x) => x.kind === "web_review").length ?? 0} />
       </div>
 
       {/* 한 줄 판정: 훑는 독자용 */}
@@ -559,7 +557,7 @@ function ColumnArticle({
       </div>
 
       <RelatedPosts related={related} />
-      <TrustBox />
+      <TrustBox webReviews={post.sources?.some((x) => x.kind === "web_review")} />
     </article>
   );
 }
@@ -854,7 +852,7 @@ export function ShopPostView({
       </div>
 
       <RelatedPosts related={related} />
-      <TrustBox />
+      <TrustBox webReviews={post.sources?.some((x) => x.kind === "web_review")} />
     </article>
   );
 

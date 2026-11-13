@@ -27,6 +27,7 @@ export type Discovery = {
   products: ManualProduct[];
   alternatives: string[];
   realReviews: Record<string, number>;
+  forms: Record<string, string>; // 상품명 → 제품 형태 (예: "가열식 가습기") — 웹 리뷰 검색에 넘긴다
 };
 
 // ---------- 날짜 ----------
@@ -400,13 +401,14 @@ export async function discoverProducts(
     };
     const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, reviewCounts.get(n) ?? 0]));
     // 고른 상품을 뺀 나머지 후보 (같은 카테고리 인기 제품)
+    const formsOf = (cs: Candidate[]) => Object.fromEntries(cs.filter((c) => c.type).map((c) => [c.name, c.type]));
     const others = (chosen: string[]) => cands.map((c) => c.name).filter((n) => !chosen.includes(n)).slice(0, 4);
 
     if (kind === "single") {
       for (const c of cands) {
         if (usedPairKeys.has(pairKeyOf([asProduct(c.name)]))) continue;
         if (await hasReviews(c.name)) {
-          return { category, products: [asProduct(c.name)], alternatives: others([c.name]), realReviews: pick([c.name]) };
+          return { category, products: [asProduct(c.name)], alternatives: others([c.name]), realReviews: pick([c.name]), forms: formsOf([c]) };
         }
       }
     } else {
@@ -421,7 +423,7 @@ export async function discoverProducts(
           if (!usedPairKeys.has(pairKeyOf(pair))) {
             const names = [prev.name, c.name];
             console.log(`  짝: ${prev.name} vs ${c.name} (${pairTypeLabel(prev.type, c.type)})`);
-            return { category, products: pair, alternatives: others(names), realReviews: pick(names) };
+            return { category, products: pair, alternatives: others(names), realReviews: pick(names), forms: formsOf([prev, c]) };
           }
         }
         ok.push(c);

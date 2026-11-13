@@ -117,14 +117,20 @@ async function webReviewSkipReason(secrets: Secrets): Promise<string | null> {
   return null;
 }
 
-async function collectWebReviews(secrets: Secrets, name: string, opts: ResearchOptions, warnings: string[]): Promise<WebReview[]> {
+async function collectWebReviews(
+  secrets: Secrets,
+  name: string,
+  form: string | undefined,
+  opts: ResearchOptions,
+  warnings: string[],
+): Promise<WebReview[]> {
   const skip = await webReviewSkipReason(secrets);
   if (skip) {
     console.log(`    (${name}: 웹 리뷰 조사 건너뜀 — ${skip})`);
     return [];
   }
   try {
-    const r = await researchWebReviews(secrets, { name }, { adFilterWords: opts.adFilterWords });
+    const r = await researchWebReviews(secrets, { name, form }, { adFilterWords: opts.adFilterWords });
     webReviewSpent += r.costUsd;
     const excerpts = r.reviews.reduce((n, w) => n + w.excerpts.length, 0);
     const dropped = Object.entries(r.dropped)
@@ -252,6 +258,7 @@ export async function researchProduct(
   secrets: Secrets,
   product: ShopPostInputProduct,
   opts: ResearchOptions,
+  form?: string, // 제품 형태(예: "가열식 가습기") — 웹 리뷰 검색에서 같은 이름의 다른 제품을 거르는 데 씀
 ): Promise<ProductResearch> {
   const result: ProductResearch = {
     product,
@@ -300,7 +307,7 @@ export async function researchProduct(
     }
   }
   // 웹 리뷰 원문: 네이버·유튜브 수집 뒤에 보강 (건너뛰거나 실패해도 계속)
-  result.webReviews = await collectWebReviews(secrets, product.name, opts, result.errors);
+  result.webReviews = await collectWebReviews(secrets, product.name, form, opts, result.errors);
   return result;
 }
 
@@ -310,6 +317,7 @@ export function toSources(research: ProductResearch[]): ShopPostSource[] {
     ...r.reviews.map((s) => ({ kind: s.kind, title: s.title, url: s.url, product: i })),
     ...r.news.map((n) => ({ kind: "naver_news" as const, title: n.title, url: n.url, product: i })),
     ...r.videos.map((v) => ({ kind: "youtube" as const, title: v.title, url: v.url, product: i })),
+    ...(r.webReviews ?? []).map((w) => ({ kind: "web_review" as const, title: w.title, url: w.url, product: i })),
   ]);
 }
 

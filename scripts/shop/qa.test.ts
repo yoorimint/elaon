@@ -9,7 +9,8 @@ import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, pairTypeLabel, sameType } from "./discover";
-import { DIRECT_USE, MIN_COLUMN, checkQuotes, columnIssues, factUnits, hedgeNotes, quoteSourceOf, repeatedFacts } from "./qa";
+import { DIRECT_USE, MIN_COLUMN, checkQuotes, columnIssues, duplicateInFieldIssues, evidenceHabitIssues, factUnits, hedgeNotes, personalNumberIssues, quoteSourceOf, repeatedFacts, storyBasisIssues } from "./qa";
+import { toSources } from "./research";
 import { MAX_PARAGRAPH_CHARS, STRUCTURAL, checkNumbers, evidenceTailCount, isNonAnswer, judgeAudit, lintPost, locallySupported, longParagraphIssues, quoteFound, repeatedEndingIssues, repeatedEvidenceIssues, repeatedOpeningIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { rawParagraphs, sentencesOf, splitParagraphs } from "@/lib/paragraphs";
 import { fixHanja } from "./hanja";
@@ -18,8 +19,8 @@ import { StrongModelUnavailableError, geminiGenerate, shortError } from "./provi
 import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
 import { COLUMN_GOALS, READABILITY, SECTION_GOALS, buildEvidence, rulesFor, validateColumn, writerJson, type WrittenPost } from "./writer";
-import { roborockColumn, roborockEvidence, roborockOld } from "./test-fixtures";
-import { isColumnPost } from "@/lib/shop-post-types";
+import { roborockColumn, roborockDigestPoints, roborockEvidence, roborockOld } from "./test-fixtures";
+import { isColumnPost, readCountText } from "@/lib/shop-post-types";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -1200,6 +1201,11 @@ async function main() {
     w.content.column!.stories[1].body += "\n\n방식 설명은 판매 페이지와 후기 사이에 차이가 있어서, 아래 단점에서 따로 짚을게요.";
     w.content.column!.stories[3].body += "\n\n살균 방식은 판매 페이지 설명과 함께 아래에서 따로 볼게요.";
     assert.deepEqual(repeatedFacts(factUnits(w), ["로보락 S10"]), []);
+    // 작성 규칙이 권하는 "아래 단점에서 따로 볼게요" 가리키기 문장은 반복이 아님 (점검 실행 42 글)
+    const ptr = structuredClone(roborockColumn);
+    ptr.content.column!.stories[0].body += "\n\n다만 가격 부담은 아래 단점에서 따로 볼게요.";
+    ptr.content.column!.downsides[0].detail = "가격 부담이 커서 로봇청소기를 처음 들이는 분에게는 따로 볼 점이 있어요. " + ptr.content.column!.downsides[0].detail;
+    assert.deepEqual(repeatedFacts(factUnits(ptr), ["로보락 S10"]), []);
     const d = structuredClone(roborockColumn);
     d.content.column!.stories[1].body += "\n\n가격대가 높아 로봇청소기를 처음 들이는 분에게는 부담이 커요.";
     const issues = lintPost(d, 1).filter((x) => x.startsWith("같은 사실 반복"));
@@ -1211,6 +1217,91 @@ async function main() {
     const fixed = autoFix(w).post;
     assert.ok(fixed.content.column!.stories[3].body.startsWith("디스크 살균은 소개된 내용에 나온 대로"), fixed.content.column!.stories[3].body);
     assert.ok(!lintPost(fixed, 1).some((x) => x.includes("자료")));
+  });
+  // ---- 운영자가 점검 실행 42 글(벤타 LW-15W)을 읽고 찾은 문제 (2026-11-13) ----
+  await test("① 근거 말버릇은 글 전체로 셈: '후기를 모아 보면' 4번·'꼽혀요' 3번이면 지적, 인용 안·상한 이내는 통과", () => {
+    const w = structuredClone(roborockColumn);
+    const st = w.content.column!.stories;
+    // 고정 글에는 이미 2번(첫 꼭지·FAQ) — 하나 더해 3번까지는 통과, 4번이면 지적
+    st[2].body = "후기에서는 문턱 이야기가 자주 나와요. " + st[2].body;
+    assert.deepEqual(evidenceHabitIssues(w), [], "머리말류 3번까지는 통과");
+    st[3].body = "후기를 보면 " + st[3].body;
+    const issues = evidenceHabitIssues(w);
+    assert.ok(issues.some((x) => x.includes('"후기를 모아 보면·후기에서는"이 글 전체에 4번')), issues.join("\n"));
+    const p = structuredClone(roborockColumn);
+    p.content.column!.stories.forEach((x, i) => i < 3 && (x.body += " 장점으로 꼽혀요."));
+    assert.ok(evidenceHabitIssues(p).some((x) => x.includes("꼽혀요·꼽히는")));
+    // 인용 안은 세지 않음, 비교·예전 구성 글은 대상 아님
+    const q = structuredClone(roborockColumn);
+    q.content.column!.stories[0].quote = "후기를 모아 보면 다들 좋다고 하고 꼽혀요 꼽혀요 꼽혀요";
+    assert.deepEqual(evidenceHabitIssues(q), []);
+    assert.deepEqual(evidenceHabitIssues(roborockOld), []);
+    assert.ok(rulesFor(1).includes(`"후기를 모아 보면/후기를 보면/후기에서는"류는 글 전체에서 ${COLUMN_GOALS.evidenceLeads}번까지`));
+  });
+  await test("② 같은 내용 두 번(풀어쓴 문장 + 원문 그대로): 칸 안 중복·따옴표 없는 원문 붙이기 검출", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.downsides[2].tip =
+      "한 사용자는 생수통 하나를 준비해 두고 나눠 붓는 방식이 쉬웠다고 말했어요. 생수통 하나 준비해두고 한 2번정도 왔다갔다하면서 부어주니까 쉬워요.";
+    assert.ok(duplicateInFieldIssues(w).some((x) => x.startsWith("downsides[2]") && x.includes("같은 내용이 두 번")), duplicateInFieldIssues(w).join("\n"));
+    const src = roborockEvidence + "\n- [카페] 생수통 하나 준비해두고 한 2번정도 왔다갔다하면서 부어주니까 쉬워요.";
+    const q = checkQuotes(w, src);
+    assert.ok(q.some((x) => x.startsWith("downsides[2].tip") && x.includes("따옴표 없이 그대로")), q.join("\n"));
+    // 따옴표로 인용하면 통과, 정상 칼럼은 중복 없음
+    w.content.column!.downsides[2].tip = '한 사용자는 "생수통 하나 준비해두고 한 2번정도 왔다갔다하면서 부어주니까 쉬워요"라고 했어요.';
+    assert.ok(!checkQuotes(w, src).some((x) => x.includes("따옴표 없이")));
+    assert.deepEqual(duplicateInFieldIssues(roborockColumn), []);
+  });
+  await test("③ 한 사람 경험의 수치를 일반 사실처럼 쓰면 지적, 출처 주체를 밝히거나 사양 표 수치면 통과", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.downsides[0].detail = "36평 집 안방에서는 습도가 28~31%까지만 올랐어요. 넓은 집이라면 기대를 낮춰야 해요.";
+    const issues = personalNumberIssues(w);
+    assert.ok(issues.some((x) => x.startsWith("downsides[0].detail") && x.includes("36평")), issues.join("\n"));
+    w.content.column!.downsides[0].detail = "36평 집에 사는 한 사용자는 안방 습도가 28~31%까지만 올랐다고 해요. 넓은 집이라면 기대를 낮춰야 해요.";
+    assert.deepEqual(personalNumberIssues(w), []);
+    // 사양 표에 있는 수치(36,000Pa·8.8cm)는 출처 표시 없이도 통과
+    assert.deepEqual(personalNumberIssues(roborockColumn), []);
+  });
+  await test("④ 후기 1개뿐인 주제로 세운 꼭지·근거 없는 꼭지·문장형 소제목 검출", () => {
+    const digest = roborockDigestPoints as unknown as ProductDigest;
+    assert.deepEqual(storyBasisIssues(roborockColumn, [digest]), []);
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[3] = {
+      heading: "주방 냄새 제거에도 도움 된다는 사용 후기예요",
+      basis: "주방 냄새: 요리 뒤 냄새가 사라짐",
+      body: "주방에 두고 요리한 뒤 돌리면 냄새가 사라졌다는 사용자가 있어요. 다만 이 내용은 개인 후기 중심이라 참고용으로만 보시는 게 좋아요.",
+      quote: "",
+    };
+    const issues = storyBasisIssues(w, [digest]);
+    assert.ok(issues.some((x) => x.includes("stories[3]") && x.includes("후기 1곳뿐인")), issues.join("\n"));
+    w.content.column!.stories[2].basis = "디자인이 예쁨";
+    assert.ok(storyBasisIssues(w, [digest]).some((x) => x.includes("stories[2]") && x.includes("항목에 없음")));
+    assert.deepEqual(storyBasisIssues(w, [null]), [], "분석이 없으면 확인할 수 없어 건너뜀");
+    const heading = lintPost(w, 1).filter((x) => x.includes(".heading)"));
+    assert.ok(heading.some((x) => x.includes("stories[3].heading") && x.includes("문장으로 끝남")), heading.join("\n"));
+    assert.ok(!heading.some((x) => x.includes("stories[0]")), "명사형 소제목은 통과");
+    w.content.column!.stories[3].heading = "문턱 많은 집에서도 괜찮을까?";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("stories[3].heading")), "질문형은 통과");
+  });
+  await test("⑤ 몇 건 살펴봤는지: 플랫폼 이름 없이 '실사용 후기 N여 건과 리뷰 글 M편', 과장 표현 없음", () => {
+    const t = readCountText({ naverReviews: 100, youtubeVideos: 3, youtubeComments: 76, webSources: 0 }, 3)!;
+    assert.equal(t.split(".")[0], "실사용 후기 170여 건과 리뷰 글 3편을 살펴봤어요");
+    assert.ok(!/네이버|블로그|카페|유튜브|읽고/.test(t), t);
+    assert.ok(readCountText({ naverReviews: 30, youtubeVideos: 0, youtubeComments: 0, webSources: 0 })!.startsWith("실사용 후기 30여 건을 살펴봤어요"));
+    assert.equal(readCountText(undefined), null);
+  });
+  await test("웹 리뷰 원문 발췌: 작성·검수 근거와 인용 대조 대상에 들어가고, 참고한 출처에 '웹 리뷰'로 남음", () => {
+    const r = {
+      product: { name: "로보락 S10", link: "" },
+      reviews: [], comments: [], videoNotes: [], news: [], videos: [], webSummary: null, webSourceCount: 0, errors: [],
+      webReviews: [{ url: "https://example.com/r1", title: "로보락 S10 석 달 사용기", kind: "blog", verifiedBy: "page", excerpts: ["머리카락이 브러시에 거의 안 감겨서 가위 들 일이 없어졌어요"] }],
+    } as unknown as ProductResearch;
+    const ev = buildEvidence([r], [null]);
+    assert.ok(ev.includes("원자료 발췌 — 웹 리뷰") && ev.includes("가위 들 일이 없어졌어요"), ev);
+    assert.ok(quoteSourceOf([r], [null]).includes("가위 들 일이 없어졌어요"));
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[0].quote = "머리카락이 브러시에 거의 안 감겨서 가위 들 일이 없어졌어요";
+    assert.deepEqual(checkQuotes(w, quoteSourceOf([r], [null])), [], "웹 리뷰 원문 인용은 통과");
+    assert.deepEqual(toSources([r]), [{ kind: "web_review", title: "로보락 S10 석 달 사용기", url: "https://example.com/r1", product: 0 }]);
   });
   await test("칼럼 도입: '결론부터'로 시작·너무 짧음·핵심 질문 없음 검출", () => {
     const w = structuredClone(roborockColumn);

@@ -61,6 +61,7 @@ type Selection = {
   category?: string;
   alternatives: string[];
   realReviews?: Record<string, number>;
+  forms?: Record<string, string>; // 상품명 → 제품 형태 (자동 선정 때만)
 };
 
 type Attempt = Selection & {
@@ -88,7 +89,7 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection, che
   console.log(`🔎 ${products.length === 1 ? "단일 상품 후기 분석" : "비교글"} — 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
   const research: ProductResearch[] = [];
   for (const p of products) {
-    const r = await researchProduct(secrets, p, opts);
+    const r = await researchProduct(secrets, p, opts, sel.forms?.[p.name] ?? sel.category);
     console.log(
       `  - ${p.name}: 네이버 ${r.reviews.length}건 · 뉴스 ${r.news.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개/설명 ${r.videoNotes.length}개 · 웹 출처 ${r.webSourceCount}곳`,
     );
@@ -246,7 +247,8 @@ async function main() {
       naverReviews: research.reduce((n, r) => n + r.reviews.length, 0),
       youtubeVideos: research.reduce((n, r) => n + r.videos.length, 0),
       youtubeComments: research.reduce((n, r) => n + r.comments.length, 0),
-      webSources: research.reduce((n, r) => n + r.webSourceCount, 0),
+      // 구글 검색 요약의 출처 수 + 원문을 읽은 웹 리뷰 글 수
+      webSources: research.reduce((n, r) => n + r.webSourceCount + (r.webReviews?.length ?? 0), 0),
     },
     pair_key: pairKeyOf(products),
     status,

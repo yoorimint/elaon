@@ -6,6 +6,7 @@ import { SOURCE_LABEL, type ShopPostContent } from "@/lib/shop-post-types";
 import { digestBlock, type ProductDigest } from "./digest";
 import { fixHanja } from "./hanja";
 import { generate } from "./providers/llm";
+import { WEB_REVIEW_KIND_LABEL } from "./providers/webreviews";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
 
@@ -183,6 +184,9 @@ export const COLUMN_GOALS = {
   people: "2~3개", // 이런 분은 사세요 / 다른 걸 보세요 각각
   chips: "3~4개",
   chipChars: 15, // 장단점 칩 한 개 글자 수 (휴대폰에서 한 줄)
+  storyMinMentions: 2, // 이야기 꼭지 주제가 후기 분석에서 언급된 최소 횟수 (한 사람 경험으로 꼭지를 세우지 않게)
+  evidenceLeads: 3, // "후기를 모아 보면"류 근거 머리말, 글 전체 상한
+  picked: 2, // "꼽혀요"류, 글 전체 상한
   faq: "4~6개",
   table: "5~8개",
 } as const;
@@ -221,7 +225,11 @@ const COLUMN_RULES = `너는 한국 소비자를 위한 "후기 읽어주는 에
   "그래서 실사용 후기를 모아 읽어 봤어요"처럼 방법 한 줄. "결론부터", "한마디로", "정리하면"으로 시작하지 않는다. 장단점 나열 금지.
 - summary(한 줄 판정 박스): 바쁜 독자용 판정 ${CG.verdictBox}. "~라면 사도 되고, ~라면 다른 걸 보세요"처럼 분명하게.
 - stories(본문 이야기 꼭지) ${CG.stories}: 꼭지마다 이 제품의 서로 다른 강점·특징 하나.
-  heading: 제품마다 다른 소제목. 상품명이나 검색 키워드를 자연스럽게 넣는다(예: "로보락 S10 흡입력, 머리카락 많은 집에서 차이가 나요"). 30자 안팎. "장점 1" 같은 이름 금지.
+  꼭지 주제는 여러 후기가 함께 말하는 것만 고른다: 근거 자료 "장점"·"단점" 목록에서 약 ${COLUMN_GOALS.storyMinMentions}회 이상 언급된 항목.
+  한 사람의 경험뿐인 이야기(예: 한 사용자의 "주방 냄새가 사라졌다")로 꼭지를 세우지 않는다 — 다른 꼭지 안에 "한 사용자는 ~"으로 짧게 넣는다.
+  basis: 이 꼭지를 뒷받침하는 근거 자료 "장점" 또는 "단점" 항목을 글자 그대로 옮긴다("(약 N회 언급)" 표시는 빼고).
+  heading: 제품마다 다른 소제목. 명사형이나 질문형으로 끝낸다("~예요", "~해요", "~후기예요" 같은 문장 끝 금지).
+    상품명이나 검색 키워드를 자연스럽게 넣는다(예: "로보락 S10 흡입력, 머리카락 많은 집에서의 차이", "문턱 많은 집에서도 괜찮을까?"). 30자 안팎. "장점 1" 같은 이름 금지.
   body: 무엇이 → 왜 중요한지(생활 장면) → 누구에게 맞는지. 빈 줄로 나눈 짧은 문단 ${CG.storyParagraphs}(문단당 2~3문장).
     주의점은 한 구절로만("다만 넓은 방이라면 아래 단점을 보세요"). 단점 자체의 설명은 솔직한 단점(downsides)에서만 한다.
   quote: 그 꼭지를 뒷받침하는 실제 사용자 말 한마디(15번). body 에 같은 말을 또 쓰지 않는다.
@@ -240,7 +248,13 @@ const COLUMN_RULES = `너는 한국 소비자를 위한 "후기 읽어주는 에
 
 글쓰기 규칙 (읽히는 칼럼으로 — 사실성 규칙 안에서):
 - 글쓴이가 있는 글: 후기 범위 안에서 판정을 분명히 내린다("머리카락이 많은 집이라면 이 차이는 커요", "이 점은 분명히 아쉬워요").
-  문장마다 "~평이에요", "~쪽이에요", "~라고 해요"로 한발 빼지 않는다. 후기에서 나온 내용임은 꼭지·문단 첫머리에 "후기를 모아 보면"처럼 한 번 밝힌다(11번은 지킨다).
+  문장마다 "~평이에요", "~쪽이에요", "~라고 해요"로 한발 빼지 않는다. 여러 후기가 같은 말을 하는 내용은 에디터 목소리로 "~해요"라고 쓴다.
+  근거 말버릇은 글 전체 기준으로 센다: "후기를 모아 보면/후기를 보면/후기에서는"류는 글 전체에서 ${COLUMN_GOALS.evidenceLeads}번까지,
+  "꼽혀요/꼽히는"류는 ${COLUMN_GOALS.picked}번까지. 꼭지마다 출처 머리말을 붙이지 않는다(11번의 단정 금지는 지킨다 — 근거 없는 내용을 단정하라는 뜻이 아니다).
+- 한 사람의 경험·수치(예: "36평 집 안방에서 습도가 28~31%까지만 올랐다")는 일반 사실처럼 쓰지 않는다.
+  "한 사용자는 ~했다고 해요"처럼 누구의 경험인지 밝힌다. 제조사 수치는 "~로 소개돼요"처럼 밝힌다.
+- 사용자 말은 따옴표 인용(원문 그대로)이나 3인칭 풀어쓰기 중 하나로만, 한 번만 쓴다. 같은 내용을 풀어쓴 문장과 원문을 나란히 두지 않고,
+  원문 문장을 따옴표 없이 본문에 붙이지 않는다.
 - 홈쇼핑 설명처럼 쉽게: "이건 이래서 좋고, 저건 이래서 불편해요". 단 과장·판매 문구는 금지(2·4번).
 - 말꼬리: "~다는 의견이 많아요" 꼴과 "~다고 해요"는 각각 글 전체에서 6번 이내.
   "~후기가 있어요", "~평가가 나와요", "언급돼요", "~사용자가 있어요"처럼 문장 끝에 출처를 붙이는 근거 꼬리는 한 구역에서 ${R.evidenceTails}번까지.
@@ -357,11 +371,12 @@ const COLUMN_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          heading: { type: "string", description: "제품마다 다른 소제목 30자 안팎, 상품명·검색 키워드 자연스럽게" },
+          heading: { type: "string", description: "제품마다 다른 소제목 30자 안팎, 명사형·질문형, 상품명·검색 키워드 자연스럽게" },
           body: { type: "string", description: `무엇이 → 왜 중요한지(생활 장면) → 누구에게 맞는지(주의점은 한 구절, 단점 설명은 downsides 에서만). 빈 줄로 나눈 짧은 문단 ${CG.storyParagraphs}` },
           quote: { type: "string", description: "근거 자료 원문에 글자 그대로 있는 사용자 말. 없으면 빈 문자열" },
+          basis: { type: "string", description: "이 꼭지를 뒷받침하는 근거 자료 '장점'·'단점' 항목 그대로 (여러 후기로 뒷받침되는 것)" },
         },
-        required: ["heading", "body", "quote"],
+        required: ["heading", "basis", "body", "quote"],
       },
     },
     downsides: {
@@ -419,8 +434,8 @@ const COLUMN_SCHEMA = {
 // 분석(digest)이 있으면 그것을 중심으로, 원자료는 어투·구체성 참고용으로 일부만.
 // 분석이 실패한 상품은 원자료를 더 많이 넘긴다.
 const RAW_LIMITS = {
-  withDigest: { reviews: 25, comments: 20, videoNotes: 2 },
-  withoutDigest: { reviews: 100, comments: 100, videoNotes: 5 },
+  withDigest: { reviews: 25, comments: 20, videoNotes: 2, webReviews: 6 },
+  withoutDigest: { reviews: 100, comments: 100, videoNotes: 5, webReviews: 6 },
 };
 
 function evidenceBlock(r: ProductResearch, digest: ProductDigest | null, index: number): string {
@@ -437,6 +452,11 @@ function evidenceBlock(r: ProductResearch, digest: ProductDigest | null, index: 
     .slice(0, lim.videoNotes)
     .map((n) => `- [${n.title}] ${n.text}`)
     .join("\n");
+  // 웹 리뷰 원문 발췌: 읽은 본문·검색 인용과 글자 대조를 통과한 문장만 들어 있음 → 따옴표 인용의 근거로도 쓰인다
+  const webReviews = (r.webReviews ?? [])
+    .slice(0, lim.webReviews)
+    .map((w) => `- [${WEB_REVIEW_KIND_LABEL[w.kind]}] ${w.title}\n${w.excerpts.map((e) => `  · ${e}`).join("\n")}`)
+    .join("\n");
   return `## 제품 ${index}: ${r.product.name}
 ${digest ? `### 후기 분석 (전체 자료 기준)\n${digestBlock(digest)}\n` : ""}### 원자료 발췌 — 네이버
 ${reviews || "(없음)"}
@@ -444,6 +464,8 @@ ${reviews || "(없음)"}
 ${notes || "(없음)"}
 ### 원자료 발췌 — 유튜브 댓글
 ${comments || "(없음)"}
+### 원자료 발췌 — 웹 리뷰 (원문 그대로)
+${webReviews || "(없음)"}
 ### 웹 후기 요약 (구글 검색)
 ${r.webSummary ?? "(없음)"}`;
 }
@@ -514,7 +536,7 @@ export function validateColumn(raw: unknown): WrittenPost {
     column: {
       question: str(o.question),
       stories: rows(o.stories)
-        .map((x) => ({ heading: str(x.heading), body: str(x.body), quote: str(x.quote) }))
+        .map((x) => ({ heading: str(x.heading), body: str(x.body), quote: str(x.quote), basis: str(x.basis) }))
         .filter((x) => x.heading && x.body)
         .slice(0, 5),
       downsides: rows(o.downsides)

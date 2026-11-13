@@ -77,6 +77,7 @@ export type ShopPostStory = {
   heading: string; // 소제목(h2) — 제품마다 다르게, 검색 키워드를 자연스럽게
   body: string; // 무엇이 → 왜 중요한지(생활 장면) → 주의점/누구에게. 빈 줄로 나눈 짧은 문단
   quote?: string; // 실제 사용자 말 (원자료와 대조 — 지어낸 인용 금지)
+  basis?: string; // 이 꼭지를 뒷받침하는 후기 분석의 장점·단점 항목 (화면에 안 나옴 — 여러 후기로 뒷받침되는 주제인지 검사용)
 };
 
 export function isColumnPost(c: Pick<ShopPostContent, "column">): c is { column: ShopPostColumn } {
@@ -131,7 +132,8 @@ export type ShopSourceKind =
   | "naver_kin"
   | "naver_web"
   | "naver_news"
-  | "youtube";
+  | "youtube"
+  | "web_review"; // 웹 리뷰 원문 발췌 (scripts/shop/providers/webreviews.ts)
 
 export const SOURCE_LABEL: Record<ShopSourceKind, string> = {
   naver_blog: "블로그",
@@ -140,6 +142,7 @@ export const SOURCE_LABEL: Record<ShopSourceKind, string> = {
   naver_web: "웹문서",
   naver_news: "뉴스",
   youtube: "유튜브",
+  web_review: "웹 리뷰",
 };
 
 export type ShopPostSource = {
@@ -173,3 +176,18 @@ export type ShopPost = {
 
 // "함께 보면 좋은 글" 링크용 (공개된 글만)
 export type RelatedPost = Pick<ShopPost, "slug" | "title" | "products">;
+
+// 몇 건을 살펴봤는지: AI 가 쓰지 않고 실제 수집 건수(post.stats)로 보여 준다 (지어낸 숫자가 들어갈 틈을 없앰).
+// 2026-11-13 운영자 지적: "네이버 블로그·카페 등 글 100건 … 읽고"는 실제로는 검색 요약(2~3줄)이라 과장이고,
+// 본문에서 수집 경로(플랫폼 이름)를 말할 필요도 없음 → "실사용 후기 100여 건과 리뷰 글 N편을 살펴봤어요"로.
+// 리뷰 글 = 원문을 읽은 웹 리뷰 수 (sources 의 web_review — stats.webSources 에는 구글 검색 요약 출처도 섞여 있어 쓰지 않음).
+// 짧은 후기(검색 요약·댓글)는 10단위로 내려 "~여 건"
+export function readCountText(stats: ShopPostStats | undefined, webReviewCount = 0): string | null {
+  const short = (stats?.naverReviews ?? 0) + (stats?.youtubeComments ?? 0);
+  const long = webReviewCount;
+  const shortText = short >= 20 ? `실사용 후기 ${Math.floor(short / 10) * 10}여 건` : short > 0 ? `실사용 후기 ${short}건` : "";
+  const longText = long > 0 ? `리뷰 글 ${long}편` : "";
+  const parts = [shortText, longText].filter(Boolean);
+  if (!parts.length) return null;
+  return `${parts.join("과 ")}을 살펴봤어요. 직접 써 본 리뷰가 아니라, 써 본 사람들의 이야기를 모아 정리한 글이에요.`;
+}

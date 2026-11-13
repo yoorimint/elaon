@@ -26,6 +26,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # 자동 검수 회귀 테스트 (외부 호출 없음). 깨져 있으면 글을 쓰지 않는다
+      - name: QA self-test
+        run: npm run test:shop
       - name: Generate post
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}

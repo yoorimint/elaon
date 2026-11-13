@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "node scripts/build-corp-codes.mjs && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

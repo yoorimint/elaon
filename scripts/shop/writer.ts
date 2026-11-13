@@ -27,12 +27,17 @@ const COMMON_RULES = `반드시 지킬 규칙:
 7. 근거가 부족한 항목은 "후기에서 확인되지 않음"으로 적는다.
 8. 후기·댓글 건수, 언급 횟수, 출처 개수 같은 숫자는 제목·본문 어디에도 쓰지 않는다. "많다", "일부", "자주" 같은 표현만 쓴다.
 9. 한글로만 쓴다. 한자·중국어·일본어 문자 금지(예: "内部" 대신 "내부"). 영문은 모델명·단위만.
-10. 같은 내용을 여러 섹션에서 반복하지 않는다. 섹션마다 역할이 다르다:
-   - review: 장단점 나열이 아니라 "어떤 사용 환경에서 만족하고 어떤 환경에서 불만이 생기는지" 맥락
+10. 같은 내용을 여러 섹션에서 반복하지 않는다. 한 가지 사실(특히 단점)은 글 전체에서 최대 3곳까지만:
+   pros/cons 에서 자세히 + summary·verdict 중 한 곳에서 짧게 + (필요하면) commonComplaints 의 대처 팁.
+   intro·buyingGuide·review·faq 에서 같은 단점을 다시 설명하지 않는다. 섹션마다 역할이 다르다:
+   - intro: 이 제품을 찾는 사람의 고민 (장단점 나열 금지)
+   - buyingGuide: 이 제품군을 고를 때 볼 기준과 이 제품의 위치 (단점 재설명 금지)
+   - review: 어떤 사용 환경·사람에게 만족이 크고 어떤 경우 불만이 생기는지 맥락
    - pros/cons: 각 항목의 구체적 설명
    - commonComplaints: 단점 반복 금지. "구매 전 확인할 점과 대처 팁"(예: 취침 전 물을 가득 채우면 중간에 멈추지 않아요)
-   - faq: 위에서 안 다룬 궁금증 위주
+   - faq: 위에서 다루지 않은 궁금증(관리 주기, 설치 공간, 소모품, 다른 사용 환경 등)
 11. 표(comparison)의 항목·수치는 자료에 그대로 나온 것만, 용어는 정확하게(예: 온수 온도, 소비전력). 확실하지 않은 항목은 빼라.
+12. 단정하지 않는다. "위험이 없어요", "전혀", "완벽", "절대", "100%" 금지. 후기 기반이면 "~라는 의견이 많아요", 제조사 설명이면 "~라고 소개돼요".
 가독성 규칙 (모바일에서 훑어보기 쉽게):
 - 표의 label 은 6자 이내 명사(예: 흡입력, 소음, 물걸레), values 는 12자 이내 짧은 값(예: 강함, 보통, 지원, 확인 안 됨). 문장 금지.
 - 장점·단점은 제품당 각 3~4개, "핵심어: 한 문장" 형식(예: "흡입력: 카펫에서도 잘 빨아들인다는 평이 많아요").
@@ -239,7 +244,8 @@ function rulesFor(productCount: number) {
 }
 
 async function generateJson(secrets: Secrets, prompt: string, productCount: number): Promise<WrittenPost> {
-  const r = await geminiGenerate(secrets, prompt, { system: rulesFor(productCount), jsonSchema: SCHEMA });
+  // 글 품질이 중요하므로 flash-lite 로는 쓰지 않음 (막혀 있으면 이번 실행 건너뜀)
+  const r = await geminiGenerate(secrets, prompt, { system: rulesFor(productCount), jsonSchema: SCHEMA, strongOnly: true });
   let parsed: unknown;
   try {
     parsed = JSON.parse(r.text);

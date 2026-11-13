@@ -233,13 +233,15 @@ async function main() {
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
   });
-  await test("상품 사진: 자리마다 따로 저장, 따로 없으면 대표 사진, 다른 자리는 그대로", () => {
+  await test("상품 사진: 자리마다 따로 저장, 작은 사진·구매 카드만 대표 사진을 빌리고 본문 큰 사진은 빌리지 않음", () => {
     const base = { name: "A", link: "" };
     const top = withPhoto(base, "main", "top.jpg");
     const both = withPhoto(top, "bottom", "bottom.jpg");
     assert.equal(photoFor(both, "main"), "top.jpg");
     assert.equal(photoFor(both, "bottom"), "bottom.jpg");
-    assert.equal(photoFor(both, "detail"), "top.jpg", "따로 없으면 대표 사진");
+    assert.equal(photoFor(both, "table"), "top.jpg", "작은 사진은 대표 사진을 빌림");
+    assert.equal(photoFor(both, "detail"), undefined, "본문 큰 사진은 따로 넣은 것만 (같은 사진 반복 방지)");
+    assert.equal(photoFor(withPhoto(both, "feature", "f.jpg"), "feature"), "f.jpg");
     assert.equal(photoFor(withPhoto(base, "bottom", "b.jpg"), "main"), undefined, "아래만 넣으면 위는 비어 있음");
     assert.equal(withPhoto(both, "table", "t.jpg").images?.bottom, "bottom.jpg", "다른 자리 유지");
   });

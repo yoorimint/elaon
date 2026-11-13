@@ -96,6 +96,31 @@ function ProductImage({
   );
 }
 
+// 본문 큰 사진 (단일 글 특징·장단점). 공개 글은 따로 넣은 사진이 있을 때만, 미리보기는 항상 사진 자리
+function BodyPhoto({
+  product,
+  name,
+  spot,
+  preview,
+  className = "",
+}: {
+  product: ShopPostInputProduct;
+  name: string;
+  spot: PhotoSpot;
+  preview: boolean;
+  className?: string;
+}) {
+  if (!preview && !photoFor(product, spot)) return null;
+  return (
+    <LinkOrDiv
+      href={product.link}
+      className={`block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800 ${className}`}
+    >
+      <ProductImage product={product} name={name} index={0} spot={spot} preview={preview} className="h-full w-full p-6" />
+    </LinkOrDiv>
+  );
+}
+
 // 구매 링크 (제휴: rel="sponsored"). 링크가 아직 없으면(자동 선정 초안) 일반 블록
 function LinkOrDiv({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
   if (!href?.trim()) return <div className={className}>{children}</div>;
@@ -125,28 +150,62 @@ function ProductCard({
   showBadge?: boolean;
 }) {
   return (
-    <LinkOrDiv href={product.link} className="group block">
-      <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
-        <ProductImage
-          product={product}
-          name={name}
-          index={index}
-          spot={spot}
-          preview={preview}
-          className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
-        />
-      </div>
-      <div className="mt-3 flex items-start gap-2">
-        {showBadge && <Letter index={index} />}
-        <div className="min-w-0">
-          <div className="text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">{name}</div>
-          {sub && <div className="mt-0.5 text-[13px] leading-snug text-neutral-500 line-clamp-2">{sub}</div>}
-          <div className="mt-1.5 inline-flex items-center gap-0.5 text-[13px] font-medium text-neutral-400 group-hover:text-brand">
-            상품 보기 <ArrowUpRight className="h-3.5 w-3.5" />
+    <div>
+      <LinkOrDiv href={product.link} className="group block">
+        <div className="aspect-square sm:aspect-[4/3] overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)] ring-1 ring-neutral-200/70 dark:ring-neutral-800">
+          <ProductImage
+            product={product}
+            name={name}
+            index={index}
+            spot={spot}
+            preview={preview}
+            className="h-full w-full p-4 transition duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
+        <div className="mt-3 flex items-start gap-2">
+          {showBadge && <Letter index={index} />}
+          <div className="min-w-0">
+            <div className="text-[15px] font-semibold leading-snug text-neutral-900 dark:text-white line-clamp-2">{name}</div>
+            {sub && <div className="mt-0.5 text-[13px] leading-snug text-neutral-500 line-clamp-2">{sub}</div>}
           </div>
         </div>
+      </LinkOrDiv>
+      {/* 비교글은 카드가 나란히라 짧은 문구 */}
+      <BuyButton product={product} preview={preview} label={showBadge ? "쿠팡에서 보기" : undefined} className="mt-3" />
+    </div>
+  );
+}
+
+// 구매 버튼: 누르면 쿠팡으로 가는 게 한눈에 보이게 (사진·상품명도 같은 링크).
+// 문구는 사실만 ("최저가" 같은 확인 안 된 표현 금지). 링크가 없으면 공개 글에선 숨기고 초안에선 안내
+function BuyButton({
+  product,
+  preview,
+  label = "쿠팡에서 가격 보기",
+  className = "",
+}: {
+  product: ShopPostInputProduct;
+  preview: boolean;
+  label?: string;
+  className?: string;
+}) {
+  if (!product.link?.trim()) {
+    if (!preview) return null;
+    return (
+      <div className={`rounded-xl border-2 border-dashed border-neutral-300 px-4 py-3 text-center text-[13px] text-neutral-400 dark:border-neutral-700 ${className}`}>
+        구매 버튼 자리 — 관리자에서 쿠팡 링크를 넣으면 보여요
       </div>
-    </LinkOrDiv>
+    );
+  }
+  return (
+    <a
+      href={product.link}
+      target="_blank"
+      rel="sponsored nofollow noopener"
+      className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-brand px-3 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-brand-dark active:scale-[0.99] ${className}`}
+    >
+      {label} <ArrowUpRight className="h-4 w-4" strokeWidth={2.5} />
+    </a>
   );
 }
 
@@ -260,6 +319,7 @@ export function ShopPostView({
       {/* 비교표 */}
       {c.comparison.length > 0 && (
         <Section id="compare" no={no()} title={single ? `${names[0]} 주요 특징` : `${names.join(" vs ")} 한눈에 비교`}>
+          {single && <BodyPhoto product={products[0]} name={names[0]} spot="feature" preview={preview} className="mb-6" />}
           <table className="w-full table-fixed text-[15px] leading-snug">
             {!single && (
             <thead>
@@ -338,6 +398,7 @@ export function ShopPostView({
                 </>
               )}
 
+              {single && <BodyPhoto product={products[0]} name={names[0]} spot="detail" preview={preview} className="mb-6" />}
               {p.review && <p className={single ? "" : "mt-5"}>{p.review}</p>}
 
               <div className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -387,6 +448,13 @@ export function ShopPostView({
                   )}
                 </div>
               )}
+
+              <BuyButton
+                product={products[i]}
+                preview={preview}
+                label={single ? "쿠팡에서 가격 보기" : `${names[i]} 쿠팡에서 보기`}
+                className="mt-5"
+              />
             </div>
           ))}
         </div>

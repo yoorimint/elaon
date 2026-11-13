@@ -48,10 +48,13 @@ export async function uploadProductImage(postId: string, index: number, spot: Ph
   const cur = await supabase.from("shop_posts").select("products").eq("id", postId).single();
   if (cur.error) throw new Error(cur.error.message);
   const products = (cur.data.products as ShopPostInputProduct[]).map((p, i) => (i === index ? withPhoto(p, spot, image) : p));
+  // 권한이 없으면 오류 없이 0건만 바뀌므로, 바뀐 글이 실제로 있는지 확인한다
   const res = await supabase
     .from("shop_posts")
     .update({ products, updated_at: new Date().toISOString() })
-    .eq("id", postId);
+    .eq("id", postId)
+    .select("id");
   if (res.error) throw new Error(`저장 실패: ${res.error.message}`);
+  if (!res.data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
   return image;
 }

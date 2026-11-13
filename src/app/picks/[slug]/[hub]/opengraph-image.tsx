@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
-import { getHub, getPickCategory, listHubs } from "@/lib/picks";
+import { listHubs } from "@/lib/picks";
+import { getHubMerged, getPickCategoryMerged } from "@/lib/picks-auto";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -27,8 +28,8 @@ export default async function HubOGImage({
 }: {
   params: { slug: string; hub: string };
 }) {
-  const entry = getHub(params.slug, params.hub);
-  const cat = getPickCategory(params.slug);
+  const entry = await getHubMerged(params.slug, params.hub);
+  const cat = await getPickCategoryMerged(params.slug);
   const fontData = await loadFont();
 
   const item = entry?.item;

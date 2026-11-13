@@ -456,12 +456,13 @@ export function repetitionNotes(a: Audit, sectionNames: string[]): string[] {
 }
 
 // null = AI 검수를 하지 못함 (모델 막힘 등) → "검수 통과"로 표시하지 않는다
-async function aiAudit(
+// 섹션별 글과 근거 자료를 받아 AI 가 주장·반복·모순을 뽑고, 판정은 코드가 한다 (쇼핑 글·주소모음 봇 공용)
+export async function auditSections(
   secrets: Secrets,
-  w: WrittenPost,
+  sections: { name: string; text: string }[],
   evidence: string,
+  productNames: string[] = [],
 ): Promise<{ issues: string[]; notes: string[] } | null> {
-  const sections = sectionsOf(w);
   const prompt = `너는 꼼꼼한 검수자야. 판단은 하지 말고 아래 목록만 빠짐없이 뽑아줘.
 1. claims: 글의 구체적 사실 주장 전부(수치·스펙·기능·소재·방식·안전성·후기 내용). "누구에게 맞다" 같은 추천·판단 문장과
    "~는 확인되지 않아요" 문장은 사실 주장이 아니니 넣지 마. quote 에는 "근거 자료"에서 그 주장을 뒷받침하는 부분을 글자 그대로 복사해. 자료에 없으면 빈 문자열. 비슷한 말을 지어내지 마.
@@ -484,7 +485,6 @@ ${evidence}`;
     const audit = JSON.parse(r.text) as Audit;
     console.log(`     (AI 추출: 주장 ${audit.claims?.length ?? 0} · 반복 후보 ${audit.topics?.length ?? 0} · 기타 ${audit.others?.length ?? 0})`);
     const names = sections.map((s) => s.name);
-    const productNames = w.content.products.map((p) => p.name);
     return { issues: judgeAudit(audit, evidence, names, productNames), notes: repetitionNotes(audit, names) };
   } catch (e) {
     console.warn(`  ⚠ AI 검수 못함: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
@@ -494,7 +494,7 @@ ${evidence}`;
 
 // ---------- 4) 검수 → 수정 반복 ----------
 async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, evidence: string) {
-  const ai = await aiAudit(secrets, w, evidence);
+  const ai = await auditSections(secrets, sectionsOf(w), evidence, w.content.products.map((p) => p.name));
   return {
     issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...(ai?.issues ?? [])],
     notes: ai?.notes ?? [],

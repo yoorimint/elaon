@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
-import { PICK_CATEGORIES, totalPickCount } from "@/lib/picks";
+import { PICK_CATEGORIES } from "@/lib/picks";
+import { totalPickCountMerged } from "@/lib/picks-auto";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -19,7 +20,7 @@ async function loadFont(): Promise<ArrayBuffer | null> {
 
 export default async function HubOGImage() {
   const fontData = await loadFont();
-  const total = totalPickCount();
+  const total = await totalPickCountMerged();
   const catCount = PICK_CATEGORIES.length;
   const emojis = PICK_CATEGORIES.slice(0, 8).map((c) => c.emoji).join(" ");
 

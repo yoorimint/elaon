@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { getHubMerged, getPickCategoryMerged } from "@/lib/picks-auto";
 import {
   listHubs,
-  getHub,
-  getPickCategory,
   pricingLabel,
   autoSlug,
   type SubItem,
@@ -26,12 +25,15 @@ const SITE = "https://www.eloan.kr";
 
 type Params = { slug: string; hub: string };
 
+// 봇이 추가한 항목도 1시간 안에 보이게 (기존 항목은 빌드 때 미리 만들고, 새 항목은 처음 열릴 때 만듦)
+export const revalidate = 3600;
+
 export function generateStaticParams(): Params[] {
   return listHubs().map((e) => ({ slug: e.categorySlug, hub: e.hubSlug }));
 }
 
-export function generateMetadata({ params }: { params: Params }): Metadata {
-  const entry = getHub(params.slug, params.hub);
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const entry = await getHubMerged(params.slug, params.hub);
   if (!entry) return { title: "주소모음 — 페이지를 찾을 수 없습니다" };
   const url = `${SITE}/picks/${params.slug}/${params.hub}`;
   const hasSub = entry.item.subItems && entry.item.subItems.length > 0;
@@ -643,10 +645,10 @@ function BasicDetailBody({
   );
 }
 
-export default function HubPage({ params }: { params: Params }) {
-  const entry = getHub(params.slug, params.hub);
+export default async function HubPage({ params }: { params: Params }) {
+  const entry = await getHubMerged(params.slug, params.hub);
   if (!entry) notFound();
-  const cat = getPickCategory(params.slug);
+  const cat = await getPickCategoryMerged(params.slug);
   if (!cat) notFound();
 
   const { item } = entry;

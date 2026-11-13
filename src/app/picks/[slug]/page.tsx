@@ -2,9 +2,9 @@ import { ShopLatestLinks } from "@/components/ShopLatestLinks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getPickCategoryMerged } from "@/lib/picks-auto";
 import {
   PICK_CATEGORIES,
-  getPickCategory,
   pricingLabel,
   autoSlug,
   type PickItem,
@@ -29,8 +29,8 @@ export function generateStaticParams(): Params[] {
   return PICK_CATEGORIES.map((c) => ({ slug: c.slug }));
 }
 
-export function generateMetadata({ params }: { params: Params }): Metadata {
-  const cat = getPickCategory(params.slug);
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const cat = await getPickCategoryMerged(params.slug);
   if (!cat) return { title: "주소모음 — 페이지를 찾을 수 없습니다" };
   const url = `${SITE}/picks/${cat.slug}`;
   return {
@@ -200,8 +200,8 @@ function ItemCard({
   );
 }
 
-export default function PickCategoryPage({ params }: { params: Params }) {
-  const cat = getPickCategory(params.slug);
+export default async function PickCategoryPage({ params }: { params: Params }) {
+  const cat = await getPickCategoryMerged(params.slug);
   if (!cat) notFound();
 
   const totalItems = cat.groups.reduce((s, g) => s + g.items.length, 0);

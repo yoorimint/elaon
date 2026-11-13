@@ -2,7 +2,7 @@
 // 쇼핑 후기·비교 글(공개된 것만) + 서비스 비교 글(picks/vs)을 최신순으로 담는다.
 // 쇼핑 글이 아직 없어도 비교 글이 있어 피드가 비지 않는다 (빈 피드는 네이버가 형식 오류로 거절).
 
-import { COMPARISONS } from "@/lib/comparisons";
+import { getComparisonsMerged } from "@/lib/picks-auto";
 import { buildRss, rssResponse, type RssItem } from "@/lib/rss";
 import { listPublishedPosts } from "@/lib/shop-posts-server";
 
@@ -17,7 +17,7 @@ export async function GET() {
     description: p.description ?? "",
     date: p.published_at,
   }));
-  const comparisons: RssItem[] = COMPARISONS.map((c) => ({
+  const comparisons: RssItem[] = (await getComparisonsMerged()).map((c) => ({
     title: c.title,
     link: `${SITE}/picks/vs/${c.slug}`,
     description: c.description,

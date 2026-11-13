@@ -27009,9 +27009,14 @@ export function autoSlug(item: PickItem): string {
 }
 
 export function listHubs(): HubEntry[] {
+  return listHubsFrom(PICK_CATEGORIES);
+}
+
+// 주어진 카테고리 목록의 모든 항목에 상세 페이지 주소를 붙인다 (같은 주소는 -2, -3 …)
+export function listHubsFrom(categories: PickCategory[]): HubEntry[] {
   const out: HubEntry[] = [];
   const seen = new Set<string>();
-  for (const cat of PICK_CATEGORIES) {
+  for (const cat of categories) {
     for (const g of cat.groups) {
       for (const it of g.items) {
         let slug = autoSlug(it);

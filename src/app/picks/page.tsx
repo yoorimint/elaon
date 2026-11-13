@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PICK_CATEGORIES, HUB_FAQ, totalPickCount } from "@/lib/picks";
+import { PICK_CATEGORIES, HUB_FAQ } from "@/lib/picks";
+import { getComparisonsMerged, getPickCategoriesMerged, totalPickCountMerged } from "@/lib/picks-auto";
 import { CHECKLISTS } from "@/lib/checklists";
-import { COMPARISONS } from "@/lib/comparisons";
 import {
   JsonLd,
   breadcrumbLd,
@@ -41,8 +41,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PicksHubPage() {
-  const total = totalPickCount();
+export default async function PicksHubPage() {
+  const total = await totalPickCountMerged();
+  const categories = await getPickCategoriesMerged();
+  const comparisonCount = (await getComparisonsMerged()).length;
 
   return (
     <>
@@ -97,7 +99,7 @@ export default function PicksHubPage() {
             카테고리
           </h2>
           <div className="grid sm:grid-cols-2 gap-4">
-            {PICK_CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const count = cat.groups.reduce((s, g) => s + g.items.length, 0);
               return (
                 <Link
@@ -140,7 +142,7 @@ export default function PicksHubPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <h3 className="text-lg font-bold group-hover:text-brand transition">비교</h3>
-                  <span className="text-xs text-neutral-500">{COMPARISONS.length}개</span>
+                  <span className="text-xs text-neutral-500">{comparisonCount}개</span>
                 </div>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                   한국에서 가장 많이 비교되는 도구·서비스를 점수·시나리오·표로 빠르게 비교.

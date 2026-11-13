@@ -52,6 +52,7 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "https://www.eloan.kr",
+    types: { "application/rss+xml": "https://www.eloan.kr/rss.xml" },
     languages: {
       "ko-KR": "https://www.eloan.kr",
       "x-default": "https://www.eloan.kr",

@@ -1,3 +1,3 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 "shop post" 가 그 브랜치 코드로 1회 실행된다.
 # (.github/workflows/shop-post.yml 의 push 트리거) — 운영 점검·수정 검증용
-run: 33 — 칼럼체·Gemini 빠른 전환 확인 1/3
+run: 34 — 칼럼체·Gemini 빠른 전환 확인 2/3

@@ -87,7 +87,7 @@ create or replace function public.shop_secret_names()
 returns text[] language sql immutable as $$
   select array[
     'COUPANG_ACCESS_KEY', 'COUPANG_SECRET_KEY',
-    'GEMINI_API_KEY',
+    'GEMINI_API_KEY', 'ANTHROPIC_API_KEY',
     'NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET',
     'YOUTUBE_API_KEY'
   ];

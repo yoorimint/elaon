@@ -1,7 +1,7 @@
 // 저장 전 검사: AI 가 가끔 섞는 한자·중국어(예: "内部")를 한국어로 고친다.
 // 한자가 든 문장만 모아 Gemini 에 고쳐 달라고 하고, 그래도 남으면 한자 글자를 지운다.
 
-import { geminiGenerate } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 
 const HAN = /[㐀-䶿一-鿿豈-﫿]/;
@@ -37,7 +37,7 @@ export async function fixHanja<T>(secrets: Secrets, value: T): Promise<T> {
 
   const fixedMap = new Map<string, string>();
   try {
-    const r = await geminiGenerate(
+    const r = await generate(
       secrets,
       `다음 문장들에 섞인 한자·중국어를 자연스러운 한국어로 바꿔줘. 나머지 내용과 말투는 그대로 둬.
 ${bad.map((s, i) => `${i}. ${s}`).join("\n")}`,

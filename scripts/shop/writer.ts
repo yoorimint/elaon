@@ -5,7 +5,7 @@
 import { SOURCE_LABEL, type ShopPostContent } from "@/lib/shop-post-types";
 import { digestBlock, type ProductDigest } from "./digest";
 import { fixHanja } from "./hanja";
-import { geminiGenerate } from "./providers/gemini";
+import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
 import type { ProductResearch } from "./research";
 
@@ -245,7 +245,7 @@ function rulesFor(productCount: number) {
 
 async function generateJson(secrets: Secrets, prompt: string, productCount: number): Promise<WrittenPost> {
   // 글 품질이 중요하므로 flash-lite 로는 쓰지 않음 (막혀 있으면 이번 실행 건너뜀)
-  const r = await geminiGenerate(secrets, prompt, { system: rulesFor(productCount), jsonSchema: SCHEMA, strongOnly: true });
+  const r = await generate(secrets, prompt, { system: rulesFor(productCount), jsonSchema: SCHEMA, strongOnly: true });
   let parsed: unknown;
   try {
     parsed = JSON.parse(r.text);

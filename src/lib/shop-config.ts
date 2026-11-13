@@ -106,10 +106,11 @@ export type SecretName =
   | "GEMINI_API_KEY"
   | "NAVER_CLIENT_ID"
   | "NAVER_CLIENT_SECRET"
-  | "YOUTUBE_API_KEY";
+  | "YOUTUBE_API_KEY"
+  | "ANTHROPIC_API_KEY";
 
 // scripts/shop/check-keys.ts 의 점검 id 와 같아야 한다.
-export type ApiKeyGroupId = "coupang" | "gemini" | "naver" | "youtube";
+export type ApiKeyGroupId = "coupang" | "gemini" | "claude" | "naver" | "youtube";
 
 export type ApiKeyGroup = {
   id: ApiKeyGroupId;
@@ -136,6 +137,13 @@ export const API_KEY_GROUPS: ApiKeyGroup[] = [
     required: true,
     where: "Google AI Studio → Get API key",
     fields: [{ name: "GEMINI_API_KEY", label: "API Key" }],
+  },
+  {
+    id: "claude",
+    label: "Claude (Gemini 가 막힐 때 대신 작성 · 유료, 글 1개 약 70~90원)",
+    required: false,
+    where: "Claude Console(platform.claude.com) → API Keys. 결제 크레딧 충전 필요. 모델: Claude Haiku 5.5",
+    fields: [{ name: "ANTHROPIC_API_KEY", label: "API Key" }],
   },
   {
     id: "naver",

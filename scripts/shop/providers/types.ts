@@ -6,7 +6,8 @@ export type SecretName =
   | "GEMINI_API_KEY"
   | "NAVER_CLIENT_ID"
   | "NAVER_CLIENT_SECRET"
-  | "YOUTUBE_API_KEY";
+  | "YOUTUBE_API_KEY"
+  | "ANTHROPIC_API_KEY";
 
 export type Secrets = Partial<Record<SecretName, string>>;
 

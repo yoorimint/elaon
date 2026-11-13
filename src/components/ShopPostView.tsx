@@ -16,7 +16,6 @@ import {
   type RelatedPost,
   type ShopPost,
   type ShopPostInputProduct,
-  type ShopPostInsight,
 } from "@/lib/shop-post-types";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -89,37 +88,6 @@ function ProductImage({
     >
       {name}
     </span>
-  );
-}
-
-// 1단계 분석의 언급 빈도 (숫자 없이 상대 길이만)
-function InsightBars({ insight }: { insight: ShopPostInsight }) {
-  const groups = [
-    { title: "자주 칭찬하는 점", items: insight.strengths, bar: "bg-emerald-600" },
-    { title: "자주 아쉬워하는 점", items: insight.weaknesses, bar: "bg-rose-500" },
-  ].filter((g) => g.items.length > 0);
-  if (!groups.length) return null;
-  return (
-    <div className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4">
-      <div className="text-[13px] font-semibold text-neutral-900 dark:text-white">후기에서 자주 나온 이야기</div>
-      <div className="mt-3 grid gap-5 sm:grid-cols-2">
-        {groups.map((g) => (
-          <div key={g.title}>
-            <div className="text-xs text-neutral-500">{g.title}</div>
-            <ul className="mt-2 space-y-2.5">
-              {g.items.map((x) => (
-                <li key={x.point}>
-                  <div className="text-[14px] leading-snug text-neutral-800 dark:text-neutral-200">{x.point}</div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
-                    <div className={`h-full rounded-full ${g.bar}`} style={{ width: `${Math.round(x.weight * 100)}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -333,33 +301,36 @@ export function ShopPostView({
         <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {c.products.map((p, i) => (
             <div key={i} className="py-8 first:pt-0 last:pb-0">
-              <div className="flex items-center gap-3">
-                {hasPhoto(products[i]) && (
-                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
-                    <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
+              {/* 단일 글은 위에 상품 카드가 있으므로 이름·사진을 다시 넣지 않음 */}
+              {!single && (
+                <>
+                  <div className="flex items-center gap-3">
+                    {hasPhoto(products[i]) && (
+                      <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800">
+                        <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-1" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {badge(i)}
+                        <h3 className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">{names[i]}</h3>
+                      </div>
+                      {p.oneLiner && <p className="text-[14px] text-neutral-500">{p.oneLiner}</p>}
+                    </div>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    {badge(i)}
-                    <h3 className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">{names[i]}</h3>
-                  </div>
-                  {p.oneLiner && <p className="text-[14px] text-neutral-500">{p.oneLiner}</p>}
-                </div>
-              </div>
 
-              {hasPhoto(products[i]) && (
-                <LinkOrDiv
-                  href={products[i].link}
-                  className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
-                >
-                  <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-6" />
-                </LinkOrDiv>
+                  {hasPhoto(products[i]) && (
+                    <LinkOrDiv
+                      href={products[i].link}
+                      className="mt-5 block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800"
+                    >
+                      <ProductImage product={products[i]} name={names[i]} index={i} preview={preview} className="h-full w-full p-6" />
+                    </LinkOrDiv>
+                  )}
+                </>
               )}
 
-              {p.review && <p className="mt-5">{p.review}</p>}
-
-              {c.insights?.[i] && <InsightBars insight={c.insights[i]!} />}
+              {p.review && <p className={single ? "" : "mt-5"}>{p.review}</p>}
 
               <div className="mt-6 grid gap-6 sm:grid-cols-2">
                 <div>

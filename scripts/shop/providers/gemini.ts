@@ -27,7 +27,7 @@ export async function checkGemini(secrets: Secrets): Promise<CheckResult> {
 // 특정 모델을 강제하려면 환경변수 GEMINI_MODEL.
 
 const DEFAULT_CANDIDATES = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const MAX_RETRY_WAIT_MS = 30_000; // "N초 후 재시도" 안내를 따를 최대 대기
+const MAX_RETRY_WAIT_MS = 60_000; // "N초 후 재시도" 안내를 따를 최대 대기
 const RETRIES_PER_MODEL = 2;
 const OVERLOAD_WAITS_MS = [15_000, 30_000]; // 503 "high demand"(일시적) 재시도 간격
 const REQUEST_TIMEOUT_MS = 150_000; // 응답이 이보다 늦으면 끊고 다음 모델로 (Node 기본 5분 끊김 방지)
@@ -83,11 +83,13 @@ function retryDelayMs(errText: string): number | null {
   return m ? Math.ceil(Number(m[1]) * 1000) : null;
 }
 
-// 무료 할당량 0 / 일일 한도 / 요금제에서 미지원(결제 필요) → 기다려도 소용없음
+// 무료 할당량 0 / 일일 한도 → 기다려도 소용없음 (다음 모델로).
+// "exceeded your current quota" 문구는 분당 한도에도 붙으므로 그것만으로 판단하지 않는다:
+// 분당 한도(PerMinute) 또는 retryDelay 안내가 있으면 잠깐 기다렸다 같은 모델로 재시도.
 function isHardQuota(errText: string): boolean {
-  return /limit:\s*0\b|PerDay|per day|daily|exceeded your current quota|check your plan and billing/i.test(
-    errText,
-  );
+  if (/limit:\s*0\b|PerDay|per day|daily/i.test(errText)) return true;
+  if (/PerMinute|per minute/i.test(errText) || retryDelayMs(errText) !== null) return false;
+  return /exceeded your current quota|check your plan and billing/i.test(errText);
 }
 
 // 구글 검색 그라운딩은 무료 요금제에서 제공되지 않는다(2026-11 AI Studio 가격표).

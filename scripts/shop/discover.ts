@@ -101,7 +101,8 @@ const EXTRACT_SCHEMA = {
           mentions: { type: "integer" },
           type: {
             type: "string",
-            description: "제품 종류 2~4단어 (예: 등유 팬히터, 카본 전기히터, 로봇청소기 물걸레형). 같은 종류면 똑같은 표현",
+            description:
+              "제품 종류 2~4단어 (예: 등유 팬히터, 카본 전기히터, 로봇청소기 물걸레형, 언더싱크 정수기, 피처형 정수기). 설치·사용 형태가 드러나면 꼭 넣기. 같은 종류면 똑같은 표현",
           },
         },
         required: ["name", "mentions", "type"],
@@ -132,9 +133,28 @@ async function collectTitles(secrets: Secrets, category: string): Promise<string
 // 후보 상품. type = 제품 종류 (비교글은 같은 종류끼리만 짝지음)
 type Candidate = { name: string; mentions: number; type: string };
 
+// 형태(설치·사용 방식) 구분 단어. 두 후보가 모두 형태를 밝혔는데 서로 다르면, 다른 단어가 겹쳐도 다른 종류다.
+// (점검 실행 36: "언더싱크 무전원 정수기" vs "피처형 무전원 정수기"가 "무전원" 한 단어로 같은 종류가 되어
+//  싱크대 아래 설치형과 물병형을 비교하는 글이 나옴)
+// - "~형"·"~식"으로 끝나는 단어는 형태·방식으로 본다(피처형, 직수형, 캡슐형, 커널형, 가열식 …).
+// - "~형"이 없어도 형태를 뜻하는 단어는 FORM_ROOTS 로 인정한다(언더싱크, 스탠드, 벽걸이 …).
+// - 크기·등급(대형·소형·보급형 …)은 형태가 아니라서 뺀다 — 넣으면 같은 형태끼리도 짝을 못 짓는다.
+const FORM_ROOTS = ["언더싱크", "빌트인", "카운터탑", "스탠드", "벽걸이", "탁상", "데스크탑", "직수", "피처", "캡슐", "커널", "오픈", "물걸레", "핸디", "스틱"];
+const NOT_FORM = ["대형", "소형", "중형", "초소형", "초대형", "미니형", "신형", "구형", "최신형", "기본형", "일반형", "보급형", "고급형", "표준형", "프리미엄형"];
+const formStem = (w: string) => w.replace(/(형|식)$/, "");
+function formMarkers(words: string[]): string[] {
+  return words
+    .filter((w) => !NOT_FORM.includes(w))
+    .filter((w) => /(형|식)$/.test(w) || FORM_ROOTS.includes(w))
+    .map(formStem)
+    .filter((w) => w.length >= 2);
+}
+const overlaps = (x: string[], y: string[]) => x.some((w) => y.some((v) => w === v || w.includes(v) || v.includes(w)));
+
 // 같은 종류인지: 카테고리 이름을 뺀 핵심 단어가 하나라도 겹치면 같은 종류
 // ("여행용 대용량" ≈ "PD 대용량", "등유 팬히터" ≠ "카본 전기히터"). 한쪽이 카테고리 이름뿐이면 일반형이라 같은 종류로 봄.
 // (run #21: 표현이 조금만 달라도 다른 종류로 봐서 비교 짝을 하나도 못 지음)
+// 단, 둘 다 형태 구분 단어가 있는데 하나도 안 겹치면 다른 종류 (언더싱크 ≠ 피처형, 위 FORM_ROOTS 설명)
 export function sameType(a: string, b: string, category = ""): boolean {
   const cat = normText(category);
   const words = (s: string) =>
@@ -147,7 +167,16 @@ export function sameType(a: string, b: string, category = ""): boolean {
   const x = words(a);
   const y = words(b);
   if (!x.length || !y.length) return true;
-  return x.some((w) => y.some((v) => w === v || w.includes(v) || v.includes(w)));
+  const fx = formMarkers(x);
+  const fy = formMarkers(y);
+  if (fx.length && fy.length && !overlaps(fx, fy)) return false;
+  return overlaps(x, y);
+}
+
+// 짝 로그용 종류 표시: 두 type 이 실제로 같은 표현일 때만 "같은 종류", 다르면 둘 다 보여 준다
+// (점검 실행 36: 한쪽 type 만 찍어서 다른 종류끼리 묶인 걸 로그로 알아채기 어려웠음)
+export function pairTypeLabel(a: string, b: string): string {
+  return normText(a) === normText(b) ? `같은 종류: ${a}` : `비슷한 종류로 판단: ${a} ≈ ${b}`;
 }
 
 async function extractCandidates(secrets: Secrets, category: string): Promise<Candidate[]> {
@@ -157,6 +186,7 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<Ca
 여기서 소비자들이 실제로 많이 언급하는 구체적인 제품(브랜드 + 모델명)을 언급이 많은 순서로 최대 ${MAX_CANDIDATES}개 뽑아줘.
 규칙: 자료에 나온 것만. 카테고리 이름·일반명사·쇼핑몰 이름·브랜드만 있는 것(모델명 없음)은 제외. 같은 제품의 다른 표기는 하나로 합쳐.
 type 에는 제품 종류를 적어. 용도나 방식이 다르면 다른 종류야(예: 캠핑용 등유 팬히터 ≠ 실내용 카본 전기히터).
+설치·사용 형태가 다르면 공통점이 있어도 다른 종류야(예: 언더싱크 정수기 ≠ 피처형 정수기, 커널형 이어폰 ≠ 오픈형 이어폰).
 세대·버전 숫자는 정확히 (예: "TUNE BEAM 2", "버즈3 프로"). 세대가 다르면 다른 제품이야.
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
@@ -390,7 +420,7 @@ export async function discoverProducts(
           const pair = [asProduct(prev.name), asProduct(c.name)];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
             const names = [prev.name, c.name];
-            console.log(`  짝: ${prev.name} vs ${c.name} (같은 종류: ${c.type})`);
+            console.log(`  짝: ${prev.name} vs ${c.name} (${pairTypeLabel(prev.type, c.type)})`);
             return { category, products: pair, alternatives: others(names), realReviews: pick(names) };
           }
         }

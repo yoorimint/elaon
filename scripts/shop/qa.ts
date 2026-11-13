@@ -103,6 +103,29 @@ const BANNED: { re: RegExp; why: string }[] = [
     why: "근거 없는 단정 (후기 기반이면 후기에서 나온 말임이 드러나게, 제조사 설명이면 \"~라고 소개돼요\")",
   },
   { re: /\d[\d,]*\s*원(?![가-힣])|\d+\s*만\s*원/, why: "가격 언급 (가격은 쿠팡에서 확인 안내만)" },
+  // 점검 글(닌자 크리스피) 구매 전 확인: "품절이 잦고 공구나 할인에 따라 가격이 바뀌어 구매 시점이 까다로울 수 있어요"
+  // — 금액은 없어도 구매를 부추기는 판매 문구라 신뢰를 깎는다. 오탐을 피하려고 범위를 좁힌다:
+  //   - 품절·재입고·공동구매·특가·핫딜·타임딜·구매 시점은 제품 설명에 쓰일 일이 없어 그대로 막는다.
+  //   - "공구"는 연장(전동공구, "공구로 조립")과 겹쳐서 판매 맥락("공구가 열리면", "공구나 할인", "공구 때")만.
+  //   - "할인"·"세일"·"가격"은 뒤에 판매 맥락이 붙을 때만 ("할인 행사", "할인에 따라", "가격이 자주 바뀌" …).
+  {
+    re: new RegExp(
+      [
+        "품절",
+        "재입고",
+        "공동\\s*구매",
+        "(?<![가-힣])특가",
+        "핫딜|타임\\s*딜",
+        "(구매|구입|사는|살)\\s*시점",
+        "(?<![가-힣])공구(가\\s*열|나\\s*할인|\\s*(때|기간|가격|일정|소식|행사))",
+        "할인\\s*(행사|기간|쿠폰|이벤트|가격|가(?![능전])|폭|율|률|에\\s*따라|할\\s*때|하는\\s*(날|때|시기)|을\\s*(노려|기다려))",
+        "(?<![가-힣])세일\\s*(때|기간|행사|을|이|하)",
+        "가격(이|은|도)?\\s*(자주\\s*)?(바뀌|변동|달라지|오르내리)|가격\\s*변동",
+        "재고(가|는)?\\s*(없|부족|떨어)",
+      ].join("|"),
+    ),
+    why: "구매를 부추기는 판매 문구(품절·재입고·공구·할인·구매 시점) → 빼기 (가격 안내는 정리 끝 \"쿠팡에서 현재 가격을 확인하세요\" 한 번만)",
+  },
   { re: /(후기|리뷰|댓글|글)\s*\d+\s*(건|개)|\d+\s*(건|개)의?\s*(후기|리뷰|댓글)/, why: "후기·댓글 건수 숫자" },
 ];
 
@@ -155,6 +178,32 @@ export function repeatedEndingIssues(w: WrittenPost): string[] {
         `(문단 첫머리에 "후기를 모아 보면"처럼 한 번 밝히고 이어지는 문장은 "~해요", "~로 꼽혀요", "~한 사람도 있어요" 등으로)`,
     ];
   });
+}
+
+// 잘 맞는 상황(recommendations) 이유들이 같은 시작 구로 찍어낸 듯 반복되는지
+// (점검 글 닌자 크리스피: 이유 4개가 모두 "이 상황에서는 ~가 중요해요/핵심이에요/제일 먼저 걸려요"로 시작 —
+//  작성 규칙이 "그 상황에서 무엇이 중요한지 →" 순서를 고정해서 생김)
+// 시작 구 = 첫 어절 + 둘째 어절의 앞 2글자. 둘째 어절을 줄이는 이유: "이 상황에서는"·"이 상황이라면"처럼
+//   조사만 바꾼 같은 틀을 한 묶음으로 보기 위해서. 첫 어절만 보면 "아이가", "이" 같은 흔한 첫 단어로 오탐이 나고,
+//   세 어절 이상 보면 "이 상황에서는 세척이"/"…소음이"처럼 뒤만 바꾼 틀을 놓친다.
+// 기준: 같은 시작 구가 MAX_SAME_OPENING(2)번을 넘으면(3번 이상) 지적. 이유는 3~5개라 두 번 겹치는 건 우연일 수 있지만,
+//   세 번이면 독자 눈에 같은 틀로 보인다.
+const MAX_SAME_OPENING = 2;
+export function repeatedOpeningIssues(w: WrittenPost): string[] {
+  const openings = new Map<string, number>();
+  for (const r of w.content.recommendations) {
+    const words = r.reason.trim().split(/\s+/).map((x) => x.replace(/[^가-힣a-zA-Z0-9]/g, "")).filter(Boolean);
+    if (words.length < 2) continue;
+    const key = `${words[0]} ${words[1].slice(0, 2)}`;
+    openings.set(key, (openings.get(key) ?? 0) + 1);
+  }
+  return [...openings]
+    .filter(([, n]) => n > MAX_SAME_OPENING)
+    .map(
+      ([key, n]) =>
+        `잘 맞는 상황: 이유 ${n}개가 같은 말("${key}…")로 시작 → ${MAX_SAME_OPENING}개 이하로. 내용·근거는 그대로 두고 ` +
+        `이유마다 첫 문장을 그 상황에 맞는 구체적인 내용으로 바꾸기 (같은 틀 반복 금지)`,
+    );
 }
 
 export function lintPost(w: WrittenPost, productCount: number): string[] {
@@ -243,6 +292,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     issues.push(`"확인하세요" 같은 안내가 ${checkCount}번 → ${MAX_CHECK_PHRASES}번 이하로 (꼭 필요한 곳만)`);
   }
   issues.push(...repeatedEndingIssues(w));
+  issues.push(...repeatedOpeningIssues(w));
   if (c.faq.length < MIN_SECTION.faq) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → ${SECTION_GOALS.faq} (근거로 답할 수 있는 질문만)`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {

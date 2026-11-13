@@ -8,8 +8,8 @@ import { SCENES_HEADER, digestBlock, groundedScenes, type ProductDigest } from "
 import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
-import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
-import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, pairTypeLabel, sameType } from "./discover";
+import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repeatedOpeningIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate, resetRunState } from "./providers/llm";
@@ -436,6 +436,56 @@ async function main() {
     ];
     assert.deepEqual(repeatedEndingIssues(varied), []);
   });
+  // 점검 글(닌자 크리스피): 추천 이유 4개가 모두 "이 상황에서는 ~가 중요해요"로 시작 — 작성 규칙이 순서를 고정해서 생김
+  await test("잘 맞는 상황 이유가 같은 말로 3번 이상 시작하면 지적, 작성 규칙은 틀을 고정하지 않음", () => {
+    const w = structuredClone(real);
+    w.content.recommendations = [
+      { situation: "혼자 산다면", pick: 0, reason: "이 상황에서는 세척 편의가 중요해요. 통째로 분리돼 씻기 쉽다는 후기가 많아요." },
+      { situation: "아이가 있다면", pick: 0, reason: "이 상황에서는 안전이 핵심이에요. 저온 가열이라 안심된다는 사용자가 있어요." },
+      { situation: "좁은 방이라면", pick: 0, reason: "이 상황이라면 크기가 제일 먼저 걸려요. 책상 옆에 두기 알맞다고 해요." },
+      { situation: "밤에 켠다면", pick: 0, reason: "소음이 신경 쓰이는 분께는 약풍 모드가 맞아요." },
+    ];
+    const issues = repeatedOpeningIssues(w);
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("3개") && issues[0].includes("이 상황"), issues[0]);
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("잘 맞는 상황:")), "lintPost 에도 포함");
+    // 두 번까지는 허용, 시작이 다양하면 통과
+    w.content.recommendations[2].reason = "책상 옆 좁은 자리에도 들어간다는 후기가 있어요.";
+    assert.deepEqual(repeatedOpeningIssues(w), []);
+    // 작성 규칙: 예전의 고정 순서("그 상황에서 무엇이 중요한지 →") 대신 자유 구조 + 같은 시작 금지
+    for (const n of [1, 2]) {
+      const rules = rulesFor(n);
+      assert.ok(!rules.includes("그 상황에서 무엇이 중요한지 →"), "고정 틀 문구가 남아 있으면 안 됨");
+      assert.ok(rules.includes("문장 구조와 순서는 이유마다 자유롭게 바꾼다. 이유들을 같은 말로 시작하지 않는다"));
+    }
+  });
+  // 점검 글(닌자 크리스피) 구매 전 확인: "품절이 잦고 공구나 할인에 따라 가격이 바뀌어 구매 시점이 까다로울 수 있어요"
+  await test("품절·재입고·공구·할인·구매 시점 같은 판매 문구 검출, 제품 기능·연장 '공구' 설명은 통과", () => {
+    const w = structuredClone(real);
+    w.content.commonComplaints = [
+      "품절이 잦고 공구나 할인에 따라 가격이 바뀌어 구매 시점이 까다로울 수 있어요. 쿠팡에서 현재 가격을 확인하세요.",
+      "품절이라면 재입고 상황을 보면서 기다리는 사람도 있어요.",
+      "할인 행사 때 사면 부담이 덜하다는 사용자도 있어요.",
+      "특가가 자주 뜨는 편이에요.",
+      "공동구매로 샀다는 후기가 많아요.",
+    ];
+    const issues = lintPost(w, 1).filter((x) => x.includes("판매 문구"));
+    for (let i = 0; i < 5; i++) assert.ok(issues.some((x) => x.startsWith(`commonComplaints[${i}]`)), `${i}번이 안 걸림\n${issues.join("\n")}`);
+    // 오탐 없음: 연장 '공구', 기능 설명, 정리 끝의 가격 안내 한 번
+    const ok = structuredClone(real);
+    ok.content.commonComplaints = [
+      "조립할 때 드라이버 같은 공구로 나사를 조이면 흔들림이 줄어요.",
+      "전동공구 소리처럼 크게 들린다는 사용자도 있어요.",
+      "필터를 미리 사 두면 교체 주기를 놓치지 않아요.",
+      "타이머를 맞춰 두면 꺼짐을 잊지 않아요.",
+    ];
+    ok.content.verdict = "위생 관리를 중시하는 가정에 알맞아요. 쿠팡에서 현재 가격을 확인하세요.";
+    const okIssues = lintPost(ok, 1).filter((x) => x.includes("판매 문구"));
+    assert.deepEqual(okIssues, []);
+    // 작성 규칙에도 금지와 "정리 끝 한 번만" 안내
+    assert.ok(rulesFor(1).includes("품절·재입고·공구(공동구매)·할인·특가·구매 시점 이야기는 어느 섹션에도 쓰지 않는다"));
+    assert.ok(rulesFor(2).includes('verdict(정리) 끝에 "쿠팡에서 현재 가격을 확인하세요" 한 번만'));
+  });
   await test("코드 검사: 블로그 수집 경로·장단점 5개·장단점 칸의 엇갈림·문장형 표 값·'확인하세요' 과다", () => {
     const w = structuredClone(real);
     const p = w.content.products[0];
@@ -548,6 +598,19 @@ async function main() {
     assert.equal(sameType("커널형 무선이어폰", "커널형 노이즈캔슬링 이어폰", "무선이어폰"), true);
     assert.equal(sameType("스마트워치", "러닝 스마트워치", "스마트워치"), true);
     assert.equal(sameType("오픈형 무선이어폰", "무선 게이밍 이어폰", "무선이어폰"), false);
+  });
+  // 점검 실행 36: "무전원" 한 단어가 겹쳐 싱크대 아래 설치형과 물병형이 한 비교글로 묶임
+  await test("비교 짝짓기: 형태가 다르면 공통 단어가 있어도 다른 종류 (언더싱크 ≠ 피처형), 짝 로그는 두 종류를 다 표시", () => {
+    assert.equal(sameType("언더싱크 무전원 정수기", "피처형 무전원 정수기", "정수기"), false);
+    assert.equal(sameType("직수형 냉온 정수기", "캡슐형 냉온 정수기", "정수기"), false);
+    assert.equal(sameType("커널형 노이즈캔슬링 무선이어폰", "오픈형 노이즈캔슬링 무선이어폰", "무선이어폰"), false);
+    // 같은 형태는 표기가 조금 달라도 같은 종류, 형태를 한쪽만 밝힌 경우는 예전처럼 공통 단어로 판단
+    assert.equal(sameType("언더싱크 무전원 정수기", "언더싱크형 정수기", "정수기"), true);
+    assert.equal(sameType("피처형 무전원 정수기", "무전원 정수기", "정수기"), true);
+    // 크기·등급(대형·보급형)은 형태가 아님 → 같은 형태끼리 짝을 막지 않음
+    assert.equal(sameType("보급형 직수형 정수기", "대형 직수 정수기", "정수기"), true);
+    assert.equal(pairTypeLabel("피처형 무전원 정수기", "피처형 무전원정수기"), "같은 종류: 피처형 무전원 정수기");
+    assert.equal(pairTypeLabel("언더싱크형 정수기", "언더싱크 무전원 정수기"), "비슷한 종류로 판단: 언더싱크형 정수기 ≈ 언더싱크 무전원 정수기");
   });
   await test("근거 보완: 핵심 단어가 자료 한 부분에 함께 있으면 근거 있음, 흩어져 있으면 없음", () => {
     const filler = "가".repeat(2000);

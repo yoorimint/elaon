@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { isModelName, mentionedIn } from "./discover";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, mentionedIn } from "./discover";
 import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
@@ -160,6 +160,25 @@ async function main() {
     const warns = thinEvidenceWarnings(w);
     assert.equal(warns.length, 1);
     assert.ok(warns[0].startsWith("브리츠 MUSEPOP3"));
+  });
+
+  // ---- 상품 선정: 실제 사용 후기가 충분한 상품만 (2026-11-13 MUSEPOP3: 후기 대부분이 쇼핑 설명) ----
+  await test("실사용 후기 수: 광고·쇼핑 글과 다른 모델 글은 세지 않음", () => {
+    const items = [
+      { title: "브리츠 <b>MUSEPOP3</b> 한달 사용 후기", description: "출퇴근 지하철에서 써보니 노캔이 괜찮아요" },
+      { title: "MUSEPOP3 솔직 리뷰 장단점", description: "내돈내산 3주 사용" },
+      { title: "MUSEPOP3 최저가 특가 할인", description: "쿠폰 적용 시 2만원대 후기 이벤트" },
+      { title: "MUSEPOP3 체험단 후기", description: "업체로부터 제품을 제공받아 작성" },
+      { title: "브리츠 MUSEPOP2 후기", description: "전작 사용기" },
+      { title: "MUSEPOP3 판매합니다", description: "미개봉" },
+    ];
+    assert.equal(countRealReviews("브리츠 MUSEPOP3", "무선이어폰", items), 2);
+    assert.ok(MIN_REAL_REVIEWS >= 5);
+  });
+  await test("모델 번호가 있으면 브랜드를 생략한 표기도 같은 제품으로 인정", () => {
+    assert.equal(mentionedIn("앤커 사운드코어 P31i", "무선이어폰", "사운드코어 p31i 후기"), true);
+    assert.equal(mentionedIn("쿠쿠 인스퓨어", "가습기", "쿠쿠 인스퓨어 가습기 후기"), true);
+    assert.equal(mentionedIn("쿠쿠 인스퓨어", "가습기", "인스퓨어 후기"), false);
   });
 
   // ---- 숫자 검사 ----

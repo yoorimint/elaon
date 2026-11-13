@@ -415,6 +415,43 @@ function tools(): Anthropic.ToolUnion[] {
   ];
 }
 
+// ---------- 덜 읽고 끝냈을 때 한 번 더 ----------
+// 데이터 진단 2차: 읽기 상한을 5개로 올려도 모델이 2개만 읽거나(로보락) 하나도 안 읽고(큐커) 검색 인용만으로 끝냈다.
+// 그래서 첫 응답 뒤 읽은 페이지·발췌가 모자라면, 검색 결과 중 아직 안 읽은 좋은 글을 코드가 골라 "이 주소들을 읽어 줘"라고
+// 같은 대화에서 한 번 더 요청한다 (검색 결과에 나온 주소라 web_fetch 가 읽을 수 있다).
+// 고르는 기준(우선순위): 제목의 사용기 표시([써보니]·체험·내돈내산·개월 …)·커뮤니티 도메인 가산, 정리·추천·가격 글 감점.
+export const FOLLOW_UP = { minPages: 3, minExcerpts: 5, maxUrls: 4 } as const;
+const COMMUNITY = /(^|\.)(clien\.net|dcinside\.com|ppomppu\.co\.kr|milemoa\.com|ruliweb\.com|teamblind\.com|82cook\.com|todaysppc\.com|bobaedream\.co\.kr|theqoo\.net|fmkorea\.com|instiz\.net|brunch\.co\.kr)$/;
+const FIRST_HAND = /써\s*보니|써\s*봤|써\s*보고|써봤수다|사용기|사용\s*후기|실사용|체험|내돈내산|개월|1년|장기|솔직/;
+const NOT_FIRST_HAND = /추천\s*TOP|TOP\s*\d|총정리|비교|순위|최저가|가격|할인|사용\s*설명서|FAQ|구매\s*가이드/i;
+
+export function pickUnreadUrls(content: Anthropic.ContentBlock[], max: number = FOLLOW_UP.maxUrls): { url: string; title: string }[] {
+  const ev = collectEvidence(content);
+  const tried = new Set<string>();
+  for (const b of content) {
+    if (b.type === "server_tool_use" && b.name === "web_fetch") tried.add(urlKey(String((b.input as { url?: string })?.url ?? "")));
+  }
+  const reported = new Set(parseReport(ev.text).map((c) => urlKey(c.url)));
+  const score = (h: { url: string; title: string }) => {
+    const host = parseUrl(h.url)?.hostname.replace(/^(www|m)\./, "") ?? "";
+    return (FIRST_HAND.test(h.title) ? 2 : 0) + (COMMUNITY.test(host) ? 2 : 0) - (NOT_FIRST_HAND.test(h.title) ? 3 : 0);
+  };
+  const domains = new Set<string>();
+  return [...ev.searchHits.entries()]
+    .filter(([k, h]) => !tried.has(k) && !ev.pages.has(k) && !reported.has(k) && !isBlockedUrl(h.url))
+    .map(([, h]) => ({ ...h, s: score(h) }))
+    .filter((h) => h.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .filter((h) => {
+      const d = parseUrl(h.url)?.hostname ?? h.url;
+      if (domains.has(d)) return false;
+      domains.add(d);
+      return true;
+    })
+    .slice(0, max)
+    .map(({ url, title }) => ({ url, title }));
+}
+
 export async function researchWebReviews(
   secrets: Secrets,
   product: { name: string; form?: string },
@@ -433,47 +470,72 @@ export async function researchWebReviews(
   let output = 0;
   let searches = 0;
   let costUsd = 0;
+  let requestNo = 0;
 
-  for (let i = 0; i <= WEB_REVIEWS.maxContinuations; i++) {
-    const res = await client(secrets)
-      .messages.stream(
-        {
-          model: CLAUDE_MODEL,
-          max_tokens: WEB_REVIEWS.maxTokens,
-          system: SYSTEM,
-          messages,
-          tools: tools(),
-          output_config: { effort: "medium" },
-        },
-        { timeout: WEB_REVIEWS.timeoutMs, maxRetries: 1 },
-      )
-      .finalMessage();
+  // 한 차례 요청 (pause_turn 이면 이어받기). 받은 블록은 content 에 쌓고, 마지막 응답 블록을 돌려준다
+  const turn = async (): Promise<Anthropic.ContentBlock[]> => {
+    let last: Anthropic.ContentBlock[] = [];
+    for (let i = 0; i <= WEB_REVIEWS.maxContinuations; i++) {
+      const res = await client(secrets)
+        .messages.stream(
+          {
+            model: CLAUDE_MODEL,
+            max_tokens: WEB_REVIEWS.maxTokens,
+            system: SYSTEM,
+            messages,
+            tools: tools(),
+            output_config: { effort: "medium" },
+          },
+          { timeout: WEB_REVIEWS.timeoutMs, maxRetries: 1 },
+        )
+        .finalMessage();
 
-    // 응답마다 비용부터 기록 (뒤에서 실패해도 과금은 됨). 캐시 토큰은 쓰지 않지만 오면 입력 단가로 셈
-    const u = res.usage;
-    const inTok = u.input_tokens + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
-    const n = u.server_tool_use?.web_search_requests ?? 0;
-    const usd = webReviewCost({ input: inTok, output: u.output_tokens, searches: n });
-    input += inTok;
-    output += u.output_tokens;
-    searches += n;
-    costUsd += usd;
-    recordUsage(`${CLAUDE_MODEL} 웹 리뷰`, usd);
-    recordWebSearches(n);
-
-    if (opts.debug) {
-      console.log(`    [요청 ${i + 1}] 멈춘 이유 ${res.stop_reason} · 입력 ${inTok} · 출력 ${u.output_tokens} 토큰 · 검색 ${n}회 · 약 $${usd.toFixed(4)}`);
+      // 응답마다 비용부터 기록 (뒤에서 실패해도 과금은 됨). 캐시 토큰은 쓰지 않지만 오면 입력 단가로 셈
+      const u = res.usage;
+      const inTok = u.input_tokens + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+      const n = u.server_tool_use?.web_search_requests ?? 0;
+      const usd = webReviewCost({ input: inTok, output: u.output_tokens, searches: n });
+      input += inTok;
+      output += u.output_tokens;
+      searches += n;
+      costUsd += usd;
+      recordUsage(`${CLAUDE_MODEL} 웹 리뷰`, usd);
+      recordWebSearches(n);
+      requestNo++;
+      if (opts.debug) {
+        console.log(`    [요청 ${requestNo}] 멈춘 이유 ${res.stop_reason} · 입력 ${inTok} · 출력 ${u.output_tokens} 토큰 · 검색 ${n}회 · 약 $${usd.toFixed(4)}`);
+      }
+      content.push(...res.content);
+      last = res.content;
+      if (res.stop_reason === "refusal") {
+        errors.push("Claude 가 요청을 거절함");
+        break;
+      }
+      if (res.stop_reason === "max_tokens") errors.push(`응답이 길이 제한(${WEB_REVIEWS.maxTokens} 토큰)에서 잘림 — 받은 만큼만 대조`);
+      if (res.stop_reason !== "pause_turn") break;
+      // 긴 검색 중 일시정지: 받은 내용을 그대로 돌려보내 이어서 하게 한다 (도구 목록도 같게)
+      messages.push({ role: "assistant", content: res.content });
+      if (i === WEB_REVIEWS.maxContinuations) errors.push(`이어받기 ${WEB_REVIEWS.maxContinuations}번 후에도 끝나지 않음 — 받은 만큼만 대조`);
     }
-    content.push(...res.content);
-    if (res.stop_reason === "refusal") {
-      errors.push("Claude 가 요청을 거절함");
-      break;
-    }
-    if (res.stop_reason === "max_tokens") errors.push(`응답이 길이 제한(${WEB_REVIEWS.maxTokens} 토큰)에서 잘림 — 받은 만큼만 대조`);
-    if (res.stop_reason !== "pause_turn") break;
-    // 긴 검색 중 일시정지: 받은 내용을 그대로 돌려보내 이어서 하게 한다 (도구 목록도 같게)
-    messages.push({ role: "assistant", content: res.content });
-    if (i === WEB_REVIEWS.maxContinuations) errors.push(`이어받기 ${WEB_REVIEWS.maxContinuations}번 후에도 끝나지 않음 — 받은 만큼만 대조`);
+    return last;
+  };
+
+  const last = await turn();
+  // 덜 읽고 끝냈으면 아직 안 읽은 좋은 글을 골라 한 번 더
+  const first = parseWebReviewResponse(content, opts.adFilterWords);
+  const excerpts = first.reviews.reduce((n, w) => n + w.excerpts.length, 0);
+  const unread = first.fetches < FOLLOW_UP.minPages || excerpts < FOLLOW_UP.minExcerpts ? pickUnreadUrls(content) : [];
+  if (unread.length && !errors.some((e) => e.includes("거절"))) {
+    if (opts.debug) console.log(`    [추가 요청] 읽은 페이지 ${first.fetches}개·발췌 ${excerpts}문장 → 안 읽은 글 ${unread.length}개 더 읽기: ${unread.map((u) => u.url).join(" , ")}`);
+    messages.push({ role: "assistant", content: last });
+    messages.push({
+      role: "user",
+      content:
+        `아직 읽지 않은 아래 글을 web_fetch 로 차례로 읽고, 직접 써 본 경험 문장을 글마다 3~5개 같은 형식으로 덧붙여줘. ` +
+        `검색은 더 하지 마. 읽을 수 없거나 실사용 글이 아니면 건너뛰어.\n` +
+        unread.map((u) => `- ${u.url} (${u.title})`).join("\n"),
+    });
+    await turn();
   }
 
   const parsed = parseWebReviewResponse(content, opts.adFilterWords);

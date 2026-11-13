@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
+  pickUnreadUrls,
   BLOCKED_DOMAINS,
   WEB_REVIEWS,
   WEB_SEARCH_USD,
@@ -188,6 +189,26 @@ async function main() {
     const r = { reviews: [], comments: [], videoNotes: [], webSummary: null, webReviews: [{ url: PAGE_URL, title: "t", kind: "blog", excerpts: ["x"], verifiedBy: "page" }] } as unknown as ProductResearch;
     assert.equal(hasEnoughEvidence(r), true);
     assert.equal(hasEnoughEvidence({ ...r, webReviews: [] }), false);
+  });
+
+  // 데이터 진단 2차: 모델이 좋은 글을 찾아 놓고 덜 읽음 → 안 읽은 글을 코드가 골라 한 번 더 읽힌다
+  await test("덜 읽은 글 고르기: 사용기·커뮤니티 우선, 정리·추천 글·이미 읽은 글·차단 도메인·같은 사이트 중복은 뺌", () => {
+    const content = [
+      searchResult([
+        { url: "https://www.ajunews.com/view/1", title: "[써보니] 로보락 S10, 카펫 속 머리카락까지" },
+        { url: "https://m.dcinside.com/board/robotcleaner/59305", title: "로보락 s10 슬림 후기 - 로봇청소기 갤러리" },
+        { url: "https://choicemon.com/r", title: "로보락 S10 후기 (S9 차이·장단점 총정리)" },
+        { url: "https://kr.roborock.com/blogs/guide", title: "로보락 S10 사용 설명서" },
+        { url: "https://blog.naver.com/x/1", title: "로보락 S10 내돈내산 후기" },
+        { url: "https://www.ajunews.com/view/2", title: "[써봤수다] 로보락 다른 기사" },
+        { url: "https://news1.kr/a", title: "로보락 신형 출시" },
+        { url: PAGE_URL, title: "6개월 사용기" },
+      ]),
+      toolUse("web_fetch", { url: PAGE_URL }),
+      fetchResult(PAGE_URL, PAGE_TEXT),
+    ];
+    const picked = pickUnreadUrls(content).map((x) => x.url);
+    assert.deepEqual(picked, ["https://www.ajunews.com/view/1", "https://m.dcinside.com/board/robotcleaner/59305"], picked.join(", "));
   });
 
   // ---- 호출 흐름: pause_turn 이어받기, 비용 기록 (fetch 를 가짜 SSE 로 바꿔 실제 호출 없이) ----

@@ -17,9 +17,13 @@ import type { ProductResearch } from "./research";
 import { buildEvidence, revisePost, type WrittenPost } from "./writer";
 
 const MAX_REVISIONS = 2;
-// 같은 내용은 이 섹션 수까지 허용 (표·제목은 요약이라 세지 않음). 결론·장단점·추천·정리에
-// 핵심이 한 번씩 나오는 건 자연스러워서 4곳까지, 그보다 많으면 반복으로 본다.
+// 같은 내용이 나온 섹션 수 (표·제목은 요약이라 세지 않음)
+// - 4곳까지: 정상 (결론·장단점·추천·정리에 핵심이 한 번씩 나오는 건 자연스러움)
+// - 5~6곳: 참고로만 기록 (비교글의 핵심 차이는 여러 곳에 나올 수밖에 없음. 고치라고 하면
+//   AI 가 문단을 통째로 다시 쓰다 새 오류를 만듦 — run #17: 문제 8 → 17)
+// - 7곳 이상: 수정 대상
 const MAX_TOPIC_SECTIONS = 4;
+const MAX_TOPIC_SECTIONS_BEFORE_FIX = 6;
 const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
 
 // ---------- 1) 규칙 검사 ----------
@@ -31,6 +35,10 @@ const BANNED: { re: RegExp; why: string }[] = [
     why: "독자는 '자료'가 뭔지 모름 (\"후기에서는\", \"판매 페이지에서\"처럼)",
   },
   { re: /않음이에요|않음입니다/, why: "어색한 문장 (\"확인되지 않아요\"처럼)" },
+  {
+    re: /광고성|광고\s*글|파트너스\s*문구|협찬\s*글|과장된\s*칭찬|칭찬을\s*그대로\s*믿/,
+    why: "후기 출처의 광고 이야기는 쓰지 않음 (독자에게 불필요하고 글 신뢰를 깎음)",
+  },
   {
     re: /(위험|걱정|문제)(은|이|가)?\s*(전혀\s*)?없|전혀|완벽(하|히|한|해)|절대(로)?\s|100\s*%/,
     why: "근거 없는 단정 (후기 기반이면 \"~라는 의견이 많아요\")",
@@ -157,10 +165,13 @@ function numbersIn(text: string): Set<string> {
 
 export function checkNumbers(w: WrittenPost, evidence: string): string[] {
   const known = numbersIn(evidence);
+  // 상품명 속 숫자("포켓쉴 20000") 뒤의 '도'는 조사 ("포켓쉴 20000도 좋아요") → 온도가 아님
+  const nameNumbers = new Set(w.content.products.flatMap((p) => p.name.match(/\d+(?:\.\d+)?/g) ?? []));
   const issues: string[] = [];
   for (const { path, text } of allText(w)) {
     for (const m of text.matchAll(NUM_UNIT)) {
       const u = unitOf(m[2]);
+      if (u === "도" && nameNumbers.has(m[1])) continue;
       if (u && !known.has(`${Number(m[1])}${u}`)) {
         issues.push(`${path}: "${m[0].trim()}"는 수집 자료에 없는 수치 → 삭제하거나 자료에 있는 값으로`);
       }
@@ -261,10 +272,14 @@ const NO_FIX_NEEDED = /수정\s*(없음|불필요|필요\s*없)|모순\s*(은\s*
 // AI 가 뽑은 목록을 코드가 판정
 export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): string[] {
   const evidenceNorm = norm(evidence);
+  const evidenceNums = numbersIn(evidence);
   const issues: string[] = [];
   for (const c of a.claims ?? []) {
     if (isPriceGuidance(c.claim)) continue; // "가격은 쿠팡에서 확인하세요"는 작성 규칙상 넣는 안내문
     if (isUnknownStatement(c.claim)) continue; // "~는 확인되지 않아요"는 근거가 없다는 말이라 주장이 아님
+    // AI 가 인용을 글자 그대로 못 옮겨도, 주장의 수치(315g, 22.5W …)가 모두 자료에 있으면 근거 있음
+    const nums = [...numbersIn(c.claim)];
+    if (nums.length && nums.every((n) => evidenceNums.has(n))) continue;
     if (!c.quote?.trim()) issues.push(`${c.section}: "${c.claim}" — 수집 자료에 근거 없음 → 삭제하거나 자료에 있는 내용으로`);
     else if (!quoteFound(c.quote, evidenceNorm)) {
       issues.push(`${c.section}: "${c.claim}" — 근거로 든 문장이 자료에 없음(지어냄 의심) → 삭제하거나 자료에 있는 내용으로`);
@@ -272,7 +287,7 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): 
   }
   for (const t of a.topics ?? []) {
     const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
-    if (secs.length > MAX_TOPIC_SECTIONS) {
+    if (secs.length > MAX_TOPIC_SECTIONS_BEFORE_FIX) {
       issues.push(
         `"${t.topic}"이 ${secs.length}곳에서 반복(${secs.join(", ")}) → 장단점과 결론·정리에만 남기고, 나머지 섹션에서는 그 문장을 빼거나 그 섹션 역할에 맞는 다른 정보로`,
       );
@@ -285,8 +300,22 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[]): 
   return [...new Set(issues)];
 }
 
+// 참고용: 5~6곳에서 반복되는 내용 (수정하지 않고 관리자에게만 보여줌)
+export function repetitionNotes(a: Audit, sectionNames: string[]): string[] {
+  return (a.topics ?? []).flatMap((t) => {
+    const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
+    return secs.length > MAX_TOPIC_SECTIONS && secs.length <= MAX_TOPIC_SECTIONS_BEFORE_FIX
+      ? [`[참고] "${t.topic}"이 ${secs.length}곳에 나옴 (${secs.join(", ")})`]
+      : [];
+  });
+}
+
 // null = AI 검수를 하지 못함 (모델 막힘 등) → "검수 통과"로 표시하지 않는다
-async function aiAudit(secrets: Secrets, w: WrittenPost, evidence: string): Promise<string[] | null> {
+async function aiAudit(
+  secrets: Secrets,
+  w: WrittenPost,
+  evidence: string,
+): Promise<{ issues: string[]; notes: string[] } | null> {
   const sections = sectionsOf(w);
   const prompt = `너는 꼼꼼한 검수자야. 판단은 하지 말고 아래 목록만 빠짐없이 뽑아줘.
 1. claims: 글의 구체적 사실 주장 전부(수치·스펙·기능·소재·방식·안전성·후기 내용). "누구에게 맞다" 같은 추천·판단 문장과
@@ -306,7 +335,8 @@ ${evidence}`;
     const r = await generate(secrets, prompt, { jsonSchema: AUDIT_SCHEMA, maxOutputTokens: 8192, strongOnly: true });
     const audit = JSON.parse(r.text) as Audit;
     console.log(`     (AI 추출: 주장 ${audit.claims?.length ?? 0} · 반복 후보 ${audit.topics?.length ?? 0} · 기타 ${audit.others?.length ?? 0})`);
-    return judgeAudit(audit, evidence, sections.map((s) => s.name));
+    const names = sections.map((s) => s.name);
+    return { issues: judgeAudit(audit, evidence, names), notes: repetitionNotes(audit, names) };
   } catch (e) {
     console.warn(`  ⚠ AI 검수 못함: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
     return null;
@@ -317,7 +347,8 @@ ${evidence}`;
 async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, evidence: string) {
   const ai = await aiAudit(secrets, w, evidence);
   return {
-    issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...(ai ?? [])],
+    issues: [...lintPost(w, productCount), ...checkNumbers(w, evidence), ...(ai?.issues ?? [])],
+    notes: ai?.notes ?? [],
     aiChecked: ai !== null,
   };
 }
@@ -365,6 +396,7 @@ export async function reviewAndFix(
     checkedAt: new Date().toISOString(),
     issuesFound: found,
     remaining: [...warnings, ...best.check.issues].slice(0, 10),
+    notes: best.check.notes.slice(0, 10),
     aiChecked: best.check.aiChecked,
     revisions,
   };

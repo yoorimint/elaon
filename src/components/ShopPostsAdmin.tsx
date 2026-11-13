@@ -178,7 +178,12 @@ function qaState(qa?: ShopPostQa | null): { label: string; ok: boolean; detail: 
   if (qa.aiChecked === false) {
     return { label: "AI 검수 못함", ok: false, detail: "AI 모델이 막혀 규칙 검사만 했어요. 미리보기에서 내용을 직접 확인하세요." };
   }
-  return { label: "검수 통과", ok: true, detail: `처음 ${qa.issuesFound}개 발견 → 자동 수정 완료` };
+  const notes = qa.notes ?? [];
+  return {
+    label: notes.length ? `검수 통과 (참고 ${notes.length})` : "검수 통과",
+    ok: true,
+    detail: [`처음 ${qa.issuesFound}개 발견 → 자동 수정 완료`, ...notes].join("\n"),
+  };
 }
 
 // 마우스를 올리면(휴대폰은 길게 누르면) 남은 문제 목록

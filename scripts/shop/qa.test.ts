@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { MIN_REAL_REVIEWS, countRealReviews, isModelName, mentionedIn } from "./discover";
-import { checkNumbers, isNonAnswer, judgeAudit, lintPost, quoteFound, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isSafetyRisk, mentionedIn } from "./discover";
+import { checkNumbers, isNonAnswer, judgeAudit, lintPost, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -141,12 +141,13 @@ async function main() {
     assert.equal(issues.length, 1, issues.join("\n"));
     assert.ok(issues[0].startsWith("정리"));
   });
-  await test("반복: 표·제목은 세지 않고 4곳까지 허용, 5곳 이상이면 반복", () => {
+  await test("반복: 표·제목 제외 4곳까지 정상, 5~6곳은 참고만", () => {
     const names = ["결론", "고르는 기준", "표", "장점", "후기 요약", "정리", "제목"];
     const ok = judgeAudit({ topics: [{ topic: "배터리", sections: ["제목", "표", "고르는 기준", "장점", "후기 요약", "정리"] }] }, evidence, names);
     assert.deepEqual(ok, []);
-    const bad = judgeAudit({ topics: [{ topic: "ANC", sections: ["결론", "고르는 기준", "장점", "후기 요약", "정리"] }] }, evidence, names);
-    assert.equal(bad.length, 1);
+    const five = { topics: [{ topic: "ANC", sections: ["결론", "고르는 기준", "장점", "후기 요약", "정리"] }] };
+    assert.deepEqual(judgeAudit(five, evidence, names), [], "5곳은 수정 대상 아님");
+    assert.equal(repetitionNotes(five, names).length, 1, "5곳은 참고로 기록");
   });
   await test("비교표 절반 이상 '확인 안 됨'인 상품은 근거 부족 경고", () => {
     const w = structuredClone(real);
@@ -195,6 +196,32 @@ async function main() {
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[0]") && x.includes("다른 질문")));
   });
 
+  // ---- 2026-11-13 run #17 (보바 VA-123 vs 포켓쉴 20000) ----
+  await test("상품명 숫자 + 조사 '도'('포켓쉴 20000도')는 온도로 보지 않음", () => {
+    const w = structuredClone(real);
+    w.content.products = [{ ...w.content.products[0], name: "포켓쉴 20000" }];
+    w.content.verdict = "포켓쉴 20000도 좋은 선택이에요.";
+    assert.ok(!checkNumbers(w, evidence).some((x) => x.startsWith("verdict")));
+  });
+  await test("인용을 못 찾아도 주장의 수치가 모두 자료에 있으면 근거 있음", () => {
+    const ev = "포켓쉴 20000 스펙: 무게 315g, 최대 22.5W 출력";
+    const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
+    assert.deepEqual(issues, []);
+  });
+  await test("후기 출처의 광고 이야기 문장 검출", () => {
+    const w = structuredClone(real);
+    w.content.commonComplaints = ["광고 글 주의 · 블로그 후기에 파트너스 문구가 많아 과장된 칭찬은 걸러서 보세요"];
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("commonComplaints[0]") && x.includes("광고")));
+  });
+  await test("안전 이슈: 같은 브랜드·종류 제품의 리콜·안전기준 미흡 보도가 있으면 제외", () => {
+    const news = [
+      { title: "보바 보조배터리 VA-122 자발적 리콜", description: "과충전 안전기준 미흡 제품으로 회수 조치" },
+    ];
+    assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", news), true);
+    assert.equal(isSafetyRisk("포켓쉴 20000", "보조배터리", news), false);
+    assert.equal(isSafetyRisk("케어팟 X50V", "가습기", [{ title: "가습기 살균제 리콜", description: "다른 회사" }]), false);
+  });
+
   // ---- 숫자 검사 ----
   await test("자료에 없는 수치(440cc) 검출, 40도=40℃ 같은 표기 차이는 통과", () => {
     const issues = checkNumbers(real, evidence);
@@ -204,11 +231,11 @@ async function main() {
 
   // ---- AI 추출 → 코드 판정 ----
   const names = ["결론", "도입", "고르는 기준", "표", "후기 요약", "장점", "단점", "구매 전 확인", "FAQ", "정리"];
-  await test("같은 단점이 6곳이면 반복으로 판정, 적은 곳은 허용", () => {
+  await test("같은 단점이 7곳 이상이면 수정 대상, 적은 곳은 허용", () => {
     const issues = judgeAudit(
       {
         topics: [
-          { topic: "물이 남아도 작동 멈춤", sections: ["결론", "고르는 기준", "후기 요약", "단점", "구매 전 확인", "FAQ"] },
+          { topic: "물이 남아도 작동 멈춤", sections: ["결론", "도입", "고르는 기준", "후기 요약", "단점", "구매 전 확인", "FAQ"] },
           { topic: "저온 가열", sections: ["장점", "결론", "정리"] },
         ],
       },
@@ -216,7 +243,7 @@ async function main() {
       names,
     );
     assert.equal(issues.length, 1, issues.join("\n"));
-    assert.ok(issues[0].includes("6곳"));
+    assert.ok(issues[0].includes("7곳"));
   });
   await test("근거 인용이 없거나 자료에 없는 문장이면 판정, 진짜 인용은 통과", () => {
     const issues = judgeAudit(
@@ -302,12 +329,12 @@ async function main() {
       const first = calls.filter((c) => c === "audit").length === 0;
       calls.push("audit");
       if (mode === "worse") {
-        const topic = (t: string) => ({ topic: t, sections: ["결론", "도입", "고르는 기준", "후기 요약", "단점", "FAQ"] });
+        const topic = (t: string) => ({ topic: t, sections: ["결론", "도입", "고르는 기준", "후기 요약", "단점", "FAQ", "정리"] });
         return reply({ claims: [], topics: first ? [topic("A")] : [topic("A"), topic("B")], others: [] });
       }
       return reply(
         first
-          ? { claims: [], topics: [{ topic: "물이 남아도 멈춤", sections: ["결론", "고르는 기준", "후기 요약", "단점", "구매 전 확인", "FAQ"] }], others: [] }
+          ? { claims: [], topics: [{ topic: "물이 남아도 멈춤", sections: ["결론", "도입", "고르는 기준", "후기 요약", "단점", "구매 전 확인", "FAQ"] }], others: [] }
           : { claims: [], topics: [], others: [] },
       );
     }
@@ -318,7 +345,7 @@ async function main() {
         bad.content.intro += " 최저가 보장";
         return reply({ title: bad.title, description: bad.description, ...bad.content });
       }
-      assert.ok(prompt.includes("6곳에서 반복"), "반복 지적이 수정 프롬프트에 전달돼야 함");
+      assert.ok(prompt.includes("7곳에서 반복"), "반복 지적이 수정 프롬프트에 전달돼야 함");
       assert.ok(prompt.includes("440cc"), "숫자 지적이 수정 프롬프트에 전달돼야 함");
       const { title, description, content } = clean;
       return reply({ title, description, ...content });

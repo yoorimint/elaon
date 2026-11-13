@@ -22,7 +22,7 @@ const MAX_REVISIONS = 2;
 // 제품별 장점·단점 최대 개수 (작성 규칙 3~4개)
 const MAX_POINTS = 4;
 const MIXED_OPINION = /엇갈|상반된|반대로\s*[가-힣]*\s*(평|의견)|의견이\s*나뉘/;
-const SENTENCE_VALUE = /다는\s*(평|의견|후기)|(평|의견|후기)이\s*(많|있)|[요다]\.?$/;
+const SENTENCE_VALUE = /다는\s*(평|의견|후기)|(평|의견|후기)이\s*(많|있)|(?<![필중])요\.?$|다\.?$/;
 const CHECK_PHRASE = /확인(하세요|해\s?보세요|해\s?두세요|하는\s*(것이|게)\s*좋|이\s*필요|하시)/g;
 const MAX_CHECK_PHRASES = 5;
 // 비교표에서 한 제품만 값이 있는 행 허용 개수

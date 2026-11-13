@@ -127,7 +127,12 @@ async function checkPosts(): Promise<void> {
   const rows = (data ?? []) as { slug: string; title: string; description: string; status: string; content: ShopPostContent; products: unknown[] }[];
   console.log(`🔎 지금 규칙으로 다시 검사 (${rows.length}개)`);
   for (const r of rows) {
-    const issues = lintPost({ title: r.title, description: r.description, content: r.content }, r.products.length);
+    // 화면에 나오지 않는 기록(qa·run·insights)은 빼고 글 본문만 검사
+    const { qa: _qa, run: _run, insights: _insights, ...body } = r.content as ShopPostContent & Record<string, unknown>;
+    void _qa;
+    void _run;
+    void _insights;
+    const issues = lintPost({ title: r.title, description: r.description, content: body as ShopPostContent }, r.products.length);
     console.log(`- ${r.slug} | ${r.status} | 문제 ${issues.length}개 | ${r.title}`);
     for (const x of issues) console.log(`    · ${x.slice(0, 150)}`);
   }

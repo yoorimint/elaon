@@ -316,6 +316,9 @@ async function main() {
     assert.ok(has("엇갈리는 의견은 장단점 칸에서 빼고"), "장단점 칸 엇갈림");
     assert.ok(has('"조용하다는 평"'), "문장형 표 값");
     assert.ok(!has('"6.3L"'), "짧은 값은 통과");
+    const ok = structuredClone(real);
+    ok.content.comparison = [{ label: "방수", values: ["확인 필요"] }, { label: "소음", values: ["조용함"] }];
+    assert.ok(!lintPost(ok, 1).some((x) => x.includes("문장 말고")), "'확인 필요'는 문장이 아님 (오탐 방지)");
     assert.ok(has("안내가 6번"), "확인하세요 과다");
   });
   await test("자동 교정: '엇갈려요, 그래서' → 마침표, '필요, 중요,'는 그대로", () => {

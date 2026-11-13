@@ -27,11 +27,15 @@ import { reviewAndFix } from "./qa";
 import { ThinEvidenceError, evidenceGaps } from "./readiness";
 import { MAX_BELOW_BAR_PER_DAY, MAX_COST_USD_PER_DAY, MAX_FAILURES_PER_DAY, better, judgeQuality } from "./quality";
 import { hasEnoughEvidence, researchProduct, toSources, type ProductResearch, type ResearchOptions } from "./research";
-import { nextKind, pairKeyOf } from "./select-products";
+import { nextKind, pairKeyOf, type PostKind } from "./select-products";
 import { usageLine, usageSummary } from "./usage";
 import { writePost, type WrittenPost } from "./writer";
 
 const FORCE = process.env.SHOP_FORCE === "1";
+// 점검 실행에서만 글 종류 지정: .github/shop-run-request 의 "type: single|compare" 줄 → 워크플로가 SHOP_KIND 로 넘김.
+// 매시간 운영 실행·수동 실행에는 넘기지 않으므로 관리자 설정(자동 글 종류)대로 돈다.
+const KIND_OVERRIDE: PostKind | null =
+  process.env.SHOP_KIND === "single" || process.env.SHOP_KIND === "compare" ? process.env.SHOP_KIND : null;
 const MAX_ATTEMPTS = 2; // 글을 쓴 횟수 상한: 합격선 미달이면 다른 상품으로 한 번 더
 const MAX_PICKS = 4; // 상품을 고른 횟수 상한: 근거가 얇아 쓰지 않고 넘긴 것까지 포함
 // 이 시간이 지나면 새 상품을 고르지 않음 (워크플로 제한 30분 안에 저장까지 끝내도록. 글 1편 작성·검수에 최대 약 10분)
@@ -57,6 +61,7 @@ type Selection = {
   category?: string;
   alternatives: string[];
   realReviews?: Record<string, number>;
+  forms?: Record<string, string>; // 상품명 → 제품 형태 (자동 선정 때만)
 };
 
 type Attempt = Selection & {
@@ -84,7 +89,7 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection, che
   console.log(`🔎 ${products.length === 1 ? "단일 상품 후기 분석" : "비교글"} — 후기 수집: ${products.map((p) => p.name).join(" vs ")}`);
   const research: ProductResearch[] = [];
   for (const p of products) {
-    const r = await researchProduct(secrets, p, opts);
+    const r = await researchProduct(secrets, p, opts, sel.forms?.[p.name] ?? sel.category);
     console.log(
       `  - ${p.name}: 네이버 ${r.reviews.length}건 · 뉴스 ${r.news.length}건 · 유튜브 영상 ${r.videos.length}개/댓글 ${r.comments.length}개/설명 ${r.videoNotes.length}개 · 웹 출처 ${r.webSourceCount}곳`,
     );
@@ -136,6 +141,12 @@ async function produce(secrets: Secrets, config: ShopConfig, sel: Selection, che
   return { ...sel, written, qa, passed: verdict.passed, reasons: verdict.reasons, research, digests };
 }
 
+// 다시 쓰는 도중 좋은 모델이 막혔을 때: 더 시도하지 않고 앞에서 쓴 글을 저장하러 간다
+function stopAfterOutage(e: Error, tried: string[]) {
+  console.log(`  ⏹ 다음 시도 중 모델 사용 불가 (${e.message.slice(0, 120)}) → 앞에서 쓴 글을 저장`);
+  tried.push(`모델 사용 불가로 추가 시도 중단: ${e.message.slice(0, 120)}`);
+}
+
 async function main() {
   const [config, secrets] = await Promise.all([loadConfig(), loadSecrets()]);
   if (!secrets.GEMINI_API_KEY && process.env.GEMINI_API_KEY) secrets.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -172,7 +183,8 @@ async function main() {
   const manual = (config.manual_products ?? []).filter((p) => p.name?.trim() && p.link?.trim());
   const useManual = manual.length > 0 && (FORCE || !history.usedPairKeys.has(pairKeyOf(manual)));
   const lastKind = history.lastProductCount == null ? null : history.lastProductCount === 1 ? "single" : "compare";
-  const kind = nextKind(config.auto_mode ?? "single", lastKind);
+  const kind = KIND_OVERRIDE ?? nextKind(config.auto_mode ?? "single", lastKind);
+  if (KIND_OVERRIDE) console.log(`🧪 점검 실행 글 종류 지정: ${KIND_OVERRIDE === "single" ? "단일" : "비교"} (설정값 무시)`);
 
   let best: Attempt | null = null;
   const tried: string[] = [];
@@ -189,7 +201,14 @@ async function main() {
       sel = { products: manual, alternatives: [] };
     } else {
       console.log(`🧭 자동 선정 ${attempt}회차 (${config.auto_mode ?? "single"} → 이번 글: ${kind === "single" ? "단일" : "비교"})`);
-      const found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+      let found: Awaited<ReturnType<typeof discoverProducts>>;
+      try {
+        found = await discoverProducts(secrets, kind, history.usedPairKeys, history.recentCategories);
+      } catch (e) {
+        if (!(e instanceof StrongModelUnavailableError) || !best) throw e;
+        stopAfterOutage(e, tried);
+        break;
+      }
       if (!found) break;
       sel = found;
     }
@@ -197,6 +216,12 @@ async function main() {
     try {
       result = await produce(secrets, config, sel, !useManual);
     } catch (e) {
+      // 앞 시도에서 이미 쓴 글이 있으면 모델이 막혀도 그 글은 저장한다
+      // (점검 실행 45: 2회차 분석 중 Claude 503·Gemini 한도로 실행이 "건너뜀"으로 끝나 1회차 글까지 버려짐)
+      if (e instanceof StrongModelUnavailableError && best) {
+        stopAfterOutage(e, tried);
+        break;
+      }
       if (!(e instanceof ThinEvidenceError)) throw e;
       console.log(`  ⏭ ${e.message} → 쓰지 않고 다른 상품으로`);
       tried.push(`${sel.products.map((p) => p.name).join(" vs ")}: ${e.message}`);
@@ -241,7 +266,8 @@ async function main() {
       naverReviews: research.reduce((n, r) => n + r.reviews.length, 0),
       youtubeVideos: research.reduce((n, r) => n + r.videos.length, 0),
       youtubeComments: research.reduce((n, r) => n + r.comments.length, 0),
-      webSources: research.reduce((n, r) => n + r.webSourceCount, 0),
+      // 구글 검색 요약의 출처 수 + 원문을 읽은 웹 리뷰 글 수
+      webSources: research.reduce((n, r) => n + r.webSourceCount + (r.webReviews?.length ?? 0), 0),
     },
     pair_key: pairKeyOf(products),
     status,

@@ -3,6 +3,7 @@
 // 쿠팡 자동글 API 키 입력. 저장된 키 원문은 서버가 돌려주지 않으므로
 // 화면에는 끝 4자리만 보이고, 수정은 "새 값으로 덮어쓰기" 방식이다.
 // 키가 실제로 동작하는지는 GitHub Actions "shop key check" 가 점검해 결과를 남긴다.
+// only: 화면에 보일 키 묶음 (2026-11-13~ 쿠팡만 — AI 자동글을 끄면서 Gemini·Claude·네이버 칸은 화면에서만 숨김. 저장된 값은 그대로)
 
 import { useCallback, useEffect, useState } from "react";
 import { timeAgo } from "@/lib/community";
@@ -22,10 +23,13 @@ type StatusMap = Partial<Record<SecretName, SecretStatus>>;
 export function ShopApiKeys({
   check,
   checkedAt,
+  only,
 }: {
   check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
   checkedAt: string | null;
+  only?: ApiKeyGroupId[];
 }) {
+  const groups = only ? API_KEY_GROUPS.filter((g) => only.includes(g.id)) : API_KEY_GROUPS;
   const [status, setStatus] = useState<StatusMap>({});
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -70,7 +74,7 @@ export function ShopApiKeys({
       </div>
 
       <div className="mt-4 space-y-5">
-        {API_KEY_GROUPS.map((g) => (
+        {groups.map((g) => (
           <div key={g.label}>
             <div className="text-sm font-semibold">
               {g.label}

@@ -61,9 +61,33 @@ export type ShopPostInsight = {
   weaknesses: { point: string; weight: number }[];
 };
 
+// "후기 읽어주는 에디터" 칼럼 구성 (2026-11-13~, 단일 상품 글). 이 필드가 있으면 화면이 칼럼 순서로 그린다.
+// 칼럼 글에서 기존 필드의 뜻: intro = 도입(hook), summary = 한 줄 판정 박스, verdict = 에디터 판정 첫머리 문장,
+//  comparison = 한눈에 보기 사양 표, products[0].pros/cons = 장단점 요약 칩, faq = 한눈에 보기 FAQ.
+//  recommendations·commonComplaints·buyingGuide 는 비워 둔다 (이야기 꼭지·솔직한 단점·에디터 판정이 그 역할을 맡음).
+// 이 필드가 없는 글(예전 8칸 양식, 비교글)은 예전 화면 그대로 나온다.
+export type ShopPostColumn = {
+  question: string; // 글을 끌고 가는 핵심 질문 (예: "로봇청소기 다 비슷한데 S10은 왜 비쌀까?")
+  stories: ShopPostStory[]; // 본문 이야기 꼭지 3~4개
+  downsides: { title: string; detail: string; tip: string }[]; // 솔직한 단점: 누구에게 문제/누구는 괜찮은지 + 대처 팁
+  buyIf: string[]; // 에디터 판정: 이런 분은 사세요
+  skipIf: string[]; // 에디터 판정: 이런 분은 다른 걸 보세요
+};
+export type ShopPostStory = {
+  heading: string; // 소제목(h2) — 제품마다 다르게, 검색 키워드를 자연스럽게
+  body: string; // 무엇이 → 왜 중요한지(생활 장면) → 주의점/누구에게. 빈 줄로 나눈 짧은 문단
+  quote?: string; // 실제 사용자 말 (원자료와 대조 — 지어낸 인용 금지)
+  basis?: string; // 이 꼭지를 뒷받침하는 후기 분석의 장점·단점 항목 (화면에 안 나옴 — 여러 후기로 뒷받침되는 주제인지 검사용)
+};
+
+export function isColumnPost(c: Pick<ShopPostContent, "column">): c is { column: ShopPostColumn } {
+  return !!c.column && Array.isArray(c.column.stories) && c.column.stories.length > 0;
+}
+
 export type ShopPostContent = {
-  summary: string; // 한 줄 결론 (2~3문장)
-  intro: string; // 도입
+  summary: string; // 한 줄 결론 (2~3문장). 칼럼 글은 한 줄 판정 박스 (1~2문장)
+  intro: string; // 도입. 칼럼 글은 hook
+  column?: ShopPostColumn; // 칼럼 구성 (있으면 칼럼 화면)
   products: ShopPostProductContent[]; // 입력 상품 순서와 같음
   comparison: { label: string; values: string[] }[]; // 항목별 비교, values[i] = 상품 i
   recommendations: { situation: string; pick: number; reason: string }[]; // pick = 상품 index
@@ -108,7 +132,8 @@ export type ShopSourceKind =
   | "naver_kin"
   | "naver_web"
   | "naver_news"
-  | "youtube";
+  | "youtube"
+  | "web_review"; // 웹 리뷰 원문 발췌 (scripts/shop/providers/webreviews.ts)
 
 export const SOURCE_LABEL: Record<ShopSourceKind, string> = {
   naver_blog: "블로그",
@@ -117,6 +142,7 @@ export const SOURCE_LABEL: Record<ShopSourceKind, string> = {
   naver_web: "웹문서",
   naver_news: "뉴스",
   youtube: "유튜브",
+  web_review: "웹 리뷰",
 };
 
 export type ShopPostSource = {
@@ -133,12 +159,38 @@ export type ShopPostStats = {
   webSources: number;
 };
 
-export type ShopPost = {
+// ---------- 직접 쓴 글 (붙여넣어 만든 글, 2026-11-13~) ----------
+// 다른 곳에서 쓴 글을 관리자 화면에 붙여넣으면 src/lib/shop-paste.ts 가 블록으로 나눈다.
+// 블록 순서 그대로 화면에 그린다 (src/components/ShopManualArticle.tsx).
+// 블록 id 는 글 안에서 유일 — 사진은 블록마다 따로 저장해 위아래에 같은 사진이 들어가지 않게 한다.
+export type ShopManualBlock =
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "heading"; level: 2 | 3; text: string }
+  | { id: string; type: "list"; ordered: boolean; items: string[] }
+  // src: 올린 사진 주소 (없으면 빈 사진 자리 — 공개 글에선 안 보임). alt: 사진 설명(대체 텍스트)
+  | { id: string; type: "image"; src?: string; alt: string }
+  // product: 이 구매 버튼이 가리키는 상품 (shop_posts.products 의 index)
+  | { id: string; type: "link"; product: number };
+
+export type ShopManualBlockType = ShopManualBlock["type"];
+
+export type ShopManualContent = {
+  kind: "manual";
+  blocks: ShopManualBlock[];
+  category?: string; // 관련 글 묶음용 (AI 글의 content.category 와 같은 자리라 관련 글 조회가 그대로 동작)
+  disclosure?: string; // 공정위 고지 문구 (작성 시점 설정값)
+  descriptionAuto?: boolean; // true = 검색 설명을 비워 둬서 저장 때마다 본문 앞부분으로 다시 만든다
+};
+
+export function isManualContent(c: unknown): c is ShopManualContent {
+  return !!c && typeof c === "object" && (c as { kind?: unknown }).kind === "manual" && Array.isArray((c as { blocks?: unknown }).blocks);
+}
+
+type ShopPostBase = {
   id: string;
   slug: string;
   title: string;
   description: string;
-  content: ShopPostContent;
   products: ShopPostInputProduct[];
   sources: ShopPostSource[];
   stats: ShopPostStats;
@@ -148,5 +200,30 @@ export type ShopPost = {
   updated_at: string;
 };
 
+// AI 가 쓴 글(예전 구성·칼럼)
+export type AiShopPost = ShopPostBase & { content: ShopPostContent };
+// 직접 붙여넣어 만든 글
+export type ManualShopPost = ShopPostBase & { content: ShopManualContent };
+export type ShopPost = AiShopPost | ManualShopPost;
+
+export function isManualPost(p: ShopPost): p is ManualShopPost {
+  return isManualContent(p.content);
+}
+
 // "함께 보면 좋은 글" 링크용 (공개된 글만)
 export type RelatedPost = Pick<ShopPost, "slug" | "title" | "products">;
+
+// 몇 건을 살펴봤는지: AI 가 쓰지 않고 실제 수집 건수(post.stats)로 보여 준다 (지어낸 숫자가 들어갈 틈을 없앰).
+// 2026-11-13 운영자 지적: "네이버 블로그·카페 등 글 100건 … 읽고"는 실제로는 검색 요약(2~3줄)이라 과장이고,
+// 본문에서 수집 경로(플랫폼 이름)를 말할 필요도 없음 → "실사용 후기 100여 건과 리뷰 글 N편을 살펴봤어요"로.
+// 리뷰 글 = 원문을 읽은 웹 리뷰 수 (sources 의 web_review — stats.webSources 에는 구글 검색 요약 출처도 섞여 있어 쓰지 않음).
+// 짧은 후기(검색 요약·댓글)는 10단위로 내려 "~여 건"
+export function readCountText(stats: ShopPostStats | undefined, webReviewCount = 0): string | null {
+  const short = (stats?.naverReviews ?? 0) + (stats?.youtubeComments ?? 0);
+  const long = webReviewCount;
+  const shortText = short >= 20 ? `실사용 후기 ${Math.floor(short / 10) * 10}여 건` : short > 0 ? `실사용 후기 ${short}건` : "";
+  const longText = long > 0 ? `리뷰 글 ${long}편` : "";
+  const parts = [shortText, longText].filter(Boolean);
+  if (!parts.length) return null;
+  return `${parts.join("과 ")}을 살펴봤어요. 직접 써 본 리뷰가 아니라, 써 본 사람들의 이야기를 모아 정리한 글이에요.`;
+}

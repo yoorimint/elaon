@@ -4,6 +4,12 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "installCommand": "npm ci",
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true
+    }
+  },
   "github": {
     "silent": false,
     "autoJobCancelation": false

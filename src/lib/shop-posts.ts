@@ -2,17 +2,19 @@
 // 권한은 Supabase RLS: 초안 조회·수정·삭제는 관리자만.
 
 import { supabase } from "./supabase";
+import { sanitizeManualInput, type ManualPostInput } from "./shop-manual";
 import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostRunInfo, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products"> & {
   qa?: ShopPostQa | null; // 자동 검수 결과 (content.qa)
   run?: ShopPostRunInfo | null; // 작성 실행 리포트 (content.run)
+  kind?: string | null; // "manual" = 직접 붙여넣어 만든 글 (content.kind), 없으면 AI 글
 };
 
 export async function listAllPosts(limit = 100): Promise<AdminPostRow[]> {
   const { data, error } = await supabase
     .from("shop_posts")
-    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run")
+    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run,kind:content->>kind")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -25,7 +27,50 @@ export async function getPostBySlug(slug: string): Promise<ShopPost | null> {
   return (data as ShopPost | null) ?? null;
 }
 
-export async function setPostStatus(post: AdminPostRow, status: ShopPostStatus): Promise<void> {
+export async function getPostById(id: string): Promise<ShopPost | null> {
+  const { data, error } = await supabase.from("shop_posts").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ShopPost | null) ?? null;
+}
+
+// ---------- 직접 쓴 글 (붙여넣어 만든 글) ----------
+
+async function accessToken(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("저장 안 됨 — 관리자 로그인이 풀렸어요. 다시 로그인해 주세요");
+  return token;
+}
+
+// 새 초안 저장: 브라우저에는 글쓰기 권한이 없어 서버 API 가 관리자 확인 후 넣는다 (src/app/api/shop/manual-post)
+export async function createManualPost(input: ManualPostInput): Promise<{ id: string; slug: string }> {
+  const clean = sanitizeManualInput(input);
+  if (!clean) throw new Error("글 형식이 올바르지 않아요");
+  const res = await fetch("/api/shop/manual-post", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${await accessToken()}` },
+    body: JSON.stringify(clean),
+  });
+  const body = (await res.json().catch(() => ({}))) as { id?: string; slug?: string; error?: string };
+  if (!res.ok || !body.id || !body.slug) throw new Error(`저장 안 됨 — ${body.error ?? `서버 오류 ${res.status}`}`);
+  return { id: body.id, slug: body.slug };
+}
+
+// 저장된 글 수정 (초안·공개 글 공통). 관리자 권한(RLS)으로 바로 고친다
+export async function updateManualPost(id: string, input: ManualPostInput): Promise<void> {
+  const clean = sanitizeManualInput(input);
+  if (!clean) throw new Error("글 형식이 올바르지 않아요");
+  const { data, error } = await supabase
+    .from("shop_posts")
+    .update({ ...clean, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("id");
+  if (error) throw new Error(`저장 안 됨 — ${error.message}`);
+  // 권한이 없으면 오류 없이 0건만 바뀐다
+  if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
+}
+
+export async function setPostStatus(post: Pick<AdminPostRow, "id" | "published_at">, status: ShopPostStatus): Promise<void> {
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("shop_posts")

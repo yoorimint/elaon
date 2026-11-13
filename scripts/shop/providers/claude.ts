@@ -8,13 +8,13 @@ import { recordUsage } from "../usage";
 import type { CheckResult, Secrets } from "./types";
 
 export const CLAUDE_MODEL = "claude-haiku-5-5";
-const PRICE_PER_MTOK = { input: 0.1, output: 0.5 }; // USD, 100K 토큰 이하 프롬프트
+export const PRICE_PER_MTOK = { input: 0.1, output: 0.5 }; // USD, 100K 토큰 이하 프롬프트
 // 생각(thinking) 토큰 포함. 수정 단계는 글 전체 JSON 을 다시 쓰므로 넉넉히 (실제 쓴 만큼만 과금).
 // 큰 값은 HTTP 시간 초과를 피하려고 스트리밍으로 받는다.
 const MAX_TOKENS = 64000;
 const TIMEOUT_MS = 5 * 60 * 1000;
 
-function client(secrets: Secrets): Anthropic {
+export function client(secrets: Secrets): Anthropic {
   const apiKey = secrets.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("Claude 키 미등록");
   return new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 2 });

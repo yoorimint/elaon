@@ -6,8 +6,8 @@ import { listPublishedPosts } from "@/lib/shop-posts-server";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: { absolute: "쇼핑 비교 — 실사용 후기로 비교한 인기 제품" },
-  description: "네이버 블로그·카페, 유튜브, 웹 리뷰의 실사용 후기를 모아 인기 제품을 비교했습니다.",
+  title: { absolute: "쇼핑 — 실사용 후기로 살펴본 인기 제품" },
+  description: "실제로 써 본 사람들의 후기를 바탕으로 인기 제품의 장단점과 고르는 법을 정리했습니다.",
   alternates: { canonical: "/shop", types: { "application/rss+xml": "/shop/rss.xml" } },
 };
 
@@ -16,7 +16,7 @@ export default async function ShopListPage() {
   return (
     <main className="mx-auto max-w-3xl px-5 py-8 sm:py-12">
       <h1 className="text-2xl sm:text-3xl font-bold">쇼핑 비교</h1>
-      <p className="mt-1 text-sm text-neutral-500">실사용 후기를 모아 두 제품을 비교했어요.</p>
+      <p className="mt-1 text-sm text-neutral-500">실사용 후기를 바탕으로 인기 제품의 장단점과 고르는 법을 정리했어요.</p>
 
       {posts.length === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-8 text-center text-sm text-neutral-500">

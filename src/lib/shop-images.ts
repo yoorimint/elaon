@@ -36,6 +36,18 @@ async function resizeToJpeg(file: File): Promise<Blob> {
   }
 }
 
+// 직접 쓴 글의 사진 자리(블록) 하나에 올릴 사진. 저장소에만 올리고 주소를 돌려준다
+// (글 데이터 저장은 편집기가 글 전체를 저장하며 함께 한다 — 그 저장이 실패하면 편집기가 "저장 안 됨"으로 표시).
+// 파일 이름에 블록 id 를 넣어 자리마다 다른 파일 (scripts/shop/maintain.ts 의 상품 사진 복구는 이 이름을 건드리지 않음)
+export async function uploadBlockImage(postId: string, blockId: string, file: File): Promise<string> {
+  if (!/^[a-z0-9]{1,40}$/.test(blockId)) throw new Error("사진 자리 id 가 올바르지 않아요");
+  const blob = await resizeToJpeg(file);
+  const path = `${postId}/blk-${blockId}-${Date.now()}.jpg`;
+  const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+  if (up.error) throw new Error(`업로드 실패: ${up.error.message}`);
+  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
 // 사진을 올리고 글의 index 번째 상품의 spot 자리 사진으로 저장. 저장된 사진 주소를 돌려준다.
 export async function uploadProductImage(postId: string, index: number, spot: PhotoSpot, file: File): Promise<string> {
   const blob = await resizeToJpeg(file);

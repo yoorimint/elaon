@@ -1,4 +1,4 @@
-// 1단계: 상품별 근거 자료(후기 최대 100건 + 댓글 + 영상 설명 + 뉴스)를 빠짐없이 읽고
+// 1단계: 상품별 근거 자료(후기 최대 100건 + 댓글 + 영상 설명 + 뉴스 + 웹 리뷰 원문 발췌)를 빠짐없이 읽고
 // 구조화된 분석으로 압축한다. 2단계(writer)는 이 분석을 바탕으로 비교글을 쓴다.
 // 한 번에 비교글을 쓰게 하면 많은 자료 중 일부만 반영되므로, 상품별로 먼저 소화시킨다.
 
@@ -6,6 +6,7 @@ import { SOURCE_LABEL, type ShopPostInsight } from "@/lib/shop-post-types";
 import { coverage, norm, productWordsOf, quoteFound } from "./grounding";
 import { generate } from "./providers/llm";
 import type { Secrets } from "./providers/types";
+import { WEB_REVIEW_KIND_LABEL } from "./providers/webreviews";
 import type { ProductResearch } from "./research";
 
 export type ProductDigest = {
@@ -29,9 +30,13 @@ export type ProductDigest = {
 // scene = 짧게 다듬은 장면, quote = 그 근거가 되는 원자료 문장(글자 그대로).
 // 점검 실행 33~35: 장면 문장 하나만 받았더니 모델이 요약·재구성해 원문과 글자가 달라져
 // 대조에서 대부분 버려졌다(상품마다 2~5개 중 0~2개만 남음) → 판정은 원문 인용으로 하고, 장면은 인용 안에 머무는지만 본다.
-export type Scene = { scene: string; quote: string };
+// source: 웹 리뷰 원문 발췌에서 온 장면이면 그 글 주소 (원문 대조를 이미 통과한 문장 — 화면에는 안 나옴)
+export type Scene = { scene: string; quote: string; source?: string };
 
-const MAX_SCENES = 6;
+// 2026-11-13 데이터 진단 3: 장면이 제품당 0~2개뿐이라 글에 쓸 원문 인용이 모자랐다 → 모델 장면 + 웹 리뷰 원문 발췌를 합쳐 10개까지
+const MAX_SCENES = 10;
+// 웹 리뷰 원문 발췌를 장면 후보로 쓸 때 최소 길이 (norm 글자) — 짧은 감탄("좋아요")은 인용 가치가 낮다
+const WEB_SCENE_MIN_CHARS = 20;
 // 원문 인용 판정 기준 (norm 기준 글자 수·일치율)
 const SCENE_QUOTE = {
   minChars: 8, // 이보다 짧은 인용은 무엇이든 맞을 수 있어 근거가 못 됨
@@ -140,6 +145,10 @@ function material(r: ProductResearch): string {
   const news = r.news.map((n) => `- ${n.title}: ${n.text}`).join("\n");
   const notes = r.videoNotes.map((n) => `- [${n.title}] ${n.text}`).join("\n");
   const comments = r.comments.map((c) => `- ${c}`).join("\n");
+  // 웹 리뷰 원문 발췌 (원문과 글자 대조를 통과한 문장만 들어 있음 — 장면 인용의 근거로도 쓰인다)
+  const webReviews = (r.webReviews ?? [])
+    .map((w) => `- [${WEB_REVIEW_KIND_LABEL[w.kind]}] ${w.title}\n${w.excerpts.map((e) => `  · ${e}`).join("\n")}`)
+    .join("\n");
   return `# ${r.product.name}
 ## 네이버 블로그·카페·지식iN·웹문서 (${r.reviews.length}건)
 ${reviews || "(없음)"}
@@ -150,7 +159,9 @@ ${notes || "(없음)"}
 ## 유튜브 댓글 (${r.comments.length}개)
 ${comments || "(없음)"}
 ## 웹 후기 요약 (구글 검색)
-${r.webSummary ?? "(없음)"}`;
+${r.webSummary ?? "(없음)"}
+## 웹 리뷰 원문 발췌 (${(r.webReviews ?? []).length}곳)
+${webReviews || "(없음)"}`;
 }
 
 const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -158,6 +169,8 @@ const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 // 장면 판정: 원문 인용이 원자료에 있고(quoteFound), 다듬은 장면이 인용 안의 내용에만 머물러야(coverage) 남긴다.
 // 장면은 글에 거의 그대로 옮겨지므로 여기서 지어낸 장면을 걸러야 검수가 그것을 "근거 있음"으로 보지 않는다.
 export type SceneVerdict = "ok" | "인용이 너무 짧거나 김" | "인용이 원자료에 없음" | "장면이 인용에 없는 내용을 덧붙임";
+// 버린·바꾼 사유별 개수 (로그용). "장면을 원문으로 대체"는 버리지 않고 살린 수
+export type SceneDropReason = Exclude<SceneVerdict, "ok"> | "같은 원문 중복";
 
 export function judgeScene(s: Scene, materialNorm: string, productWords: string[]): SceneVerdict {
   const q = norm(s.quote);
@@ -167,21 +180,56 @@ export function judgeScene(s: Scene, materialNorm: string, productWords: string[
   return "ok";
 }
 
+// 데이터 진단 3: 버려진 장면 대부분이 "장면이 인용에 없는 내용을 덧붙임"이었다 — 인용(원문)은 원자료에 있는데
+// 다듬은 장면 문장만 원문보다 나간 경우. 이때 장면을 통째로 버리면 진짜 원문 인용까지 잃으므로, 장면 문장을 원문 그대로로
+// 바꿔 살린다(지어낸 부분은 사라지고 원자료에 있는 말만 남는다). 같은 원문이 이미 있으면 다듬은 쪽을 남긴다.
 export function groundedScenes(
   candidates: Scene[],
   rawMaterial: string,
   productName: string,
-): { scenes: Scene[]; dropped: Partial<Record<SceneVerdict, number>> } {
+): { scenes: Scene[]; dropped: Partial<Record<SceneDropReason, number>>; rescued: number } {
   const materialNorm = norm(rawMaterial);
   const productWords = productWordsOf([productName]);
-  const scenes: Scene[] = [];
-  const dropped: Partial<Record<SceneVerdict, number>> = {};
+  const ok: Scene[] = [];
+  const toRescue: Scene[] = [];
+  const dropped: Partial<Record<SceneDropReason, number>> = {};
+  const drop = (why: SceneDropReason) => (dropped[why] = (dropped[why] ?? 0) + 1);
   for (const s of candidates) {
     const v = judgeScene(s, materialNorm, productWords);
-    if (v === "ok") scenes.push(s);
-    else dropped[v] = (dropped[v] ?? 0) + 1;
+    if (v === "ok") ok.push(s);
+    else if (v === "장면이 인용에 없는 내용을 덧붙임") toRescue.push({ ...s, scene: s.quote });
+    else drop(v);
   }
-  return { scenes, dropped };
+  const seen = new Set<string>();
+  const scenes: Scene[] = [];
+  let rescued = 0;
+  for (const s of [...ok, ...toRescue]) {
+    const k = norm(s.quote);
+    if (seen.has(k)) {
+      drop("같은 원문 중복");
+      continue;
+    }
+    seen.add(k);
+    scenes.push(s);
+    if (!ok.includes(s)) rescued++;
+  }
+  return { scenes, dropped, rescued };
+}
+
+// 웹 리뷰 원문 발췌 → 장면 후보. 발췌는 읽은 본문·검색 인용과 글자 대조(0.8)를 이미 통과했으므로
+// 장면 = 원문 그대로, 출처 주소를 붙여 그대로 쓴다 (다시 다듬지 않아 덧붙일 틈이 없다).
+export function webReviewScenes(r: ProductResearch, already: Scene[]): Scene[] {
+  const seen = new Set(already.map((x) => norm(x.quote)));
+  const out: Scene[] = [];
+  for (const w of r.webReviews ?? []) {
+    for (const e of w.excerpts) {
+      const k = norm(e);
+      if (k.length < WEB_SCENE_MIN_CHARS || seen.has(k)) continue;
+      seen.add(k);
+      out.push({ scene: e, quote: e, source: w.url });
+    }
+  }
+  return out;
 }
 
 // 모델 응답의 scenes 항목 → Scene. 예전 형식(문자열)이 오면 장면 = 인용으로 보고 같은 판정을 받게 한다.
@@ -201,10 +249,15 @@ export async function digestProduct(secrets: Secrets, r: ProductResearch): Promi
   const o = JSON.parse(res.text) as Record<string, unknown>;
   const str = (v: unknown) => String(v ?? "").trim();
   const sceneCandidates = list<unknown>(o.scenes).map(toScene).filter((s) => s.scene && s.quote);
-  const { scenes: kept, dropped } = groundedScenes(sceneCandidates, raw, r.product.name);
-  const scenes = kept.slice(0, MAX_SCENES);
+  const { scenes: kept, dropped, rescued } = groundedScenes(sceneCandidates, raw, r.product.name);
+  // 모델 장면을 앞에, 웹 리뷰 원문 발췌를 뒤에 (모델 장면은 네이버·유튜브 쪽 장면이라 출처가 고르게 섞인다)
+  const web = webReviewScenes(r, kept);
+  const scenes = [...kept, ...web].slice(0, MAX_SCENES);
   const droppedText = Object.entries(dropped).map(([why, n]) => `${why} ${n}개`).join(", ");
-  if (droppedText) console.log(`    (${r.product.name}: 사용 장면 후보 ${sceneCandidates.length}개 중 버림 — ${droppedText})`);
+  console.log(
+    `    (${r.product.name}: 사용 장면 — 모델 후보 ${sceneCandidates.length}개 → 남김 ${kept.length}개` +
+      `(장면을 원문으로 대체 ${rescued})${droppedText ? ` · 버림: ${droppedText}` : ""} + 웹 리뷰 원문 ${web.length}개 = ${scenes.length}개)`,
+  );
   const points = (v: unknown) =>
     list<Record<string, unknown>>(v)
       .map((x) => ({ point: str(x.point), mentions: Math.max(0, Math.round(Number(x.mentions) || 0)) }))
@@ -259,7 +312,7 @@ ${(d.conflicts ?? []).map((x) => `- ${x.topic}: ${x.views}`).join("\n") || "(없
 실사용 팁:
 ${(d.tips ?? []).map((t) => `- ${t}`).join("\n") || "(없음)"}
 ${SCENES_HEADER}
-${(d.scenes ?? []).map((s) => `- 장면: ${s.scene}\n  원문: "${s.quote}"`).join("\n") || "(없음)"}`;
+${(d.scenes ?? []).map((s) => (s.scene === s.quote ? `- 원문${s.source ? "(웹 리뷰)" : ""}: "${s.quote}"` : `- 장면: ${s.scene}\n  원문: "${s.quote}"`)).join("\n") || "(없음)"}`;
 }
 
 // 화면 막대그래프용: 언급 횟수를 상품 안에서 가장 많은 것 대비 0~1 로 (숫자 자체는 노출하지 않음)

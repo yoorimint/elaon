@@ -10,7 +10,7 @@ const TABS = [
   { href: "/admin/suggestions", label: "건의함" },
   { href: "/admin/bot", label: "봇" },
   { href: "/admin/social", label: "SNS 포스팅" },
-  { href: "/admin/shop", label: "쿠팡 자동글" },
+  { href: "/admin/shop", label: "쇼핑 글" },
 ];
 
 export function AdminNav() {

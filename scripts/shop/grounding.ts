@@ -5,6 +5,16 @@
 // 한글·영숫자만 남김 (띄어쓰기·문장부호 차이 무시)
 export const norm = (s: string) => s.toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
 
+// 인용이 자료에 얼마나 있는지 (0~1): 통째로 있으면 1, 아니면 10글자 조각 중 자료에 있는 비율. 진단 로그용
+export function quoteScore(quote: string, evidenceNorm: string): number {
+  const q = norm(quote);
+  if (q.length < 4 || !evidenceNorm) return 0;
+  if (evidenceNorm.includes(q)) return 1;
+  const chunks: string[] = [];
+  for (let i = 0; i + 10 <= q.length; i += 10) chunks.push(q.slice(i, i + 10));
+  return chunks.length ? chunks.filter((c) => evidenceNorm.includes(c)).length / chunks.length : 0;
+}
+
 // 인용이 자료에 실제로 있는지: 통째로 있거나, 10글자 조각의 minRatio(기본 60%) 이상이 자료에 있으면 인정
 export function quoteFound(quote: string, evidenceNorm: string, minRatio = 0.6): boolean {
   const q = norm(quote);
@@ -24,7 +34,7 @@ const PARTICLE = /(으로|에서|에게|까지|부터|이나|이라|하고|해�
 const GENERIC = new Set(["후기", "의견", "언급", "평가", "제품", "소개", "정도", "경우", "사용", "기준", "많다", "있어", "없어", "블로그", "댓글"]);
 const WINDOW = 300;
 
-function keyTokens(claim: string, exclude: string[]): string[] {
+export function keyTokens(claim: string, exclude: string[]): string[] {
   const out = new Set<string>();
   for (const raw of claim.toLowerCase().match(/[가-힣a-z0-9.~]+/g) ?? []) {
     const t = norm(raw.replace(PARTICLE, ""));

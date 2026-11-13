@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
 import { isModelName, mentionedIn } from "./discover";
-import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix } from "./qa";
+import { checkNumbers, judgeAudit, lintPost, quoteFound, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -120,6 +120,48 @@ async function main() {
     assert.match(shortError(minute), /31초 뒤 재시도/);
   });
 
+  // ---- 2026-11-13 비교글(P31i vs MUSEPOP3) 실행에서 나온 오탐·잡음 ----
+  await test("모델명 뒤 조사('MUSEPOP3도')는 수치로 보지 않음", () => {
+    const w = structuredClone(real);
+    w.content.verdict = "가볍게 시작하고 싶다면 브리츠 MUSEPOP3도 후보예요. 케어팟 X50V도 괜찮아요.";
+    assert.ok(!checkNumbers(w, evidence).some((x) => x.startsWith("verdict")), checkNumbers(w, evidence).join("\n"));
+  });
+  await test("검수자 잡음 제외: '확인되지 않아요' 문장, '수정 없음' 항목", () => {
+    const issues = judgeAudit(
+      {
+        claims: [{ section: "고르는 기준", claim: "MUSEPOP3의 배터리 시간은 후기에서 확인되지 않는다", quote: "" }],
+        others: [
+          { section: "장점", problem: "가볍다는 내용과 무겁다는 내용 사이 실제 모순 없음", fix: "수정 없음" },
+          { section: "정리", problem: "N70 비교 방향이 후기 요약과 반대", fix: "후기 요약에 맞추기" },
+        ],
+      },
+      evidence,
+      ["고르는 기준", "장점", "정리"],
+    );
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].startsWith("정리"));
+  });
+  await test("반복: 표·제목은 세지 않고 4곳까지 허용, 5곳 이상이면 반복", () => {
+    const names = ["결론", "고르는 기준", "표", "장점", "후기 요약", "정리", "제목"];
+    const ok = judgeAudit({ topics: [{ topic: "배터리", sections: ["제목", "표", "고르는 기준", "장점", "후기 요약", "정리"] }] }, evidence, names);
+    assert.deepEqual(ok, []);
+    const bad = judgeAudit({ topics: [{ topic: "ANC", sections: ["결론", "고르는 기준", "장점", "후기 요약", "정리"] }] }, evidence, names);
+    assert.equal(bad.length, 1);
+  });
+  await test("비교표 절반 이상 '확인 안 됨'인 상품은 근거 부족 경고", () => {
+    const w = structuredClone(real);
+    w.content.products = [w.content.products[0], { ...w.content.products[0], name: "브리츠 MUSEPOP3" }];
+    w.content.comparison = [
+      { label: "블루투스", values: ["6.1", "6.0"] },
+      { label: "배터리", values: ["8시간", "확인 안 됨"] },
+      { label: "케이스", values: ["40시간", "확인 안 됨"] },
+      { label: "방수", values: ["IP55", "확인 안 됨"] },
+    ];
+    const warns = thinEvidenceWarnings(w);
+    assert.equal(warns.length, 1);
+    assert.ok(warns[0].startsWith("브리츠 MUSEPOP3"));
+  });
+
   // ---- 숫자 검사 ----
   await test("자료에 없는 수치(440cc) 검출, 40도=40℃ 같은 표기 차이는 통과", () => {
     const issues = checkNumbers(real, evidence);
@@ -129,7 +171,7 @@ async function main() {
 
   // ---- AI 추출 → 코드 판정 ----
   const names = ["결론", "도입", "고르는 기준", "표", "후기 요약", "장점", "단점", "구매 전 확인", "FAQ", "정리"];
-  await test("같은 단점이 4곳 이상이면 반복으로 판정, 3곳까지는 허용", () => {
+  await test("같은 단점이 6곳이면 반복으로 판정, 적은 곳은 허용", () => {
     const issues = judgeAudit(
       {
         topics: [
@@ -187,7 +229,7 @@ async function main() {
   const reply = (obj: unknown) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }));
   const err429 = (msg: string) => new Response(JSON.stringify({ error: { code: 429, message: msg } }), { status: 429 });
   const calls: string[] = [];
-  let mode: "loop" | "quota" = "loop";
+  let mode: "loop" | "worse" | "quota" = "loop";
   let minuteHits = 0;
   const claudeBodies: { model: string; output_config?: { format: { schema: { additionalProperties?: boolean; properties: Record<string, { items?: { additionalProperties?: boolean } }> } } } }[] = [];
   let claudeFails = false;
@@ -226,6 +268,10 @@ async function main() {
     if (prompt.includes("꼼꼼한 검수자")) {
       const first = calls.filter((c) => c === "audit").length === 0;
       calls.push("audit");
+      if (mode === "worse") {
+        const topic = (t: string) => ({ topic: t, sections: ["결론", "도입", "고르는 기준", "후기 요약", "단점", "FAQ"] });
+        return reply({ claims: [], topics: first ? [topic("A")] : [topic("A"), topic("B")], others: [] });
+      }
       return reply(
         first
           ? { claims: [], topics: [{ topic: "물이 남아도 멈춤", sections: ["결론", "고르는 기준", "후기 요약", "단점", "구매 전 확인", "FAQ"] }], others: [] }
@@ -234,6 +280,11 @@ async function main() {
     }
     if (prompt.includes("검수 지적사항")) {
       calls.push("revise");
+      if (mode === "worse") {
+        const bad = structuredClone(real);
+        bad.content.intro += " 최저가 보장";
+        return reply({ title: bad.title, description: bad.description, ...bad.content });
+      }
       assert.ok(prompt.includes("6곳에서 반복"), "반복 지적이 수정 프롬프트에 전달돼야 함");
       assert.ok(prompt.includes("440cc"), "숫자 지적이 수정 프롬프트에 전달돼야 함");
       const { title, description, content } = clean;
@@ -256,6 +307,15 @@ async function main() {
     assert.equal(r.qa.aiChecked, true);
     assert.deepEqual(r.qa.remaining, [], r.qa.remaining.join("\n"));
     assert.ok(r.qa.issuesFound >= 4);
+  });
+
+  await test("수정본이 더 나빠지면 문제가 가장 적은 버전(원본)을 저장", async () => {
+    mode = "worse";
+    calls.length = 0;
+    const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, real, research, [null]);
+    assert.equal(r.post.content.intro, real.content.intro);
+    assert.equal(r.qa.revisions, 2);
+    assert.equal(r.qa.remaining.length, Math.min(10, r.qa.issuesFound));
   });
 
   mode = "quota";

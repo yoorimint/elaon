@@ -3,8 +3,9 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isSafetyRisk, mentionedIn } from "./discover";
-import { checkNumbers, isNonAnswer, judgeAudit, lintPost, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
+import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -79,6 +80,13 @@ async function main() {
     for (const bad of ["조지루시 가습기", "케어팟 가습기", "스텐팟 가습기", "가습기", "조지루시"]) {
       assert.equal(isModelName(bad, "가습기"), false, bad);
     }
+    // run #28: 다른 종류 이름(급수기)이 붙은 브랜드명
+    for (const bad of ["두잇 급수기", "신일 팬히터"]) {
+      assert.equal(isModelName(bad, "정수기"), false, bad);
+    }
+    for (const ok of ["신일 팬히터 1200", "닌자 크리스피 에어프라이어", "비나잇 워셔블 온수매트"]) {
+      assert.equal(isModelName(ok, "온수매트"), true, ok);
+    }
     for (const ok of ["케어팟 X50V", "미로 MH7000", "조지루시 EE-DVH35K", "에어메이드 더 위대한 2.0", "쿠쿠 인스퓨어 가습기"]) {
       assert.equal(isModelName(ok, "가습기"), true, ok);
     }
@@ -89,7 +97,7 @@ async function main() {
     const w = structuredClone(real);
     w.content.faq = [
       { q: "케이블 길이는?", a: "케이블 길이는 후기에서 확인되지 않음이에요. 자료에도 길이 정보는 나와 있지 않아요." },
-      { q: "출력은?", a: "자료에 따르면 최대 22.5W예요." },
+      { q: "출력은?", a: "자료에 따르면 최대 22.5W예요. 무게는 자료 없음." },
       { q: "무게는?", a: "후기에서는 가볍다는 의견이 많아요." },
     ];
     const issues = lintPost(w, 1);
@@ -125,6 +133,18 @@ async function main() {
     const w = structuredClone(real);
     w.content.verdict = "가볍게 시작하고 싶다면 브리츠 MUSEPOP3도 후보예요. 케어팟 X50V도 괜찮아요.";
     assert.ok(!checkNumbers(w, evidence).some((x) => x.startsWith("verdict")), checkNumbers(w, evidence).join("\n"));
+  });
+  await test("검수 '기타': 모순·잘못된 용어만 수정 대상, 표현 잔소리는 참고", () => {
+    const a = {
+      others: [
+        { section: "장점", problem: "국내 제조 항목이 다른 항목과 성격이 다름", fix: "표기 통일" },
+        { section: "결론", problem: "넓은 공간 추천과 단점의 커버 면적 한계가 서로 모순", fix: "범위 수정" },
+      ],
+    };
+    const issues = judgeAudit(a, evidence, ["장점", "결론"]);
+    assert.equal(issues.length, 1);
+    assert.ok(issues[0].startsWith("결론"));
+    assert.ok(repetitionNotes(a, ["장점", "결론"]).some((x) => x.includes("국내 제조")));
   });
   await test("검수자 잡음 제외: '확인되지 않아요' 문장, '수정 없음' 항목", () => {
     const issues = judgeAudit(
@@ -194,6 +214,9 @@ async function main() {
     const w = structuredClone(real);
     w.content.faq[0] = { q: "X60과 어떻게 다른가요?", a: "후기에서는 X60과의 직접 비교가 확인되지 않아요." };
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[0]") && x.includes("다른 질문")));
+    // run #20: "가격은 어디서 확인하나요?" 채우기용 FAQ
+    w.content.faq[1] = { q: "가격은 어디서 확인하나요?", a: "가격은 쿠팡에서 현재 가격을 확인하세요. 옵션과 배송 조건도 살펴보면 좋아요." };
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("faq[1]") && x.includes("가격·구매처")));
   });
 
   // ---- 2026-11-13 run #17 (보바 VA-123 vs 포켓쉴 20000) ----
@@ -220,6 +243,98 @@ async function main() {
     assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", news), true);
     assert.equal(isSafetyRisk("포켓쉴 20000", "보조배터리", news), false);
     assert.equal(isSafetyRisk("케어팟 X50V", "가습기", [{ title: "가습기 살균제 리콜", description: "다른 회사" }]), false);
+    // run #21 오탐: 제목에 안전 단어가 없는 업계·실적 기사는 제외 사유가 아님
+    const industry = [
+      { title: "“삼성전자 관계자도 귀 ‘쫑긋’했대”…작심하고 내놓은 中앤커 새 이어폰", description: "보조배터리 리콜 이후 앤커는 무선이어폰 시장에" },
+      { title: "가민 아태 총괄 \"매년 2배 성장...글로벌 3위 목표\"", description: "스마트워치 시장, 경쟁사 화재 리콜 이후" },
+      { title: "비행기 안에서도 불붙었다…보조배터리 화재·사망 리콜 잇따라", description: "벨킨 등 여러 브랜드" },
+    ];
+    assert.equal(isSafetyRisk("앤커 사운드코어 P31i", "무선이어폰", industry), false);
+    assert.equal(isSafetyRisk("가민 포러너 265", "스마트워치", industry), false);
+    assert.equal(isSafetyRisk("벨킨 BPD014", "보조배터리", industry), false, "제목에 브랜드 없음");
+    // 진짜 리콜 기사는 계속 걸러짐
+    assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", [{ title: "빠니보틀 광고한 '보바 맥세이프 보조배터리' 자발적 리콜", description: "" }]), true);
+    assert.equal(isSafetyRisk("경동나비엔 숙면매트 EQM555", "온수매트", [{ title: "경동나비엔과 하이젠, 온수매트 '리콜'", description: "온수매트 제품" }]), true);
+  });
+
+  // ---- 2026-11-13 run #19 (신일 팬히터 1200 vs 에디르 오방난로) ----
+  await test("비교 짝짓기: 같은 종류만 (캠핑용 등유 팬히터 ≠ 카본 전기히터)", () => {
+    assert.equal(sameType("등유 팬히터", "카본 전기히터", "전기히터"), false);
+    assert.equal(sameType("등유 팬히터", "등유팬히터", "전기히터"), true);
+    assert.equal(sameType("팬히터", "등유 팬히터", "전기히터"), true);
+    assert.equal(sameType("", "등유 팬히터", "전기히터"), false);
+    // run #21: 표현이 조금 달라도 같은 종류
+    assert.equal(sameType("여행용 대용량 보조배터리", "PD 대용량 보조배터리", "보조배터리"), true);
+    assert.equal(sameType("커널형 무선이어폰", "커널형 노이즈캔슬링 이어폰", "무선이어폰"), true);
+    assert.equal(sameType("스마트워치", "러닝 스마트워치", "스마트워치"), true);
+    assert.equal(sameType("오픈형 무선이어폰", "무선 게이밍 이어폰", "무선이어폰"), false);
+  });
+  await test("근거 보완: 핵심 단어가 자료 한 부분에 함께 있으면 근거 있음, 흩어져 있으면 없음", () => {
+    const filler = "가".repeat(2000);
+    const ev = (`에디르 오방난로는 상단과 옆면까지 5면을 개별로 켤 수 있어 편해요. ${filler} 텐트 안에서는 냄새가 나요. ${filler} 신일은 빠르게 데워요.`)
+      .toLowerCase().replace(/[^가-힣a-z0-9]/g, "");
+    const products = ["에디르", "오방난로", "신일", "팬히터"];
+    assert.equal(locallySupported("에디르 오방난로는 5면을 개별로 켤 수 있다", ev, products), true);
+    assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
+    assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
+  });
+  await test("천 단위 쉼표 표기 차이는 같은 수치 (1,700W = 1700W)", () => {
+    const w = structuredClone(real);
+    w.content.comparison[0] = { label: "소비전력", values: ["1700W"] };
+    assert.ok(!checkNumbers(w, "소비전력 1,700W").some((x) => x.includes("1700W")));
+    w.content.comparison[0] = { label: "소비전력", values: ["1,700W"] };
+    assert.ok(!checkNumbers(w, "소비전력 1700W").some((x) => x.includes("700W")));
+    assert.ok(checkNumbers(w, "소비전력 700W").some((x) => x.includes("1,700W") || x.includes("700W")));
+  });
+  await test("33㎡(제곱미터)와 33평은 다른 단위", () => {
+    const w = structuredClone(real);
+    w.content.comparison[0] = { label: "난방 면적", values: ["33㎡"] };
+    assert.ok(checkNumbers(w, "난방 면적 33평").some((x) => x.includes("33㎡")));
+    assert.ok(!checkNumbers(w, "난방 면적 33㎡").some((x) => x.includes("33㎡")));
+  });
+
+  // ---- 2026-11-13 run #24: 세대 혼동(TUNE BEAM vs BEAM2), 오래된 리콜 기사 ----
+  await test("다른 세대 후기는 세지 않음, 같은 세대는 셈", () => {
+    assert.equal(isOtherGeneration("JBL TUNE BEAM", "JBL TUNE BEAM 2 한달 사용 후기"), true);
+    assert.equal(isOtherGeneration("JBL TUNE BEAM", "JBL TUNE BEAM 후기, BEAM 2 와 비교"), false);
+    assert.equal(isOtherGeneration("갤럭시 버즈3 프로", "갤럭시 버즈3 프로 후기"), false);
+    const items = [
+      { title: "JBL TUNE BEAM 2 한달 사용 후기", description: "노캔 솔직 리뷰" },
+      { title: "JBL TUNE BEAM 솔직 후기", description: "한달 사용" },
+    ];
+    assert.equal(countRealReviews("JBL TUNE BEAM", "무선이어폰", items), 1);
+  });
+  await test("글에 상품명과 다른 세대 이름이 있으면 검출", () => {
+    const w = structuredClone(real);
+    w.content.products = [{ ...w.content.products[0], name: "JBL TUNE BEAM" }];
+    w.title = "JBL TUNE BEAM2 후기 · 장단점 총정리";
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("다른 세대")));
+    w.title = "JBL TUNE BEAM 후기 · 장단점 총정리";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("다른 세대")));
+  });
+  await test("안전 필터: 3년 넘은 기사, 제목에 카테고리 없는 브랜드 기사는 제외 사유 아님", () => {
+    const old = [{ title: "아이폰7 흥행 성공, 갤럭시노트7 리콜 때문만일까", description: "무선이어폰 시장", pubDate: "Mon, 12 Sep 2016 09:00:00 +0900" }];
+    assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", old), false);
+    const recentNoCat = [{ title: "갤럭시 스마트폰 리콜", description: "무선이어폰도 언급", pubDate: new Date().toUTCString() }];
+    assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", recentNoCat), false);
+  });
+
+  // ---- 제목 키워드 (SEO) ----
+  await test("제목 키워드: 검색량이 가장 많은 표현 선택, 데이터 없으면 기본값, 제목이 키워드로 시작하는지 검사", () => {
+    assert.deepEqual(keywordCandidates(["케어팟 X50V"]).slice(0, 2), ["케어팟 X50V 후기", "케어팟 X50V 장단점"]);
+    assert.equal(keywordCandidates(["A", "B"])[0], "A vs B");
+    // run #29: 전체 이름은 검색량 0 → 짧은 이름으로 표현 선호도를 잼
+    assert.equal(shortName("삼성 블루스카이 3100"), "블루스카이 3100");
+    assert.deepEqual(trendProbes(["삼성 블루스카이 3100"]).slice(0, 2), ["블루스카이 3100 후기", "블루스카이 3100 장단점"]);
+    assert.equal(trendProbes(["삼성 블루스카이 3100", "위닉스 타워 엣지"])[0], "블루스카이 3100 vs 타워 엣지");
+    assert.equal(bestKeyword([{ keyword: "x 후기", score: 3 }, { keyword: "x 단점", score: 9 }]), "x 단점");
+    assert.equal(bestKeyword([{ keyword: "x 후기", score: 0 }]), null);
+    const w = structuredClone(real);
+    w.content.seoKeyword = "케어팟 X50V 단점";
+    w.title = "케어팟 X50V 후기 및 장단점 분석";
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("검색 키워드")));
+    w.title = "케어팟 X50V 단점, 사기 전에 꼭 볼 것";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("검색 키워드")));
   });
 
   // ---- 숫자 검사 ----

@@ -11,6 +11,7 @@ import type { ProductResearch } from "./research";
 
 export type WriterOptions = {
   titleStyle: string;
+  titleKeyword?: string; // 제목 맨 앞에 그대로 쓸 검색 키워드
   extraPrompt: string;
 };
 
@@ -37,8 +38,10 @@ const COMMON_RULES = `반드시 지킬 규칙:
    - pros/cons: 각 항목의 구체적 설명
    - commonComplaints: 단점 반복 금지. "구매 전 확인할 점과 대처 팁"(예: 취침 전 물을 가득 채우면 중간에 멈추지 않아요)
    - faq: 위에서 다루지 않은 궁금증(관리 주기, 설치 공간, 소모품, 다른 사용 환경 등). 단, 근거 자료로 답할 수 있는 질문만.
-     답이 "확인되지 않아요"뿐인 질문은 넣지 않는다.
+     답이 "확인되지 않아요"뿐인 질문, 가격·구매처를 묻는 질문은 넣지 않는다.
 11. 표(comparison)의 항목·수치는 자료에 그대로 나온 것만, 용어는 정확하게(예: 온수 온도, 소비전력). 확실하지 않은 항목은 빼라.
+15. recommendations(잘 맞는 상황)에는 이 제품이 실제로 잘 맞는 상황만 쓴다. "빠른 난방이 최우선이라면 → 이 제품보다 다른 게 낫다"처럼
+    맞지 않는 상황은 recommendations 가 아니라 notFor(비추천 대상)에 쓴다.
 13. 후기 출처가 광고인지 아닌지에 대한 이야기("광고성 글이 섞여 있어요", "과장된 칭찬은 걸러 보세요")는 쓰지 않는다.
 14. 비교글이면 비교 기준(제목·결론)이 표와 맞아야 한다. 예: 한쪽만 "케이블 일체형"이라고 비교하려면 표에서도 그렇게 나와야 한다.
     같은 상품 안에서도 앞뒤가 맞아야 한다(예: "케이블 일체형"이라면서 구성품에 별도 케이블).
@@ -274,7 +277,7 @@ export async function writePost(
     : `"${names}" 비교 글을 써줘.
 제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)`;
   const prompt = `${task}
-${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
+${opts.titleKeyword ? `제목은 반드시 "${opts.titleKeyword}"(실제로 많이 검색되는 표현)로 시작한다. description 첫 문장에도 이 표현을 넣는다.\n` : ""}${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===
 ${buildEvidence(research, digests)}
 ===`;

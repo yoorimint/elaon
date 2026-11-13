@@ -14,7 +14,8 @@ export type NaverSearchItem = {
   title: string;
   link: string;
   description: string;
-  postdate?: string;
+  postdate?: string; // 블로그·카페: YYYYMMDD
+  pubDate?: string; // 뉴스: RFC 822 날짜
 };
 
 export async function naverSearch(

@@ -98,8 +98,12 @@ const EXTRACT_SCHEMA = {
         properties: {
           name: { type: "string", description: "브랜드 + 모델명 (예: 로보락 Q8 Max)" },
           mentions: { type: "integer" },
+          type: {
+            type: "string",
+            description: "제품 종류 2~4단어 (예: 등유 팬히터, 카본 전기히터, 로봇청소기 물걸레형). 같은 종류면 똑같은 표현",
+          },
         },
-        required: ["name", "mentions"],
+        required: ["name", "mentions", "type"],
       },
     },
   },
@@ -124,20 +128,44 @@ async function collectTitles(secrets: Secrets, category: string): Promise<string
   return lines.slice(0, 150);
 }
 
-async function extractCandidates(secrets: Secrets, category: string): Promise<{ name: string; mentions: number }[]> {
+// 후보 상품. type = 제품 종류 (비교글은 같은 종류끼리만 짝지음)
+type Candidate = { name: string; mentions: number; type: string };
+
+// 같은 종류인지: 카테고리 이름을 뺀 핵심 단어가 하나라도 겹치면 같은 종류
+// ("여행용 대용량" ≈ "PD 대용량", "등유 팬히터" ≠ "카본 전기히터"). 한쪽이 카테고리 이름뿐이면 일반형이라 같은 종류로 봄.
+// (run #21: 표현이 조금만 달라도 다른 종류로 봐서 비교 짝을 하나도 못 지음)
+export function sameType(a: string, b: string, category = ""): boolean {
+  const cat = normText(category);
+  const words = (s: string) =>
+    s
+      .split(/[\s,/·()]+/)
+      .map(normText)
+      .map((w) => (cat && w !== cat ? w.replace(cat, "") : w === cat ? "" : w))
+      .filter((w) => w.length >= 2 && !["용", "형", "제품"].includes(w));
+  if (!normText(a) || !normText(b)) return false;
+  const x = words(a);
+  const y = words(b);
+  if (!x.length || !y.length) return true;
+  return x.some((w) => y.some((v) => w === v || w.includes(v) || v.includes(w)));
+}
+
+async function extractCandidates(secrets: Secrets, category: string): Promise<Candidate[]> {
   const lines = await collectTitles(secrets, category);
   if (lines.length < 10) return [];
   const prompt = `다음은 "${category}" 관련 네이버 블로그·카페·지식iN 글의 제목과 요약이야.
 여기서 소비자들이 실제로 많이 언급하는 구체적인 제품(브랜드 + 모델명)을 언급이 많은 순서로 최대 ${MAX_CANDIDATES}개 뽑아줘.
 규칙: 자료에 나온 것만. 카테고리 이름·일반명사·쇼핑몰 이름·브랜드만 있는 것(모델명 없음)은 제외. 같은 제품의 다른 표기는 하나로 합쳐.
+type 에는 제품 종류를 적어. 용도나 방식이 다르면 다른 종류야(예: 캠핑용 등유 팬히터 ≠ 실내용 카본 전기히터).
+세대·버전 숫자는 정확히 (예: "TUNE BEAM 2", "버즈3 프로"). 세대가 다르면 다른 제품이야.
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
   // 짧은 목록만 받는 호출이라 60초 넘게 걸리면 멈춘 것으로 보고 다음 모델로 (run #16: 3.8-flash 150초 낭비)
   const r = await generate(secrets, prompt, { jsonSchema: EXTRACT_SCHEMA, maxOutputTokens: 2048, strongOnly: true, timeoutMs: 60_000 });
-  const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number }[] };
+  const o = JSON.parse(r.text) as { products?: { name?: string; mentions?: number; type?: string }[] };
   const all = (o.products ?? []).map((p) => ({
     name: String(p.name ?? "").trim(),
+    type: String(p.type ?? "").trim(),
     mentions: Math.max(0, Number(p.mentions) || 0),
   }));
   const source = lines.join("\n");
@@ -172,8 +200,24 @@ const AD_SIGNAL = /최저가|특가|할인|쿠폰|핫딜|공구|공동구매|구
 export function countRealReviews(name: string, category: string, items: { title: string; description: string }[]): number {
   return items.filter((it) => {
     const text = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
-    return mentionedIn(name, category, text) && REVIEW_SIGNAL.test(text) && !AD_SIGNAL.test(text);
+    return (
+      mentionedIn(name, category, text) &&
+      !isOtherGeneration(name, text) &&
+      REVIEW_SIGNAL.test(text) &&
+      !AD_SIGNAL.test(text)
+    );
   }).length;
+}
+
+// 이 글이 이름 뒤에 숫자가 붙은 다른 세대 제품 이야기인지 ("JBL TUNE BEAM" 인데 글은 "TUNE BEAM 2")
+// (run #24: 1세대 이름으로 골랐는데 2세대 후기·스펙이 섞여 글 제목이 BEAM2 가 됨)
+export function isOtherGeneration(name: string, text: string): boolean {
+  const n = normText(name);
+  const t = normText(text);
+  for (let i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + 1)) {
+    if (!/[0-9]/.test(t[i + n.length] ?? "")) return false; // 정확히 이 이름으로 나온 곳이 있음
+  }
+  return t.includes(n); // 이름은 있지만 모두 뒤에 숫자가 붙음 → 다른 세대
 }
 
 // ---------- 안전 이슈 (리콜·화재 등) ----------
@@ -185,19 +229,38 @@ export function brandOf(name: string): string {
   return name.split(/\s+/)[0] ?? "";
 }
 
-export function isSafetyRisk(name: string, category: string, items: { title: string; description: string }[]): boolean {
+export function isSafetyRisk(
+  name: string,
+  category: string,
+  items: { title: string; description: string; pubDate?: string }[],
+): boolean {
   return safetyNews(name, category, items) !== null;
 }
 
 // 안전 이슈 근거 기사 제목 (없으면 null) — 왜 제외했는지 로그에 남겨 오탐을 확인할 수 있게
-export function safetyNews(name: string, category: string, items: { title: string; description: string }[]): string | null {
+// 기사 "제목"에 이 제품(모델명) 또는 브랜드와 안전 단어가 함께 있어야 한다. 브랜드만 맞으면 본문에
+// 같은 종류(카테고리)도 나와야 한다. (run #21: 요약문 아무 데나 단어가 있으면 걸리게 해서 업계·실적 기사까지 제외됨)
+const SAFETY_NEWS_YEARS = 3;
+
+export function safetyNews(
+  name: string,
+  category: string,
+  items: { title: string; description: string; pubDate?: string }[],
+  now = Date.now(),
+): string | null {
   const brand = normText(brandOf(name));
   const cat = normText(category);
+  const cutoff = now - SAFETY_NEWS_YEARS * 365 * 24 * 3600 * 1000;
   const hit = items.find((it) => {
-    const raw = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
-    const text = normText(raw);
-    const aboutThis = mentionedIn(name, category, raw) || (brand.length >= 2 && text.includes(brand) && text.includes(cat));
-    return aboutThis && SAFETY_SIGNAL.test(raw);
+    // 오래된 기사는 무시 (run #24: 2016년 갤럭시노트7 리콜 기사로 갤럭시 버즈 제외)
+    const t = it.pubDate ? Date.parse(it.pubDate) : NaN;
+    if (Number.isFinite(t) && t < cutoff) return false;
+    const title = cleanNaverText(it.title);
+    if (!SAFETY_SIGNAL.test(title)) return false;
+    if (mentionedIn(name, category, title)) return true;
+    // 브랜드로만 맞으면 제목에 같은 종류(카테고리)도 있어야 함
+    const tn = normText(title);
+    return brand.length >= 2 && tn.includes(brand) && tn.includes(cat);
   });
   return hit ? cleanNaverText(hit.title) : null;
 }
@@ -217,16 +280,26 @@ async function realReviewCount(secrets: Secrets, name: string, category: string)
 
 // 구체적인 제품(브랜드 + 모델명)인지. "조지루시 가습기"처럼 브랜드 + 카테고리뿐이면 아님.
 // 카테고리 단어를 뺀 나머지가 두 단어(브랜드 + 모델) 이상이어야 한다.
+// 제품 종류를 뜻하는 일반 명사 (모델명이 아님). 카테고리 이름 전부 + 자주 나오는 종류 이름
+const GENERIC_NOUNS = new Set([
+  ...AUTO_CATEGORIES,
+  "급수기", "정수기", "팬히터", "히터", "난로", "매트", "이어폰", "헤드폰", "스피커", "청소기", "배터리", "충전기",
+  "가습기", "선풍기", "드라이기", "워치", "밥솥", "포트", "블렌더", "믹서기", "의자", "자전거", "보조배터리",
+]);
+const isGenericNoun = (w: string) =>
+  GENERIC_NOUNS.has(w) || (/^[가-힣]{2,4}기$/.test(w) && !/[0-9A-Za-z]/.test(w)); // "급수기", "제습기" 같은 ~기
+
 export function isModelName(name: string, category: string): boolean {
-  const words = name.split(/\s+/).filter((w) => w && !category.includes(w));
+  // 카테고리 단어·종류 이름을 뺀 나머지가 브랜드 + 모델 두 단어 이상 (run #28: "두잇 급수기"는 모델명이 아님)
+  const words = name.split(/\s+/).filter((w) => w && !category.includes(w) && !isGenericNoun(w));
   return words.length >= 2;
 }
 
 // ---------- 3) 후보를 검색 관심도로 정렬 ----------
 async function rankCandidates(
   secrets: Secrets,
-  cands: { name: string; mentions: number }[],
-): Promise<{ name: string; mentions: number; trend: number }[]> {
+  cands: Candidate[],
+): Promise<(Candidate & { trend: number })[]> {
   const out = cands.map((c) => ({ ...c, trend: 0 }));
   try {
     const { start, end } = trendRange();
@@ -267,7 +340,7 @@ export async function discoverProducts(
   console.log(`  카테고리 순위(상위): ${categories.slice(0, 6).join(", ")}`);
 
   for (const category of categories.slice(0, CATEGORY_TRIES)) {
-    let cands: { name: string; mentions: number; trend: number }[] = [];
+    let cands: (Candidate & { trend: number })[] = [];
     try {
       cands = await rankCandidates(secrets, await extractCandidates(secrets, category));
     } catch (e) {
@@ -275,7 +348,7 @@ export async function discoverProducts(
       console.warn(`  ⚠ ${category} 후보 추출 실패: ${e instanceof Error ? e.message.slice(0, 150) : e}`);
       continue;
     }
-    console.log(`  ${category} 후보: ${cands.map((c) => c.name).join(", ") || "(없음)"}`);
+    console.log(`  ${category} 후보: ${cands.map((c) => `${c.name}(${c.type || "종류 미상"})`).join(", ") || "(없음)"}`);
     const asProduct = (name: string): ManualProduct => ({ name, link: "" });
 
     // 후보마다 실제 사용 후기 수 확인 (필요할 때만 조회해서 네이버 호출 절약)
@@ -310,17 +383,21 @@ export async function discoverProducts(
         }
       }
     } else {
-      // 후기가 충분한 후보만 모아 순서대로 짝짓기
-      const ok: string[] = [];
+      // 후기가 충분한 후보만 모아 순서대로 짝짓기. 용도·방식이 다른 제품은 비교하지 않음
+      // (run #19: 캠핑용 등유 팬히터 vs 실내용 카본 전기히터)
+      const ok: Candidate[] = [];
       for (const c of cands) {
-        if (await hasReviews(c.name)) ok.push(c.name);
-        for (let i = 0; i < ok.length - 1; i++) {
-          const pair = [asProduct(ok[i]), asProduct(ok[ok.length - 1])];
+        if (!(await hasReviews(c.name))) continue;
+        for (const prev of ok) {
+          if (!sameType(prev.type, c.type, category)) continue;
+          const pair = [asProduct(prev.name), asProduct(c.name)];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
-            const names = [ok[i], ok[ok.length - 1]];
+            const names = [prev.name, c.name];
+            console.log(`  짝: ${prev.name} vs ${c.name} (같은 종류: ${c.type})`);
             return { category, products: pair, alternatives: others(names), realReviews: pick(names) };
           }
         }
+        ok.push(c);
       }
     }
     console.log(`  ${category}: 실사용 후기가 충분한 새 상품이 없어 다음 카테고리로`);

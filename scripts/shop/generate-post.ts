@@ -10,6 +10,7 @@ import { nextKind, pairKeyOf } from "./select-products";
 import { hasEnoughEvidence, researchProduct, toSources, type ResearchOptions } from "./research";
 import { pingIndexNow } from "@/lib/indexnow";
 import { digestProduct, toInsight, type ProductDigest } from "./digest";
+import { pickTitleKeyword } from "./keywords";
 import { reviewAndFix } from "./qa";
 import { usageLine, usageSummary } from "./usage";
 import { StrongModelUnavailableError } from "./providers/gemini";
@@ -112,13 +113,20 @@ async function main() {
 
   // ---- 2단계: 비교글 작성 ----
   console.log("✍️  Gemini 작성 중...");
+  // 제목 키워드: 네이버 데이터랩으로 가장 많이 검색되는 표현
+  const seo = await pickTitleKeyword(secrets, products.map((p) => p.name));
+  console.log(
+    `🔑 제목 키워드: "${seo.keyword}"${seo.scores.length ? ` (${seo.scores.map((s) => `${s.keyword} ${s.score.toFixed(1)}`).join(" · ")})` : ""}`,
+  );
   const draftPost = await writePost(secrets, research, digests, {
+    titleKeyword: seo.keyword,
     titleStyle: config.title_style,
     extraPrompt: config.extra_prompt,
   });
 
   // ---- 자동 검수: 작성 가이드·수집 자료와 대조, 틀린 곳 수정 ----
   console.log("🔍 자동 검수 중...");
+  draftPost.content.seoKeyword = seo.keyword; // 검수에서 제목이 키워드로 시작하는지 확인
   const { post: written, qa } = await reviewAndFix(secrets, draftPost, research, digests);
 
   // ---- 저장 ----

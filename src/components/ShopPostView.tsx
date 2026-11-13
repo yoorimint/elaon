@@ -251,7 +251,7 @@ export function ShopPostView({
 
       {/* 비교표 */}
       {c.comparison.length > 0 && (
-        <Section id="compare" no={no()} title={single ? "주요 특징" : "한눈에 비교"}>
+        <Section id="compare" no={no()} title={single ? `${names[0]} 주요 특징` : `${names.join(" vs ")} 한눈에 비교`}>
           <table className="w-full table-fixed text-[15px] leading-snug">
             {!single && (
             <thead>
@@ -297,7 +297,7 @@ export function ShopPostView({
       )}
 
       {/* 상품별 같은 틀 */}
-      <Section id="products" no={no()} title={single ? "장단점 분석" : "제품별 장단점"}>
+      <Section id="products" no={no()} title={single ? `${names[0]} 장단점` : "제품별 장단점"}>
         <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {c.products.map((p, i) => (
             <div key={i} className="py-8 first:pt-0 last:pb-0">
@@ -402,7 +402,7 @@ export function ShopPostView({
 
       {/* FAQ: 접었다 펴기 */}
       {c.faq.length > 0 && (
-        <Section id="faq" no={no()} title="자주 묻는 질문">
+        <Section id="faq" no={no()} title={single ? `${names[0]} 자주 묻는 질문` : "자주 묻는 질문"}>
           <div className="border-t border-neutral-200 dark:border-neutral-800">
             {c.faq.map((f) => (
               <details key={f.q} className="group border-b border-neutral-200 dark:border-neutral-800">

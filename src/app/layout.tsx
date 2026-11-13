@@ -10,7 +10,9 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.eloan.kr"),
   title: {
     default: "eloan 백테스트 — 코인·주식 전략을 3분 안에 검증하는 무료 도구",
-    template: "%s | eloan 백테스트",
+    // 하위 페이지 제목 뒤에 사이트 이름을 붙이지 않는다 (검색 결과에 도메인·사이트 이름이 따로 보이고,
+    // 모바일에서 잘릴 때 키워드 자리만 차지함. 쇼핑 글에 "백테스트"가 붙는 문제도 있었음)
+    template: "%s",
   },
   description:
     "코인·주식 투자 전략을 과거 시세로 백테스트하고 모의투자로 검증하는 무료 도구. 12종 전략 제공.",
@@ -33,10 +35,10 @@ export const metadata: Metadata = {
     "eloan",
   ],
   authors: [{ name: "eloan" }],
-  applicationName: "eloan 백테스트",
+  applicationName: "eloan",
   openGraph: {
     type: "website",
-    siteName: "eloan 백테스트",
+    siteName: "eloan",
     locale: "ko_KR",
     url: "https://www.eloan.kr",
     title: "eloan 백테스트 — 코인·주식 전략을 3분 안에 검증",
@@ -72,16 +74,12 @@ export const metadata: Metadata = {
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "eloan 백테스트",
-  url: "https://www.eloan.kr",
+  // 구글 검색 결과 위에 표시되는 사이트 이름
+  name: "eloan",
+  alternateName: ["eloan.kr", "eloan 백테스트"],
+  url: "https://www.eloan.kr/",
   inLanguage: "ko-KR",
-  description:
-    "코인·주식 투자 전략을 과거 데이터로 백테스트하고 모의투자로 검증하는 무료 도구",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: "https://www.eloan.kr/backtest",
-    "query-input": "required name=search_term_string",
-  },
+  description: "코인·주식 전략 백테스트와 실사용 후기로 비교한 쇼핑 정보",
 };
 
 const orgJsonLd = {

@@ -62,9 +62,11 @@ export async function updatePostProducts(id: string, patches: ProductPatch[]): P
   const cur = await supabase.from("shop_posts").select("products").eq("id", id).single();
   if (cur.error) throw new Error(cur.error.message);
   const products = (cur.data.products as ShopPostInputProduct[]).map((p, i) => ({ ...p, ...patches[i] }));
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("shop_posts")
     .update({ products, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
 }

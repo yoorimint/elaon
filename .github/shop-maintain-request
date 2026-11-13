@@ -1,4 +1,5 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 "shop maintain" 이 1회 실행된다 (.github/workflows/shop-maintain.yml)
 # list → 목록 출력 / delete: slug1, slug2 → 적힌 글만 삭제
+# restore-photos: all → 올라가 있는데 글에서 빠진 사진 다시 연결
 list
-# 사진 저장 확인 요청
+restore-photos: all

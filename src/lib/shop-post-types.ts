@@ -5,8 +5,20 @@ export type ShopPostStatus = "draft" | "published";
 
 // 글 안의 상품 사진 자리
 // main: 맨 위 상품 카드 (대표 사진 — 검색·공유 미리보기에도 씀)
-// table: 비교표 머리, thumb: 제품별 장단점 이름 옆, detail: 제품별 장단점 큰 사진, bottom: 맨 아래 상품 카드
-export type PhotoSpot = "main" | "table" | "thumb" | "detail" | "bottom";
+// feature: 단일 글 "주요 특징" 큰 사진, detail: 장단점 큰 사진
+// table: 비교표 머리 작은 사진, thumb: 비교글 장단점 이름 옆 작은 사진, bottom: 맨 아래 상품 카드
+export type PhotoSpot = "main" | "feature" | "table" | "thumb" | "detail" | "bottom";
+
+// 따로 넣은 사진이 없을 때 대표 사진을 대신 보여줄 자리 (작은 사진·구매 카드).
+// 본문 큰 사진(feature·detail)은 같은 사진이 반복돼 보이지 않게 따로 넣은 사진만 보여준다.
+const BORROWS_MAIN: Record<PhotoSpot, boolean> = {
+  main: false,
+  feature: false,
+  detail: false,
+  table: true,
+  thumb: true,
+  bottom: true,
+};
 
 // 관리자가 입력한 상품 (링크는 항상 이 값만 사용)
 // image: 대표 사진(main 자리). images: 다른 자리에 따로 넣은 사진 — 없으면 대표 사진을 보여준다
@@ -22,9 +34,9 @@ export function ownPhoto(p: ShopPostInputProduct, spot: PhotoSpot): string | und
   return spot === "main" ? p.image : p.images?.[spot];
 }
 
-// 이 자리에 보여줄 사진: 따로 넣은 사진 → 없으면 대표 사진
+// 이 자리에 보여줄 사진: 따로 넣은 사진 → 없으면 (빌려 쓰는 자리만) 대표 사진
 export function photoFor(p: ShopPostInputProduct, spot: PhotoSpot): string | undefined {
-  return ownPhoto(p, spot) ?? p.image;
+  return ownPhoto(p, spot) ?? (BORROWS_MAIN[spot] ? p.image : undefined);
 }
 
 // 상품 정보에 이 자리 사진을 넣은 새 객체

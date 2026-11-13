@@ -96,6 +96,31 @@ function ProductImage({
   );
 }
 
+// 본문 큰 사진 (단일 글 특징·장단점). 공개 글은 따로 넣은 사진이 있을 때만, 미리보기는 항상 사진 자리
+function BodyPhoto({
+  product,
+  name,
+  spot,
+  preview,
+  className = "",
+}: {
+  product: ShopPostInputProduct;
+  name: string;
+  spot: PhotoSpot;
+  preview: boolean;
+  className?: string;
+}) {
+  if (!preview && !photoFor(product, spot)) return null;
+  return (
+    <LinkOrDiv
+      href={product.link}
+      className={`block aspect-[4/3] overflow-hidden rounded-2xl bg-white ring-1 ring-neutral-200 dark:ring-neutral-800 ${className}`}
+    >
+      <ProductImage product={product} name={name} index={0} spot={spot} preview={preview} className="h-full w-full p-6" />
+    </LinkOrDiv>
+  );
+}
+
 // 구매 링크 (제휴: rel="sponsored"). 링크가 아직 없으면(자동 선정 초안) 일반 블록
 function LinkOrDiv({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
   if (!href?.trim()) return <div className={className}>{children}</div>;
@@ -260,6 +285,7 @@ export function ShopPostView({
       {/* 비교표 */}
       {c.comparison.length > 0 && (
         <Section id="compare" no={no()} title={single ? `${names[0]} 주요 특징` : `${names.join(" vs ")} 한눈에 비교`}>
+          {single && <BodyPhoto product={products[0]} name={names[0]} spot="feature" preview={preview} className="mb-6" />}
           <table className="w-full table-fixed text-[15px] leading-snug">
             {!single && (
             <thead>
@@ -338,6 +364,7 @@ export function ShopPostView({
                 </>
               )}
 
+              {single && <BodyPhoto product={products[0]} name={names[0]} spot="detail" preview={preview} className="mb-6" />}
               {p.review && <p className={single ? "" : "mt-5"}>{p.review}</p>}
 
               <div className="mt-6 grid gap-6 sm:grid-cols-2">

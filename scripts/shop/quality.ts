@@ -9,6 +9,10 @@ import type { ShopPostQa } from "@/lib/shop-post-types";
 export const MAX_REMAINING = 1;
 // 하루에 품질 미달로 남기는 초안 상한 (넘으면 그날은 더 시도하지 않음 — 같은 문제로 비용만 쓰는 것 방지)
 export const MAX_BELOW_BAR_PER_DAY = 3;
+// 하루 실패(오류·상품 못 찾음 등) 상한 — 같은 원인으로 매시간 비용만 쓰는 것 방지
+export const MAX_FAILURES_PER_DAY = 5;
+// 하루 AI 비용 상한 (USD). 무슨 일이 있어도 이 이상 쓰지 않음 (약 700원)
+export const MAX_COST_USD_PER_DAY = 0.5;
 
 const isThinEvidence = (x: string) => x.includes("비교 근거가 약함");
 

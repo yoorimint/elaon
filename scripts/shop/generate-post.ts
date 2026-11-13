@@ -14,6 +14,7 @@ import {
   loadPostHistory,
   loadSecrets,
   logRun,
+  todayRunStats,
   type RunLog,
   type RunOutcome,
 } from "./db";
@@ -23,7 +24,7 @@ import { pickTitleKeyword } from "./keywords";
 import { StrongModelUnavailableError } from "./providers/gemini";
 import type { Secrets } from "./providers/types";
 import { reviewAndFix } from "./qa";
-import { MAX_BELOW_BAR_PER_DAY, better, judgeQuality } from "./quality";
+import { MAX_BELOW_BAR_PER_DAY, MAX_COST_USD_PER_DAY, MAX_FAILURES_PER_DAY, better, judgeQuality } from "./quality";
 import { hasEnoughEvidence, researchProduct, toSources, type ProductResearch, type ResearchOptions } from "./research";
 import { nextKind, pairKeyOf } from "./select-products";
 import { usageLine, usageSummary } from "./usage";
@@ -140,7 +141,15 @@ async function main() {
     if (today >= config.daily_count) await finish("skipped", `오늘 합격 글 ${today}개 작성 완료 (하루 ${config.daily_count}개)`, {}, true);
     const below = await countPostsSince(t.todayStartIso, { passed: false });
     if (below >= MAX_BELOW_BAR_PER_DAY) {
-      await finish("skipped", `오늘 품질 미달 ${below}번 — 같은 문제로 비용을 쓰지 않도록 내일 다시 시도`);
+      await finish("skipped", `오늘 품질 미달 ${below}번 — 같은 문제로 비용을 쓰지 않도록 내일 다시 시도`, {}, true);
+    }
+    // 하루 실패·비용 상한 (실행 기록 표가 있을 때만)
+    const stats = await todayRunStats(t.todayStartIso);
+    if (stats && stats.failures >= MAX_FAILURES_PER_DAY) {
+      await finish("skipped", `오늘 실패 ${stats.failures}번 — 원인이 풀릴 때까지 내일 다시 시도 (관리자 실행 기록 확인)`, {}, true);
+    }
+    if (stats && stats.costUsd >= MAX_COST_USD_PER_DAY) {
+      await finish("skipped", `오늘 AI 비용 $${stats.costUsd.toFixed(2)} — 하루 상한 $${MAX_COST_USD_PER_DAY} 도달`, {}, true);
     }
   }
   if (!secrets.GEMINI_API_KEY && !secrets.ANTHROPIC_API_KEY) await finish("skipped", "AI 키 미등록 (Gemini 또는 Claude)");

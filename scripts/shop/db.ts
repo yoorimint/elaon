@@ -68,6 +68,18 @@ export type RunLog = {
   detail?: Record<string, unknown>;
 };
 
+// 오늘 실행 기록 요약: 실패(오류·상품 못 찾음 등 건너뜀) 수와 AI 비용 합계 — 하루 상한 판단용
+// 표가 없으면(SQL 미실행) null → 상한을 적용할 수 없음
+export async function todayRunStats(sinceIso: string): Promise<{ failures: number; costUsd: number } | null> {
+  const { data, error } = await sb.from("shop_runs").select("outcome,cost_usd").gte("created_at", sinceIso);
+  if (error) return null;
+  const rows = (data ?? []) as { outcome: RunOutcome; cost_usd: number | null }[];
+  return {
+    failures: rows.filter((r) => r.outcome === "error" || r.outcome === "skipped").length,
+    costUsd: rows.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0),
+  };
+}
+
 // 기록 실패(표가 아직 없음 등)는 글쓰기를 막지 않는다
 export async function logRun(run: RunLog): Promise<void> {
   const { error } = await sb.from("shop_runs").insert(run);

@@ -2,5 +2,5 @@
 # (.github/workflows/shop-post.yml 의 push 트리거) — 운영 점검·수정 검증용
 # type: single 또는 type: compare 줄이 있으면 이번 점검 실행만 그 글 종류로 쓴다 (운영 실행은 관리자 설정대로)
 # probe: data 제품1 | 제품2 줄이 있으면 글을 쓰지 않고 원재료 수집·후기 분석만 진단한다 (probe: webreviews … 는 웹 리뷰만)
-# 데이터 진단 1 — 글 작성 없음
+# 데이터 진단 2 — 글 작성 없음 (웹 리뷰 읽기 상한·출처 우선순위 수정 뒤)
 probe: data 로보락 S10 | 다이슨 V15 | 삼성 비스포크 큐커

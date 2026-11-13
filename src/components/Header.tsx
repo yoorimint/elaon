@@ -21,6 +21,7 @@ const NAV_SECONDARY = [
   { href: "/glossary", label: "지표 사전" },
   { href: "/stock", label: "종목 검색" },
   { href: "/picks", label: "주소모음" },
+  { href: "/shop", label: "쇼핑 비교" },
 ];
 
 export function Header() {

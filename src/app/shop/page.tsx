@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublishedPosts } from "@/lib/shop-posts-server";
 
-export const revalidate = 300;
+// 발행하면 바로 갱신 요청(/api/shop/revalidate). 그게 실패해도 1분 안에 보이게
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: { absolute: "쇼핑 비교 — 실사용 후기로 비교한 인기 제품" },

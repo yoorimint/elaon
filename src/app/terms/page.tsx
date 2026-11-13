@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "이용약관 | eloan",
+  title: "이용약관",
 };
 
 export default function TermsPage() {

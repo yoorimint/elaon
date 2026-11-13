@@ -13,7 +13,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 export const revalidate = 30;
 
 export const metadata: Metadata = {
-  title: "코인·주식 전략 백테스트 & 모의투자 무료 도구",
+  // 홈은 브랜드를 앞에 (하위 페이지는 제목 뒤에 사이트 이름을 붙이지 않음)
+  title: { absolute: "eloan — 코인·주식 전략 백테스트 & 모의투자 무료 도구" },
   description:
     "코인·주식 투자 전략을 3분 만에 백테스트하고 모의투자로 검증하세요. 12종 전략 무료 제공.",
   alternates: { canonical: "https://www.eloan.kr" },

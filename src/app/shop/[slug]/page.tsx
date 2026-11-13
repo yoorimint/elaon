@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!post) return { title: "쇼핑 비교", robots: { index: false, follow: false } };
   const description = post.description || post.content.summary;
   return {
-    // 사이트 기본 접미사(" | eloan 백테스트") 대신 쇼핑 글에 맞는 제목
-    title: { absolute: `${post.title} | eloan 쇼핑 비교` },
+    // 제목은 검색 키워드로 시작하는 글 제목 그대로 (사이트 이름은 검색 결과에 따로 표시됨)
+    title: { absolute: post.title },
     description,
     alternates: { canonical: `/shop/${post.slug}`, types: { "application/rss+xml": "/shop/rss.xml" } },
     openGraph: {

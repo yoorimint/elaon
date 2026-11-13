@@ -1,4 +1,3 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 "shop maintain" 이 1회 실행된다 (.github/workflows/shop-maintain.yml)
 # list → 목록 출력 / delete: slug1, slug2 → 적힌 글만 삭제
-delete: 20261113-b2f63b, 20261113-9b3942, 20261113-e864e2, 20261113-399534, 20261113-efa158, 20261113-50f69e
 list

@@ -173,6 +173,9 @@ export function ShopPostsAdmin() {
 // 자동 검수 결과: 통과 / 문제 남음 / AI 검수 못함
 function qaState(qa?: ShopPostQa | null): { label: string; ok: boolean; detail: string } | null {
   if (!qa) return null;
+  if (qa.passed === false) {
+    return { label: "품질 미달", ok: false, detail: ["합격선을 넘지 못해 자동 발행하지 않았어요. 발행 비추천.", ...qa.remaining].join("\n") };
+  }
   const left = qa.remaining.length;
   if (left) return { label: `검수 문제 ${left}`, ok: false, detail: qa.remaining.join("\n") };
   if (qa.aiChecked === false) {

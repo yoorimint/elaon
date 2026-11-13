@@ -199,3 +199,20 @@ drop policy if exists "shop images admin delete" on storage.objects;
 create policy "shop images admin delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'shop-images' and public.is_admin());
+
+-- ===== 자동글 실행 기록 (관리자 "최근 실행" 표시) =====
+-- 쓰기는 GitHub Actions(service role)만, 읽기는 관리자만
+create table if not exists public.shop_runs (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  outcome text not null check (outcome in ('published', 'draft', 'below_bar', 'skipped', 'error')),
+  reason text,
+  title text,
+  slug text,
+  cost_usd numeric,
+  detail jsonb
+);
+create index if not exists shop_runs_created_at_idx on public.shop_runs (created_at desc);
+alter table public.shop_runs enable row level security;
+drop policy if exists "shop_runs admin read" on public.shop_runs;
+create policy "shop_runs admin read" on public.shop_runs for select to authenticated using (public.is_admin());

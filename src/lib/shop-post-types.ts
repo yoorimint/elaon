@@ -56,6 +56,7 @@ export type ShopPostQa = {
   issuesFound: number; // 처음 발견한 문제 수
   remaining: string[]; // 수정 후에도 남은 문제
   aiChecked?: boolean; // false = AI 검수를 못 함(모델 막힘) → 통과로 보지 않음
+  passed?: boolean; // 합격선 통과 (scripts/shop/quality.ts). 합격한 글만 하루 글 수에 세고 자동 발행
   notes?: string[]; // 참고(수정 대상 아님): 5~6곳 반복 등
   revisions?: number; // 자동 수정 횟수
 };

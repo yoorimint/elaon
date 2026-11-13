@@ -1,0 +1,32 @@
+name: shop maintain
+
+# 쇼핑 글 정리(운영용): 작업 브랜치(ccr-*)에서 .github/shop-maintain-request 파일이 바뀌면 1회 실행.
+# 파일 내용: "list" (목록 출력) / "delete: slug1, slug2" (적힌 글만 삭제). scripts/shop/maintain.ts 참고.
+on:
+  push:
+    branches: ["ccr-*"]
+    paths: [".github/shop-maintain-request"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shop-post
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Maintain
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx --tsconfig tsconfig.json scripts/shop/maintain.ts

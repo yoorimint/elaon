@@ -9,6 +9,7 @@
 // 결과는 content.qa 에 기록 → 관리자 글 목록에 표시, 문제가 남으면 발행 전에 경고
 
 import type { ShopPostContent, ShopPostQa } from "@/lib/shop-post-types";
+import { autoFix, isUnknownValue } from "./autofix";
 import type { ProductDigest } from "./digest";
 import { hasHanja } from "./hanja";
 import { generationMentions } from "./names";
@@ -27,6 +28,11 @@ const MAX_TOPIC_SECTIONS = 4;
 const MAX_TOPIC_SECTIONS_BEFORE_FIX = 6;
 const NOT_COUNTED_SECTIONS = new Set(["표", "제목"]);
 
+// 구성 문제(섹션이 비거나 빈약함)는 표현 문제보다 무겁다 — 표시를 붙여 합격 판정·버전 비교에 쓴다
+// (run #36: 수정 중 '고르는 기준'이 통째로 빠진 버전이 단어 하나 문제 버전과 같은 점수로 저장됨)
+export const STRUCTURAL = "[구성] ";
+export const isStructuralIssue = (s: string) => s.startsWith(STRUCTURAL);
+
 // ---------- 1) 규칙 검사 ----------
 const BANNED: { re: RegExp; why: string }[] = [
   { re: /써\s*보니|사용해\s*보니|써\s*봤|제가\s*(직접\s*)?(사용|써)/, why: "직접 써본 것처럼 쓴 표현" },
@@ -36,6 +42,16 @@ const BANNED: { re: RegExp; why: string }[] = [
     why: "독자는 '자료'가 뭔지 모름 (\"후기에서는\", \"판매 페이지에서\"처럼)",
   },
   { re: /않음이에요|않음입니다/, why: "어색한 문장 (\"확인되지 않아요\"처럼)" },
+  // run #34: 표에 "품질보증 5년(웹문서 기재)" — 수집 경로 이야기
+  {
+    re: /웹\s?문서|검색\s*결과(에서|에|로)|수집(한|된)\s*(후기|정보|글)/,
+    why: "수집 경로 이야기는 독자에게 의미 없음 (\"판매처 표기 기준\", \"후기에서는\"처럼)",
+  },
+  // run #34: 단일 상품 글 FAQ 에 "세탁이 어렵다는 다른 제품 후기도 있어서"
+  {
+    re: /다른\s*(제품|모델|상품|브랜드)(의|에\s*대한)?\s*(후기|리뷰|사례|평)/,
+    why: "다른 제품 후기를 이 제품 정보에 섞음 (독자가 헷갈림) → 빼기",
+  },
   {
     re: /광고성|광고\s*글|파트너스\s*문구|협찬\s*글|과장된\s*칭찬|칭찬을\s*그대로\s*믿/,
     why: "후기 출처의 광고 이야기는 쓰지 않음 (독자에게 불필요하고 글 신뢰를 깎음)",
@@ -106,13 +122,20 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
   }
 
+  // 같은 안내 문장 되풀이 (run #32: "정보가 엇갈려요, 판매 페이지에서 확인하세요"가 여러 곳에)
+  const conflictMentions = allText(w).reduce((n, { text }) => n + (text.match(/엇갈려요|엇갈립니다/g)?.length ?? 0), 0);
+  if (conflictMentions > 2) issues.push(`"엇갈려요"가 ${conflictMentions}번 나옴 → 두 번 이하로, 같은 안내 문장 되풀이 빼기`);
+
   // 분량·형식 (작성 가이드)
-  if (!c.summary) issues.push("summary(한 줄 결론) 없음");
+  if (!c.summary) issues.push(`${STRUCTURAL}summary(한 줄 결론) 없음`);
   if (c.seoKeyword && !norm(w.title).startsWith(norm(c.seoKeyword))) {
     issues.push(`제목: 검색 키워드 "${c.seoKeyword}"로 시작해야 함 (네이버에서 실제로 많이 찾는 표현)`);
   }
-  if (c.comparison.length < 4) issues.push(`표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
+  if (c.comparison.length < 4) issues.push(`${STRUCTURAL}표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
   c.comparison.forEach((row) => {
+    if (row.values.length && row.values.every(isUnknownValue)) {
+      issues.push(`표 항목 "${row.label}": 모든 제품이 확인 안 됨 → 이 행 삭제`);
+    }
     if (row.label.length > 8) issues.push(`표 항목명 "${row.label}"이 김 → 6자 이내 명사`);
     row.values.forEach((v) => {
       if (v.length > 15) issues.push(`표 값 "${v}"이 김 → 12자 이내 짧은 값`);
@@ -120,11 +143,11 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   });
   c.products.forEach((p, i) => {
     const name = p.name || `제품 ${i + 1}`;
-    if (p.pros.length < 3) issues.push(`${name}: 장점 ${p.pros.length}개 → 3~4개`);
-    if (p.cons.length < 2) issues.push(`${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
-    if (!p.review || p.review.length < 60) issues.push(`${name}: 후기 요약 문단이 짧음 → 3~5문장`);
+    if (p.pros.length < 3) issues.push(`${STRUCTURAL}${name}: 장점 ${p.pros.length}개 → 3~4개`);
+    if (p.cons.length < 2) issues.push(`${STRUCTURAL}${name}: 단점 ${p.cons.length}개 → 3~4개 (단점도 반드시)`);
+    if (!p.review || p.review.length < 60) issues.push(`${STRUCTURAL}${name}: 후기 요약 문단이 짧음 → 3~5문장`);
   });
-  if (c.faq.length < 3) issues.push(`FAQ ${c.faq.length}개 → 4~6개`);
+  if (c.faq.length < 3) issues.push(`${STRUCTURAL}FAQ ${c.faq.length}개 → 4~6개`);
   // 답이 "확인되지 않아요"뿐인 FAQ 는 읽는 사람에게 쓸모가 없음 → 다른 질문으로 바꾸거나 빼기
   c.faq.forEach((f, i) => {
     if (/가격|어디서\s*(사|구매|확인)|구매처|할인/.test(f.q)) {
@@ -132,7 +155,7 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
     if (isNonAnswer(f.a)) issues.push(`faq[${i}] "${f.q.slice(0, 30)}": 답이 "확인되지 않아요"뿐 → 후기로 답할 수 있는 다른 질문으로 바꾸기`);
   });
-  if ((c.buyingGuide?.length ?? 0) < 2) issues.push("고르는 기준(buyingGuide)이 부족 → 3~5개");
+  if ((c.buyingGuide?.length ?? 0) < 2) issues.push(`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → 3~5개`);
   if (productCount === 1 && c.recommendations.some((r) => r.pick !== 0)) issues.push("단일 글인데 추천 상품 번호가 0이 아님");
 
   // 섹션 중복: "구매 전 확인할 점"이 단점을 되풀이하면 안 됨
@@ -163,9 +186,35 @@ const UNITS: [RegExp, string][] = [
   [/^평$/, "평"],
   [/^(㎡|m2|제곱미터)$/i, "㎡"],
   [/^%$/, "%"],
+  // 디지털·가전 사양 (run #33: 14.6인치·12GB·10.9형이 단위를 몰라 근거 확인 보완을 못 받고 삭제됨)
+  [/^(인치|형|")$/, "inch"],
+  [/^gb$/i, "gb"],
+  [/^tb$/i, "tb"],
+  [/^mb$/i, "mb"],
+  [/^khz$/i, "khz"],
+  [/^hz$/i, "hz"],
+  [/^kpa$/i, "kpa"],
+  [/^pa$/i, "pa"],
+  [/^rpm$/i, "rpm"],
+  [/^fps$/i, "fps"],
+  [/^nm$/i, "nm"],
 ];
-// 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
-const NUM_UNIT = /(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|제곱미터|㎡|m2|평|%|L)(?![a-zA-Z가-힣])/g;
+// 숫자 뒤 단위 인식.
+// - 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
+// - 영문·기호 단위(GB, W, kg, % …) 뒤에는 한글 조사가 와도 된다 ("12GB이다", "1700W급")
+// - 한글 단위(도, 분, 형 …) 뒤에는 조사만 허용 → "40도예요"는 수치, "도움"·"분리"는 아님
+// 긴 표기를 짧은 표기보다 앞에 둔다 (kHz > Hz, kg > g)
+const LATIN_UNITS = ["℃", "°C", "°", "ml", "㎖", "mAh", "mm", "cm", "cc", "kW", "W", "kg", "g", "dB", "㎡", "m2", "%", '"', "GB", "TB", "MB", "kHz", "Hz", "kPa", "Pa", "rpm", "fps", "nm", "ℓ", "L"];
+const HANGUL_UNITS = ["제곱미터", "데시벨", "리터", "와트", "시간", "킬로", "인치", "도", "분", "평", "형"];
+// '의'는 빼둠: "3분의 1"(분수)을 3분으로 오인하지 않도록
+const PARTICLE_START = "[이가은는을를로으과와까대정예짜에만씩부쯤내]";
+const NUM_UNIT = new RegExp(
+  `(?<![A-Za-z0-9.])(\\d+(?:\\.\\d+)?)\\s*(` +
+    `(?:${LATIN_UNITS.join("|")})(?![A-Za-z])` +
+    `|(?:${HANGUL_UNITS.join("|")})(?![A-Za-z])(?=${PARTICLE_START}|[^가-힣]|$)` +
+    `)`,
+  "g",
+);
 
 function unitOf(raw: string): string | null {
   for (const [re, u] of UNITS) if (re.test(raw)) return u;
@@ -323,7 +372,8 @@ export function locallySupported(claim: string, evidenceNorm: string, productWor
 }
 
 // 고쳐야 하는 진짜 오류: 서로 맞지 않음, 틀린 용어·사실 (run #29: "항목 성격이 다름" 같은 잔소리가 수정을 흔듦)
-export const isRealProblem = (s: string) => /모순|상충|맞지\s*않|반대|틀린|틀렸|잘못|오류|다르게\s*(썼|씀|적)|어긋/.test(s);
+export const isRealProblem = (s: string) =>
+  /모순|상충|맞지\s*않|반대|틀린|틀렸|잘못|오류|다르게\s*(썼|씀|적)|어긋|차이가\s*아닌|공통\s*특징/.test(s);
 
 const isPriceGuidance = (s: string) => /쿠팡/.test(s) && /가격/.test(s) && /확인/.test(s);
 const isUnknownStatement = (s: string) => /확인되지 않|확인 안 됨|확인되지 못|정보가 없|언급이 없/.test(s);
@@ -390,7 +440,9 @@ async function aiAudit(
 2. topics: 2개 이상 섹션에 나오는 같은 내용 전부와, 그 내용이 나온 섹션 이름 목록. 표현이 달라도 같은 내용이면 같은 것으로 봐(예: "물이 남아도 멈춤"과 "잔수 감지로 작동 중단").
 3. others: 실제로 고쳐야 하는 것만 — 잘못된 용어(예: 온수 온도를 "온실 온도"로 씀), 글 안에서 서로 모순되는 내용
    (예: 장점에 "가볍다", 단점에 "무겁다"), "잘 맞는 상황"에 넣었는데 이유는 맞지 않는다는 내용인 경우
-   (예: "빠른 난방이 최우선이라면 → 빠른 난방보다 고른 보온을 원하는 사람에게 맞아요"). 고칠 필요 없는 참고 의견은 넣지 마.
+   (예: "빠른 난방이 최우선이라면 → 빠른 난방보다 고른 보온을 원하는 사람에게 맞아요"),
+   비교글에서 두 제품 모두 해당하는 특징을 한쪽을 고르는 이유로 쓴 경우 — problem 에 "차이가 아닌 공통 특징"이라고 적어
+   (예: 둘 다 원두 머신인데 "캡슐 쓰레기를 줄이려면 B"). 고칠 필요 없는 참고 의견은 넣지 마.
 "가격은 쿠팡에서 확인하세요" 같은 안내 문구는 사실 주장이 아니니 claims 에 넣지 마.
 section 값은 반드시 다음 이름 중 하나: ${sections.map((s) => s.name).join(", ")}
 
@@ -422,6 +474,9 @@ async function checkAll(secrets: Secrets, w: WrittenPost, productCount: number, 
   };
 }
 
+// 버전 비교 점수: 구성 문제는 표현 문제 3개만큼 무겁게
+const issueScore = (issues: string[]) => issues.reduce((n, x) => n + (isStructuralIssue(x) ? 3 : 1), 0);
+
 export async function reviewAndFix(
   secrets: Secrets,
   written: WrittenPost,
@@ -430,7 +485,13 @@ export async function reviewAndFix(
 ): Promise<{ post: WrittenPost; qa: ShopPostQa }> {
   const evidence = buildEvidence(research, digests);
   const n = research.length;
-  let post = written;
+  // 기계적으로 고칠 수 있는 것은 검사 전에 코드로 (AI 수정 후에도 다시)
+  const fixed = (w: WrittenPost) => {
+    const r = autoFix(w);
+    if (r.fixes.length) console.log(`  🔧 자동 교정: ${r.fixes.join(", ")}`);
+    return r.post;
+  };
+  let post = fixed(written);
   let check = await checkAll(secrets, post, n, evidence);
   const found = check.issues.length;
   let revisions = 0;
@@ -446,7 +507,7 @@ export async function reviewAndFix(
   while (check.issues.length && revisions < MAX_REVISIONS) {
     try {
       const keyword = post.content.seoKeyword;
-      post = await revisePost(secrets, research, digests, post, check.issues);
+      post = fixed(await revisePost(secrets, research, digests, post, check.issues));
       if (keyword) post.content.seoKeyword = keyword;
     } catch (e) {
       console.warn(`  ⚠ 수정 실패: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
@@ -455,7 +516,7 @@ export async function reviewAndFix(
     revisions++;
     check = await checkAll(secrets, post, n, evidence);
     log(`수정 ${revisions}회 후 재검수`);
-    if (check.issues.length < best.check.issues.length) best = { post, check };
+    if (issueScore(check.issues) < issueScore(best.check.issues)) best = { post, check };
   }
   if (best.post !== post) console.log(`  ↩ 수정본이 더 나빠서 문제가 가장 적은 버전(${best.check.issues.length}개)을 저장`);
 
@@ -482,7 +543,7 @@ export function thinEvidenceWarnings(w: WrittenPost): string[] {
   const rows = w.content.comparison;
   if (rows.length < 4) return [];
   return w.content.products.flatMap((p, i) => {
-    const unknown = rows.filter((r) => /확인\s*안\s*됨|확인되지 않|확인 필요/.test(r.values[i] ?? "")).length;
+    const unknown = rows.filter((r) => isUnknownValue(r.values[i] ?? "")).length;
     return unknown * 2 >= rows.length
       ? [`${p.name}: 표 ${rows.length}항목 중 ${unknown}개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)`]
       : [];

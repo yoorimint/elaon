@@ -3,9 +3,11 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
+import { autoFix } from "./autofix";
+import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
-import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
@@ -231,6 +233,50 @@ async function main() {
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
   });
+  await test("자동 교정: '자료에는'·'(웹문서 기재)' 치환, 모두 확인 안 됨인 표 행 삭제, 원본 불변", () => {
+    const w = structuredClone(real);
+    w.content.buyingGuide = [{ criterion: "소음", detail: "자료에는 31.8dB로 나와요. 자료를 보면" }];
+    w.content.comparison = [
+      { label: "품질보증", values: ["5년(웹문서 기재)"] },
+      { label: "소음", values: ["확인 필요"] },
+    ];
+    const { post, fixes } = autoFix(w);
+    assert.equal(post.content.buyingGuide![0].detail, "소개된 내용에는 31.8dB로 나와요. 자료를 보면");
+    assert.deepEqual(post.content.comparison, [{ label: "품질보증", values: ["5년"] }]);
+    assert.equal(fixes.length, 2);
+    assert.equal(w.content.comparison.length, 2, "원본은 그대로");
+    assert.equal(autoFix(post).fixes.length, 0, "두 번 적용해도 같은 결과");
+  });
+  await test("비교글: 두 제품 공통 특징을 한쪽 선택 이유로 쓴 지적은 수정 대상", () => {
+    const issues = judgeAudit(
+      {
+        claims: [],
+        others: [
+          {
+            section: "정리",
+            problem: "두 제품 모두 원두 머신이라 캡슐 쓰레기는 차이가 아닌 공통 특징인데 B를 고르는 이유로 씀",
+            fix: "두 제품의 실제 차이(크기·우유 메뉴)로 바꾸기",
+          },
+          { section: "정리", problem: "문장을 조금 더 짧게 하면 좋겠음", fix: "다듬기" },
+        ],
+      },
+      "",
+      ["정리"],
+    );
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("공통 특징"));
+  });
+  await test("수집 경로('웹문서 기재')·다른 제품 후기 섞기 검출, 일반 비교 권유는 통과", () => {
+    const w = structuredClone(real);
+    w.content.comparison = [{ label: "품질보증", values: ["5년(웹문서 기재)"] }];
+    w.content.faq = [{ q: "세탁되나요?", a: "가능하다고 적혀 있어요. 다만 세탁이 어렵다는 다른 제품 후기도 있어요." }];
+    const issues = lintPost(w, 1);
+    assert.ok(issues.some((x) => x.startsWith("comparison[0]") && x.includes("수집 경로")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("faq[0]") && x.includes("다른 제품")), issues.join("\n"));
+    const ok = structuredClone(real);
+    ok.content.summary = "넓은 면적이 필요하면 다른 제품도 함께 비교해 보세요.";
+    assert.ok(!lintPost(ok, 1).some((x) => x.includes("다른 제품") || x.includes("수집 경로")));
+  });
   await test("후기 출처의 광고 이야기 문장 검출", () => {
     const w = structuredClone(real);
     w.content.commonComplaints = ["광고 글 주의 · 블로그 후기에 파트너스 문구가 많아 과장된 칭찬은 걸러서 보세요"];
@@ -277,6 +323,51 @@ async function main() {
     assert.equal(locallySupported("에디르 오방난로는 5면을 개별로 켤 수 있다", ev, products), true);
     assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
     assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
+  });
+  await test("'엇갈려요' 안내 문장을 세 번 이상 되풀이하면 지적", () => {
+    const w = structuredClone(real);
+    w.content.faq = [
+      { q: "q1", a: "의견이 엇갈려요. 정보가 엇갈려요, 판매 페이지에서 확인하세요." },
+      { q: "q2", a: "물걸레 평가는 의견이 엇갈려요." },
+      { q: "q3", a: "매일 물을 갈라는 후기가 많아요." },
+    ];
+    assert.ok(lintPost(w, 1).some((x) => x.includes("엇갈려요") && x.includes("3번")));
+  });
+  await test("비교표에서 모든 제품이 '확인 안 됨'인 행은 삭제 지적", () => {
+    const w = structuredClone(real);
+    w.content.comparison = [...w.content.comparison, { label: "무게", values: ["확인 안 됨"] }];
+    assert.ok(lintPost(w, 1).some((x) => x.includes('"무게"') && x.includes("삭제")));
+  });
+  await test("디지털 사양 단위: 14.6인치 = 14.6형, 12GB, 45000Pa 도 수치로 근거 확인", () => {
+    const ev = "갤럭시탭 S12 울트라 14.6형 화면, 램 12GB, 흡입력 45,000Pa";
+    const issues = judgeAudit(
+      {
+        claims: [
+          { section: "고르는 기준", claim: "S12 울트라는 14.6인치이다", quote: "" },
+          { section: "표", claim: "램은 12GB이다", quote: "" },
+          { section: "표", claim: "흡입력 45,000Pa", quote: "" },
+          { section: "표", claim: "램은 16GB이다", quote: "" },
+        ],
+      },
+      ev,
+      ["고르는 기준", "표"],
+    );
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("16GB"));
+  });
+  await test("단위 뒤 조사: '40도예요'는 수치, '도움'·'분리'·'3분의 1'은 수치 아님", () => {
+    const ev = "물 온도 40도, 소음 35dB";
+    const w = {
+      title: "t",
+      description: "d",
+      content: {
+        products: [{ name: "가습기 A" }],
+      },
+    } as unknown as Parameters<typeof checkNumbers>[0];
+    const make = (text: string) => ({ ...w, description: text }) as typeof w;
+    assert.equal(checkNumbers(make("물은 40도예요, 소음은 35dB이에요"), ev).length, 0);
+    assert.equal(checkNumbers(make("물은 60도예요"), ev).length, 1);
+    assert.equal(checkNumbers(make("3도움이 되고 5분리가 쉬워요, 3분의 1"), ev).length, 0);
   });
   await test("천 단위 쉼표 표기 차이는 같은 수치 (1,700W = 1700W)", () => {
     const w = structuredClone(real);
@@ -340,6 +431,28 @@ async function main() {
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("검색 키워드")));
     w.title = "케어팟 X50V 단점, 사기 전에 꼭 볼 것";
     assert.ok(!lintPost(w, 1).some((x) => x.includes("검색 키워드")));
+  });
+
+  // ---- 합격선 (사람 없이 내보낼 수 있는 글인지) ----
+  await test("합격선: AI 검수 + 남은 문제 1개 이하 + 근거 부족 경고·구성 부족 없음", () => {
+    const base = { checkedAt: "", issuesFound: 5, remaining: [] as string[], aiChecked: true };
+    assert.equal(judgeQuality(base).passed, true);
+    assert.equal(judgeQuality({ ...base, remaining: ["a"] }).passed, true);
+    assert.equal(judgeQuality({ ...base, remaining: ["a", "b"] }).passed, false);
+    assert.equal(judgeQuality({ ...base, aiChecked: false }).passed, false);
+    const thin = judgeQuality({ ...base, remaining: ['브리츠 MUSEPOP3: 표 8항목 중 5개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)'] });
+    assert.equal(thin.passed, false);
+    // run #36: 섹션이 빠진 글은 문제가 1개뿐이어도 불합격
+    const missing = judgeQuality({ ...base, remaining: [`${STRUCTURAL}고르는 기준(buyingGuide)이 부족 → 3~5개`] });
+    assert.equal(missing.passed, false);
+    assert.ok(missing.reasons[0].startsWith("글 구성 부족"));
+    // 두 시도 중: 합격 우선, 그다음 남은 문제가 적은 쪽
+    const fail3 = { qa: { ...base, remaining: ["a", "b", "c"] }, passed: false };
+    const fail2 = { qa: { ...base, remaining: ["a", "b"] }, passed: false };
+    const ok1 = { qa: { ...base, remaining: ["a"] }, passed: true };
+    assert.equal(better(fail3, fail2), fail2);
+    assert.equal(better(ok1, fail2), ok1);
+    assert.equal(better(null, fail3), fail3);
   });
 
   // ---- 숫자 검사 ----

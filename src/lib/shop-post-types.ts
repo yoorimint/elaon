@@ -37,6 +37,7 @@ export type ShopPostContent = {
   alternatives?: string[]; // 같은 카테고리에서 많이 언급되는 다른 제품 (자동 선정 시)
   qa?: ShopPostQa; // 자동 검수 결과 (관리자 표시용)
   run?: ShopPostRunInfo; // 작성 실행 리포트: 쓴 모델·비용·상품 선정 근거 (관리자 표시용)
+  seoKeyword?: string; // 제목 맨 앞에 쓴 검색 키워드 (네이버 데이터랩으로 고름)
   insights?: (ShopPostInsight | null)[]; // 상품 순서와 같음. 스크립트가 분석 결과로 채움
   // 공정위 고지 문구. AI 가 아니라 스크립트가 작성 시점의 설정값을 넣는다.
   disclosure?: string;

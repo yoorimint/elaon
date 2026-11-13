@@ -7,7 +7,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: { absolute: "쇼핑 비교 — 후기로 비교한 인기 제품 | eloan" },
   description: "네이버 블로그·카페, 유튜브, 웹 리뷰의 실사용 후기를 모아 인기 제품을 비교했습니다.",
-  alternates: { canonical: "/shop" },
+  alternates: { canonical: "/shop", types: { "application/rss+xml": "/shop/rss.xml" } },
 };
 
 export default async function ShopListPage() {

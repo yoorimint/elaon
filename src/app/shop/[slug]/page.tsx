@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
-import { JsonLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
+import { JsonLd, articleLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
 import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
 import { ShopDraftPreview } from "./ShopDraftPreview";
@@ -18,8 +18,16 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     // 사이트 기본 접미사(" | eloan 백테스트") 대신 쇼핑 글에 맞는 제목
     title: { absolute: `${post.title} | eloan 쇼핑 비교` },
     description,
-    alternates: { canonical: `/shop/${post.slug}` },
-    openGraph: { title: post.title, description, type: "article", url: `/shop/${post.slug}` },
+    alternates: { canonical: `/shop/${post.slug}`, types: { "application/rss+xml": "/shop/rss.xml" } },
+    openGraph: {
+      title: post.title,
+      description,
+      type: "article",
+      url: `/shop/${post.slug}`,
+      publishedTime: post.published_at ?? undefined,
+      modifiedTime: post.updated_at,
+      ...(post.products[0]?.image ? { images: [post.products[0].image] } : {}),
+    },
     twitter: { card: "summary", title: post.title, description },
   };
 }
@@ -57,6 +65,17 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
           { name: "쇼핑 비교", url: `${SITE}/shop` },
           { name: post.title, url: `${SITE}/shop/${post.slug}` },
         ])}
+      />
+      <JsonLd
+        data={articleLd({
+          url: `${SITE}/shop/${post.slug}`,
+          headline: post.title,
+          description: post.description || post.content.summary,
+          datePublished: post.published_at ?? post.created_at,
+          dateModified: post.updated_at ?? post.published_at ?? post.created_at,
+          images: post.products.map((p) => p.image).filter((x): x is string => !!x),
+          keywords: [post.content.seoKeyword, ...post.products.map((p) => p.name)].filter((x): x is string => !!x),
+        })}
       />
       {post.content.faq.length > 0 && <JsonLd data={faqLd(post.content.faq)} />}
       <ShopPostView post={post} related={await listRelatedPosts(post.content.category, post.slug)} />

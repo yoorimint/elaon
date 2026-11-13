@@ -112,6 +112,9 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
 
   // 분량·형식 (작성 가이드)
   if (!c.summary) issues.push("summary(한 줄 결론) 없음");
+  if (c.seoKeyword && !norm(w.title).startsWith(norm(c.seoKeyword))) {
+    issues.push(`제목: 검색 키워드 "${c.seoKeyword}"로 시작해야 함 (네이버에서 실제로 많이 찾는 표현)`);
+  }
   if (c.comparison.length < 4) issues.push(`표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
   c.comparison.forEach((row) => {
     if (row.label.length > 8) issues.push(`표 항목명 "${row.label}"이 김 → 6자 이내 명사`);
@@ -439,7 +442,9 @@ export async function reviewAndFix(
   let best = { post, check };
   while (check.issues.length && revisions < MAX_REVISIONS) {
     try {
+      const keyword = post.content.seoKeyword;
       post = await revisePost(secrets, research, digests, post, check.issues);
+      if (keyword) post.content.seoKeyword = keyword;
     } catch (e) {
       console.warn(`  ⚠ 수정 실패: ${e instanceof Error ? e.message.slice(0, 160) : e}`);
       break;

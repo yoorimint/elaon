@@ -3,6 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
+import { bestKeyword, keywordCandidates } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
 import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
@@ -297,6 +298,20 @@ async function main() {
     assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", old), false);
     const recentNoCat = [{ title: "갤럭시 스마트폰 리콜", description: "무선이어폰도 언급", pubDate: new Date().toUTCString() }];
     assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", recentNoCat), false);
+  });
+
+  // ---- 제목 키워드 (SEO) ----
+  await test("제목 키워드: 검색량이 가장 많은 표현 선택, 데이터 없으면 기본값, 제목이 키워드로 시작하는지 검사", () => {
+    assert.deepEqual(keywordCandidates(["케어팟 X50V"]).slice(0, 2), ["케어팟 X50V 후기", "케어팟 X50V 장단점"]);
+    assert.equal(keywordCandidates(["A", "B"])[0], "A vs B");
+    assert.equal(bestKeyword([{ keyword: "x 후기", score: 3 }, { keyword: "x 단점", score: 9 }]), "x 단점");
+    assert.equal(bestKeyword([{ keyword: "x 후기", score: 0 }]), null);
+    const w = structuredClone(real);
+    w.content.seoKeyword = "케어팟 X50V 단점";
+    w.title = "케어팟 X50V 후기 및 장단점 분석";
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("검색 키워드")));
+    w.title = "케어팟 X50V 단점, 사기 전에 꼭 볼 것";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("검색 키워드")));
   });
 
   // ---- 숫자 검사 ----

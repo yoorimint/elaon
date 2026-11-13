@@ -55,6 +55,33 @@ export function itemListLd(opts: {
   };
 }
 
+// 글 정보: 제목·설명·작성일·수정일·작성 주체 (구글·AI 검색이 "언제, 누가 쓴 글인지" 파악)
+export function articleLd(opts: {
+  url: string;
+  headline: string;
+  description: string;
+  datePublished: string;
+  dateModified: string;
+  images?: string[];
+  keywords?: string[];
+}) {
+  const org = { "@type": "Organization", name: "eloan", url: "https://www.eloan.kr" };
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    mainEntityOfPage: { "@type": "WebPage", "@id": opts.url },
+    headline: opts.headline,
+    description: opts.description,
+    datePublished: opts.datePublished,
+    dateModified: opts.dateModified,
+    author: org,
+    publisher: org,
+    inLanguage: "ko-KR",
+    ...(opts.images?.length ? { image: opts.images } : {}),
+    ...(opts.keywords?.length ? { keywords: opts.keywords.join(", ") } : {}),
+  };
+}
+
 export function faqLd(faq: { q: string; a: string }[]) {
   return {
     "@context": "https://schema.org",

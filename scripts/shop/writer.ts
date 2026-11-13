@@ -11,6 +11,7 @@ import type { ProductResearch } from "./research";
 
 export type WriterOptions = {
   titleStyle: string;
+  titleKeyword?: string; // 제목 맨 앞에 그대로 쓸 검색 키워드
   extraPrompt: string;
 };
 
@@ -276,7 +277,7 @@ export async function writePost(
     : `"${names}" 비교 글을 써줘.
 제품 순서: ${research.map((r, i) => `${i}=${r.product.name}`).join(", ")} (products·values·pick 모두 이 순서)`;
   const prompt = `${task}
-${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
+${opts.titleKeyword ? `제목은 반드시 "${opts.titleKeyword}"(실제로 많이 검색되는 표현)로 시작한다. description 첫 문장에도 이 표현을 넣는다.\n` : ""}${opts.titleStyle ? `제목 스타일: ${opts.titleStyle}\n` : ""}${opts.extraPrompt ? `추가 지시: ${opts.extraPrompt}\n` : ""}
 === 근거 자료 ===
 ${buildEvidence(research, digests)}
 ===`;

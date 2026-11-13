@@ -12,7 +12,7 @@ import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isS
 import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
-import { generate } from "./providers/llm";
+import { generate, resetRunState } from "./providers/llm";
 import type { ProductResearch } from "./research";
 import { buildEvidence, type WrittenPost } from "./writer";
 
@@ -809,6 +809,100 @@ async function main() {
     );
     claudeFails = false;
   });
+
+  // ---- Gemini 과부하(503·응답 지연)면 기다리지 않고 Claude 로 (2026-11 실행 22분 사례) ----
+  {
+    const baseFetch = globalThis.fetch;
+    let busy: Record<string, "503" | "slow"> = {}; // 모델별 가짜 상태 (없으면 정상 응답)
+    globalThis.fetch = (async (url: string, init?: { body?: string; signal?: AbortSignal }) => {
+      const model = /models\/([^:]+):generateContent/.exec(String(url))?.[1];
+      if (!model) return baseFetch(url, init as RequestInit); // 모델 목록·Claude 는 위 가짜 응답 그대로
+      calls.push(model);
+      if (busy[model] === "503") {
+        return new Response(JSON.stringify({ error: { code: 503, message: "This model is currently experiencing high demand.", status: "UNAVAILABLE" } }), { status: 503 });
+      }
+      if (busy[model] === "slow") {
+        // 응답하지 않다가 timeoutMs 가 지나 끊김.
+        // AbortSignal.timeout 타이머는 프로세스를 붙잡지 않아서, 대기 타이머를 따로 둬야 테스트가 중간에 조용히 끝나지 않는다
+        return new Promise<Response>((_, reject) => {
+          const hold = setTimeout(() => reject(new Error("가짜 지연 응답이 끊기지 않음")), 10_000);
+          init!.signal!.addEventListener("abort", () => {
+            clearTimeout(hold);
+            reject(init!.signal!.reason);
+          });
+        });
+      }
+      return reply({ issues: [] });
+    }) as typeof fetch;
+    const both = { GEMINI_API_KEY: "x", ANTHROPIC_API_KEY: "y" } as never;
+    const geminiOnly = { GEMINI_API_KEY: "x" } as never;
+    const fresh = (state: typeof busy) => {
+      resetRunState();
+      busy = state;
+      calls.length = 0;
+    };
+
+    await test("Gemini 503 한 번 → 다음 Gemini 모델·재시도 없이 바로 Claude", async () => {
+      fresh({ "gemini-3.6-flash": "503", "gemini-3.5-flash-lite": "503" });
+      const r = await generate(both, "작성");
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`]);
+    });
+    await test("Gemini 응답 지연도 과부하 → 바로 Claude (지연 모델은 이번 실행에서 제외)", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(both, "작성", { timeoutMs: 30 });
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`]);
+    });
+    await test("과부하 2번 누적 → 이번 실행의 다음 호출은 Gemini 시도 없이 Claude", async () => {
+      fresh({ "gemini-3.6-flash": "503", "gemini-3.5-flash-lite": "503" });
+      await generate(both, "작성 1");
+      await generate(both, "작성 2");
+      calls.length = 0;
+      busy = {}; // Gemini 가 회복돼도 이번 실행은 Claude 유지
+      const r = await generate(both, "작성 3");
+      assert.equal(r.model, CLAUDE_MODEL);
+      assert.deepEqual(calls, [`claude:${CLAUDE_MODEL}`]);
+    });
+    await test("과부하 1번이면 다음 호출은 다시 Gemini 부터 (실행 상태 초기화도 확인)", async () => {
+      fresh({ "gemini-3.6-flash": "503" });
+      await generate(both, "작성 1");
+      busy = {};
+      calls.length = 0;
+      const r = await generate(both, "작성 2");
+      assert.equal(r.model, "gemini-3.6-flash");
+      assert.deepEqual(calls, ["gemini-3.6-flash"]);
+    });
+    await test("Claude 키가 없으면 과부하여도 예전처럼 다음 Gemini 모델 시도", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(geminiOnly, "작성", { timeoutMs: 30 });
+      assert.equal(r.model, "gemini-3.5-flash-lite");
+      assert.deepEqual(calls, ["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
+      // 과부하가 쌓여도 Claude 가 없으니 계속 Gemini
+      await generate(geminiOnly, "작성", { timeoutMs: 30 });
+      assert.ok(!calls.some((c) => c.startsWith("claude:")), calls.join(","));
+    });
+    await test("과부하로 Claude 에 넘겼는데 Claude 도 실패하면 남은 Gemini 모델로 다시 시도", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      claudeFails = true;
+      try {
+        const r = await generate(both, "작성", { timeoutMs: 30 });
+        assert.equal(r.model, "gemini-3.5-flash-lite");
+        assert.deepEqual(calls, ["gemini-3.6-flash", `claude:${CLAUDE_MODEL}`, "gemini-3.5-flash-lite"]);
+      } finally {
+        claudeFails = false;
+      }
+    });
+    await test("구글 검색 그라운딩 호출은 Claude 가 대신 못 하니 과부하여도 다음 Gemini 모델", async () => {
+      fresh({ "gemini-3.6-flash": "slow" });
+      const r = await generate(both, "검색", { googleSearch: true, timeoutMs: 30 });
+      assert.equal(r.model, "gemini-3.5-flash-lite");
+      assert.ok(!calls.some((c) => c.startsWith("claude:")), calls.join(","));
+    });
+
+    globalThis.fetch = baseFetch;
+    resetRunState();
+  }
   await test("AI 검수를 못 하면 '통과'가 아니라 aiChecked=false", async () => {
     const r = await reviewAndFix({ GEMINI_API_KEY: "x" } as never, clean, research, [null]);
     assert.equal(r.qa.aiChecked, false);

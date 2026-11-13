@@ -4,17 +4,17 @@
 import assert from "node:assert/strict";
 import { photoFor, withPhoto, type ShopPostContent } from "@/lib/shop-post-types";
 import { autoFix } from "./autofix";
-import type { ProductDigest } from "./digest";
+import { digestBlock, groundedScenes, type ProductDigest } from "./digest";
 import { evidenceGaps } from "./readiness";
 import { better, judgeQuality } from "./quality";
 import { bestKeyword, keywordCandidates, shortName, titleName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
-import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
+import { STRUCTURAL, checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repeatedEndingIssues, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
 import { generate } from "./providers/llm";
 import type { ProductResearch } from "./research";
-import type { WrittenPost } from "./writer";
+import { buildEvidence, type WrittenPost } from "./writer";
 
 // 2026-11-13 실제 초안(케어팟 X50V)에서 문제가 된 부분
 const real: WrittenPost = {
@@ -289,6 +289,7 @@ async function main() {
       bestFor: "",
       conflicts: [],
       tips: [],
+      scenes: [],
     });
     const rich = digest(["소비전력", "무게", "물통 용량", "소음"], 6);
     assert.deepEqual(evidenceGaps(["A"], [rich]), []);
@@ -299,6 +300,67 @@ async function main() {
     const differentNames = digest(["블루투스 버전", "재생 시간", "무게", "방수 등급"], 6);
     assert.deepEqual(evidenceGaps(["A", "B"], [rich, differentNames]), []);
     assert.ok(evidenceGaps(["A", "B"], [rich, digest(["무게"], 6)]).some((x) => x.startsWith("B: 스펙 1개")));
+  });
+  // ---- 2026-11-13 운영자 분석: 글이 보고서처럼 딱딱함 (사용 장면 누락·같은 말꼬리 반복) ----
+  await test("후기 분석의 사용 장면(scenes)이 작성 근거(digestBlock·buildEvidence)에 들어감", () => {
+    const scene = "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자";
+    const d: ProductDigest = {
+      summary: "조용하다는 평가", strengths: [], weaknesses: [], complaints: [], specs: [], buyerQuestions: [],
+      bestFor: "", conflicts: [], tips: [], scenes: [scene],
+    };
+    const block = digestBlock(d);
+    assert.ok(block.includes("실제 사용 장면"), block);
+    assert.ok(block.includes(`- ${scene}`), block);
+    assert.ok(digestBlock({ ...d, scenes: [] }).includes("실제 사용 장면 (후기 원문에 나온 그대로 — 글에 옮길 때 시간·장소·감정을 덧붙이지 말 것):\n(없음)"));
+    const r = { product: { name: "케어팟 X50V", link: "" }, reviews: [], comments: [], videoNotes: [], news: [], webSummary: null } as unknown as ProductResearch;
+    assert.ok(buildEvidence([r], [d]).includes(scene), "작성·검수·수정이 보는 근거 자료에도 장면이 있어야 함");
+  });
+  await test("사용 장면: 원자료에서 확인되는 장면만 남기고 지어낸 장면은 버림", () => {
+    const raw = `# 케어팟 X50V
+- [블로그] 한 달 후기: 아기 방에 두고 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들려서 계속 쓰고 있어요.
+- [카페] 세척: 주말마다 수조를 통째로 분리해서 베이킹소다로 닦는데 10분이면 끝나요.`;
+    const scenes = groundedScenes(
+      [
+        "아기 방에서 새벽에 깰까 봐 약풍으로 틀었는데 소리가 거의 안 들렸다는 사용자",
+        "주말마다 수조를 통째로 분리해 베이킹소다로 닦는데 10분이면 끝난다는 사용자",
+        "캠핑장 텐트 안에서 밤새 틀어도 결로가 생기지 않았다는 사용자",
+      ],
+      raw,
+      "케어팟 X50V",
+    );
+    assert.equal(scenes.length, 2, scenes.join("\n"));
+    assert.ok(!scenes.some((s) => s.includes("캠핑")), "원자료에 없는 장면");
+  });
+  await test("같은 말꼬리('~라는 의견이 많아요') 반복 검출, 표현을 바꿔 쓴 글은 통과", () => {
+    const w = structuredClone(real);
+    const p = w.content.products[0];
+    p.pros = [
+      "세척: 통세척이 쉽다는 의견이 많아요",
+      "위생: 스테인리스 수조라 깨끗하다는 평이 많아요",
+      "안전: 저온 가열이라 안심된다는 후기가 있어요",
+      "용량: 하룻밤 넉넉하다는 의견이 많은 편이에요",
+    ];
+    p.cons = ["작동 중단: 물이 남아도 멈춘다는 불만이 있어요", "온도: 미지근하다는 반응이 자주 보여요"];
+    w.content.verdict = "관리가 편하다는 평가가 많아요. 아이 있는 집에 맞다는 의견이 많아요.";
+    const issues = repeatedEndingIssues(w);
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("7번") && issues[0].includes("6번 이하"), issues[0]);
+    assert.ok(issues[0].includes("products.pros"), "어느 섹션인지 알려줘야 수정이 정확함");
+    assert.ok(lintPost(w, 1).some((x) => x.includes("말꼬리")), "lintPost 에도 포함");
+    // '~다고 해요'로 몰아 바꾼 것도 같은 문제
+    const tellMe = structuredClone(real);
+    tellMe.content.products[0].pros = ["a: 좋다고 해요", "b: 편하다고 해요", "c: 조용하다고 해요", "d: 가볍다고 해요"];
+    tellMe.content.verdict = "깨끗하다고 해요. 넉넉하다고 해요. 쉽다고 해요.";
+    assert.ok(repeatedEndingIssues(tellMe).some((x) => x.includes("~다고 해요") && x.includes("7번")));
+    // 정상: 근거 표시는 남기되 끝맺음이 다양함
+    const varied = structuredClone(real);
+    varied.content.products[0].pros = [
+      "세척: 후기를 보면 통세척이 쉽다는 의견이 많아요",
+      "위생: 스테인리스 수조라 물때 걱정이 덜해요",
+      "안전: 저온 가열이라 아이 방에 두기 편하다고 해요",
+      "용량: 하룻밤 쓰기에 넉넉한 편으로 꼽혀요",
+    ];
+    assert.deepEqual(repeatedEndingIssues(varied), []);
   });
   await test("코드 검사: 블로그 수집 경로·장단점 5개·장단점 칸의 엇갈림·문장형 표 값·'확인하세요' 과다", () => {
     const w = structuredClone(real);
@@ -614,6 +676,9 @@ async function main() {
   ];
   clean.content.products[0].pros.push("관리: 통세척이 가능해요");
   clean.content.products[0].review += " 위생 관리가 쉽다는 의견이 많아요.";
+  await test("실제 초안 수정본(근거 표시 3번)은 말꼬리 반복 검사에 걸리지 않음", () => {
+    assert.deepEqual(repeatedEndingIssues(clean), []);
+  });
 
   const models = (names: string[]) =>
     new Response(JSON.stringify({ models: names.map((n) => ({ name: `models/${n}`, supportedGenerationMethods: ["generateContent"] })) }));

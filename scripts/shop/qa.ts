@@ -21,6 +21,10 @@ import { buildEvidence, revisePost, type WrittenPost } from "./writer";
 const MAX_REVISIONS = 2;
 // 비교표에서 한 제품만 값이 있는 행 허용 개수
 const MAX_ONE_SIDED_ROWS = 2;
+// 검색 결과에서 잘리지 않는 제목 길이
+const MAX_TITLE_LENGTH = 50;
+// 내부 제품 번호: "0번"은 항상, "1번"은 조사가 붙은 경우 ("하루 1번 세척" 같은 횟수는 제외)
+const PRODUCT_NUMBER = /(?<![0-9])(0번|[0-9]번(은|는|이|가|의|을|를|과|와|도|으로|에서|에|이에요|이라면)(?![가-힣]))/;
 // 같은 내용이 나온 섹션 수 (표·제목은 요약이라 세지 않음)
 // - 4곳까지: 정상 (결론·장단점·추천·정리에 핵심이 한 번씩 나오는 건 자연스러움)
 // - 5~6곳: 참고로만 기록 (비교글의 핵심 차이는 여러 곳에 나올 수밖에 없음. 고치라고 하면
@@ -134,6 +138,16 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     issues.push(`제목: 검색 키워드 "${c.seoKeyword}"로 시작해야 함 (네이버에서 실제로 많이 찾는 표현)`);
   }
   if (c.comparison.length < 4) issues.push(`${STRUCTURAL}표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
+  // 비교글: 내부 제품 번호가 글에 나옴 (점검 실행 41: "좁은 주방이면 0번이 맞아요")
+  if (productCount > 1) {
+    for (const { path, text } of allText(w)) {
+      const m = PRODUCT_NUMBER.exec(text);
+      if (m) issues.push(`${path}: 제품을 번호("${m[0].trim()}")로 부름 → 제품 이름으로`);
+    }
+  }
+  if (w.title.length > MAX_TITLE_LENGTH) {
+    issues.push(`제목이 ${w.title.length}자 → ${MAX_TITLE_LENGTH}자 이내로 (긴 모델 번호는 빼기)`);
+  }
   // 비교글: 한쪽만 확인된 행이 많으면 표가 비교 역할을 못 함 (run #39: 9행 중 7행이 한쪽만 값)
   if (productCount > 1) {
     const oneSided = c.comparison.filter(

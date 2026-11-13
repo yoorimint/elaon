@@ -16,8 +16,19 @@ export function shortName(name: string): string {
   return words.length >= 2 ? words.slice(1).join(" ") : name.trim();
 }
 
-// 제목 맨 앞에 쓸 키워드 후보 (전체 이름 기준). 첫 번째가 기본값
-export function keywordCandidates(names: string[]): string[] {
+// 제목용 이름: 긴 모델 코드(영문 대문자+숫자 7자 이상, 예: WPUJAC115D)는 뺀다.
+// 단 코드를 빼고 3단어 이상 남을 때만 ("유라 E6", "보이러 UB07"처럼 코드가 이름의 핵심이면 그대로)
+// (점검 실행 41: 제목이 "SK매직 초소형 플러스 직수 냉온정수기 WPUJAC115D vs 삼성 … RWP70F15ANW"로 길어짐)
+const MODEL_CODE = /^(?=.*\d)(?=.*[A-Z])[A-Z0-9-]{7,}$/;
+export function titleName(name: string): string {
+  const words = name.trim().split(/\s+/);
+  const kept = words.filter((w) => !MODEL_CODE.test(w));
+  return kept.length >= 3 ? kept.join(" ") : name.trim();
+}
+
+// 제목 맨 앞에 쓸 키워드 후보 (제목용 이름 기준). 첫 번째가 기본값
+export function keywordCandidates(fullNames: string[]): string[] {
+  const names = fullNames.map(titleName);
   if (names.length === 1) return SINGLE_SUFFIXES.map((s) => `${names[0]} ${s}`);
   const [a, b] = names;
   return [`${a} vs ${b}`, `${a} ${b} 비교`];

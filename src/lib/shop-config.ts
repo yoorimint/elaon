@@ -57,22 +57,8 @@ export const AUTO_MODES: { value: AutoMode; label: string; description: string }
   { value: "mixed", label: "섞어서 자동", description: "단일·비교를 번갈아" },
 ];
 
-// 쿠팡 파트너스 링크 형식 (간편 링크 / 단축 링크)
-export function isPartnersLink(url: string): boolean {
-  return /^https:\/\/(link\.coupang\.com\/a\/|coupa\.ng\/)[A-Za-z0-9]+/.test(url.trim());
-}
-
-// 쿠팡 파트너스 "이미지+텍스트" 등의 HTML 을 붙여넣으면 링크와 이미지 주소를 뽑는다.
-// 일반 링크를 넣으면 그대로 링크로 쓴다.
-export function parsePartnersInput(input: string): { link: string; image?: string } {
-  const text = input.trim();
-  if (!text.includes("<")) return { link: text };
-  const link =
-    /(?:href|src)\s*=\s*["'](https:\/\/(?:link\.coupang\.com\/a\/|coupa\.ng\/)[^"']+)["']/i.exec(text)?.[1] ?? "";
-  // 이미지는 쿠팡 이미지 서버 것만 허용 (외부 이미지가 사이트에 실리지 않게)
-  const image = /<img[^>]+src\s*=\s*["'](https:\/\/[a-z0-9.-]*coupangcdn\.com\/[^"']+)["']/i.exec(text)?.[1];
-  return { link, image };
-}
+// 링크 검사·HTML 에서 링크 뽑기는 순수 모듈로 옮김 (예전 import 경로 유지용 재수출)
+export { isPartnersLink, parsePartnersInput } from "./coupang-link";
 
 // 화면용: 항상 MANUAL_PRODUCT_SLOTS 칸으로 맞춘다
 export function toSlots(list: ManualProduct[] | null | undefined): ManualProduct[] {
@@ -228,6 +214,17 @@ export async function updateShopConfig(patch: ShopConfigEditable): Promise<void>
     .update({ ...sanitize(patch), updated_at: new Date().toISOString() })
     .eq("id", 1);
   if (error) throw new Error(error.message);
+}
+
+// 쿠팡 파트너스 고지 문구만 저장 (설정 탭 — 다른 자동글 설정은 건드리지 않음)
+export async function updateDisclosureText(text: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("shop_config")
+    .update({ disclosure_text: text.trim(), updated_at: new Date().toISOString() })
+    .eq("id", 1)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
 }
 
 export function toEditable(c: ShopConfig): ShopConfigEditable {

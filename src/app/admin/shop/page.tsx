@@ -1,69 +1,46 @@
 "use client";
 
+// 쇼핑 글 관리 (2026-11-13~ 직접 쓴 글 중심으로 개편).
+// 다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들고, 사진은 사이트에 올리고,
+// 구매 링크는 쿠팡 파트너스 링크를 붙여넣어 건다.
+// 탭: ✍️ 붙여넣어 초안 만들기 / 📝 초안 / ✅ 발행된 글 / ⚙️ 설정(쿠팡 파트너스 API 키·고지 문구)
+// 매시간 AI 자동 글은 꺼 둠 (.github/workflows/shop-post.yml). 자동 글 설정 화면(실행·상품 선정·정보 수집·직접 입력 상품·
+// 실행 기록·Gemini/Claude/네이버 키)은 화면에서만 뺐다 — 코드(scripts/shop, ShopRunsAdmin 등)와 저장된 값은 그대로.
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminNav } from "@/components/AdminNav";
-import {
-  ListField,
-  NumberField,
-  RadioField,
-  SettingsSection,
-  TextField,
-  ToggleField,
-} from "@/components/AdminFormFields";
+import { ShopAdminPosts } from "@/components/ShopAdminPosts";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
-import { ShopManualProducts } from "@/components/ShopManualProducts";
-import { ShopPostsAdmin } from "@/components/ShopPostsAdmin";
-import { ShopRunsAdmin } from "@/components/ShopRunsAdmin";
-import { timeAgo } from "@/lib/community";
+import { ShopPasteDraft } from "@/components/ShopPasteDraft";
 import { useAdminGuard } from "@/lib/use-admin-guard";
-import {
-  AUTO_MODES,
-  SHOP_LIMITS,
-  getShopConfig,
-  parseList,
-  toEditable,
-  updateShopConfig,
-  type PublishMode,
-  type ShopConfig,
-  type ShopConfigEditable,
-} from "@/lib/shop-config";
+import { getShopConfig, updateDisclosureText, type ShopConfig } from "@/lib/shop-config";
+import { DEFAULT_POST_DISCLOSURE } from "@/lib/shop-post-types";
 
-const PUBLISH_MODES: { value: PublishMode; label: string; description: string }[] = [
-  {
-    value: "review",
-    label: "검수 후 발행 (추천)",
-    description: "초안을 저장해두고 관리자가 확인 후 발행",
-  },
-  {
-    value: "auto",
-    label: "자동 발행",
-    description: "생성 즉시 공개. 잘못된 정보도 그대로 노출될 수 있음",
-  },
+type Tab = "paste" | "draft" | "published" | "settings";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "paste", label: "✍️ 붙여넣어 초안 만들기" },
+  { id: "draft", label: "📝 초안" },
+  { id: "published", label: "✅ 발행된 글" },
+  { id: "settings", label: "⚙️ 설정" },
 ];
 
 export default function AdminShopPage() {
   const guard = useAdminGuard("/admin/shop");
+  const [tab, setTab] = useState<Tab>("paste");
   const [config, setConfig] = useState<ShopConfig | null>(null);
-  const [form, setForm] = useState<ShopConfigEditable | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  // 초안·발행 탭에서 열어 둔 글
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      const c = await getShopConfig();
-      if (!c) {
-        setLoadError("설정 행이 없습니다. supabase/shop.sql 을 실행해주세요.");
-        return;
-      }
-      setConfig(c);
-      setForm(toEditable(c));
+      setConfig(await getShopConfig());
+      setLoadError(null);
     } catch (e) {
-      setLoadError(
-        `불러오기 실패: ${e instanceof Error ? e.message : String(e)} — ` +
-          "supabase/shop.sql 을 SQL Editor 에서 실행했는지 확인해주세요.",
-      );
+      setLoadError(`설정 불러오기 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
@@ -71,248 +48,144 @@ export default function AdminShopPage() {
     if (guard === "authorized") load();
   }, [guard, load]);
 
-  // 필드 하나만 바꾸는 헬퍼. 키와 값 타입이 맞지 않으면 컴파일 에러.
-  function set<K extends keyof ShopConfigEditable>(key: K, value: ShopConfigEditable[K]) {
-    setForm((f) => (f ? { ...f, [key]: value } : f));
-    setMsg(null);
-  }
-
-  async function onSave() {
-    if (!form) return;
-    setSaving(true);
-    setMsg(null);
-    try {
-      await updateShopConfig(form);
-      await load();
-      setMsg("저장됨");
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "저장 실패");
-    } finally {
-      setSaving(false);
-    }
+  function go(next: Tab) {
+    setTab(next);
+    setOpenId(null);
+    setNotice(null);
   }
 
   if (guard === "checking") {
-    return (
-      <main className="mx-auto max-w-4xl px-5 py-12 text-center text-sm text-neutral-500">
-        권한 확인 중…
-      </main>
-    );
+    return <main className="mx-auto max-w-4xl px-5 py-12 text-center text-sm text-neutral-500">권한 확인 중…</main>;
   }
   if (guard === "denied") {
     return (
       <main className="mx-auto max-w-4xl px-5 py-12 text-center">
         <h1 className="text-xl font-bold">접근 권한이 없습니다</h1>
-        <Link
-          href="/"
-          className="mt-5 inline-block rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm"
-        >
+        <Link href="/" className="mt-5 inline-block rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm">
           홈으로
         </Link>
       </main>
     );
   }
 
+  const disclosure = config?.disclosure_text?.trim() || DEFAULT_POST_DISCLOSURE;
+
   return (
-    <main className="mx-auto max-w-4xl px-5 py-8 sm:py-12 pb-28">
+    <main className="mx-auto max-w-6xl px-4 sm:px-5 py-8 sm:py-12 pb-16">
       <div className="mb-2">
-        <h1 className="text-2xl sm:text-3xl font-bold">쿠팡 자동글 설정</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">쇼핑 글 관리</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          쿠팡 파트너스 API로 상품을 고르고, 네이버·유튜브·구글 검색으로 후기를 모아
-          Gemini가 비교글을 작성합니다.
+          다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들어요. 사진을 올리고 쿠팡 파트너스 링크를 넣어 발행하세요.
         </p>
       </div>
       <AdminNav />
 
+      <div className="-mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => go(t.id)}
+            className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${
+              tab === t.id
+                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                : "border border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {loadError && (
-        <div className="rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/30 p-4 text-sm text-red-700 dark:text-red-300">
-          {loadError}
+        <div className="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
+          {loadError} — 고지 문구는 기본 문구를 씁니다.
         </div>
       )}
 
-      {config && form && (
-        <div className="space-y-6">
-          <ShopApiKeys check={config.key_check ?? {}} checkedAt={config.key_check_at ?? null} />
-
-          <ShopManualProducts
-            value={form.manual_products}
-            onChange={(v) => set("manual_products", v)}
-          />
-
-          <ShopRunsAdmin />
-          <ShopPostsAdmin />
-
-          <SettingsSection title="실행">
-            <ToggleField
-              label="자동글 활성화"
-              hint="필수 API 키가 모두 등록된 뒤 켜세요"
-              checked={form.enabled}
-              onChange={(v) => set("enabled", v)}
-            />
-            <NumberField
-              label="하루 글 수"
-              hint={`최대 ${SHOP_LIMITS.daily_count.max}개 (대량 생성은 검색 페널티 위험)`}
-              value={form.daily_count}
-              {...SHOP_LIMITS.daily_count}
-              onChange={(v) => set("daily_count", v)}
-            />
-            <NumberField
-              label="작성 시각 (KST, 시)"
-              hint="이 시각부터, 오늘 글 수를 채울 때까지 매시간 시도"
-              value={form.publish_hour}
-              {...SHOP_LIMITS.publish_hour}
-              onChange={(v) => set("publish_hour", v)}
-            />
-            <RadioField
-              label="발행 방식"
-              value={form.publish_mode}
-              options={PUBLISH_MODES}
-              onChange={(v) => set("publish_mode", v)}
-            />
-            <RadioField
-              label="자동 글 종류"
-              hint="직접 지정 상품이 비어 있으면 시스템이 요즘 뜨는 상품을 골라 씁니다"
-              value={form.auto_mode ?? "single"}
-              options={AUTO_MODES}
-              onChange={(v) => set("auto_mode", v)}
-            />
-          </SettingsSection>
-
-          <SettingsSection
-            title="상품 선정"
-            description="키워드를 순서대로 돌아가며 쿠팡에서 검색해 비교 상품을 고릅니다."
-          >
-            <ListField
-              label="상품 키워드"
-              hint="한 줄에 하나 (예: 로봇청소기, 에어프라이어)"
-              value={form.keywords}
-              placeholder={"로봇청소기\n에어프라이어\n무선청소기"}
-              parse={parseList}
-              onChange={(v) => set("keywords", v)}
-            />
-            <NumberField
-              label="글당 비교 상품 수"
-              value={form.products_per_post}
-              {...SHOP_LIMITS.products_per_post}
-              onChange={(v) => set("products_per_post", v)}
-            />
-            <ToggleField
-              label="로켓배송 상품만"
-              checked={form.rocket_only}
-              onChange={(v) => set("rocket_only", v)}
-            />
-            <NumberField
-              label="최소 가격 (원)"
-              hint="0 = 제한 없음"
-              value={form.min_price}
-              min={0}
-              step={1000}
-              onChange={(v) => set("min_price", v)}
-            />
-            <NumberField
-              label="최대 가격 (원)"
-              hint="0 = 제한 없음"
-              value={form.max_price}
-              min={0}
-              step={1000}
-              onChange={(v) => set("max_price", v)}
-            />
-          </SettingsSection>
-
-          <SettingsSection
-            title="정보 수집"
-            description="키가 등록되지 않은 출처는 켜져 있어도 자동으로 건너뜁니다."
-          >
-            <ToggleField
-              label="네이버 블로그·카페 후기"
-              checked={form.use_naver_reviews}
-              onChange={(v) => set("use_naver_reviews", v)}
-            />
-            <ToggleField
-              label="유튜브 리뷰 영상·댓글"
-              checked={form.use_youtube}
-              onChange={(v) => set("use_youtube", v)}
-            />
-            <ToggleField
-              label="Gemini 구글 검색"
-              hint="유료 요금제 전용 (AI Studio 결제 등록 필요). 무료 키면 자동으로 건너뜀"
-              checked={form.use_gemini_search}
-              onChange={(v) => set("use_gemini_search", v)}
-            />
-            <NumberField
-              label="상품당 네이버 후기 수"
-              value={form.reviews_per_product}
-              {...SHOP_LIMITS.reviews_per_product}
-              onChange={(v) => set("reviews_per_product", v)}
-            />
-            <NumberField
-              label="상품당 유튜브 영상 수"
-              value={form.youtube_videos_per_product}
-              {...SHOP_LIMITS.youtube_videos_per_product}
-              onChange={(v) => set("youtube_videos_per_product", v)}
-            />
-            <NumberField
-              label="영상당 댓글 수"
-              value={form.youtube_comments_per_video}
-              {...SHOP_LIMITS.youtube_comments_per_video}
-              onChange={(v) => set("youtube_comments_per_video", v)}
-            />
-            <ListField
-              label="광고성 후기 제외 단어"
-              hint="이 단어가 들어간 후기는 분석에서 뺍니다"
-              value={form.ad_filter_words}
-              rows={3}
-              parse={parseList}
-              onChange={(v) => set("ad_filter_words", v)}
-            />
-          </SettingsSection>
-
-          <SettingsSection title="글 작성">
-            <TextField
-              wide
-              label="제목 스타일"
-              hint="예: 질문형으로, 숫자 넣기, 30자 이내"
-              value={form.title_style}
-              placeholder="예: '○○ 사기 전 꼭 보세요' 처럼 궁금증 유발, 30자 이내"
-              onChange={(v) => set("title_style", v)}
-            />
-            <TextField
-              wide
-              rows={4}
-              label="추가 지시사항"
-              hint="AI에게 매번 함께 전달됩니다"
-              value={form.extra_prompt}
-              placeholder="예: 1인 가구 관점에서 추천해줘"
-              onChange={(v) => set("extra_prompt", v)}
-            />
-            <TextField
-              wide
-              rows={2}
-              label="쿠팡 파트너스 고지 문구"
-              hint="공정위 지침상 필수. 모든 글 상단에 자동 삽입"
-              value={form.disclosure_text}
-              onChange={(v) => set("disclosure_text", v)}
-            />
-          </SettingsSection>
-        </div>
+      {tab === "paste" && (
+        <ShopPasteDraft
+          disclosure={disclosure}
+          onCreated={(p) => {
+            // 저장한 초안을 바로 열어 사진을 올릴 수 있게
+            setTab("draft");
+            setOpenId(p.id);
+            setNotice("초안 저장됨 — 미리보기의 사진 자리를 눌러 사진을 올리고, 링크를 채운 뒤 발행하세요.");
+            setReloadKey((k) => k + 1);
+          }}
+        />
       )}
 
-      {form && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 backdrop-blur">
-          <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-5 py-3">
-            <span className="text-xs text-neutral-500">
-              {msg ?? (config ? `마지막 저장 ${timeAgo(config.updated_at)}` : "")}
-            </span>
-            <button
-              onClick={onSave}
-              disabled={saving}
-              className="rounded-full bg-brand text-white px-6 py-2 text-sm font-semibold hover:bg-brand-dark disabled:opacity-60"
-            >
-              {saving ? "저장 중…" : "설정 저장"}
-            </button>
-          </div>
-        </div>
+      {(tab === "draft" || tab === "published") && (
+        <ShopAdminPosts
+          status={tab}
+          openId={openId}
+          notice={notice}
+          reloadKey={reloadKey}
+          onOpen={(id) => {
+            setOpenId(id);
+            setNotice(null);
+          }}
+        />
       )}
+
+      {tab === "settings" && <SettingsTab config={config} onSaved={load} />}
     </main>
+  );
+}
+
+function SettingsTab({ config, onSaved }: { config: ShopConfig | null; onSaved: () => Promise<void> }) {
+  const [text, setText] = useState(config?.disclosure_text ?? "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(config?.disclosure_text ?? "");
+  }, [config?.disclosure_text]);
+
+  async function save() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await updateDisclosureText(text);
+      await onSaved();
+      setMsg("저장됨 — 앞으로 만드는 글에 들어가요");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 쿠팡 그룹만 보여 줌 (다른 키는 화면에서만 숨김 — 저장된 값은 지우지 않음) */}
+      <ShopApiKeys check={config?.key_check ?? {}} checkedAt={config?.key_check_at ?? null} only={["coupang"]} />
+
+      <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
+        <h2 className="font-bold">쿠팡 파트너스 고지 문구</h2>
+        <p className="mt-1 text-xs text-neutral-500">공정위 지침상 필수. 모든 글 맨 위에 들어가요 (이미 만든 글은 만들 때 문구 그대로).</p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          placeholder={DEFAULT_POST_DISCLOSURE}
+          className="mt-3 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
+        />
+        <div className="mt-2 flex items-center justify-end gap-2">
+          {msg && <span className="text-xs text-neutral-500">{msg}</span>}
+          <button
+            onClick={save}
+            disabled={busy || !config}
+            className="rounded-full bg-brand px-5 py-2 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+          >
+            {busy ? "저장 중…" : "저장"}
+          </button>
+        </div>
+      </section>
+
+      <p className="text-xs leading-relaxed text-neutral-500">
+        매시간 AI 자동 글은 꺼져 있어요. 다시 켜려면 <code>.github/workflows/shop-post.yml</code> 의 주석대로 schedule 을 되살리면 돼요.
+      </p>
+    </div>
   );
 }

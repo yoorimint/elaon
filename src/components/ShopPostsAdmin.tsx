@@ -1,5 +1,7 @@
 "use client";
 
+// 2026-11-13~ 관리자 화면(/admin/shop)에서 뺐음 — AI 자동 글을 끄면서 숨김. 자동 글을 다시 켜면 다시 붙여 쓰면 된다 (파일은 보존).
+
 // 관리자 페이지: 자동 작성된 비교글 목록과 발행/비공개/삭제.
 
 import { useCallback, useEffect, useState } from "react";

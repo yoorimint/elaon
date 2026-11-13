@@ -4,25 +4,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
+import { bearerToken, isAdminToken } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function isAdminToken(token: string): Promise<boolean> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return false;
-  const sb = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data, error } = await sb.rpc("is_admin");
-  return !error && data === true;
-}
-
 export async function POST(req: NextRequest) {
-  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const token = bearerToken(req.headers.get("authorization"));
   if (!token || !(await isAdminToken(token))) {
     return NextResponse.json({ error: "관리자만 가능" }, { status: 403 });
   }

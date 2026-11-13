@@ -3,6 +3,8 @@ import { unstable_noStore as noStore } from "next/cache";
 import { JsonLd, articleLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
 import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
+import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
+import { isManualPost } from "@/lib/shop-post-types";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
 export const revalidate = 60;
@@ -13,7 +15,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const post = await getPublishedPost(params.slug);
   // 공개 글이 아니면(초안·없는 글) 검색엔진에 노출하지 않음
   if (!post) return { title: "쇼핑 비교", robots: { index: false, follow: false } };
-  const description = post.description || post.content.summary;
+  // 직접 쓴 글은 검색 설명이 비어 있으면 본문 앞부분, AI 글은 한 줄 결론
+  const description = postDescription(post);
+  const image = postImages(post)[0];
   return {
     // 제목은 검색 키워드로 시작하는 글 제목 그대로 (사이트 이름은 검색 결과에 따로 표시됨)
     title: { absolute: post.title },
@@ -26,7 +30,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       url: `/shop/${post.slug}`,
       publishedTime: post.published_at ?? undefined,
       modifiedTime: post.updated_at,
-      ...(post.products[0]?.image ? { images: [post.products[0].image] } : {}),
+      ...(image ? { images: [image] } : {}),
     },
     twitter: { card: "summary", title: post.title, description },
   };
@@ -48,7 +52,7 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
           <ShopPostView
             post={draft}
             preview
-            related={await listRelatedPosts(draft.content.category, draft.slug)}
+            related={await listRelatedPosts(postCategory(draft), draft.slug)}
           />
         </main>
       );
@@ -70,15 +74,17 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
         data={articleLd({
           url: `${SITE}/shop/${post.slug}`,
           headline: post.title,
-          description: post.description || post.content.summary,
+          description: postDescription(post),
           datePublished: post.published_at ?? post.created_at,
           dateModified: post.updated_at ?? post.published_at ?? post.created_at,
-          images: post.products.map((p) => p.image).filter((x): x is string => !!x),
-          keywords: [post.content.seoKeyword, ...post.products.map((p) => p.name)].filter((x): x is string => !!x),
+          images: postImages(post),
+          keywords: [isManualPost(post) ? undefined : post.content.seoKeyword, ...post.products.map((p) => p.name)].filter(
+            (x): x is string => !!x,
+          ),
         })}
       />
-      {post.content.faq.length > 0 && <JsonLd data={faqLd(post.content.faq)} />}
-      <ShopPostView post={post} related={await listRelatedPosts(post.content.category, post.slug)} />
+      {!isManualPost(post) && post.content.faq.length > 0 && <JsonLd data={faqLd(post.content.faq)} />}
+      <ShopPostView post={post} related={await listRelatedPosts(postCategory(post), post.slug)} />
     </main>
   );
 }

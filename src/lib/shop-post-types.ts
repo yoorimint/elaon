@@ -159,12 +159,38 @@ export type ShopPostStats = {
   webSources: number;
 };
 
-export type ShopPost = {
+// ---------- 직접 쓴 글 (붙여넣어 만든 글, 2026-11-13~) ----------
+// 다른 곳에서 쓴 글을 관리자 화면에 붙여넣으면 src/lib/shop-paste.ts 가 블록으로 나눈다.
+// 블록 순서 그대로 화면에 그린다 (src/components/ShopManualArticle.tsx).
+// 블록 id 는 글 안에서 유일 — 사진은 블록마다 따로 저장해 위아래에 같은 사진이 들어가지 않게 한다.
+export type ShopManualBlock =
+  | { id: string; type: "paragraph"; text: string }
+  | { id: string; type: "heading"; level: 2 | 3; text: string }
+  | { id: string; type: "list"; ordered: boolean; items: string[] }
+  // src: 올린 사진 주소 (없으면 빈 사진 자리 — 공개 글에선 안 보임). alt: 사진 설명(대체 텍스트)
+  | { id: string; type: "image"; src?: string; alt: string }
+  // product: 이 구매 버튼이 가리키는 상품 (shop_posts.products 의 index)
+  | { id: string; type: "link"; product: number };
+
+export type ShopManualBlockType = ShopManualBlock["type"];
+
+export type ShopManualContent = {
+  kind: "manual";
+  blocks: ShopManualBlock[];
+  category?: string; // 관련 글 묶음용 (AI 글의 content.category 와 같은 자리라 관련 글 조회가 그대로 동작)
+  disclosure?: string; // 공정위 고지 문구 (작성 시점 설정값)
+  descriptionAuto?: boolean; // true = 검색 설명을 비워 둬서 저장 때마다 본문 앞부분으로 다시 만든다
+};
+
+export function isManualContent(c: unknown): c is ShopManualContent {
+  return !!c && typeof c === "object" && (c as { kind?: unknown }).kind === "manual" && Array.isArray((c as { blocks?: unknown }).blocks);
+}
+
+type ShopPostBase = {
   id: string;
   slug: string;
   title: string;
   description: string;
-  content: ShopPostContent;
   products: ShopPostInputProduct[];
   sources: ShopPostSource[];
   stats: ShopPostStats;
@@ -173,6 +199,16 @@ export type ShopPost = {
   published_at: string | null;
   updated_at: string;
 };
+
+// AI 가 쓴 글(예전 구성·칼럼)
+export type AiShopPost = ShopPostBase & { content: ShopPostContent };
+// 직접 붙여넣어 만든 글
+export type ManualShopPost = ShopPostBase & { content: ShopManualContent };
+export type ShopPost = AiShopPost | ManualShopPost;
+
+export function isManualPost(p: ShopPost): p is ManualShopPost {
+  return isManualContent(p.content);
+}
 
 // "함께 보면 좋은 글" 링크용 (공개된 글만)
 export type RelatedPost = Pick<ShopPost, "slug" | "title" | "products">;

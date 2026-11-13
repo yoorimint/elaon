@@ -10,7 +10,7 @@
 
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
-import { ownPhoto, withPhoto, type PhotoSpot, type ShopPostContent, type ShopPostInputProduct } from "@/lib/shop-post-types";
+import { isManualContent, ownPhoto, withPhoto, type PhotoSpot, type ShopPostContent, type ShopPostInputProduct } from "@/lib/shop-post-types";
 import { lintPost } from "./qa";
 
 const REQUEST_FILE = ".github/shop-maintain-request";
@@ -57,10 +57,10 @@ async function listPosts(): Promise<void> {
     const left = qa?.remaining?.length ?? "-";
     const links = (r.products ?? []).every((p) => p.link?.trim()) ? "링크있음" : "링크없음";
     // 사진: 글 데이터에 저장된 사진 수 / 사진 보관함에 올라간 파일 수 (다르면 저장이 안 된 것)
-    const saved = (r.products ?? []).reduce(
-      (n, p) => n + (p.image ? 1 : 0) + Object.keys(p.images ?? {}).length,
-      0,
-    );
+    // 직접 쓴 글은 사진이 본문 블록(content.blocks)에 있다
+    const saved = isManualContent(r.content)
+      ? r.content.blocks.filter((b) => b.type === "image" && b.src).length
+      : (r.products ?? []).reduce((n, p) => n + (p.image ? 1 : 0) + Object.keys(p.images ?? {}).length, 0);
     const files = await sb.storage.from("shop-images").list(r.id);
     const uploaded = files.error ? "?" : (files.data ?? []).length;
     console.log(
@@ -129,6 +129,11 @@ async function checkPosts(): Promise<void> {
   console.log(`🔎 지금 규칙으로 다시 검사 (${rows.length}개)`);
   const withIssues: { slug: string; status: string; count: number }[] = [];
   for (const r of rows) {
+    // 직접 붙여넣어 만든 글은 AI 글 규칙 검사 대상이 아님
+    if (isManualContent(r.content)) {
+      console.log(`- ${r.slug} | ${r.status} | 직접 쓴 글 — 검사 안 함 | ${r.title}`);
+      continue;
+    }
     // 화면에 나오지 않는 기록(qa·run·insights)은 빼고 글 본문만 검사
     const { qa: _qa, run: _run, insights: _insights, ...body } = r.content as ShopPostContent & Record<string, unknown>;
     void _qa;

@@ -131,11 +131,22 @@ async function collectTitles(secrets: Secrets, category: string): Promise<string
 // 후보 상품. type = 제품 종류 (비교글은 같은 종류끼리만 짝지음)
 type Candidate = { name: string; mentions: number; type: string };
 
-// 같은 종류인지 (띄어쓰기 무시, 한쪽이 다른 쪽을 포함해도 같은 종류로 봄: "팬히터" ⊂ "등유 팬히터")
-export function sameType(a: string, b: string): boolean {
-  const x = normText(a);
-  const y = normText(b);
-  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+// 같은 종류인지: 카테고리 이름을 뺀 핵심 단어가 하나라도 겹치면 같은 종류
+// ("여행용 대용량" ≈ "PD 대용량", "등유 팬히터" ≠ "카본 전기히터"). 한쪽이 카테고리 이름뿐이면 일반형이라 같은 종류로 봄.
+// (run #21: 표현이 조금만 달라도 다른 종류로 봐서 비교 짝을 하나도 못 지음)
+export function sameType(a: string, b: string, category = ""): boolean {
+  const cat = normText(category);
+  const words = (s: string) =>
+    s
+      .split(/[\s,/·()]+/)
+      .map(normText)
+      .map((w) => (cat && w !== cat ? w.replace(cat, "") : w === cat ? "" : w))
+      .filter((w) => w.length >= 2 && !["용", "형", "제품"].includes(w));
+  if (!normText(a) || !normText(b)) return false;
+  const x = words(a);
+  const y = words(b);
+  if (!x.length || !y.length) return true;
+  return x.some((w) => y.some((v) => w === v || w.includes(v) || v.includes(w)));
 }
 
 async function extractCandidates(secrets: Secrets, category: string): Promise<Candidate[]> {
@@ -206,14 +217,17 @@ export function isSafetyRisk(name: string, category: string, items: { title: str
 }
 
 // 안전 이슈 근거 기사 제목 (없으면 null) — 왜 제외했는지 로그에 남겨 오탐을 확인할 수 있게
+// 기사 "제목"에 이 제품(모델명) 또는 브랜드와 안전 단어가 함께 있어야 한다. 브랜드만 맞으면 본문에
+// 같은 종류(카테고리)도 나와야 한다. (run #21: 요약문 아무 데나 단어가 있으면 걸리게 해서 업계·실적 기사까지 제외됨)
 export function safetyNews(name: string, category: string, items: { title: string; description: string }[]): string | null {
   const brand = normText(brandOf(name));
   const cat = normText(category);
   const hit = items.find((it) => {
-    const raw = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
-    const text = normText(raw);
-    const aboutThis = mentionedIn(name, category, raw) || (brand.length >= 2 && text.includes(brand) && text.includes(cat));
-    return aboutThis && SAFETY_SIGNAL.test(raw);
+    const title = cleanNaverText(it.title);
+    if (!SAFETY_SIGNAL.test(title)) return false;
+    if (mentionedIn(name, category, title)) return true;
+    const text = normText(`${title} ${cleanNaverText(it.description)}`);
+    return brand.length >= 2 && normText(title).includes(brand) && text.includes(cat);
   });
   return hit ? cleanNaverText(hit.title) : null;
 }
@@ -332,7 +346,7 @@ export async function discoverProducts(
       for (const c of cands) {
         if (!(await hasReviews(c.name))) continue;
         for (const prev of ok) {
-          if (!sameType(prev.type, c.type)) continue;
+          if (!sameType(prev.type, c.type, category)) continue;
           const pair = [asProduct(prev.name), asProduct(c.name)];
           if (!usedPairKeys.has(pairKeyOf(pair))) {
             const names = [prev.name, c.name];

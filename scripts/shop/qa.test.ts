@@ -223,14 +223,31 @@ async function main() {
     assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", news), true);
     assert.equal(isSafetyRisk("포켓쉴 20000", "보조배터리", news), false);
     assert.equal(isSafetyRisk("케어팟 X50V", "가습기", [{ title: "가습기 살균제 리콜", description: "다른 회사" }]), false);
+    // run #21 오탐: 제목에 안전 단어가 없는 업계·실적 기사는 제외 사유가 아님
+    const industry = [
+      { title: "“삼성전자 관계자도 귀 ‘쫑긋’했대”…작심하고 내놓은 中앤커 새 이어폰", description: "보조배터리 리콜 이후 앤커는 무선이어폰 시장에" },
+      { title: "가민 아태 총괄 \"매년 2배 성장...글로벌 3위 목표\"", description: "스마트워치 시장, 경쟁사 화재 리콜 이후" },
+      { title: "비행기 안에서도 불붙었다…보조배터리 화재·사망 리콜 잇따라", description: "벨킨 등 여러 브랜드" },
+    ];
+    assert.equal(isSafetyRisk("앤커 사운드코어 P31i", "무선이어폰", industry), false);
+    assert.equal(isSafetyRisk("가민 포러너 265", "스마트워치", industry), false);
+    assert.equal(isSafetyRisk("벨킨 BPD014", "보조배터리", industry), false, "제목에 브랜드 없음");
+    // 진짜 리콜 기사는 계속 걸러짐
+    assert.equal(isSafetyRisk("보바 VA-123", "보조배터리", [{ title: "빠니보틀 광고한 '보바 맥세이프 보조배터리' 자발적 리콜", description: "" }]), true);
+    assert.equal(isSafetyRisk("경동나비엔 숙면매트 EQM555", "온수매트", [{ title: "경동나비엔과 하이젠, 온수매트 '리콜'", description: "온수매트 제품" }]), true);
   });
 
   // ---- 2026-11-13 run #19 (신일 팬히터 1200 vs 에디르 오방난로) ----
   await test("비교 짝짓기: 같은 종류만 (캠핑용 등유 팬히터 ≠ 카본 전기히터)", () => {
-    assert.equal(sameType("등유 팬히터", "카본 전기히터"), false);
-    assert.equal(sameType("등유 팬히터", "등유팬히터"), true);
-    assert.equal(sameType("팬히터", "등유 팬히터"), true);
-    assert.equal(sameType("", "등유 팬히터"), false);
+    assert.equal(sameType("등유 팬히터", "카본 전기히터", "전기히터"), false);
+    assert.equal(sameType("등유 팬히터", "등유팬히터", "전기히터"), true);
+    assert.equal(sameType("팬히터", "등유 팬히터", "전기히터"), true);
+    assert.equal(sameType("", "등유 팬히터", "전기히터"), false);
+    // run #21: 표현이 조금 달라도 같은 종류
+    assert.equal(sameType("여행용 대용량 보조배터리", "PD 대용량 보조배터리", "보조배터리"), true);
+    assert.equal(sameType("커널형 무선이어폰", "커널형 노이즈캔슬링 이어폰", "무선이어폰"), true);
+    assert.equal(sameType("스마트워치", "러닝 스마트워치", "스마트워치"), true);
+    assert.equal(sameType("오픈형 무선이어폰", "무선 게이밍 이어폰", "무선이어폰"), false);
   });
   await test("근거 보완: 핵심 단어가 자료 한 부분에 함께 있으면 근거 있음, 흩어져 있으면 없음", () => {
     const filler = "가".repeat(2000);

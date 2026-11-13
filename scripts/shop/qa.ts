@@ -170,9 +170,35 @@ const UNITS: [RegExp, string][] = [
   [/^평$/, "평"],
   [/^(㎡|m2|제곱미터)$/i, "㎡"],
   [/^%$/, "%"],
+  // 디지털·가전 사양 (run #33: 14.6인치·12GB·10.9형이 단위를 몰라 근거 확인 보완을 못 받고 삭제됨)
+  [/^(인치|형|")$/, "inch"],
+  [/^gb$/i, "gb"],
+  [/^tb$/i, "tb"],
+  [/^mb$/i, "mb"],
+  [/^khz$/i, "khz"],
+  [/^hz$/i, "hz"],
+  [/^kpa$/i, "kpa"],
+  [/^pa$/i, "pa"],
+  [/^rpm$/i, "rpm"],
+  [/^fps$/i, "fps"],
+  [/^nm$/i, "nm"],
 ];
-// 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
-const NUM_UNIT = /(?<![A-Za-z0-9.])(\d+(?:\.\d+)?)\s*(℃|°C|°|도|리터|ℓ|ml|㎖|cc|kW|W|와트|시간|분|kg|킬로|g|mm|cm|dB|데시벨|mAh|제곱미터|㎡|m2|평|%|L)(?![a-zA-Z가-힣])/g;
+// 숫자 뒤 단위 인식.
+// - 앞 글자가 영문·숫자면 모델명의 일부("MUSEPOP3도", "X50V")라서 수치로 보지 않는다
+// - 영문·기호 단위(GB, W, kg, % …) 뒤에는 한글 조사가 와도 된다 ("12GB이다", "1700W급")
+// - 한글 단위(도, 분, 형 …) 뒤에는 조사만 허용 → "40도예요"는 수치, "도움"·"분리"는 아님
+// 긴 표기를 짧은 표기보다 앞에 둔다 (kHz > Hz, kg > g)
+const LATIN_UNITS = ["℃", "°C", "°", "ml", "㎖", "mAh", "mm", "cm", "cc", "kW", "W", "kg", "g", "dB", "㎡", "m2", "%", '"', "GB", "TB", "MB", "kHz", "Hz", "kPa", "Pa", "rpm", "fps", "nm", "ℓ", "L"];
+const HANGUL_UNITS = ["제곱미터", "데시벨", "리터", "와트", "시간", "킬로", "인치", "도", "분", "평", "형"];
+// '의'는 빼둠: "3분의 1"(분수)을 3분으로 오인하지 않도록
+const PARTICLE_START = "[이가은는을를로으과와까대정예짜에만씩부쯤내]";
+const NUM_UNIT = new RegExp(
+  `(?<![A-Za-z0-9.])(\\d+(?:\\.\\d+)?)\\s*(` +
+    `(?:${LATIN_UNITS.join("|")})(?![A-Za-z])` +
+    `|(?:${HANGUL_UNITS.join("|")})(?![A-Za-z])(?=${PARTICLE_START}|[^가-힣]|$)` +
+    `)`,
+  "g",
+);
 
 function unitOf(raw: string): string | null {
   for (const [re, u] of UNITS) if (re.test(raw)) return u;

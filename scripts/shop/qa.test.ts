@@ -293,6 +293,37 @@ async function main() {
     w.content.comparison = [...w.content.comparison, { label: "무게", values: ["확인 안 됨"] }];
     assert.ok(lintPost(w, 1).some((x) => x.includes('"무게"') && x.includes("삭제")));
   });
+  await test("디지털 사양 단위: 14.6인치 = 14.6형, 12GB, 45000Pa 도 수치로 근거 확인", () => {
+    const ev = "갤럭시탭 S12 울트라 14.6형 화면, 램 12GB, 흡입력 45,000Pa";
+    const issues = judgeAudit(
+      {
+        claims: [
+          { section: "고르는 기준", claim: "S12 울트라는 14.6인치이다", quote: "" },
+          { section: "표", claim: "램은 12GB이다", quote: "" },
+          { section: "표", claim: "흡입력 45,000Pa", quote: "" },
+          { section: "표", claim: "램은 16GB이다", quote: "" },
+        ],
+      },
+      ev,
+      ["고르는 기준", "표"],
+    );
+    assert.equal(issues.length, 1, issues.join("\n"));
+    assert.ok(issues[0].includes("16GB"));
+  });
+  await test("단위 뒤 조사: '40도예요'는 수치, '도움'·'분리'·'3분의 1'은 수치 아님", () => {
+    const ev = "물 온도 40도, 소음 35dB";
+    const w = {
+      title: "t",
+      description: "d",
+      content: {
+        products: [{ name: "가습기 A" }],
+      },
+    } as unknown as Parameters<typeof checkNumbers>[0];
+    const make = (text: string) => ({ ...w, description: text }) as typeof w;
+    assert.equal(checkNumbers(make("물은 40도예요, 소음은 35dB이에요"), ev).length, 0);
+    assert.equal(checkNumbers(make("물은 60도예요"), ev).length, 1);
+    assert.equal(checkNumbers(make("3도움이 되고 5분리가 쉬워요, 3분의 1"), ev).length, 0);
+  });
   await test("천 단위 쉼표 표기 차이는 같은 수치 (1,700W = 1700W)", () => {
     const w = structuredClone(real);
     w.content.comparison[0] = { label: "소비전력", values: ["1700W"] };

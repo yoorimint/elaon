@@ -8,6 +8,7 @@
 
 import type { ManualProduct } from "@/lib/shop-config";
 import { AUTO_CATEGORIES } from "./categories";
+import { generationMentions } from "./names";
 import { StrongModelUnavailableError } from "./providers/gemini";
 import { generate } from "./providers/llm";
 import { cleanNaverText, naverSearch, searchTrend, type NaverSearchType, type TrendResult } from "./providers/naver";
@@ -212,12 +213,8 @@ export function countRealReviews(name: string, category: string, items: { title:
 // 이 글이 이름 뒤에 숫자가 붙은 다른 세대 제품 이야기인지 ("JBL TUNE BEAM" 인데 글은 "TUNE BEAM 2")
 // (run #24: 1세대 이름으로 골랐는데 2세대 후기·스펙이 섞여 글 제목이 BEAM2 가 됨)
 export function isOtherGeneration(name: string, text: string): boolean {
-  const n = normText(name);
-  const t = normText(text);
-  for (let i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + 1)) {
-    if (!/[0-9]/.test(t[i + n.length] ?? "")) return false; // 정확히 이 이름으로 나온 곳이 있음
-  }
-  return t.includes(n); // 이름은 있지만 모두 뒤에 숫자가 붙음 → 다른 세대
+  const g = generationMentions(name, text);
+  return g.other && !g.exact; // 이름은 있지만 모두 뒤에 세대 숫자가 붙음 → 다른 세대 글
 }
 
 // ---------- 안전 이슈 (리콜·화재 등) ----------

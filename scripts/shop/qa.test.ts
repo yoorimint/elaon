@@ -311,6 +311,11 @@ async function main() {
     assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("다른 세대")));
     w.title = "JBL TUNE BEAM 후기 · 장단점 총정리";
     assert.ok(!lintPost(w, 1).some((x) => x.includes("다른 세대")));
+    // run #31 오탐: 이름이 숫자로 끝나면(메가 3L) 뒤의 "2단계"는 세대가 아님
+    w.content.products = [{ ...w.content.products[0], name: "쿠쿠 에코웨일 메가 3L" }];
+    w.description = "쿠쿠 에코웨일 메가 3L, 2단계 건조 방식 후기";
+    w.title = "쿠쿠 에코웨일 메가 3L 후기";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("다른 세대")), lintPost(w, 1).join("\n"));
   });
   await test("안전 필터: 3년 넘은 기사, 제목에 카테고리 없는 브랜드 기사는 제외 사유 아님", () => {
     const old = [{ title: "아이폰7 흥행 성공, 갤럭시노트7 리콜 때문만일까", description: "무선이어폰 시장", pubDate: "Mon, 12 Sep 2016 09:00:00 +0900" }];

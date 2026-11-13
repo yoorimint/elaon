@@ -374,7 +374,9 @@ export function longParagraphIssues(w: WrittenPost): string[] {
 // 구성 부족([구성]) 하한은 목표(COLUMN_GOALS)보다 낮게: 섹션이 비었거나 망가졌는지만 본다 (이유는 MIN_SECTION 주석과 같음).
 export const MIN_COLUMN = {
   stories: 3, // 이야기 꼭지 수 — 칼럼의 뼈대라 목표(3~4개)의 아래 끝을 하한으로
-  storyChars: 100, // 꼭지 본문 (2~3문장 문단 하나도 못 되는 길이)
+  // 꼭지 본문 최소 글자. 100 → 150 (점검 실행 44: 버즈3 프로 꼭지가 한 문장짜리 문단 3개·약 130자로 통과해 얇았음.
+  // 목표는 2~3문장 문단 2~3개 ≈ 250자 이상. 150자는 2문장 문단 두 개가 겨우 되는 길이)
+  storyChars: 150,
   hookSentences: 3, // 도입: 상황 + 질문 + 방법 한 줄
   hookChars: 90,
   people: 2, // 사세요 / 다른 걸 보세요 각각
@@ -416,6 +418,13 @@ export function columnIssues(w: WrittenPost): string[] {
   col.stories.forEach((x, i) => {
     if (x.body.length < MIN_COLUMN.storyChars) issues.push(`${S}이야기 꼭지 "${x.heading.slice(0, 20)}"(stories[${i}].body)가 짧음 → 무엇이 → 왜 중요한지 → 주의점, ${COLUMN_GOALS.storyParagraphs} 짧은 문단`);
   });
+  // 주어와 서술이 안 맞는 문장: "사용자들은 노이즈 캔슬링 성능이 괜찮은 편이에요" (점검 실행 44 — 근거 말버릇을 줄이다 생김)
+  col.stories.forEach((x, i) =>
+    rawParagraphs(withoutQuotes(x.body))
+      .flatMap(sentencesOf)
+      .filter((s) => AWKWARD_SUBJECT.test(s))
+      .forEach((s) => issues.push(`stories[${i}].body: "${s.slice(0, 40)}" — "사용자들은"과 "~편이에요"가 안 맞는 문장 → "사용자들은 ~다고 해요" 또는 주어를 빼고 "~편이에요"로`)),
+  );
   const headings = col.stories.map((x) => norm(x.heading));
   headings.forEach((h, i) => {
     if (h && headings.indexOf(h) !== i) issues.push(`이야기 꼭지 소제목 "${col.stories[i].heading}"이 겹침 → 꼭지마다 다른 소제목`);
@@ -457,6 +466,8 @@ export function columnIssues(w: WrittenPost): string[] {
   return issues;
 }
 
+// "사용자들은 …편이에요/쪽이에요": 주어(사용자들)와 서술(제품 평가)이 어긋난 문장
+const AWKWARD_SUBJECT = /^(사용자들|구매자들|이용자들)(은|이)\s(?!.*(다고|라고|말해|꼽|평가|느껴|느낀|봐요|해요|써요|쓰고)).*(편이에요|쪽이에요)[.!]?$/;
 // 소제목이 "~예요/~해요/~다"처럼 문장으로 끝남 (물음표로 끝나는 질문형은 통과)
 const SENTENCE_HEADING = /(요|다|니다|죠)[.!]?$/;
 

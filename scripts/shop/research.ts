@@ -109,6 +109,10 @@ async function webReviewSkipReason(secrets: Secrets): Promise<string | null> {
   if (webReviewSpent + WEB_REVIEW_EST_MAX_USD > WEB_REVIEW_MAX_USD_PER_RUN) {
     return `이번 실행 웹 리뷰 비용 $${webReviewSpent.toFixed(3)} — 실행당 상한 $${WEB_REVIEW_MAX_USD_PER_RUN}`;
   }
+  // 수동·점검 실행(SHOP_FORCE=1)은 글 작성도 하루 상한을 보지 않으므로(generate-post.ts) 웹 리뷰도 맞춘다 — 실행당 상한($0.2)만 적용.
+  // 점검 실행 44: 그날 점검 실행들이 쓴 비용($2.05)이 이미 상한을 넘어 웹 리뷰가 한 번도 돌지 못해 시험이 안 됐다.
+  // 매시간 운영 실행은 그대로 하루 상한을 본다.
+  if (process.env.SHOP_FORCE === "1") return null;
   // 실행 기록을 못 읽으면 이번 실행 비용만으로 판단 (실행당 상한이 따로 막아 줌)
   const today = ((await spentToday()) ?? 0) + usageSummary().costUsd;
   if (today + WEB_REVIEW_EST_MAX_USD + WEB_REVIEW_RESERVE_USD > MAX_COST_USD_PER_DAY) {

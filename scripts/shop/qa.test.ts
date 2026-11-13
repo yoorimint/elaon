@@ -1282,6 +1282,17 @@ async function main() {
     w.content.column!.stories[3].heading = "문턱 많은 집에서도 괜찮을까?";
     assert.ok(!lintPost(w, 1).some((x) => x.includes("stories[3].heading")), "질문형은 통과");
   });
+  await test("점검 실행 44: '사용자들은 ~편이에요' 어긋난 문장 검출, 꼭지 본문 하한 150자", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[1].body = "사용자들은 액티브 노이즈 캔슬링 성능이 괜찮은 편이에요. " + w.content.column!.stories[1].body;
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("stories[1].body") && x.includes("안 맞는 문장")));
+    w.content.column!.stories[1].body = "사용자들은 노이즈 캔슬링이 괜찮다고 해요. 소음 많은 출근길에도 음악이 또렷한 편이에요. " + roborockColumn.content.column!.stories[1].body;
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("안 맞는 문장")), lintPost(w, 1).join("\n"));
+    assert.equal(MIN_COLUMN.storyChars, 150);
+    const thin = structuredClone(roborockColumn);
+    thin.content.column!.stories[0].body = "후기를 모아 보면 음질이 좋은 쪽이에요.\n\n음악을 오래 듣는 분이라면 이 차이가 먼저 느껴질 거예요.\n\n다만 상태 문제는 아래 단점에서 다뤄요.";
+    assert.ok(lintPost(thin, 1).some((x) => x.startsWith(STRUCTURAL) && x.includes("stories[0].body)가 짧음")));
+  });
   await test("⑤ 몇 건 살펴봤는지: 플랫폼 이름 없이 '실사용 후기 N여 건과 리뷰 글 M편', 과장 표현 없음", () => {
     const t = readCountText({ naverReviews: 100, youtubeVideos: 3, youtubeComments: 76, webSources: 0 }, 3)!;
     assert.equal(t.split(".")[0], "실사용 후기 170여 건과 리뷰 글 3편을 살펴봤어요");

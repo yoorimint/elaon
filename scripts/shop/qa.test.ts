@@ -232,6 +232,17 @@ async function main() {
     const issues = judgeAudit({ claims: [{ section: "표", claim: "포켓쉴 20000 무게 315g", quote: "무게는 315그램이에요" }] }, ev, ["표"]);
     assert.deepEqual(issues, []);
   });
+  await test("수집 경로('웹문서 기재')·다른 제품 후기 섞기 검출, 일반 비교 권유는 통과", () => {
+    const w = structuredClone(real);
+    w.content.comparison = [{ label: "품질보증", values: ["5년(웹문서 기재)"] }];
+    w.content.faq = [{ q: "세탁되나요?", a: "가능하다고 적혀 있어요. 다만 세탁이 어렵다는 다른 제품 후기도 있어요." }];
+    const issues = lintPost(w, 1);
+    assert.ok(issues.some((x) => x.startsWith("comparison[0]") && x.includes("수집 경로")), issues.join("\n"));
+    assert.ok(issues.some((x) => x.startsWith("faq[0]") && x.includes("다른 제품")), issues.join("\n"));
+    const ok = structuredClone(real);
+    ok.content.summary = "넓은 면적이 필요하면 다른 제품도 함께 비교해 보세요.";
+    assert.ok(!lintPost(ok, 1).some((x) => x.includes("다른 제품") || x.includes("수집 경로")));
+  });
   await test("후기 출처의 광고 이야기 문장 검출", () => {
     const w = structuredClone(real);
     w.content.commonComplaints = ["광고 글 주의 · 블로그 후기에 파트너스 문구가 많아 과장된 칭찬은 걸러서 보세요"];

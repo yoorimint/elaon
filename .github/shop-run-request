@@ -1,5 +1,5 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 "shop post" 가 그 브랜치 코드로 1회 실행된다.
 # (.github/workflows/shop-post.yml 의 push 트리거) — 운영 점검·수정 검증용
 # type: single 또는 type: compare 줄이 있으면 이번 점검 실행만 그 글 종류로 쓴다 (운영 실행은 관리자 설정대로)
-run: 42 — 칼럼 구성 첫 점검 1/2
+run: 43 — 칼럼 구성 점검 2/2 (42 결과 반영)
 type: single

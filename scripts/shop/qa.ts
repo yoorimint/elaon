@@ -96,6 +96,20 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
     }
   }
 
+  // 상품명과 다른 세대 이름 (상품 "JBL TUNE BEAM" 인데 제목에 "TUNE BEAM2")
+  for (const p of c.products) {
+    const n = norm(p.name);
+    for (const { path, text } of allText(w)) {
+      const t = norm(text);
+      for (let i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + 1)) {
+        if (/[0-9]/.test(t[i + n.length] ?? "")) {
+          issues.push(`${path}: 상품명 "${p.name}"과 다른 세대 이름이 쓰임 → "${p.name}"으로 통일하고 다른 세대 정보는 빼기`);
+          break;
+        }
+      }
+    }
+  }
+
   // 분량·형식 (작성 가이드)
   if (!c.summary) issues.push("summary(한 줄 결론) 없음");
   if (c.comparison.length < 4) issues.push(`표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);

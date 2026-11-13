@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isSafetyRisk, mentionedIn, sameType } from "./discover";
+import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
 import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
 import { StrongModelUnavailableError, geminiGenerate, shortError } from "./providers/gemini";
@@ -263,6 +263,32 @@ async function main() {
     w.content.comparison[0] = { label: "난방 면적", values: ["33㎡"] };
     assert.ok(checkNumbers(w, "난방 면적 33평").some((x) => x.includes("33㎡")));
     assert.ok(!checkNumbers(w, "난방 면적 33㎡").some((x) => x.includes("33㎡")));
+  });
+
+  // ---- 2026-11-13 run #24: 세대 혼동(TUNE BEAM vs BEAM2), 오래된 리콜 기사 ----
+  await test("다른 세대 후기는 세지 않음, 같은 세대는 셈", () => {
+    assert.equal(isOtherGeneration("JBL TUNE BEAM", "JBL TUNE BEAM 2 한달 사용 후기"), true);
+    assert.equal(isOtherGeneration("JBL TUNE BEAM", "JBL TUNE BEAM 후기, BEAM 2 와 비교"), false);
+    assert.equal(isOtherGeneration("갤럭시 버즈3 프로", "갤럭시 버즈3 프로 후기"), false);
+    const items = [
+      { title: "JBL TUNE BEAM 2 한달 사용 후기", description: "노캔 솔직 리뷰" },
+      { title: "JBL TUNE BEAM 솔직 후기", description: "한달 사용" },
+    ];
+    assert.equal(countRealReviews("JBL TUNE BEAM", "무선이어폰", items), 1);
+  });
+  await test("글에 상품명과 다른 세대 이름이 있으면 검출", () => {
+    const w = structuredClone(real);
+    w.content.products = [{ ...w.content.products[0], name: "JBL TUNE BEAM" }];
+    w.title = "JBL TUNE BEAM2 후기 · 장단점 총정리";
+    assert.ok(lintPost(w, 1).some((x) => x.startsWith("제목") && x.includes("다른 세대")));
+    w.title = "JBL TUNE BEAM 후기 · 장단점 총정리";
+    assert.ok(!lintPost(w, 1).some((x) => x.includes("다른 세대")));
+  });
+  await test("안전 필터: 3년 넘은 기사, 제목에 카테고리 없는 브랜드 기사는 제외 사유 아님", () => {
+    const old = [{ title: "아이폰7 흥행 성공, 갤럭시노트7 리콜 때문만일까", description: "무선이어폰 시장", pubDate: "Mon, 12 Sep 2016 09:00:00 +0900" }];
+    assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", old), false);
+    const recentNoCat = [{ title: "갤럭시 스마트폰 리콜", description: "무선이어폰도 언급", pubDate: new Date().toUTCString() }];
+    assert.equal(isSafetyRisk("갤럭시 버즈2 프로", "무선이어폰", recentNoCat), false);
   });
 
   // ---- 숫자 검사 ----

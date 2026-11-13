@@ -156,6 +156,7 @@ async function extractCandidates(secrets: Secrets, category: string): Promise<Ca
 여기서 소비자들이 실제로 많이 언급하는 구체적인 제품(브랜드 + 모델명)을 언급이 많은 순서로 최대 ${MAX_CANDIDATES}개 뽑아줘.
 규칙: 자료에 나온 것만. 카테고리 이름·일반명사·쇼핑몰 이름·브랜드만 있는 것(모델명 없음)은 제외. 같은 제품의 다른 표기는 하나로 합쳐.
 type 에는 제품 종류를 적어. 용도나 방식이 다르면 다른 종류야(예: 캠핑용 등유 팬히터 ≠ 실내용 카본 전기히터).
+세대·버전 숫자는 정확히 (예: "TUNE BEAM 2", "버즈3 프로"). 세대가 다르면 다른 제품이야.
 
 ${lines.map((l) => `- ${l}`).join("\n")}`;
   // lite 모델은 "조지루시 가습기" 같은 브랜드명을 뽑아 와서 금지
@@ -199,8 +200,24 @@ const AD_SIGNAL = /최저가|특가|할인|쿠폰|핫딜|공구|공동구매|구
 export function countRealReviews(name: string, category: string, items: { title: string; description: string }[]): number {
   return items.filter((it) => {
     const text = `${cleanNaverText(it.title)} ${cleanNaverText(it.description)}`;
-    return mentionedIn(name, category, text) && REVIEW_SIGNAL.test(text) && !AD_SIGNAL.test(text);
+    return (
+      mentionedIn(name, category, text) &&
+      !isOtherGeneration(name, text) &&
+      REVIEW_SIGNAL.test(text) &&
+      !AD_SIGNAL.test(text)
+    );
   }).length;
+}
+
+// 이 글이 이름 뒤에 숫자가 붙은 다른 세대 제품 이야기인지 ("JBL TUNE BEAM" 인데 글은 "TUNE BEAM 2")
+// (run #24: 1세대 이름으로 골랐는데 2세대 후기·스펙이 섞여 글 제목이 BEAM2 가 됨)
+export function isOtherGeneration(name: string, text: string): boolean {
+  const n = normText(name);
+  const t = normText(text);
+  for (let i = t.indexOf(n); i >= 0; i = t.indexOf(n, i + 1)) {
+    if (!/[0-9]/.test(t[i + n.length] ?? "")) return false; // 정확히 이 이름으로 나온 곳이 있음
+  }
+  return t.includes(n); // 이름은 있지만 모두 뒤에 숫자가 붙음 → 다른 세대
 }
 
 // ---------- 안전 이슈 (리콜·화재 등) ----------
@@ -212,22 +229,38 @@ export function brandOf(name: string): string {
   return name.split(/\s+/)[0] ?? "";
 }
 
-export function isSafetyRisk(name: string, category: string, items: { title: string; description: string }[]): boolean {
+export function isSafetyRisk(
+  name: string,
+  category: string,
+  items: { title: string; description: string; pubDate?: string }[],
+): boolean {
   return safetyNews(name, category, items) !== null;
 }
 
 // 안전 이슈 근거 기사 제목 (없으면 null) — 왜 제외했는지 로그에 남겨 오탐을 확인할 수 있게
 // 기사 "제목"에 이 제품(모델명) 또는 브랜드와 안전 단어가 함께 있어야 한다. 브랜드만 맞으면 본문에
 // 같은 종류(카테고리)도 나와야 한다. (run #21: 요약문 아무 데나 단어가 있으면 걸리게 해서 업계·실적 기사까지 제외됨)
-export function safetyNews(name: string, category: string, items: { title: string; description: string }[]): string | null {
+const SAFETY_NEWS_YEARS = 3;
+
+export function safetyNews(
+  name: string,
+  category: string,
+  items: { title: string; description: string; pubDate?: string }[],
+  now = Date.now(),
+): string | null {
   const brand = normText(brandOf(name));
   const cat = normText(category);
+  const cutoff = now - SAFETY_NEWS_YEARS * 365 * 24 * 3600 * 1000;
   const hit = items.find((it) => {
+    // 오래된 기사는 무시 (run #24: 2016년 갤럭시노트7 리콜 기사로 갤럭시 버즈 제외)
+    const t = it.pubDate ? Date.parse(it.pubDate) : NaN;
+    if (Number.isFinite(t) && t < cutoff) return false;
     const title = cleanNaverText(it.title);
     if (!SAFETY_SIGNAL.test(title)) return false;
     if (mentionedIn(name, category, title)) return true;
-    const text = normText(`${title} ${cleanNaverText(it.description)}`);
-    return brand.length >= 2 && normText(title).includes(brand) && text.includes(cat);
+    // 브랜드로만 맞으면 제목에 같은 종류(카테고리)도 있어야 함
+    const tn = normText(title);
+    return brand.length >= 2 && tn.includes(brand) && tn.includes(cat);
   });
   return hit ? cleanNaverText(hit.title) : null;
 }

@@ -280,8 +280,18 @@ async function realReviewCount(secrets: Secrets, name: string, category: string)
 
 // 구체적인 제품(브랜드 + 모델명)인지. "조지루시 가습기"처럼 브랜드 + 카테고리뿐이면 아님.
 // 카테고리 단어를 뺀 나머지가 두 단어(브랜드 + 모델) 이상이어야 한다.
+// 제품 종류를 뜻하는 일반 명사 (모델명이 아님). 카테고리 이름 전부 + 자주 나오는 종류 이름
+const GENERIC_NOUNS = new Set([
+  ...AUTO_CATEGORIES,
+  "급수기", "정수기", "팬히터", "히터", "난로", "매트", "이어폰", "헤드폰", "스피커", "청소기", "배터리", "충전기",
+  "가습기", "선풍기", "드라이기", "워치", "밥솥", "포트", "블렌더", "믹서기", "의자", "자전거", "보조배터리",
+]);
+const isGenericNoun = (w: string) =>
+  GENERIC_NOUNS.has(w) || (/^[가-힣]{2,4}기$/.test(w) && !/[0-9A-Za-z]/.test(w)); // "급수기", "제습기" 같은 ~기
+
 export function isModelName(name: string, category: string): boolean {
-  const words = name.split(/\s+/).filter((w) => w && !category.includes(w));
+  // 카테고리 단어·종류 이름을 뺀 나머지가 브랜드 + 모델 두 단어 이상 (run #28: "두잇 급수기"는 모델명이 아님)
+  const words = name.split(/\s+/).filter((w) => w && !category.includes(w) && !isGenericNoun(w));
   return words.length >= 2;
 }
 

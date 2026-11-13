@@ -80,6 +80,13 @@ async function main() {
     for (const bad of ["조지루시 가습기", "케어팟 가습기", "스텐팟 가습기", "가습기", "조지루시"]) {
       assert.equal(isModelName(bad, "가습기"), false, bad);
     }
+    // run #28: 다른 종류 이름(급수기)이 붙은 브랜드명
+    for (const bad of ["두잇 급수기", "신일 팬히터"]) {
+      assert.equal(isModelName(bad, "정수기"), false, bad);
+    }
+    for (const ok of ["신일 팬히터 1200", "닌자 크리스피 에어프라이어", "비나잇 워셔블 온수매트"]) {
+      assert.equal(isModelName(ok, "온수매트"), true, ok);
+    }
     for (const ok of ["케어팟 X50V", "미로 MH7000", "조지루시 EE-DVH35K", "에어메이드 더 위대한 2.0", "쿠쿠 인스퓨어 가습기"]) {
       assert.equal(isModelName(ok, "가습기"), true, ok);
     }

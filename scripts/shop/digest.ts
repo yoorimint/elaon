@@ -15,6 +15,10 @@ export type ProductDigest = {
   specs: { label: string; value: string }[];
   buyerQuestions: { q: string; a: string }[];
   bestFor: string;
+  // 출처마다 다른 정보 (run #30: "물걸레 구성" vs "물걸레 별매", run #28: "1100ml" vs "용량이 적다")
+  conflicts: { topic: string; views: string }[];
+  // 실제 사용자가 알려준 구체적 사용 요령·환경 (얇은 글 보강용)
+  tips: string[];
 };
 
 const SYSTEM = `너는 제품 후기 분석가야. 주어진 자료만 근거로 분석한다.
@@ -22,6 +26,7 @@ const SYSTEM = `너는 제품 후기 분석가야. 주어진 자료만 근거로
 - mentions 는 비슷한 의견이 자료에서 몇 번 나왔는지 대략 센 값.
 - 광고처럼 보이는 과장된 칭찬은 낮게 평가한다.
 - 스펙은 자료에 숫자·명칭이 명시된 것만. 가격은 쓰지 않는다.
+- 출처마다 다른 정보(구성품 포함 여부, 수치, 기능 지원 여부)는 specs 에 한쪽만 적지 말고 conflicts 에 적는다.
 - 해요체.`;
 
 const SCHEMA = {
@@ -63,8 +68,25 @@ const SCHEMA = {
       },
     },
     bestFor: { type: "string", description: "이런 사람에게 맞는다" },
+    conflicts: {
+      type: "array",
+      description: "출처마다 다르게 말하는 정보 (구성품 포함 여부, 용량·무게 수치, 기능 지원 여부 등)",
+      items: {
+        type: "object",
+        properties: {
+          topic: { type: "string", description: "무엇에 대한 정보인지 (예: 물걸레 구성)" },
+          views: { type: "string", description: "어떻게 엇갈리는지 (예: 기본 포함이라는 글과 별매라는 글이 있음)" },
+        },
+        required: ["topic", "views"],
+      },
+    },
+    tips: {
+      type: "array",
+      items: { type: "string" },
+      description: "실사용자가 알려준 구체적인 사용 요령·관리 방법·사용 환경 (자료에 있는 것만)",
+    },
   },
-  required: ["summary", "strengths", "weaknesses", "complaints", "specs", "buyerQuestions", "bestFor"],
+  required: ["summary", "strengths", "weaknesses", "complaints", "specs", "buyerQuestions", "bestFor", "conflicts", "tips"],
 };
 
 function material(r: ProductResearch): string {
@@ -114,6 +136,11 @@ export async function digestProduct(secrets: Secrets, r: ProductResearch): Promi
       .map((x) => ({ q: str(x.q), a: str(x.a) }))
       .filter((x) => x.q && x.a)
       .slice(0, 6),
+    conflicts: list<Record<string, unknown>>(o.conflicts)
+      .map((x) => ({ topic: str(x.topic), views: str(x.views) }))
+      .filter((x) => x.topic && x.views)
+      .slice(0, 6),
+    tips: list<unknown>(o.tips).map(str).filter(Boolean).slice(0, 8),
     bestFor: str(o.bestFor),
   };
 }
@@ -133,7 +160,11 @@ ${d.complaints.map((c) => `- ${c}`).join("\n") || "(없음)"}
 ${d.specs.map((s) => `- ${s.label}: ${s.value}`).join("\n") || "(없음)"}
 구매자 질문:
 ${d.buyerQuestions.map((x) => `- Q. ${x.q} / A. ${x.a}`).join("\n") || "(없음)"}
-추천 대상: ${d.bestFor}`;
+추천 대상: ${d.bestFor}
+출처마다 엇갈리는 정보 (한쪽으로 단정하지 말 것):
+${(d.conflicts ?? []).map((x) => `- ${x.topic}: ${x.views}`).join("\n") || "(없음)"}
+실사용 팁:
+${(d.tips ?? []).map((t) => `- ${t}`).join("\n") || "(없음)"}`;
 }
 
 // 화면 막대그래프용: 언급 횟수를 상품 안에서 가장 많은 것 대비 0~1 로 (숫자 자체는 노출하지 않음)

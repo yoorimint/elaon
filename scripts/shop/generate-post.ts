@@ -102,7 +102,9 @@ async function main() {
   for (const r of research) {
     try {
       const d = await digestProduct(secrets, r);
-      console.log(`  - ${r.product.name}: 장점 ${d.strengths.length} · 단점 ${d.weaknesses.length} · 스펙 ${d.specs.length} · 구매자 질문 ${d.buyerQuestions.length}`);
+      console.log(
+        `  - ${r.product.name}: 장점 ${d.strengths.length} · 단점 ${d.weaknesses.length} · 스펙 ${d.specs.length} · 구매자 질문 ${d.buyerQuestions.length} · 엇갈리는 정보 ${d.conflicts.length} · 실사용 팁 ${d.tips.length}`,
+      );
       digests.push(d);
     } catch (e) {
       if (e instanceof StrongModelUnavailableError) throw e;

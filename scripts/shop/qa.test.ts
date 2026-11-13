@@ -278,6 +278,11 @@ async function main() {
     assert.equal(locallySupported("신일 팬히터는 텐트 안을 빠르게 데운다", ev, products), false, "떨어진 단어 짜깁기");
     assert.equal(locallySupported("에디르는 자동 살균 기능이 있다", ev, products), false);
   });
+  await test("비교표에서 모든 제품이 '확인 안 됨'인 행은 삭제 지적", () => {
+    const w = structuredClone(real);
+    w.content.comparison = [...w.content.comparison, { label: "무게", values: ["확인 안 됨"] }];
+    assert.ok(lintPost(w, 1).some((x) => x.includes('"무게"') && x.includes("삭제")));
+  });
   await test("천 단위 쉼표 표기 차이는 같은 수치 (1,700W = 1700W)", () => {
     const w = structuredClone(real);
     w.content.comparison[0] = { label: "소비전력", values: ["1700W"] };

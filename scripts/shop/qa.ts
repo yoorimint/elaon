@@ -113,6 +113,9 @@ export function lintPost(w: WrittenPost, productCount: number): string[] {
   }
   if (c.comparison.length < 4) issues.push(`표 항목이 ${c.comparison.length}개 → 근거 자료에서 6개 이상`);
   c.comparison.forEach((row) => {
+    if (row.values.length && row.values.every((v) => /확인\s*안\s*됨|확인되지 않|확인 필요/.test(v))) {
+      issues.push(`표 항목 "${row.label}": 모든 제품이 확인 안 됨 → 이 행 삭제`);
+    }
     if (row.label.length > 8) issues.push(`표 항목명 "${row.label}"이 김 → 6자 이내 명사`);
     row.values.forEach((v) => {
       if (v.length > 15) issues.push(`표 값 "${v}"이 김 → 12자 이내 짧은 값`);

@@ -446,10 +446,10 @@ async function main() {
   });
 
   // ---- 합격선 (사람 없이 내보낼 수 있는 글인지) ----
-  await test("합격선: AI 검수 + 남은 문제 1개 이하 + 근거 부족 경고·구성 부족 없음", () => {
+  await test("합격선: AI 검수 + 남은 문제 0개 + 근거 부족 경고·구성 부족 없음", () => {
     const base = { checkedAt: "", issuesFound: 5, remaining: [] as string[], aiChecked: true };
     assert.equal(judgeQuality(base).passed, true);
-    assert.equal(judgeQuality({ ...base, remaining: ["a"] }).passed, true);
+    assert.equal(judgeQuality({ ...base, remaining: ["a"] }).passed, false, "문제가 1개라도 남으면 불합격");
     assert.equal(judgeQuality({ ...base, remaining: ["a", "b"] }).passed, false);
     assert.equal(judgeQuality({ ...base, aiChecked: false }).passed, false);
     const thin = judgeQuality({ ...base, remaining: ['브리츠 MUSEPOP3: 표 8항목 중 5개가 "확인 안 됨" — 후기가 부족한 상품이라 비교 근거가 약함 (발행 전 확인)'] });

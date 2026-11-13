@@ -2,13 +2,14 @@
 // - AI 검수를 실제로 했어야 함 (모델이 막혀 규칙 검사만 했으면 불합격)
 // - 후기가 부족한 상품(비교표 절반 이상 "확인 안 됨")이 없어야 함
 // - 구성 문제(섹션이 비거나 빈약함)가 없어야 함
-// - 수정 후에도 남은 문제가 MAX_REMAINING 개 이하
+// - 수정 후에도 남은 문제가 MAX_REMAINING 개 이하 (현재 0개 — 하나도 남으면 안 됨)
 // 합격한 글만 "오늘 쓴 글 수"에 세고, 자동 발행도 합격한 글만 한다.
 
 import type { ShopPostQa } from "@/lib/shop-post-types";
 import { isStructuralIssue } from "./qa";
 
-export const MAX_REMAINING = 1;
+// 0: 근거 없는 문장·모순 등 검수 문제가 하나라도 남으면 불합격 (사용자 결정, 2026-11-13)
+export const MAX_REMAINING = 0;
 // 하루에 품질 미달로 남기는 초안 상한 (넘으면 그날은 더 시도하지 않음 — 같은 문제로 비용만 쓰는 것 방지)
 export const MAX_BELOW_BAR_PER_DAY = 3;
 // 하루 실패(오류·상품 못 찾음 등) 상한 — 같은 원인으로 매시간 비용만 쓰는 것 방지

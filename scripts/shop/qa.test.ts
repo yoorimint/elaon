@@ -1194,6 +1194,24 @@ async function main() {
     assert.ok(!lintPost(roborockOld, 1).some((x) => x.startsWith("같은 사실 반복") || x.includes("이야기 꼭지")), lintPost(roborockOld, 1).join("\n"));
     assert.deepEqual(columnIssues(roborockOld), []);
   });
+  // 점검 실행 42 (케어팟 X50V 1차 미달)에서 나온 것
+  await test("같은 사실 반복: 안내 틀('판매 페이지·아래 단점에서')만 겹치면 오탐하지 않음, 꼭지↔단점 겹침은 단점 쪽에 남기라고 안내", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[1].body += "\n\n방식 설명은 판매 페이지와 후기 사이에 차이가 있어서, 아래 단점에서 따로 짚을게요.";
+    w.content.column!.stories[3].body += "\n\n살균 방식은 판매 페이지 설명과 함께 아래에서 따로 볼게요.";
+    assert.deepEqual(repeatedFacts(factUnits(w), ["로보락 S10"]), []);
+    const d = structuredClone(roborockColumn);
+    d.content.column!.stories[1].body += "\n\n가격대가 높아 로봇청소기를 처음 들이는 분에게는 부담이 커요.";
+    const issues = lintPost(d, 1).filter((x) => x.startsWith("같은 사실 반복"));
+    assert.ok(issues.some((x) => x.includes("솔직한 단점(downsides)에만 남기고")), issues.join("\n"));
+  });
+  await test("'자료에 나온' 꼴은 코드로 바로 고침 (수정 2번 뒤에도 남던 표현)", () => {
+    const w = structuredClone(roborockColumn);
+    w.content.column!.stories[3].body = "디스크 살균은 자료에 나온 대로 매일 돌아가요. " + w.content.column!.stories[3].body;
+    const fixed = autoFix(w).post;
+    assert.ok(fixed.content.column!.stories[3].body.startsWith("디스크 살균은 소개된 내용에 나온 대로"), fixed.content.column!.stories[3].body);
+    assert.ok(!lintPost(fixed, 1).some((x) => x.includes("자료")));
+  });
   await test("칼럼 도입: '결론부터'로 시작·너무 짧음·핵심 질문 없음 검출", () => {
     const w = structuredClone(roborockColumn);
     w.content.intro = "결론부터 말하면 흡입력이 좋아요. 설치는 따져 보세요.";

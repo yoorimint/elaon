@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import type { ShopPostContent } from "@/lib/shop-post-types";
-import { bestKeyword, keywordCandidates } from "./keywords";
+import { bestKeyword, keywordCandidates, shortName, trendProbes } from "./keywords";
 import { MIN_REAL_REVIEWS, countRealReviews, isModelName, isOtherGeneration, isSafetyRisk, mentionedIn, sameType } from "./discover";
 import { checkNumbers, isNonAnswer, judgeAudit, lintPost, locallySupported, quoteFound, repetitionNotes, reviewAndFix, thinEvidenceWarnings } from "./qa";
 import { CLAUDE_MODEL } from "./providers/claude";
@@ -133,6 +133,18 @@ async function main() {
     const w = structuredClone(real);
     w.content.verdict = "가볍게 시작하고 싶다면 브리츠 MUSEPOP3도 후보예요. 케어팟 X50V도 괜찮아요.";
     assert.ok(!checkNumbers(w, evidence).some((x) => x.startsWith("verdict")), checkNumbers(w, evidence).join("\n"));
+  });
+  await test("검수 '기타': 모순·잘못된 용어만 수정 대상, 표현 잔소리는 참고", () => {
+    const a = {
+      others: [
+        { section: "장점", problem: "국내 제조 항목이 다른 항목과 성격이 다름", fix: "표기 통일" },
+        { section: "결론", problem: "넓은 공간 추천과 단점의 커버 면적 한계가 서로 모순", fix: "범위 수정" },
+      ],
+    };
+    const issues = judgeAudit(a, evidence, ["장점", "결론"]);
+    assert.equal(issues.length, 1);
+    assert.ok(issues[0].startsWith("결론"));
+    assert.ok(repetitionNotes(a, ["장점", "결론"]).some((x) => x.includes("국내 제조")));
   });
   await test("검수자 잡음 제외: '확인되지 않아요' 문장, '수정 없음' 항목", () => {
     const issues = judgeAudit(
@@ -311,6 +323,10 @@ async function main() {
   await test("제목 키워드: 검색량이 가장 많은 표현 선택, 데이터 없으면 기본값, 제목이 키워드로 시작하는지 검사", () => {
     assert.deepEqual(keywordCandidates(["케어팟 X50V"]).slice(0, 2), ["케어팟 X50V 후기", "케어팟 X50V 장단점"]);
     assert.equal(keywordCandidates(["A", "B"])[0], "A vs B");
+    // run #29: 전체 이름은 검색량 0 → 짧은 이름으로 표현 선호도를 잼
+    assert.equal(shortName("삼성 블루스카이 3100"), "블루스카이 3100");
+    assert.deepEqual(trendProbes(["삼성 블루스카이 3100"]).slice(0, 2), ["블루스카이 3100 후기", "블루스카이 3100 장단점"]);
+    assert.equal(trendProbes(["삼성 블루스카이 3100", "위닉스 타워 엣지"])[0], "블루스카이 3100 vs 타워 엣지");
     assert.equal(bestKeyword([{ keyword: "x 후기", score: 3 }, { keyword: "x 단점", score: 9 }]), "x 단점");
     assert.equal(bestKeyword([{ keyword: "x 후기", score: 0 }]), null);
     const w = structuredClone(real);

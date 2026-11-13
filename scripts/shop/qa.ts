@@ -326,6 +326,9 @@ export function locallySupported(claim: string, evidenceNorm: string, productWor
   });
 }
 
+// 고쳐야 하는 진짜 오류: 서로 맞지 않음, 틀린 용어·사실 (run #29: "항목 성격이 다름" 같은 잔소리가 수정을 흔듦)
+export const isRealProblem = (s: string) => /모순|상충|맞지\s*않|반대|틀린|틀렸|잘못|오류|다르게\s*(썼|씀|적)|어긋/.test(s);
+
 const isPriceGuidance = (s: string) => /쿠팡/.test(s) && /가격/.test(s) && /확인/.test(s);
 const isUnknownStatement = (s: string) => /확인되지 않|확인 안 됨|확인되지 못|정보가 없|언급이 없/.test(s);
 const NO_FIX_NEEDED = /수정\s*(없음|불필요|필요\s*없)|모순\s*(은\s*)?없|오류\s*(는\s*)?없|문제\s*(는\s*)?없|일치함/;
@@ -359,6 +362,7 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[], p
   }
   for (const o of a.others ?? []) {
     if (NO_FIX_NEEDED.test(`${o.problem} ${o.fix}`)) continue; // 검수자가 "문제 없음"이라고 적은 항목
+    if (!isRealProblem(o.problem)) continue; // 표현 다듬기 같은 잔소리는 참고로만 (repetitionNotes)
     issues.push(`${o.section}: ${o.problem} → ${o.fix}`);
   }
   return [...new Set(issues)];
@@ -366,12 +370,15 @@ export function judgeAudit(a: Audit, evidence: string, sectionNames: string[], p
 
 // 참고용: 5~6곳에서 반복되는 내용 (수정하지 않고 관리자에게만 보여줌)
 export function repetitionNotes(a: Audit, sectionNames: string[]): string[] {
-  return (a.topics ?? []).flatMap((t) => {
+  const minor = (a.others ?? [])
+    .filter((o) => !NO_FIX_NEEDED.test(`${o.problem} ${o.fix}`) && !isRealProblem(o.problem))
+    .map((o) => `[참고] ${o.section}: ${o.problem.slice(0, 80)}`);
+  return [...minor, ...(a.topics ?? []).flatMap((t) => {
     const secs = [...new Set(t.sections.filter((x) => sectionNames.includes(x) && !NOT_COUNTED_SECTIONS.has(x)))];
     return secs.length > MAX_TOPIC_SECTIONS && secs.length <= MAX_TOPIC_SECTIONS_BEFORE_FIX
       ? [`[참고] "${t.topic}"이 ${secs.length}곳에 나옴 (${secs.join(", ")})`]
       : [];
-  });
+  })];
 }
 
 // null = AI 검수를 하지 못함 (모델 막힘 등) → "검수 통과"로 표시하지 않는다

@@ -10,12 +10,13 @@ import { createClient } from "@supabase/supabase-js";
 const REQUEST_FILE = ".github/shop-maintain-request";
 
 type Row = {
+  id: string;
   slug: string;
   title: string;
   status: string;
   created_at: string;
   content: { qa?: { passed?: boolean; remaining?: string[]; aiChecked?: boolean } } | null;
-  products: { link?: string }[] | null;
+  products: { link?: string; image?: string; images?: Record<string, string> }[] | null;
 };
 
 function client() {
@@ -39,7 +40,7 @@ function parseRequest(text: string): { list: boolean; deletes: string[] } {
 async function listPosts(): Promise<void> {
   const { data, error } = await sb
     .from("shop_posts")
-    .select("slug,title,status,created_at,content,products")
+    .select("id,slug,title,status,created_at,content,products")
     .order("created_at", { ascending: false });
   if (error) throw new Error(`목록 읽기 실패: ${error.message}`);
   const rows = (data ?? []) as Row[];
@@ -49,8 +50,15 @@ async function listPosts(): Promise<void> {
     const verdict = qa?.passed === true ? "합격" : qa?.passed === false ? "미달" : qa ? "판정없음" : "검수없음";
     const left = qa?.remaining?.length ?? "-";
     const links = (r.products ?? []).every((p) => p.link?.trim()) ? "링크있음" : "링크없음";
+    // 사진: 글 데이터에 저장된 사진 수 / 사진 보관함에 올라간 파일 수 (다르면 저장이 안 된 것)
+    const saved = (r.products ?? []).reduce(
+      (n, p) => n + (p.image ? 1 : 0) + Object.keys(p.images ?? {}).length,
+      0,
+    );
+    const files = await sb.storage.from("shop-images").list(r.id);
+    const uploaded = files.error ? "?" : (files.data ?? []).length;
     console.log(
-      `- ${r.slug} | ${r.status} | ${r.created_at.slice(0, 16)} | ${verdict} 남은문제 ${left} | ${links} | ${r.title}`,
+      `- ${r.slug} | ${r.status} | ${r.created_at.slice(0, 16)} | ${verdict} 남은문제 ${left} | ${links} | 사진 저장 ${saved}·파일 ${uploaded} | ${r.title}`,
     );
     for (const x of (qa?.remaining ?? []).slice(0, 3)) console.log(`    · ${x.slice(0, 140)}`);
   }

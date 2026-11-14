@@ -9,6 +9,18 @@ import { checkGemini } from "./providers/gemini";
 import { checkNaver } from "./providers/naver";
 import { checkYoutube } from "./providers/youtube";
 import type { CheckResult, Secrets } from "./providers/types";
+import { createNotionClient } from "@/lib/notion-api";
+
+// 노션 토큰: 통합 정보(/users/me)를 읽어 본다 (페이지 연결 여부는 동기화 결과에서 확인)
+async function checkNotion(s: Secrets): Promise<CheckResult> {
+  if (!s.NOTION_TOKEN) return { ok: false, message: "노션 토큰 미등록" };
+  try {
+    const me = await createNotionClient({ token: s.NOTION_TOKEN }).me();
+    return { ok: true, message: `노션 연결됨${me.name ? ` (${me.name})` : ""}` };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 // 결과 메시지에 키 값이 섞여 나가지 않도록 한 번 더 가린다.
 function scrub(result: CheckResult, secrets: Secrets): CheckResult {
@@ -29,6 +41,7 @@ async function main() {
   // 그룹 id 는 src/lib/shop-config.ts 의 API_KEY_GROUPS 와 같아야 한다.
   const checks: Record<string, (s: Secrets) => Promise<CheckResult>> = {
     coupang: checkCoupang,
+    notion: checkNotion,
     gemini: checkGemini,
     claude: checkClaude,
     naver: checkNaver,

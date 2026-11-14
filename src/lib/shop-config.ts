@@ -2,6 +2,7 @@
 // 관리자 페이지(/admin/shop)와 자동글 스크립트가 같은 타입을 공유한다.
 
 import { supabase } from "./supabase";
+import type { NotionSyncState } from "./notion-shop";
 
 export type PublishMode = "review" | "auto";
 
@@ -38,6 +39,8 @@ export type ShopConfig = {
   // 키 점검 결과 (스크립트가 기록, 그룹 id → 결과)
   key_check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
   key_check_at: string | null;
+  // 노션 동기화 상태 (supabase/shop-notion.sql 실행 전에는 없음)
+  notion_sync?: NotionSyncState | null;
   updated_at: string;
 };
 
@@ -70,7 +73,7 @@ export function toSlots(list: ManualProduct[] | null | undefined): ManualProduct
 // 관리자가 수정할 수 있는 필드만.
 export type ShopConfigEditable = Omit<
   ShopConfig,
-  "id" | "updated_at" | "key_check" | "key_check_at"
+  "id" | "updated_at" | "key_check" | "key_check_at" | "notion_sync"
 >;
 
 // DB check 제약과 동일한 범위. 화면 입력 제한과 저장 전 보정에 같이 쓴다.
@@ -93,10 +96,11 @@ export type SecretName =
   | "NAVER_CLIENT_ID"
   | "NAVER_CLIENT_SECRET"
   | "YOUTUBE_API_KEY"
-  | "ANTHROPIC_API_KEY";
+  | "ANTHROPIC_API_KEY"
+  | "NOTION_TOKEN";
 
 // scripts/shop/check-keys.ts 의 점검 id 와 같아야 한다.
-export type ApiKeyGroupId = "coupang" | "gemini" | "claude" | "naver" | "youtube";
+export type ApiKeyGroupId = "coupang" | "notion" | "gemini" | "claude" | "naver" | "youtube";
 
 export type ApiKeyGroup = {
   id: ApiKeyGroupId;
@@ -116,6 +120,13 @@ export const API_KEY_GROUPS: ApiKeyGroup[] = [
       { name: "COUPANG_ACCESS_KEY", label: "Access Key" },
       { name: "COUPANG_SECRET_KEY", label: "Secret Key" },
     ],
+  },
+  {
+    id: "notion",
+    label: "노션 토큰 (노션 \"쇼핑 글\" → 사이트 발행)",
+    required: false,
+    where: "app.notion.com/developers/connections → New integration → Configuration 탭: 권한 Read·Update·Insert content 켜기 → API token 의 Show 로 복사",
+    fields: [{ name: "NOTION_TOKEN", label: "내부 통합 시크릿" }],
   },
   {
     id: "gemini",
@@ -229,7 +240,7 @@ export async function updateDisclosureText(text: string): Promise<void> {
 
 export function toEditable(c: ShopConfig): ShopConfigEditable {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, updated_at, key_check, key_check_at, ...rest } = c;
+  const { id, updated_at, key_check, key_check_at, notion_sync, ...rest } = c;
   return { ...rest, manual_products: toSlots(rest.manual_products) };
 }
 

@@ -89,7 +89,8 @@ returns text[] language sql immutable as $$
     'COUPANG_ACCESS_KEY', 'COUPANG_SECRET_KEY',
     'GEMINI_API_KEY', 'ANTHROPIC_API_KEY',
     'NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET',
-    'YOUTUBE_API_KEY'
+    'YOUTUBE_API_KEY',
+    'NOTION_TOKEN'
   ];
 $$;
 
@@ -216,3 +217,6 @@ create index if not exists shop_runs_created_at_idx on public.shop_runs (created
 alter table public.shop_runs enable row level security;
 drop policy if exists "shop_runs admin read" on public.shop_runs;
 create policy "shop_runs admin read" on public.shop_runs for select to authenticated using (public.is_admin());
+
+-- ===== 노션 연동 동기화 상태 (supabase/shop-notion.sql 과 같음) =====
+alter table public.shop_config add column if not exists notion_sync jsonb not null default '{}'::jsonb;

@@ -3,18 +3,20 @@
 
 import { supabase } from "./supabase";
 import { sanitizeManualInput, type ManualPostInput } from "./shop-manual";
+import type { NotionSyncSummary } from "./notion-shop";
 import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostRunInfo, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products"> & {
   qa?: ShopPostQa | null; // 자동 검수 결과 (content.qa)
   run?: ShopPostRunInfo | null; // 작성 실행 리포트 (content.run)
   kind?: string | null; // "manual" = 직접 붙여넣어 만든 글 (content.kind), 없으면 AI 글
+  notion_url?: string | null; // 노션에서 온 글이면 노션 페이지 주소 (content.notion.url)
 };
 
 export async function listAllPosts(limit = 100): Promise<AdminPostRow[]> {
   const { data, error } = await supabase
     .from("shop_posts")
-    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run,kind:content->>kind")
+    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run,kind:content->>kind,notion_url:content->notion->>url")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -100,6 +102,17 @@ export async function refreshShopPages(slug: string): Promise<void> {
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({ slug }),
   }).catch(() => undefined);
+}
+
+// "지금 노션에서 가져오기": 서버가 관리자 확인 후 동기화 모듈을 돌리고 결과 요약을 돌려준다 (src/app/api/shop/notion-sync)
+export async function syncFromNotion(): Promise<NotionSyncSummary> {
+  const res = await fetch("/api/shop/notion-sync", {
+    method: "POST",
+    headers: { authorization: `Bearer ${await accessToken()}` },
+  });
+  const body = (await res.json().catch(() => ({}))) as NotionSyncSummary & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `서버 오류 ${res.status}`);
+  return body;
 }
 
 // 발행 직후 검색엔진(네이버 등)에 새 글 알림. 실패해도 발행에는 영향 없음.

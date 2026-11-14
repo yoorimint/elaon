@@ -1,0 +1,36 @@
+name: shop notion sync
+
+# 노션 "쇼핑 글" 데이터베이스 → 사이트 쇼핑 글 (scripts/shop/notion-sync.ts).
+# 노션에서 상태를 "발행"으로 바꾸면 다음 실행(최대 10분, GitHub 스케줄 지연이 있으면 더)에 사이트에 공개된다.
+# 바로 올리고 싶으면 관리자 화면 /admin/shop → "📒 노션" 탭의 "지금 노션에서 가져오기" (같은 모듈).
+# 노션 토큰은 관리자 화면에 저장한 값(shop_secrets.NOTION_TOKEN)을 읽는다. 토큰이 없으면 아무것도 안 하고 끝남.
+# 스케줄은 기본 브랜치(main)에 있을 때만 돈다.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 이전 실행이 아직 돌고 있으면 기다렸다가 이어서 (같은 페이지를 두 번 처리하지 않게)
+concurrency:
+  group: shop-notion-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Sync from Notion
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx --tsconfig tsconfig.json scripts/shop/notion-sync.ts

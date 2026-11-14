@@ -1,12 +1,14 @@
-// 노션 "쇼핑 글" → 사이트 동기화 (GitHub Actions "shop notion sync", 10분마다 + 수동 실행).
-// 관리자 "지금 노션에서 가져오기" 버튼(src/app/api/shop/notion-sync)과 같은 모듈(src/lib/notion-sync.ts)을 쓴다.
+// 노션 "쇼핑 글" → 사이트 동기화 (GitHub Actions "shop notion sync" 수동 실행 전용 — 예비 경로).
+// 평소 예약 실행은 Supabase pg_cron 이 8시간마다 사이트 API 를 부른다 (supabase/shop-notion-cron.sql).
+// 예약 실행과 똑같이 새 글은 1편만 공개한다 (SCHEDULED_NEW_PER_RUN). 전부 바로 올리려면 관리자 "지금 노션에서 가져오기".
+// 관리자 버튼(src/app/api/shop/notion-sync)과 같은 모듈(src/lib/notion-sync.ts)을 쓴다.
 // 필요: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (기존 shop 워크플로 비밀값). 노션 토큰은 관리자 화면에서 저장한 값.
 // 저장소가 공개라 실행 로그도 공개 — 토큰·본문은 찍지 않고 제목·건수만 남긴다.
 
 import { createClient } from "@supabase/supabase-js";
 import { pingIndexNow } from "@/lib/indexnow";
 import { summaryLine } from "@/lib/notion-shop";
-import { runNotionSync } from "@/lib/notion-sync";
+import { SCHEDULED_NEW_PER_RUN, runNotionSync } from "@/lib/notion-sync";
 import { SITE_URL, loadNotionToken, parentPageId, syncDeps } from "@/lib/notion-sync-store";
 import { signRevalidate } from "@/lib/revalidate-signature";
 
@@ -21,7 +23,7 @@ async function main() {
 
   const token = await loadNotionToken(sb);
   if (!token) {
-    // 토큰을 아직 안 넣었으면 조용히 끝낸다 (10분마다 실패 알림이 쌓이지 않게)
+    // 토큰을 아직 안 넣었으면 조용히 끝낸다
     console.log("노션 토큰이 없어 건너뜀 — 관리자 화면 ⚙️ 설정 탭에서 넣으면 다음 실행부터 동작");
     return;
   }
@@ -31,6 +33,7 @@ async function main() {
     parentPageId: parentPageId(),
     maxPages: MAX_PAGES_PER_RUN,
     deadline: Date.now() + TIME_BUDGET_MS,
+    newLimit: SCHEDULED_NEW_PER_RUN,
   });
   console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
   console.log(`확인한 노션 글 ${summary.checked ?? 0}개 (${summary.scan === "full" ? "전체 조회" : "바뀐 글만"})`);

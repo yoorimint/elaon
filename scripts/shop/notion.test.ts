@@ -13,6 +13,7 @@ import {
   decidePage,
   memoCore,
   failedMemo,
+  queuedMemo,
   readPageProps,
   richToSpans,
   type NBlock,
@@ -23,16 +24,26 @@ import {
 import {
   CHANGED_SINCE_MARGIN_MS,
   FULL_SCAN_EVERY_MS,
+  SCHEDULED_NEW_PER_RUN,
   notionSlug,
   planScan,
   runNotionSync,
+  scheduledRunAt,
   type FetchedImage,
   type NotionPort,
   type PostRow,
   type StoredPost,
   type SyncStore,
 } from "@/lib/notion-sync";
-import { supabaseSyncStore } from "@/lib/notion-sync-store";
+import {
+  CRON_SECRET_HEADER,
+  CRON_SECRET_NAME,
+  ROUTE_TIME_BUDGET_MS,
+  routeSyncOptions,
+  sameSecret,
+  supabaseSyncStore,
+  verifyCronSecret,
+} from "@/lib/notion-sync-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { signRevalidate, verifyRevalidate } from "@/lib/revalidate-signature";
 import * as React from "react";
@@ -1222,6 +1233,112 @@ async function main() {
     assert.equal(reqs.length, 12);
     assert.equal(s.reads.listedRows, N);
     assert.equal(s.reads.fullLoads, 0);
+  });
+
+  // ---------- 예약 실행: 새 글 1편씩 (사장님 결정 B안) ----------
+
+  await test("예약 실행: 새 글은 1편씩 대기열 순서(처음 본 실행·그때 시각)로 — 대기 글 메모에 순서·예정, 공개 글 갱신·내림은 제한 없음, 버튼은 전부", async () => {
+    let clock = Date.parse("2026-11-13T23:00:30.000Z");
+    const n = mockNotion(() => clock, { honorFilter: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const cron = { trigger: "cron" as const, parentPageId: "p", maxPages: 50, newLimit: SCHEDULED_NEW_PER_RUN };
+    const admin = { trigger: "admin" as const, parentPageId: "p", maxPages: 50 };
+    const mk = (c: string) => `${c.repeat(8)}-1111-2222-3333-444444444444`;
+    const body = () => [para(rt("본문")), para(rt(P, { href: P }))];
+    const [u1, u2, q1, q2, q3, q4] = ["1", "2", "a", "b", "c", "d"].map(mk);
+    const slugOf = (id: string) => s.posts.find((p) => p.pair_key === `notion:${id}`)?.slug;
+    const memo = (id: string) => readPageProps(n.pages.get(id)!.page).memo;
+
+    // 이미 공개된 글 2편 (버튼 실행)
+    for (const id of [u1, u2]) n.pages.set(id, { page: page(id, { status: "발행", title: `공개 ${id[0]}`, edited: "2026-11-13T22:00:00.000Z" }), blocks: body() });
+    let r = await runNotionSync(deps, admin);
+    assert.equal(r.summary.published, 2);
+
+    // 새 글 3편 발행으로 (q2 → q1 → q3 순으로 고침) + u1 수정 + u2 내림
+    for (const [id, edited] of [
+      [q1, "2026-11-13T23:30:00.000Z"],
+      [q2, "2026-11-13T23:10:00.000Z"],
+      [q3, "2026-11-13T23:50:00.000Z"],
+    ]) {
+      n.pages.set(id, { page: page(id, { status: "발행", title: `새 글 ${id[0]}`, edited }), blocks: body() });
+    }
+    clock = Date.parse("2026-11-14T00:00:30.000Z"); // 한국시간 오전 9시 예약 실행
+    n.edit(u1, (x) => x.blocks.unshift(para(rt("고친 문단"))));
+    n.edit(u2, (x) => (x.page.properties[PROP.status] = { type: "select", select: { name: "내림" } }));
+    r = await runNotionSync(deps, cron);
+    assert.equal(r.summary.published, 1);
+    assert.ok(slugOf(q2)); // 가장 먼저 발행으로 바꾼 글
+    assert.ok(!slugOf(q1) && !slugOf(q3));
+    assert.equal(r.summary.updated, 1); // 공개 글 수정은 제한 없음
+    assert.equal(r.summary.unpublished, 1); // 내림도 제한 없음
+    assert.equal(r.summary.queued, 2);
+    assert.equal(r.summary.remaining, 0);
+    assert.equal(memo(q1), queuedMemo(1, "2026-11-14T08:00:00.000Z"));
+    assert.match(memo(q1), /^발행 대기 — 1번째, 예정 약 2026-11-14 17:00/);
+    assert.match(memo(q3), /^발행 대기 — 2번째, 예정 약 2026-11-15 01:00/);
+
+    // 다음 예약 실행: q1 을 그사이 고쳐서 시각이 q3 보다 늦어도 순서는 처음 본 그대로 (메모 쓰기·수정으로 줄이 바뀌지 않음)
+    clock = Date.parse("2026-11-14T08:00:30.000Z");
+    n.edit(q1, (x) => x.blocks.unshift(para(rt("대기 중에 고침"))));
+    r = await runNotionSync(deps, cron);
+    assert.equal(r.summary.published, 1);
+    assert.ok(slugOf(q1));
+    assert.ok(!slugOf(q3));
+    assert.match(memo(q3), /^발행 대기 — 1번째, 예정 약 2026-11-15 01:00/);
+    assert.match(memo(q1), /^발행됨/);
+
+    // 메모 내용이 같으면 다시 쓰지 않는다 (쓰면 페이지 시각이 바뀌므로 — 무한 갱신 방지)
+    clock += 10 * 60_000;
+    const writes = n.calls.updatePage;
+    r = await runNotionSync(deps, { ...cron, newLimit: 0 });
+    assert.equal(r.summary.queued, 1);
+    assert.equal(n.calls.updatePage, writes);
+
+    // 관리자 버튼: 제한 없이 대기 글 전부
+    clock += 10 * 60_000;
+    n.pages.set(q4, { page: page(q4, { status: "발행", title: "새 글 d", edited: minute(clock) }), blocks: body() });
+    r = await runNotionSync(deps, admin);
+    assert.equal(r.summary.published, 2);
+    assert.ok(slugOf(q3) && slugOf(q4));
+    assert.equal(r.summary.queued, 0);
+    assert.deepEqual((s.getState() as NotionSyncState).queue, {});
+
+    // 내렸던 글을 다시 발행 = 새로 공개 → 예약 실행 제한에 든다
+    clock += 60 * 60_000;
+    for (const id of [u2, q4]) n.edit(id, (x) => (x.page.properties[PROP.status] = { type: "select", select: { name: id === u2 ? "발행" : "내림" } }));
+    r = await runNotionSync(deps, { ...cron, newLimit: 0 });
+    assert.equal(r.summary.unpublished, 1); // q4 내림은 제한과 상관없이
+    assert.equal(r.summary.queued, 1); // u2 다시 발행은 대기
+    assert.equal(s.posts.find((p) => p.pair_key === `notion:${u2}`)?.status, "draft");
+  });
+
+  await test("예약 실행 인증·옵션: DB 비밀값과 같아야만 통과(상수 시간 비교), 예약=새 글 1편·버튼=제한 없음, 예정 시각 계산", async () => {
+    const secret = "3f9a".repeat(16);
+    const sb = fakeSupabase([{ name: CRON_SECRET_NAME, value: secret }], 1000);
+    assert.equal(await verifyCronSecret(sb.client, secret), true);
+    assert.equal(await verifyCronSecret(sb.client, ` ${secret} `), true);
+    assert.equal(await verifyCronSecret(sb.client, secret.slice(0, -1)), false);
+    assert.equal(await verifyCronSecret(sb.client, `${secret}0`), false);
+    assert.equal(await verifyCronSecret(sb.client, ""), false);
+    assert.equal(await verifyCronSecret(sb.client, null), false);
+    assert.equal(await verifyCronSecret(fakeSupabase([], 1000).client, secret), false); // SQL 미실행(비밀값 없음)
+    assert.equal(await verifyCronSecret(fakeSupabase([{ name: CRON_SECRET_NAME, value: "short" }], 1000).client, "short"), false); // 너무 짧은 값은 거부
+    assert.equal(sameSecret("x".repeat(40), "x".repeat(40)), true);
+    assert.equal(CRON_SECRET_HEADER, "x-notion-cron-secret");
+
+    const c = routeSyncOptions("cron", "p", 1000);
+    assert.equal(c.trigger, "cron");
+    assert.equal(c.newLimit, 1);
+    assert.equal(c.deadline, 1000 + ROUTE_TIME_BUDGET_MS);
+    const a = routeSyncOptions("admin", "p", 1000);
+    assert.equal(a.trigger, "admin");
+    assert.equal(a.newLimit, undefined);
+
+    assert.equal(scheduledRunAt(new Date("2026-11-14T00:00:30Z"), 0), "2026-11-14T08:00:00.000Z");
+    assert.equal(scheduledRunAt(new Date("2026-11-14T16:30:00Z"), 0), "2026-11-15T00:00:00.000Z");
+    assert.equal(scheduledRunAt(new Date("2026-11-14T07:59:00Z"), 2), "2026-11-15T00:00:00.000Z");
+    assert.equal(scheduledRunAt(new Date("2026-11-14T08:00:00Z"), 0), "2026-11-14T16:00:00.000Z"); // 딱 그 시각에 도는 실행은 다음 것부터
   });
 
   console.log(`\n${passed}개 통과`);

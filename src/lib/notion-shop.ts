@@ -616,6 +616,11 @@ export function failedMemo(at: string, problems: string[]): string {
   return clip(`발행 안 됨 — ${problems.join(" / ")} (확인 ${kstStamp(at)})`);
 }
 
+// 예약 실행의 새 글 1편 제한으로 기다리는 글 (src/lib/notion-sync.ts SCHEDULED_NEW_PER_RUN)
+export function queuedMemo(position: number, eta: string): string {
+  return `발행 대기 — ${position}번째, 예정 약 ${kstStamp(eta)} (예약 실행마다 1편씩 공개. 바로 올리려면 관리자 화면 "지금 노션에서 가져오기")`;
+}
+
 export function unpublishedMemo(at: string): string {
   return `내림 ${kstStamp(at)} — 사이트 글을 초안으로 돌렸어요 (삭제하지 않음)`;
 }
@@ -658,6 +663,7 @@ export type NotionSyncSummary = {
   failed: number;
   unchanged: number;
   remaining: number; // 시간·개수 상한으로 이번에 못 하고 다음 번으로 넘긴 페이지 수
+  queued?: number; // 발행 대기 중인 새 글 수 (예약 실행은 새 글을 1편씩만 공개)
   scan?: "full" | "changed"; // 노션 조회 방식: 전체 조회 / 지난번 뒤로 바뀐 글만 (src/lib/notion-sync.ts planScan)
   checked?: number; // 노션에서 받아 확인한 페이지 수
   items: SyncItem[];
@@ -674,10 +680,13 @@ export type NotionSyncState = {
   // 노션 조회 줄이기 (src/lib/notion-sync.ts planScan)
   changedSince?: string; // 다음 "바뀐 글만" 조회의 기준 시각 (여유를 빼고 이 뒤에 고친 페이지만 받는다)
   fullScan?: { at: string; v: number; dataSourceId: string }; // 마지막으로 끝까지 마친 전체 조회 (시각·변환 규칙 버전)
+  // 발행 대기열: 노션 페이지 id → 처음 대기열에 넣은 실행 시각(at)·그때의 last_edited_time(edited). 이 순서로 1편씩 공개
+  queue?: Record<string, { at: string; edited: string }>;
 };
 
-export function summaryLine(s: Pick<NotionSyncSummary, "published" | "updated" | "unpublished" | "failed" | "remaining">): string {
+export function summaryLine(s: Pick<NotionSyncSummary, "published" | "updated" | "unpublished" | "failed" | "remaining" | "queued">): string {
   const parts = [`발행 ${s.published}`, `갱신 ${s.updated}`, `내림 ${s.unpublished}`, `실패 ${s.failed}`];
+  if (s.queued) parts.push(`발행 대기 ${s.queued}`);
   if (s.remaining) parts.push(`다음 번으로 ${s.remaining}`);
   return parts.join(" · ");
 }

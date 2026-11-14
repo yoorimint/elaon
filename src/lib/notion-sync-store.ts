@@ -1,10 +1,20 @@
 // 노션 동기화의 Supabase 쪽 (service role 클라이언트 — 서버·GitHub Actions 전용).
 // 관리자 API 라우트와 scripts/shop/notion-sync.ts 가 같이 쓴다.
 
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createNotionClient } from "./notion-api";
 import { NOTION_PARENT_PAGE_ID, type NotionSyncState } from "./notion-shop";
-import { fetchImageDefault, pairKeyOf, type LinkedRow, type StoredPost, type SyncDeps, type SyncStore } from "./notion-sync";
+import {
+  SCHEDULED_NEW_PER_RUN,
+  fetchImageDefault,
+  pairKeyOf,
+  type LinkedRow,
+  type StoredPost,
+  type SyncDeps,
+  type SyncOptions,
+  type SyncStore,
+} from "./notion-sync";
 import { DEFAULT_POST_DISCLOSURE, isManualContent } from "./shop-post-types";
 
 const BUCKET = "shop-images";
@@ -144,5 +154,43 @@ export function syncDeps(sb: SupabaseClient, token: string, log?: (m: string) =>
     fetchImage: fetchImageDefault,
     siteUrl: SITE_URL,
     log,
+  };
+}
+
+// ---------- 예약 실행 (Supabase pg_cron → POST /api/shop/notion-sync) ----------
+// supabase/shop-notion-cron.sql 이 DB 안에서 만든 랜덤 비밀값(shop_secrets.NOTION_CRON_SECRET)을 pg_cron 작업이 헤더로 보내고,
+// API 라우트는 service role 로 같은 값을 읽어 비교한다 (사장님이 비밀값을 복사할 필요 없음. 관리자 화면 허용 목록에는 없어 덮어쓸 수 없음)
+
+export const CRON_SECRET_NAME = "NOTION_CRON_SECRET";
+export const CRON_SECRET_HEADER = "x-notion-cron-secret";
+const CRON_SECRET_MIN_LENGTH = 32; // SQL 이 만드는 값은 64자 (uuid 2개)
+
+// 상수 시간 비교: 길이가 달라도 sha256 으로 길이를 맞춰 비교한다
+export function sameSecret(given: string, expected: string): boolean {
+  if (!given || expected.length < CRON_SECRET_MIN_LENGTH) return false;
+  const a = createHash("sha256").update(given).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
+}
+
+export async function verifyCronSecret(sb: SupabaseClient, given: string | null): Promise<boolean> {
+  const g = (given ?? "").trim();
+  if (!g) return false;
+  const { data, error } = await sb.from("shop_secrets").select("value").eq("name", CRON_SECRET_NAME).maybeSingle();
+  if (error || !data) return false;
+  return sameSecret(g, String((data as { value?: unknown }).value ?? "").trim());
+}
+
+// 실행 경로별 옵션 (Vercel 함수 60초 안에서: deadline 뒤에는 새 페이지를 시작하지 않는다 — 사진 많은 글도 한 편 10초 안팎)
+//  - cron: 예약 실행. 새 글은 SCHEDULED_NEW_PER_RUN 편, 공개 글 갱신·내림은 시간 안에서 전부
+//  - admin: 관리자 "지금 노션에서 가져오기". 새 글 제한 없이 시간 안에서 전부 (남으면 화면에 "버튼 한 번 더" 안내)
+export const ROUTE_TIME_BUDGET_MS = 35_000;
+export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, startMs: number): SyncOptions {
+  return {
+    trigger: kind,
+    parentPageId,
+    maxPages: 50,
+    deadline: startMs + ROUTE_TIME_BUDGET_MS,
+    ...(kind === "cron" ? { newLimit: SCHEDULED_NEW_PER_RUN } : {}),
   };
 }

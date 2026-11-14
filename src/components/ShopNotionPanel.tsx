@@ -1,7 +1,7 @@
 "use client";
 
 // 관리자 "📒 노션" 탭: 노션 "쇼핑 글" → 사이트 발행 상태와 "지금 노션에서 가져오기" 버튼, 사장님용 사용 안내.
-// 자동 실행(10분마다, GitHub Actions)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
+// 예약 실행(8시간마다, Supabase pg_cron → 사이트 API)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
 // 버튼은 같은 동기화 모듈을 서버에서 바로 돌린다 (src/app/api/shop/notion-sync).
 
 import { useState } from "react";
@@ -54,7 +54,8 @@ export function ShopNotionPanel({
           <div className="min-w-0">
             <h2 className="font-bold">노션에서 글 가져오기</h2>
             <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-              노션 &lsquo;{NOTION_DB_TITLE}&rsquo;에서 상태를 <b>{STATUS_LABEL.publish}</b>으로 바꾸면 10분 안에 사이트에 공개돼요. 바로 올리려면 버튼을 누르세요.
+              노션 &lsquo;{NOTION_DB_TITLE}&rsquo;에서 상태를 <b>{STATUS_LABEL.publish}</b>으로 바꾸면 예약 실행(하루 3번: 오전 9시·오후 5시·새벽 1시)마다{" "}
+              <b>새 글 1편씩</b> 대기열 순서대로 공개돼요. 이미 공개된 글의 수정·내림은 예약 실행마다 전부 반영돼요. 버튼을 누르면 대기 중인 글까지 <b>전부 바로</b> 올려요.
             </p>
           </div>
           <button
@@ -95,7 +96,7 @@ export function ShopNotionPanel({
         {error && <p className="mt-3 text-sm text-red-600">가져오기 실패: {error}</p>}
         {result && <SummaryBox title="방금 가져온 결과" s={result} />}
         {last && (!result || last.at !== result.at) && (
-          <SummaryBox title={`마지막 ${last.trigger === "cron" ? "자동 실행" : "버튼 실행"} · ${timeAgo(last.at)}`} s={last} muted />
+          <SummaryBox title={`마지막 ${last.trigger === "cron" ? "예약 실행" : "버튼 실행"} · ${timeAgo(last.at)}`} s={last} muted />
         )}
       </section>
 
@@ -117,6 +118,11 @@ function SummaryBox({ title, s, muted = false }: { title: string; s: NotionSyncS
         </p>
       )}
       {s.error && <p className="mt-2 text-sm font-medium text-red-600">중단: {s.error}</p>}
+      {!!s.queued && (
+        <p className="mt-1 text-xs text-neutral-500">
+          발행 대기 {s.queued}편 — 예약 실행마다 1편씩 공개돼요. 지금 전부 올리려면 &lsquo;지금 노션에서 가져오기&rsquo;.
+        </p>
+      )}
       {s.remaining > 0 && (
         <p className="mt-1 text-xs text-neutral-500">한 번에 다 못 한 {s.remaining}개는 다음 실행(또는 버튼 한 번 더)에서 이어서 해요.</p>
       )}
@@ -188,10 +194,10 @@ function NotionHelp() {
         </li>
         <li>쿠팡 파트너스 고지 문구는 사이트가 글 맨 위에 자동으로 넣어요 (따로 안 써도 돼요).</li>
         <li>
-          &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 10분 안에 공개, &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
+          &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 예약 실행마다 1편씩 대기열 순서로 공개 (기다리는 동안 &lsquo;{PROP.memo}&rsquo;에 &ldquo;발행 대기 — n번째, 예정 약 …&rdquo;), 공개되면 &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 바로 올리려면 위 버튼. 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
         </li>
         <li>
-          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(10분 안에 반영) 또는 페이지 삭제(휴지통은 6시간마다 하는 전체 확인 때 반영 — 바로 하려면 위 버튼) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
+          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(다음 예약 실행 때 반영) 또는 페이지 삭제(휴지통 — 전체 확인을 하는 예약 실행 때, 늦어도 하루 안에 반영. 바로 하려면 위 버튼) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
         </li>
       </ol>
     </section>

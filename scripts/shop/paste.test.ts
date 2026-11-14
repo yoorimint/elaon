@@ -513,8 +513,10 @@ function main() {
     assert.ok(problems.some((p) => p.includes("링크가 비었어요") && p.includes("3곳")), problems.join("\n"));
     const ok = publishProblems({ title: r.title, blocks: r.blocks, products: [{ name: "샘플 A100", link: "https://link.coupang.com/a/test" }] });
     assert.deepEqual(ok, []);
-    const bad = publishProblems({ title: r.title, blocks: r.blocks, products: [{ name: "샘플 A100", link: "https://www.coupang.com/vp/products/1" }] });
-    assert.ok(bad.some((p) => p.includes("형식이 아니에요")));
+    // 쿠팡 링크는 형식 상관없이 그대로 (사장님 결정 2026-11-14) — 쿠팡이 아닌 주소만 막음
+    assert.deepEqual(publishProblems({ title: r.title, blocks: r.blocks, products: [{ name: "샘플 A100", link: "https://www.coupang.com/vp/products/1" }] }), []);
+    const bad = publishProblems({ title: r.title, blocks: r.blocks, products: [{ name: "샘플 A100", link: "https://example.com/x" }] });
+    assert.ok(bad.some((p) => p.includes("쿠팡 링크가 아니에요")));
     assert.ok(publishProblems({ title: "", blocks: r.blocks, products: [{ name: "x", link: "https://link.coupang.com/a/t" }] }).some((p) => p.includes("제목")));
   });
 

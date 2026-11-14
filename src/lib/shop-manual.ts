@@ -1,7 +1,7 @@
 // 직접 쓴 글(붙여넣어 만든 글)의 블록 편집·검사 도우미. 순수 함수만 둔다 (화면·서버·테스트 공용).
 // 블록 구조는 shop-post-types.ts 의 ShopManualBlock, 붙여넣기 인식은 shop-paste.ts.
 
-import { isPartnersLink } from "./coupang-link";
+import { isCoupangLink } from "./coupang-link";
 import {
   isManualContent,
   type ShopManualBlock,
@@ -180,7 +180,7 @@ export function publishProblems({ title, blocks, products }: ManualDraftInput): 
     const label = p.name.trim() || `상품 ${i + 1}`;
     if (!p.name.trim()) out.push(`상품 ${i + 1}: 상품 이름이 비었어요`);
     if (!p.link.trim()) out.push(`${label}: 쿠팡 파트너스 링크가 비었어요 (구매 버튼 자리 ${blocks.filter((b) => b.type === "link" && b.product === i).length}곳)`);
-    else if (!isPartnersLink(p.link)) out.push(`${label}: 쿠팡 파트너스 링크(link.coupang.com/a/…) 형식이 아니에요`);
+    else if (!isCoupangLink(p.link)) out.push(`${label}: 쿠팡 링크가 아니에요`);
   }
   return out;
 }

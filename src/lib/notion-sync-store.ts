@@ -4,9 +4,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createNotionClient } from "./notion-api";
+import { normalizeSchedule, type NotionSchedule } from "./notion-schedule";
 import { NOTION_PARENT_PAGE_ID, type NotionSyncState } from "./notion-shop";
 import {
-  SCHEDULED_NEW_PER_RUN,
   fetchImageDefault,
   pairKeyOf,
   type LinkedRow,
@@ -125,6 +125,7 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
       const { error } = await sb.from("shop_config").update({ notion_sync: state }).eq("id", 1);
       if (error) throw new Error(error.message);
     },
+    loadSchedule: () => loadNotionSchedule(sb),
     async disclosure() {
       const { data } = await sb.from("shop_config").select("disclosure_text").eq("id", 1).maybeSingle();
       return ((data as { disclosure_text?: string } | null)?.disclosure_text ?? "").trim() || DEFAULT_POST_DISCLOSURE;
@@ -135,6 +136,13 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
       return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
     },
   };
+}
+
+// 발행 일정 (관리자 📒 노션 탭 "발행 일정", shop_config.notion_schedule).
+// 칸이 없으면(supabase/shop-notion-cron.sql 미실행) 기본값 — 예전과 같은 하루 3번(새벽 1시·오전 9시·오후 5시) × 1편
+export async function loadNotionSchedule(sb: SupabaseClient): Promise<NotionSchedule> {
+  const { data, error } = await sb.from("shop_config").select("notion_schedule").eq("id", 1).maybeSingle();
+  return normalizeSchedule(error || !data ? null : (data as { notion_schedule?: unknown }).notion_schedule);
 }
 
 // 노션 토큰: 관리자 화면에서 저장한 값(shop_secrets.NOTION_TOKEN). 없으면 환경변수 NOTION_TOKEN (예비)
@@ -182,7 +190,7 @@ export async function verifyCronSecret(sb: SupabaseClient, given: string | null)
 }
 
 // 실행 경로별 옵션 (Vercel 함수 60초 안에서: deadline 뒤에는 새 페이지를 시작하지 않는다 — 사진 많은 글도 한 편 10초 안팎)
-//  - cron: 예약 실행. 새 글은 SCHEDULED_NEW_PER_RUN 편, 공개 글 갱신·내림은 시간 안에서 전부
+//  - cron: 예약 실행(매시 정각). 새 글은 발행 일정의 발행 시각에만 perRun 편, 공개 글 갱신·내림은 매번 시간 안에서 전부
 //  - admin: 관리자 "지금 노션에서 가져오기". 새 글 제한 없이 시간 안에서 전부 (남으면 화면에 "버튼 한 번 더" 안내)
 export const ROUTE_TIME_BUDGET_MS = 35_000;
 export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, startMs: number): SyncOptions {
@@ -191,6 +199,6 @@ export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, s
     parentPageId,
     maxPages: 50,
     deadline: startMs + ROUTE_TIME_BUDGET_MS,
-    ...(kind === "cron" ? { newLimit: SCHEDULED_NEW_PER_RUN } : {}),
+    ...(kind === "cron" ? { newLimit: "schedule" as const } : {}),
   };
 }

@@ -220,3 +220,8 @@ create policy "shop_runs admin read" on public.shop_runs for select to authentic
 
 -- ===== 노션 연동 동기화 상태 (supabase/shop-notion.sql 과 같음) =====
 alter table public.shop_config add column if not exists notion_sync jsonb not null default '{}'::jsonb;
+
+-- ===== 노션 발행 일정 (supabase/shop-notion-cron.sql 과 같음) =====
+-- 관리자 📒 노션 탭 "발행 일정": hours = 한국시간 0~23(비우면 자동 발행 안 함), perRun = 발행 시각 한 번에 공개할 글 수(1~5)
+alter table public.shop_config add column if not exists notion_schedule jsonb not null
+  default '{"hours": [1, 9, 17], "perRun": 1}'::jsonb;

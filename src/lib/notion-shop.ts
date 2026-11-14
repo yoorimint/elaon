@@ -9,7 +9,7 @@
 //  - 노션에 올린 파일(file) 주소는 1시간 뒤 만료 → 반드시 사이트 저장소로 복사
 //  - rich_text: plain_text, href, annotations.bold, text.link.url
 
-import { isPartnersLink, isPlainCoupangUrl } from "./coupang-link";
+import { isCoupangLink, isPlainCoupangUrl } from "./coupang-link";
 import { publishProblems } from "./shop-manual";
 import type { ShopInlineSpan, ShopManualBlock, ShopNotionRef, ShopPostInputProduct } from "./shop-post-types";
 
@@ -213,14 +213,14 @@ type Ctx = {
 
 const shortUrl = (u: string) => (u.length > 60 ? `${u.slice(0, 57)}…` : u);
 
-// 쿠팡 링크를 상품으로 등록 (같은 링크는 같은 상품). 파트너스 링크가 아니면 문제로 적고 -1
+// 쿠팡 링크를 상품으로 등록 (같은 링크는 같은 상품). 링크는 형식 검사 없이 그대로 쓴다 (사장님 결정 2026-11-14).
+// 수수료가 안 잡히는 일반 쿠팡 주소면 발행은 하고 노션 "사이트 메모"에 알림만 남긴다.
 function productFor(ctx: Ctx, url: string, nameHint: string): number {
   const link = url.trim();
+  if (!isCoupangLink(link)) return -1;
   if (isPlainCoupangUrl(link)) {
-    ctx.problems.push(`일반 쿠팡 주소는 수수료가 안 잡혀요 — 쿠팡 파트너스 링크(link.coupang.com/a/…)로 바꿔 주세요: ${shortUrl(link)}`);
-    return -1;
+    ctx.notes.push(`일반 쿠팡 주소예요 — 그대로 걸었지만 수수료는 쿠팡 파트너스 링크여야 잡혀요: ${shortUrl(link)}`);
   }
-  if (!isPartnersLink(link)) return -1;
   const name = nameHint
     .replace(/\s+/g, " ")
     .trim()
@@ -237,7 +237,7 @@ function productFor(ctx: Ctx, url: string, nameHint: string): number {
   return ctx.products.length - 1;
 }
 
-const isCoupang = (url: string) => isPartnersLink(url) || isPlainCoupangUrl(url);
+const isCoupang = (url: string) => isCoupangLink(url);
 
 function flushList(ctx: Ctx) {
   if (ctx.list && ctx.list.items.length) ctx.out.push(ctx.list);
@@ -260,7 +260,7 @@ function paragraphFrom(ctx: Ctx, id: string, rt: NRichText[] | undefined) {
     if (p >= 0) pushBlock(ctx, { id, type: "link", product: p });
     return;
   }
-  // 문장 속 쿠팡 링크: 링크는 그대로 두고 상품으로 등록 → 글 끝에 구매 버튼을 보장한다 (ensureButtons)
+  // 문장 속 쿠팡 링크: 글 속 링크 그대로 둔다 (버튼을 따로 붙이지 않음 — 쓴 그대로 옮기기)
   for (const s of spans) if (s.href && isCoupang(s.href)) productFor(ctx, s.href, s.text);
   const rich = spans.some((s) => s.href || s.bold);
   pushBlock(ctx, { id, type: "paragraph", text, ...(rich ? { spans } : {}) });
@@ -421,22 +421,10 @@ export function convertNotionBlocks(blocks: NBlock[], title: string): ConvertRes
   ctx.products.forEach((p, i) => {
     if (!p.name) p.name = (ctx.products.length > 1 ? `${title} ${i + 1}` : title).slice(0, 200);
   });
-  ensureButtons(ctx);
 
   for (const [type, n] of Array.from(ctx.skipped)) ctx.notes.push(`${SKIPPED_LABEL[type] ?? type} 블록 ${n}개는 사이트 글에 넣지 않았어요`);
-  if (!ctx.products.length && !ctx.problems.some((p) => p.includes("일반 쿠팡 주소"))) {
-    ctx.problems.push("쿠팡 파트너스 링크가 없어요 — link.coupang.com/a/… 링크를 한 줄로 넣거나 북마크로 넣어 주세요");
-  }
   const problems = Array.from(new Set([...ctx.problems, ...publishProblems({ title, blocks: ctx.out, products: ctx.products })]));
   return { blocks: ctx.out, products: ctx.products, images: ctx.images, problems, notes: ctx.notes };
-}
-
-// 구매 버튼이 하나도 없는 상품(문장 속 링크로만 나온 상품)은 글 끝에 버튼을 붙인다 — 상품마다 버튼 1개 이상
-function ensureButtons(ctx: Ctx) {
-  const has = new Set(ctx.out.flatMap((b) => (b.type === "link" ? [b.product] : [])));
-  ctx.products.forEach((_, i) => {
-    if (!has.has(i)) ctx.out.push({ id: `nbtn${i}`, type: "link", product: i });
-  });
 }
 
 // 올린 사진 주소를 블록에 넣는다 (블록 id 로만 — 다른 자리에 번지지 않게)

@@ -236,25 +236,26 @@ async function main() {
     assert.equal(r.products[0].name, "글 제목");
   });
 
-  await test("쿠팡 링크: 문장 속 링크는 링크로 두고, 글 끝에 그 상품 구매 버튼을 하나 붙인다", () => {
+  await test("쿠팡 링크: 문장 속 링크는 쓴 그대로 링크로 두고 버튼을 따로 붙이지 않는다 (사장님 결정 2026-11-14)", () => {
     const r = convertNotionBlocks([para(rt("이 제품은 "), rt("여기", { href: P }), rt("에서 볼 수 있어요."))], "청소기 후기");
-    assert.deepEqual(types(r.blocks), ["paragraph", "link"]);
+    assert.deepEqual(types(r.blocks), ["paragraph"]);
     const p = r.blocks[0] as Extract<ShopManualBlock, { type: "paragraph" }>;
     assert.equal(p.spans?.[1].href, P);
-    assert.equal(r.products[0].name, "청소기 후기");
-    assert.equal(r.blocks[1].id, "nbtn0");
   });
 
-  await test("검사: 일반 쿠팡 주소·쿠팡 링크 없음·제목 없음은 발행을 막는다", () => {
+  await test("검사: 쿠팡 링크는 형식 검사 없이 그대로 옮김 — 일반 주소·딥링크도 발행, 일반 주소는 메모 알림만, 링크 없어도 발행, 제목 없음은 막음", () => {
     const plain = convertNotionBlocks([para(rt("본문")), para(rt("쿠팡", { href: PLAIN }))], "제목");
-    assert.ok(plain.problems.some((x) => x.includes("일반 쿠팡 주소")));
-    assert.ok(!plain.problems.some((x) => x.includes("쿠팡 파트너스 링크가 없어요"))); // 같은 원인을 두 번 말하지 않음
+    assert.deepEqual(plain.problems, []);
+    assert.deepEqual(types(plain.blocks), ["paragraph", "link"]);
+    assert.ok(plain.notes.some((x) => x.includes("일반 쿠팡 주소")));
+    const deep = "https://link.coupang.com/re/AFFSDP?lptag=AF123&pageKey=1";
+    const d = convertNotionBlocks([para(rt("본문")), para(rt(deep, { href: deep }))], "제목");
+    assert.deepEqual(d.problems, []);
+    assert.equal(d.products[0].link, deep);
     const none = convertNotionBlocks([para(rt("본문만 있어요."))], "제목");
-    assert.ok(none.problems.some((x) => x.includes("쿠팡 파트너스 링크가 없어요")));
+    assert.deepEqual(none.problems, []);
     const noTitle = convertNotionBlocks([para(rt("본문")), para(rt(P, { href: P }))], "");
     assert.ok(noTitle.problems.includes("글 제목이 비었어요"));
-    const inline = convertNotionBlocks([para(rt("문장 속 "), rt("일반 주소", { href: PLAIN }), rt(" 예요.")), para(rt(P, { href: P }))], "제목");
-    assert.ok(inline.problems.some((x) => x.includes("일반 쿠팡 주소")));
   });
 
   await test("블록 종류: 소제목·목록(하위 항목 펼침)·표(첫 행 머리)·인용·콜아웃·토글·구분선·사진·지원 안 하는 블록", () => {
@@ -453,14 +454,14 @@ async function main() {
     const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
     const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10 };
     const id = "bbbbbbbb-1111-2222-3333-444444444444";
-    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-14T02:00:00.000Z" }), blocks: [para(rt("링크가 없는 글이에요."))] });
+    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-14T02:00:00.000Z" }), blocks: [] });
 
     let r = await runNotionSync(deps, opts);
     assert.equal(r.summary.failed, 1);
     assert.equal(s.posts.length, 0);
     const memo = readPageProps(n.pages.get(id)!.page).memo;
-    assert.match(memo, /^발행 안 됨 — 쿠팡 파트너스 링크가 없어요/);
-    assert.ok(r.summary.items[0].reasons?.[0].includes("쿠팡 파트너스 링크가 없어요"));
+    assert.match(memo, /^발행 안 됨 — 본문 글이 없어요/);
+    assert.ok(r.summary.items[0].reasons?.[0].includes("본문 글이 없어요"));
     const writes = n.calls.updatePage;
 
     clock += 20_000; // 같은 분: 다시 확인하지만 같은 이유라 노션에 안 씀
@@ -478,7 +479,7 @@ async function main() {
     assert.equal(r.summary.failed, 0);
     assert.equal(n.calls.blockTree, trees);
 
-    n.edit(id, (x) => x.blocks.push(para(rt(P, { href: P }))));
+    n.edit(id, (x) => x.blocks.push(para(rt("이제 본문이 있어요.")), para(rt(P, { href: P }))));
     r = await runNotionSync(deps, opts);
     assert.equal(r.summary.published, 1);
     assert.equal(s.posts.length, 1);

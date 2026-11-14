@@ -6,6 +6,13 @@ export function isPartnersLink(url: string): boolean {
   return /^https:\/\/(link\.coupang\.com\/a\/|coupa\.ng\/)[A-Za-z0-9]+/.test(url.trim());
 }
 
+// 쿠팡으로 가는 링크 전부 (파트너스 간편·단축·딥링크 link.coupang.com/re/…, 일반 쿠팡 주소).
+// 사장님 결정(2026-11-14): 글에 넣은 쿠팡 링크는 형식 검사로 막지 않고 그대로 옮긴다.
+// 수수료가 안 잡히는 일반 주소인지는 알림(메모)으로만 알려 준다 (isPlainCoupangUrl).
+export function isCoupangLink(url: string): boolean {
+  return /^https?:\/\/(?:[a-z0-9-]+\.)*coupang\.com\/|^https?:\/\/coupa\.ng\//i.test(url.trim());
+}
+
 // 일반 쿠팡 상품 주소 (수수료가 안 잡힘 — 파트너스 링크로 바꿔야 함)
 export function isPlainCoupangUrl(url: string): boolean {
   return /^https?:\/\/(?:www\.|m\.)?coupang\.com\//i.test(url.trim());

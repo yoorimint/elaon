@@ -242,7 +242,7 @@ function PostRow({
       </div>
       {notion && (
         <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
-          노션에서 온 글은 본문·사진·링크를 노션에서 고치세요. {published ? "고치면 10분 안에 사이트에 반영돼요." : "노션 상태를 '발행'으로 바꾸면 공개돼요."}
+          노션에서 온 글은 본문·사진·링크를 노션에서 고치세요. {published ? "고치면 다음 정각(최대 1시간)에 사이트에 반영돼요. 바로 보려면 노션 탭의 '수정만 지금 반영'." : "노션 상태를 '발행'으로 바꾸면 공개돼요."}
         </p>
       )}
       {editLinks && <ShopPostProductsEditor post={p} onSaved={onChanged} />}

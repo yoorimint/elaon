@@ -13,9 +13,11 @@
 --       관리자 화면의 키 저장 허용 목록(shop_secret_names)에는 넣지 않는다 — 화면에서 덮어쓰거나 지울 수 없게.
 
 -- 1) 확장 켜기 (Supabase 공식 문서의 SQL 그대로. 대시보드 Integrations → Cron / Database → Extensions → pg_net 에서 켜도 같다)
+-- 확장은 SQL 대신 대시보드에서 켠다: Integrations → Cron (pg_cron), Database → Extensions → pg_net.
+-- (2026-11-14 실제 실행 결과: SQL 로 pg_cron 을 켜면서 cron 스키마 권한을 직접 grant 하면 Supabase 의 권한 설정 트리거와
+--  충돌해 "2BP01: dependent privileges exist" 로 전체가 실패했다. 대시보드에서 켜면 Supabase 가 권한을 알아서 맞춘다.)
+-- 이미 켜져 있으면 아래 두 줄은 아무 일도 안 한다 (권한 grant 는 하지 않는다).
 create extension if not exists pg_cron with schema pg_catalog;
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
 create extension if not exists pg_net with schema extensions;
 
 -- 2) 발행 일정 저장 칸 (기본: 한국시간 새벽 1시·오전 9시·오후 5시, 한 번에 1편 — 예전 8시간마다 1편과 같음)

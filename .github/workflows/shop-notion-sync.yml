@@ -1,13 +1,13 @@
 name: shop notion sync
 
-# 노션 "쇼핑 글" 데이터베이스 → 사이트 쇼핑 글 (scripts/shop/notion-sync.ts).
-# 노션에서 상태를 "발행"으로 바꾸면 다음 실행(최대 10분, GitHub 스케줄 지연이 있으면 더)에 사이트에 공개된다.
-# 바로 올리고 싶으면 관리자 화면 /admin/shop → "📒 노션" 탭의 "지금 노션에서 가져오기" (같은 모듈).
+# 노션 "쇼핑 글" 데이터베이스 → 사이트 쇼핑 글 (scripts/shop/notion-sync.ts) — 수동 실행 전용 예비 경로.
+# 예약 실행(schedule)은 뺐다: GitHub 예약 실행이 이 저장소에서 수시간씩 누락됨
+#   (2026-11-13 18:48Z 이후 7시간 동안 모든 예약 작업이 0회 실행).
+# 평소 예약 실행은 Supabase pg_cron 이 8시간마다(한국시간 오전 9시·오후 5시·새벽 1시) 사이트 API 를 부른다
+#   (supabase/shop-notion-cron.sql → POST /api/shop/notion-sync). 새 글은 실행마다 1편씩 공개.
+# 바로 전부 올리고 싶으면 관리자 화면 /admin/shop → "📒 노션" 탭의 "지금 노션에서 가져오기" (같은 모듈).
 # 노션 토큰은 관리자 화면에 저장한 값(shop_secrets.NOTION_TOKEN)을 읽는다. 토큰이 없으면 아무것도 안 하고 끝남.
-# 스케줄은 기본 브랜치(main)에 있을 때만 돈다.
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:

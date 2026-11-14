@@ -1,14 +1,16 @@
 "use client";
 
-// 관리자 "📒 노션" 탭: 노션 "쇼핑 글" → 사이트 발행 상태와 "지금 노션에서 가져오기" 버튼, 사장님용 사용 안내.
-// 예약 실행(8시간마다, Supabase pg_cron → 사이트 API)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
+// 관리자 "📒 노션" 탭: 노션 "쇼핑 글" → 사이트 발행 상태와 "지금 노션에서 가져오기" 버튼, 발행 일정 설정, 사장님용 사용 안내.
+// 예약 실행(매시 정각, Supabase pg_cron → 사이트 API)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
 // 버튼은 같은 동기화 모듈을 서버에서 바로 돌린다 (src/app/api/shop/notion-sync).
 
 import { useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { timeAgo } from "@/lib/community";
 import { NOTION_DB_TITLE, PROP, STATUS_LABEL, summaryLine, type NotionSyncState, type NotionSyncSummary, type SyncItem } from "@/lib/notion-shop";
+import { hourLabel, normalizeSchedule, type NotionSchedule } from "@/lib/notion-schedule";
 import { syncFromNotion } from "@/lib/shop-posts";
+import { ShopNotionSchedule } from "@/components/ShopNotionSchedule";
 
 const ACTION_LABEL: Record<SyncItem["action"], { text: string; cls: string }> = {
   published: { text: "발행", cls: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300" },
@@ -19,13 +21,17 @@ const ACTION_LABEL: Record<SyncItem["action"], { text: string; cls: string }> = 
 
 export function ShopNotionPanel({
   state,
+  schedule,
   hasToken,
   onSynced,
+  onScheduleSaved,
   onOpenSettings,
 }: {
   state: NotionSyncState | null | undefined; // undefined = SQL(shop-notion.sql) 미실행
+  schedule: NotionSchedule | null | undefined; // undefined = 저장 칸 없음(shop-notion-cron.sql 미실행) → 기본 일정으로 동작, null = 아직 모름
   hasToken: boolean | null; // null = 아직 모름
   onSynced: () => void;
+  onScheduleSaved: (s: NotionSchedule) => void;
   onOpenSettings: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -46,6 +52,7 @@ export function ShopNotionPanel({
   }
 
   const last = state?.lastRun;
+  const sch = schedule ?? normalizeSchedule(null);
 
   return (
     <div className="space-y-5">
@@ -54,8 +61,17 @@ export function ShopNotionPanel({
           <div className="min-w-0">
             <h2 className="font-bold">노션에서 글 가져오기</h2>
             <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-              노션 &lsquo;{NOTION_DB_TITLE}&rsquo;에서 상태를 <b>{STATUS_LABEL.publish}</b>으로 바꾸면 예약 실행(하루 3번: 오전 9시·오후 5시·새벽 1시)마다{" "}
-              <b>새 글 1편씩</b> 대기열 순서대로 공개돼요. 이미 공개된 글의 수정·내림은 예약 실행마다 전부 반영돼요. 버튼을 누르면 대기 중인 글까지 <b>전부 바로</b> 올려요.
+              노션 &lsquo;{NOTION_DB_TITLE}&rsquo;에서 상태를 <b>{STATUS_LABEL.publish}</b>으로 바꾸면{" "}
+              {sch.hours.length ? (
+                <>
+                  아래 <b>발행 일정</b>({sch.hours.map(hourLabel).join("·")})마다 <b>새 글 {sch.perRun}편씩</b> 대기열 순서대로 공개돼요.
+                </>
+              ) : (
+                <>
+                  대기열에서 기다려요 (<b>자동 발행 꺼짐</b> — 아래 발행 일정에서 시각을 고르면 자동으로 공개).
+                </>
+              )}{" "}
+              이미 공개된 글의 수정·내림은 매시간 반영돼요. 버튼을 누르면 대기 중인 글까지 <b>전부 바로</b> 올려요.
             </p>
           </div>
           <button
@@ -94,18 +110,20 @@ export function ShopNotionPanel({
         )}
 
         {error && <p className="mt-3 text-sm text-red-600">가져오기 실패: {error}</p>}
-        {result && <SummaryBox title="방금 가져온 결과" s={result} />}
+        {result && <SummaryBox title="방금 가져온 결과" s={result} schedule={sch} />}
         {last && (!result || last.at !== result.at) && (
-          <SummaryBox title={`마지막 ${last.trigger === "cron" ? "예약 실행" : "버튼 실행"} · ${timeAgo(last.at)}`} s={last} muted />
+          <SummaryBox title={`마지막 ${last.trigger === "cron" ? "예약 실행" : "버튼 실행"} · ${timeAgo(last.at)}`} s={last} schedule={sch} muted />
         )}
       </section>
+
+      <ShopNotionSchedule schedule={schedule} onSaved={onScheduleSaved} />
 
       <NotionHelp />
     </div>
   );
 }
 
-function SummaryBox({ title, s, muted = false }: { title: string; s: NotionSyncSummary; muted?: boolean }) {
+function SummaryBox({ title, s, schedule, muted = false }: { title: string; s: NotionSyncSummary; schedule: NotionSchedule; muted?: boolean }) {
   return (
     <div className={`mt-4 rounded-xl border p-3 ${muted ? "border-neutral-200 dark:border-neutral-800" : "border-brand/40 bg-brand/5"}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -118,9 +136,12 @@ function SummaryBox({ title, s, muted = false }: { title: string; s: NotionSyncS
         </p>
       )}
       {s.error && <p className="mt-2 text-sm font-medium text-red-600">중단: {s.error}</p>}
+      {s.publishTime === false && <p className="mt-1 text-xs text-neutral-500">발행 시각이 아니라 새 글은 공개하지 않고, 공개된 글의 수정·내림만 반영했어요.</p>}
       {!!s.queued && (
         <p className="mt-1 text-xs text-neutral-500">
-          발행 대기 {s.queued}편 — 예약 실행마다 1편씩 공개돼요. 지금 전부 올리려면 &lsquo;지금 노션에서 가져오기&rsquo;.
+          발행 대기 {s.queued}편 —{" "}
+          {schedule.hours.length ? `발행 시각마다 ${schedule.perRun}편씩 공개돼요.` : "자동 발행이 꺼져 있어요."} 지금 전부 올리려면 &lsquo;지금 노션에서
+          가져오기&rsquo;.
         </p>
       )}
       {s.remaining > 0 && (
@@ -194,10 +215,10 @@ function NotionHelp() {
         </li>
         <li>쿠팡 파트너스 고지 문구는 사이트가 글 맨 위에 자동으로 넣어요 (따로 안 써도 돼요).</li>
         <li>
-          &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 예약 실행마다 1편씩 대기열 순서로 공개 (기다리는 동안 &lsquo;{PROP.memo}&rsquo;에 &ldquo;발행 대기 — n번째, 예정 약 …&rdquo;), 공개되면 &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 바로 올리려면 위 버튼. 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
+          &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 위 <b>발행 일정</b>의 시각마다 정한 편수씩 대기열 순서로 공개 (기다리는 동안 &lsquo;{PROP.memo}&rsquo;에 &ldquo;발행 대기 — n번째, 예정 약 …&rdquo;), 공개되면 &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 바로 올리려면 위 버튼. 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
         </li>
         <li>
-          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(다음 예약 실행 때 반영) 또는 페이지 삭제(휴지통 — 전체 확인을 하는 예약 실행 때, 늦어도 하루 안에 반영. 바로 하려면 위 버튼) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
+          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(다음 정각 예약 실행 때 반영) 또는 페이지 삭제(휴지통 — 6시간마다 하는 전체 확인 때, 늦어도 7시간 안에 반영. 바로 하려면 위 버튼) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
         </li>
       </ol>
     </section>

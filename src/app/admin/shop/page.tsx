@@ -17,6 +17,7 @@ import { ShopPasteDraft } from "@/components/ShopPasteDraft";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import { ShopNotionPanel } from "@/components/ShopNotionPanel";
 import { getSecretStatus, getShopConfig, updateDisclosureText, type ShopConfig } from "@/lib/shop-config";
+import { normalizeSchedule } from "@/lib/notion-schedule";
 import { DEFAULT_POST_DISCLOSURE } from "@/lib/shop-post-types";
 
 type Tab = "notion" | "paste" | "draft" | "published" | "settings";
@@ -113,11 +114,14 @@ export default function AdminShopPage() {
         <ShopNotionPanel
           // 칸이 없으면(SQL 미실행) undefined, 설정을 못 읽었으면 null
           state={config ? ("notion_sync" in config ? config.notion_sync ?? {} : undefined) : null}
+          // 발행 일정 칸이 없으면(shop-notion-cron.sql 미실행) undefined → 화면은 기본 일정을 보여 주고 저장은 막는다. 설정을 못 읽었으면 null
+          schedule={config ? ("notion_schedule" in config ? normalizeSchedule(config.notion_schedule) : undefined) : null}
           hasToken={hasNotionToken}
           onSynced={() => {
             void load();
             setReloadKey((k) => k + 1);
           }}
+          onScheduleSaved={(s) => setConfig((c) => (c ? { ...c, notion_schedule: s } : c))}
           onOpenSettings={() => go("settings")}
         />
       )}

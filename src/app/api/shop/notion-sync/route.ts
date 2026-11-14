@@ -1,6 +1,7 @@
 // POST /api/shop/notion-sync — 노션 → 사이트 동기화 (src/lib/notion-sync.ts) 를 부르는 두 경로
-//  1) 예약 실행: Supabase pg_cron 이 8시간마다 (supabase/shop-notion-cron.sql). 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
-//     → 새 글은 1편만 공개 (사장님 결정 B안), 이미 공개된 글의 갱신·내림은 전부
+//  1) 예약 실행: Supabase pg_cron 이 매시 정각 (supabase/shop-notion-cron.sql). 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
+//     → 이미 공개된 글의 갱신·내림은 매번 전부. 새 글은 관리자 화면 "발행 일정"의 발행 시각에만 정한 편수씩
+//       (발행 시각이 아니면 새 글은 건드리지 않음 — src/lib/notion-schedule.ts, 같은 시 중복 방지는 notion-sync.ts newAllowance)
 //  2) 관리자 "지금 노션에서 가져오기": 로그인한 관리자의 접속 토큰 (Authorization: Bearer …) → is_admin() — 새 글 제한 없음
 // Vercel 함수 시간 제한 때문에 시간 상한을 둔다 (남은 페이지는 다음 실행·버튼이 이어서).
 

@@ -1,10 +1,10 @@
 // 노션 "쇼핑 글" → 사이트 쇼핑 글 동기화 (서버 전용).
-// 예약 실행(Supabase pg_cron 8시간마다 → src/app/api/shop/notion-sync), 관리자 "지금 노션에서 가져오기"(같은 라우트),
+// 예약 실행(Supabase pg_cron 매시 정각 → src/app/api/shop/notion-sync), 관리자 "지금 노션에서 가져오기"(같은 라우트),
 // GitHub Actions 수동 실행(scripts/shop/notion-sync.ts)이 모두 이 runNotionSync 하나를 쓴다. 노션·DB·사진 저장은 deps 로 받아서 테스트에서 목업으로 바꿔 끼운다.
 //
 // 규칙 (사장님 결정: 노션 = 글 쓰는 곳, 상태를 "발행"으로 바꾸면 사이트에 공개)
-//  - 새 글 공개 속도 (B안): 예약 실행 1번에 새 글은 1편(SCHEDULED_NEW_PER_RUN), 나머지는 대기열 순서로 다음 실행에.
-//    대기 글은 노션 "사이트 메모"에 순서·예정 시각. 관리자 버튼은 제한 없음. 이미 공개된 글의 갱신·내림은 언제나 전부
+//  - 새 글 공개 속도: 관리자 화면 "발행 일정"(src/lib/notion-schedule.ts)의 발행 시각에만 perRun 편씩, 나머지는 대기열 순서로 다음 발행 시각에.
+//    대기 글은 노션 "사이트 메모"에 순서·예정 시각. 관리자 버튼은 제한 없음. 이미 공개된 글의 갱신·내림은 매시간 언제나 전부
 //  - 상태=발행: 본문을 가져와 변환·검사 → 통과하면 shop_posts 에 생성/갱신하고 공개. 같은 노션 페이지는 언제나 같은 글(같은 주소)
 //    노션이 안 바뀌었으면(last_edited_time 같음) 건너뜀 → 사진을 다시 올리지 않는다
 //    검사 실패(제목 없음·쿠팡 링크 없음·일반 쿠팡 주소·사진 복사 실패)는 발행하지 않고 노션 "사이트 메모"에 이유를 적는다
@@ -39,6 +39,7 @@ import {
   type PageProps,
   type SyncItem,
 } from "./notion-shop";
+import { DEFAULT_NOTION_SCHEDULE, isPublishHour, publishSlotKey, publishTimesAfter, type NotionSchedule } from "./notion-schedule";
 import { autoDescription } from "./shop-manual";
 import type { ShopManualContent, ShopNotionRef, ShopPostInputProduct, ShopPostStatus } from "./shop-post-types";
 
@@ -91,6 +92,7 @@ export type SyncStore = {
   updatePost(id: string, patch: Partial<PostRow>): Promise<void>;
   loadState(): Promise<NotionSyncState | null>; // null = 저장 칸 없음 (supabase/shop-notion.sql 미실행)
   saveState(state: NotionSyncState): Promise<void>;
+  loadSchedule(): Promise<NotionSchedule>; // 발행 일정 (칸이 없으면 기본값)
   disclosure(): Promise<string>;
   uploadImage(path: string, bytes: Uint8Array, contentType: string): Promise<string>; // → 공개 주소
 };
@@ -111,7 +113,10 @@ export type SyncOptions = {
   parentPageId: string;
   maxPages: number; // 한 번에 본문을 가져와 변환할 페이지 수 상한 (남으면 다음 번에)
   deadline?: number; // 이 시각(ms) 이후에는 새 페이지를 시작하지 않는다 (Vercel 함수 시간 제한)
-  newLimit?: number; // 이번 실행에서 새로 공개할 글 수 상한 (예약 실행 = SCHEDULED_NEW_PER_RUN, 없으면 제한 없음)
+  // 새로 공개할 글 수 상한
+  //  "schedule" = 예약 실행: 발행 일정대로 (지금이 발행 시각이면 perRun 편 — 같은 시에 이미 공개한 만큼 뺌, 아니면 0)
+  //  숫자 = 그 편수까지 (GitHub Actions 수동 실행), 없음 = 제한 없음 (관리자 버튼)
+  newLimit?: number | "schedule";
 };
 
 export type SyncResult = {
@@ -154,26 +159,22 @@ export function notionSlug(page: Pick<NPage, "id" | "created_time">): string {
 
 export const pairKeyOf = (pageId: string) => `notion:${pageId}`;
 
-// ---------- 예약 실행: 새 글은 1편씩 ----------
+// ---------- 예약 실행: 발행 시각에만 새 글 ----------
 
-// 예약 실행(Supabase pg_cron → /api/shop/notion-sync, supabase/shop-notion-cron.sql) 1번에 새로 공개하는 글 수 (사장님 결정 B안).
-// 이미 공개된 글의 갱신·내림은 제한 없이 매번. 관리자 "지금 노션에서 가져오기"는 제한 없음(시간 상한 안에서 전부).
-export const SCHEDULED_NEW_PER_RUN = 1;
-// 예약 실행 시각 (UTC 시). supabase/shop-notion-cron.sql 의 cron "0 0,8,16 * * *" 과 같아야 한다 (한국시간 오전 9시·오후 5시·새벽 1시)
-export const SCHEDULE_UTC_HOURS = [0, 8, 16];
-
-// now 뒤 k번째(0부터) 예약 실행 시각 — 대기 글 메모의 "예정 약 …"
-export function scheduledRunAt(now: Date, k: number): string {
-  const hours = [...SCHEDULE_UTC_HOURS].sort((x, y) => x - y);
-  const day = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const slots: number[] = [];
-  for (let d = 0; slots.length <= k; d++) {
-    for (const h of hours) {
-      const t = day + d * 86_400_000 + h * 3_600_000;
-      if (t > now.getTime()) slots.push(t);
-    }
-  }
-  return new Date(slots[k]).toISOString();
+// 이번 실행에서 새로 공개할 수 있는 편수와 발행 칸.
+// 예약 실행은 매시 정각에 오지만, 같은 시에 두 번 와도(늦게 온 cron·재시도) 그 시에 이미 공개한 편수(state.publishSlot)를 빼서
+// 한 시에 perRun 편을 넘지 않는다. 앞 실행이 대기 글이 없어 0편이었으면 뒤 실행이 그 시의 몫을 쓸 수 있다.
+export function newAllowance(
+  newLimit: SyncOptions["newLimit"],
+  schedule: NotionSchedule,
+  state: Pick<NotionSyncState, "publishSlot"> | null,
+  now: Date,
+): { limit?: number; slot?: { slot: string; used: number } } {
+  if (newLimit !== "schedule") return { limit: newLimit };
+  if (!isPublishHour(now, schedule)) return { limit: 0 };
+  const slot = publishSlotKey(now);
+  const used = state?.publishSlot?.slot === slot ? state.publishSlot.published : 0;
+  return { limit: Math.max(0, schedule.perRun - used), slot: { slot, used } };
 }
 
 // ---------- 노션 조회 방식 ----------
@@ -182,7 +183,7 @@ export function scheduledRunAt(now: Date, k: number): string {
 // → 휴지통 내림은 최대 이 시간만큼 늦을 수 있다 (관리자 버튼은 언제나 전체 조회라 바로 잡힘).
 //   상태를 "내림"으로 바꾸는 것은 페이지 시각이 바뀌어 바로 반영된다.
 // 1,000편 기준 전체 조회 1번 = 노션 목록 호출 10번 + 가벼운 DB 목록 1,000줄 → 6시간에 1번(하루 4번)이면 부담 없다.
-// 예약 실행이 8시간마다라 지금은 예약 실행도 매번 전체 조회가 된다 (하루 3번 — 부담 없음). 실행을 자주 돌리면 바뀐 글만 조회가 효과를 낸다.
+// 예약 실행은 매시간이라 대부분 "바뀐 글만" 조회 (노션 목록 호출 1번 안팎), 6시간마다 한 번 전체 조회.
 export const FULL_SCAN_EVERY_MS = 6 * 60 * 60 * 1000;
 // "바뀐 글만" 조회의 여유: 기준 시각에서 이만큼 빼고 받는다 (서버 시계 차이·노션 시각 분 단위 잘림·반영 지연 대비).
 // 여유 안에 들어온 안 바뀐 페이지는 판단에서 바로 건너뛰므로(본문 안 가져옴) 넉넉해도 비용이 거의 없다.
@@ -230,6 +231,9 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
   const loaded = await deps.store.loadState().catch(() => null);
   const state: NotionSyncState = { ...(loaded ?? {}) };
   const failed = { ...(state.failed ?? {}) };
+  const schedule = await deps.store.loadSchedule().catch(() => DEFAULT_NOTION_SCHEDULE);
+  const allow = newAllowance(opts.newLimit, schedule, loaded, new Date(startedAt));
+  if (opts.newLimit === "schedule") summary.publishTime = allow.slot !== undefined;
 
   try {
     const db = await deps.notion.ensureDatabase(opts.parentPageId, state);
@@ -247,7 +251,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     const posts = plan.full ? await deps.store.listLinked() : live.length ? await deps.store.listLinked(live.map((p) => p.id)) : [];
     const byPage = new Map(posts.map((p) => [p.notion.pageId, p]));
     const seen = new Set<string>();
-    // 할 일 순서: ① 이미 공개된 글의 갱신(제한 없음) → ② 새로 공개할 글(대기열 순서, 예약 실행은 newLimit 편까지) → ③ 같은 분 재확인
+    // 할 일 순서: ① 이미 공개된 글의 갱신(제한 없음) → ② 새로 공개할 글(대기열 순서, 예약 실행은 발행 시각에 perRun 편까지) → ③ 같은 분 재확인
     // (상한·시간을 재확인이 먼저 쓰지 않게, 대기 글이 공개 글 갱신을 막지 않게)
     type Todo = { page: NPage; props: PageProps; existing?: LinkedRow; recheck: boolean; isNew: boolean };
     const todo: Todo[] = [];
@@ -295,7 +299,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     for (const t of todo) {
       const { page, props, existing, recheck, isNew } = t;
       // 새 글 제한 (예약 실행). 같은 분 재확인(실패했던 글)은 제한·대기 메모에서 뺀다 (실패 메모를 덮지 않게)
-      if (isNew && !recheck && opts.newLimit !== undefined && newPublished >= opts.newLimit) {
+      if (isNew && !recheck && allow.limit !== undefined && newPublished >= allow.limit) {
         waiting.push(t);
         limited++;
         continue;
@@ -325,7 +329,11 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
         summary.unchanged++;
         continue;
       }
-      if (isNew) newPublished++;
+      if (isNew) {
+        newPublished++;
+        // 바로 기록 (뒤에서 중단돼도 이 시에 공개한 편수가 남게 — 상태는 중단돼도 저장한다)
+        if (allow.slot) state.publishSlot = { slot: allow.slot.slot, published: allow.slot.used + newPublished };
+      }
       changed.add(r.slug);
       if (r.kind === "published") {
         summary.published++;
@@ -358,10 +366,12 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     // 순서는 state.queue 의 처음 값으로 정하고, 기준 시각은 아래에서 쓰기 전 시각으로 당겨 두므로 다음 실행이 꼭 다시 받는다).
     // 저장 칸이 없으면(SQL 미실행) 순서를 기억할 수 없어 메모도 쓰지 않는다. 시간 상한이 지났으면 다음 실행에 쓴다.
     summary.queued = limited;
-    if (loaded !== null) {
+    // 예정 시각은 발행 일정 설정으로 계산 (지금 시간대 다음 발행 시각부터 perRun 편씩). 설정이 바뀌면 문구가 달라져 새로 쓴다
+    if (loaded !== null && waiting.length) {
+      const etas = publishTimesAfter(new Date(startedAt), schedule, Math.ceil(waiting.length / schedule.perRun));
       for (const [i, { page, props }] of waiting.entries()) {
         if (opts.deadline && Date.now() > opts.deadline) break;
-        const memo = queuedMemo(i + 1, scheduledRunAt(new Date(startedAt), Math.floor(i / SCHEDULED_NEW_PER_RUN)));
+        const memo = queuedMemo(i + 1, etas[Math.floor(i / schedule.perRun)] ?? null, schedule.perRun);
         if (memoCore(props.memo) === memoCore(memo)) continue;
         await deps.notion.updatePage(page.id, siteProps(null, memo)).catch(() => undefined);
       }

@@ -3,6 +3,7 @@
 
 import { supabase } from "./supabase";
 import type { NotionSyncState } from "./notion-shop";
+import { normalizeSchedule, type NotionSchedule } from "./notion-schedule";
 
 export type PublishMode = "review" | "auto";
 
@@ -41,6 +42,8 @@ export type ShopConfig = {
   key_check_at: string | null;
   // 노션 동기화 상태 (supabase/shop-notion.sql 실행 전에는 없음)
   notion_sync?: NotionSyncState | null;
+  // 노션 발행 일정 (supabase/shop-notion-cron.sql 실행 전에는 없음). 저장된 값은 normalizeSchedule 로 읽는다
+  notion_schedule?: NotionSchedule | null;
   updated_at: string;
 };
 
@@ -73,7 +76,7 @@ export function toSlots(list: ManualProduct[] | null | undefined): ManualProduct
 // 관리자가 수정할 수 있는 필드만.
 export type ShopConfigEditable = Omit<
   ShopConfig,
-  "id" | "updated_at" | "key_check" | "key_check_at" | "notion_sync"
+  "id" | "updated_at" | "key_check" | "key_check_at" | "notion_sync" | "notion_schedule"
 >;
 
 // DB check 제약과 동일한 범위. 화면 입력 제한과 저장 전 보정에 같이 쓴다.
@@ -238,9 +241,26 @@ export async function updateDisclosureText(text: string): Promise<void> {
   if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
 }
 
+// 노션 발행 일정만 저장 (📒 노션 탭 — 다른 설정은 건드리지 않음). 예약 실행 상태(notion_sync)와 칸을 나눠
+// 매시간 도는 예약 실행이 상태를 덮어써도 사장님 설정이 지워지지 않게 한다. 쓰기 권한은 shop_config 정책(관리자만)
+export async function updateNotionSchedule(schedule: NotionSchedule): Promise<NotionSchedule> {
+  const clean = normalizeSchedule(schedule);
+  const { data, error } = await supabase
+    .from("shop_config")
+    .update({ notion_schedule: clean, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+    .select("id");
+  if (error) {
+    if (/notion_schedule/.test(error.message)) throw new Error("저장 칸이 없어요 — Supabase 에서 supabase/shop-notion-cron.sql 을 먼저 실행해 주세요");
+    throw new Error(error.message);
+  }
+  if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
+  return clean;
+}
+
 export function toEditable(c: ShopConfig): ShopConfigEditable {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, updated_at, key_check, key_check_at, notion_sync, ...rest } = c;
+  const { id, updated_at, key_check, key_check_at, notion_sync, notion_schedule, ...rest } = c;
   return { ...rest, manual_products: toSlots(rest.manual_products) };
 }
 

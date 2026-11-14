@@ -13,6 +13,7 @@
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
+  NOTION_CONVERT_VERSION,
   applyImages,
   convertNotionBlocks,
   decidePage,
@@ -193,8 +194,10 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
         changed.add(existing!.slug);
         continue;
       }
-      const seenTime = existing?.content.notion.lastEditedTime ?? failed[page.id]?.edited;
-      todo.push({ page, props, existing, recheck: seenTime === page.last_edited_time });
+      // 변환 규칙이 바뀌어 다시 변환하는 글도 "실제 할 일"로 센다 (재확인 묶음 뒤로 밀려 계속 미뤄지지 않게)
+      const seenTime = existing ? existing.content.notion.lastEditedTime : failed[page.id]?.edited;
+      const sameVersion = existing ? existing.content.notion.convertVersion === NOTION_CONVERT_VERSION : failed[page.id]?.v === NOTION_CONVERT_VERSION;
+      todo.push({ page, props, existing, recheck: seenTime === page.last_edited_time && sameVersion });
     }
     todo.sort((a, b) => Number(a.recheck) - Number(b.recheck)); // 안정 정렬: 같은 묶음 안에서는 노션 순서(오래 고친 것부터)
 
@@ -313,7 +316,14 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, existi
   const description = props.description || autoDescription(blocks);
   const disclosure = existing?.content.disclosure || (await deps.store.disclosure());
   const at = now().toISOString();
-  const ref: ShopNotionRef = { pageId: page.id, url: page.url, lastEditedTime: page.last_edited_time, syncedAt: at, images };
+  const ref: ShopNotionRef = {
+    pageId: page.id,
+    url: page.url,
+    lastEditedTime: page.last_edited_time,
+    syncedAt: at,
+    images,
+    convertVersion: NOTION_CONVERT_VERSION,
+  };
   const content: ShopManualContent & { notion: ShopNotionRef } = {
     kind: "manual",
     blocks,
@@ -325,7 +335,9 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, existi
 
   // 같은 분 안에 고친 것을 놓치지 않으려고 한 번 더 가져온 경우: 내용이 같으면 시각만 기록 (노션에 다시 쓰지 않음 → 반복 방지)
   if (existing && existing.status === "published" && sameBody(existing, { title: props.title, description, content, products: conv.products })) {
-    await deps.store.updatePost(existing.id, { content: { ...existing.content, notion: { ...existing.content.notion, lastEditedTime: page.last_edited_time, syncedAt: at } } });
+    await deps.store.updatePost(existing.id, {
+      content: { ...existing.content, notion: { ...existing.content.notion, lastEditedTime: page.last_edited_time, syncedAt: at, convertVersion: NOTION_CONVERT_VERSION } },
+    });
     return { kind: "same", slug: existing.slug };
   }
 
@@ -385,7 +397,7 @@ async function writeFailure(
   reasons: string[],
   existing: StoredPost | undefined,
   now: () => Date,
-): Promise<{ edited: string; at: string }> {
+): Promise<{ edited: string; at: string; v: number }> {
   const at = now().toISOString();
   const all = existing?.status === "published" ? [...reasons, "사이트에는 고치기 전 글이 그대로 있어요"] : reasons;
   const memo = failedMemo(at, all);
@@ -397,7 +409,7 @@ async function writeFailure(
       // 메모를 못 써도 관리자 화면 결과에는 이유가 보인다
     }
   }
-  return { edited, at: now().toISOString() };
+  return { edited, at: now().toISOString(), v: NOTION_CONVERT_VERSION };
 }
 
 async function unpublish(deps: SyncDeps, post: StoredPost, page: NPage, props: PageProps, summary: NotionSyncSummary, now: () => Date) {

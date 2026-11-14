@@ -3,6 +3,9 @@
 // 관리자 "초안" / "발행된 글" 탭: 글 목록과, 직접 쓴 글을 열어 고치는 편집기.
 //  - 직접 쓴 글(붙여넣어 만든 글): 열기 → 편집기(사진 등록·링크 채우기·발행/내리기·삭제)
 //  - 예전 AI 글: 목록에서 보기·링크 수정·발행/내리기만 (본문 편집은 안 됨). 초안이면 삭제도.
+//  - 노션에서 온 글: 사이트 편집기를 열지 않고 "노션에서 고치기" 링크만. 본문·사진·링크 모두 노션에서 고친다
+//    (사이트에서 고치면 다음에 노션을 고칠 때 노션 내용으로 덮여 사라지므로 — 고칠 곳을 하나로 둔다).
+//    급할 때를 위해 "내리기"는 둔다 (노션 상태는 그대로라, 노션 페이지를 다시 고치면 다시 공개됨 — 확인 창에 안내).
 
 import { useCallback, useEffect, useState } from "react";
 import { ShopManualEditor, draftFromPost, type SavedPostRef } from "@/components/ShopManualEditor";
@@ -82,7 +85,8 @@ export function ShopAdminPosts({
 function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: () => void; onChanged: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [editLinks, setEditLinks] = useState(false);
-  const manual = p.kind === "manual";
+  const notion = !!p.notion_url;
+  const manual = p.kind === "manual" && !notion;
   const published = p.status === "published";
   const needsLink = p.products.some((x) => !x.link?.trim());
 
@@ -103,10 +107,14 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
       <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-neutral-500">
         <span
           className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${
-            manual ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300" : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            notion
+              ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+              : manual
+                ? "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"
+                : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
           }`}
         >
-          {manual ? "직접 쓴 글" : "AI 글"}
+          {notion ? "📒 노션 글" : manual ? "직접 쓴 글" : "AI 글"}
         </span>
         {needsLink && (
           <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">링크 필요</span>
@@ -116,6 +124,16 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
       </div>
       <div className="mt-1 text-sm font-semibold">{p.title}</div>
       <div className="mt-2 flex flex-wrap gap-2">
+        {notion && (
+          <a
+            href={p.notion_url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900"
+          >
+            노션에서 고치기 ↗
+          </a>
+        )}
         {manual && (
           <button onClick={onOpen} className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">
             {published ? "수정" : "열기"}
@@ -124,17 +142,20 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
         <a href={`/shop/${p.slug}`} target="_blank" rel="noopener noreferrer" className={BTN}>
           {published ? "보기 ↗" : "미리보기 ↗"}
         </a>
-        {!manual && (
+        {!manual && !notion && (
           <button onClick={() => setEditLinks((v) => !v)} className={BTN}>
             링크 수정
           </button>
         )}
-        {(published || !manual) && (
+        {(published || (!manual && !notion)) && (
           <button
             disabled={busy || (!published && needsLink)}
             title={!published && needsLink ? "쿠팡 링크를 먼저 넣어야 발행할 수 있어요" : undefined}
             onClick={() => {
-              if (published && !confirm("이 글을 내려서 초안으로 돌릴까요?")) return;
+              const ask = notion
+                ? "이 글을 사이트에서 내릴까요?\n\n노션 상태는 그대로라, 노션 페이지를 다시 고치면 다시 공개돼요. 계속 내려 두려면 노션 상태를 '내림'으로 바꾸세요."
+                : "이 글을 내려서 초안으로 돌릴까요?";
+              if (published && !confirm(ask)) return;
               run(async () => {
                 await setPostStatus(p, published ? "draft" : "published");
                 await refreshShopPages(p.slug);
@@ -158,6 +179,11 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
           </button>
         )}
       </div>
+      {notion && (
+        <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
+          노션에서 온 글은 본문·사진·링크를 노션에서 고치세요. {published ? "고치면 10분 안에 사이트에 반영돼요." : "노션 상태를 '발행'으로 바꾸면 공개돼요."}
+        </p>
+      )}
       {editLinks && <ShopPostProductsEditor post={p} onSaved={onChanged} />}
     </li>
   );
@@ -181,6 +207,7 @@ function OpenPost({
     getPostById(id)
       .then((p) => {
         if (p && !isManualPost(p)) throw new Error("AI 글은 여기서 본문을 고칠 수 없어요");
+        if (p && isManualPost(p) && p.content.notion) throw new Error("노션에서 온 글은 노션에서 고치세요 (목록의 '노션에서 고치기')");
         setPost(p as ManualShopPost | null);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));

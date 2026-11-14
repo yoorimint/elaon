@@ -1,0 +1,650 @@
+// 노션 → 사이트 동기화 회귀 테스트 (src/lib/notion-shop.ts·notion-sync.ts·notion-api.ts) — 외부 호출 없음
+// 노션 API 응답 모양 목업 + 메모리 저장소로 변환·검사·동기화 판단(새 글/변경 없음/갱신/내림/실패 메모)을 확인한다.
+// 실행: npm run test:shop. 고친 문제마다 여기에 테스트를 하나씩 추가한다.
+
+import assert from "node:assert/strict";
+import { createNotionClient, NotionError } from "@/lib/notion-api";
+import {
+  PROP,
+  convertNotionBlocks,
+  decidePage,
+  memoCore,
+  failedMemo,
+  readPageProps,
+  richToSpans,
+  type NBlock,
+  type NPage,
+  type NRichText,
+} from "@/lib/notion-shop";
+import { notionSlug, runNotionSync, type FetchedImage, type NotionPort, type PostRow, type StoredPost, type SyncStore } from "@/lib/notion-sync";
+import { signRevalidate, verifyRevalidate } from "@/lib/revalidate-signature";
+import { sanitizeManualInput } from "@/lib/shop-manual";
+import type { ShopManualBlock } from "@/lib/shop-post-types";
+
+let passed = 0;
+async function test(name: string, fn: () => void | Promise<void>) {
+  await fn();
+  passed++;
+  console.log(`  ✓ ${name}`);
+}
+
+// ---------- 노션 응답 목업 만들기 ----------
+
+const P = "https://link.coupang.com/a/abc123";
+const P2 = "https://link.coupang.com/a/zzz999";
+const PLAIN = "https://www.coupang.com/vp/products/12345";
+
+const rt = (text: string, o: { href?: string; bold?: boolean; mention?: boolean } = {}): NRichText => ({
+  type: o.mention ? "mention" : "text",
+  plain_text: text,
+  href: o.href ?? null,
+  annotations: { bold: !!o.bold },
+  ...(o.mention ? {} : { text: { content: text, link: o.href ? { url: o.href } : null } }),
+});
+
+let seq = 0;
+const bid = () => `0000000${++seq}`.slice(-8) + "-1111-2222-3333-444444444444";
+const blk = (type: string, body: Record<string, unknown>, children?: NBlock[]): NBlock => ({
+  object: "block",
+  id: bid(),
+  type,
+  has_children: !!children?.length,
+  last_edited_time: "2026-11-14T00:00:00.000Z",
+  [type]: body,
+  ...(children ? { children } : {}),
+});
+const para = (...r: NRichText[]) => blk("paragraph", { rich_text: r });
+const h = (n: 1 | 2 | 3, text: string) => blk(`heading_${n}`, { rich_text: [rt(text)], is_toggleable: false });
+const bullet = (text: string, children?: NBlock[]) => blk("bulleted_list_item", { rich_text: [rt(text)] }, children);
+const num = (text: string) => blk("numbered_list_item", { rich_text: [rt(text)] });
+const img = (url: string, kind: "file" | "external" = "file", caption = "") =>
+  blk("image", { type: kind, [kind]: kind === "file" ? { url, expiry_time: "2026-11-14T01:00:00Z" } : { url }, caption: caption ? [rt(caption)] : [] });
+const row = (...cells: string[]) => blk("table_row", { cells: cells.map((c) => [rt(c)]) });
+
+function page(id: string, o: { title?: string; status?: string; desc?: string; category?: string; edited?: string; memo?: string; statusType?: "select" | "status" } = {}): NPage {
+  const st = o.status ? { name: o.status } : null;
+  return {
+    object: "page",
+    id,
+    created_time: "2026-11-13T23:00:00.000Z",
+    last_edited_time: o.edited ?? "2026-11-14T01:00:00.000Z",
+    in_trash: false,
+    url: `https://www.notion.so/${id.replace(/-/g, "")}`,
+    parent: { type: "data_source_id", data_source_id: "ds-1", database_id: "db-1" },
+    properties: {
+      [PROP.title]: { type: "title", title: o.title === undefined ? [rt("무선청소기 A100 한 달 후기")] : o.title ? [rt(o.title)] : [] },
+      [PROP.status]: o.statusType === "status" ? { type: "status", status: st } : { type: "select", select: st },
+      [PROP.category]: { type: "select", select: o.category ? { name: o.category } : null },
+      [PROP.description]: { type: "rich_text", rich_text: o.desc ? [rt(o.desc)] : [] },
+      [PROP.siteUrl]: { type: "url", url: null },
+      [PROP.memo]: { type: "rich_text", rich_text: o.memo ? [rt(o.memo)] : [] },
+    },
+  };
+}
+
+const types = (bs: ShopManualBlock[]) => bs.map((b) => b.type);
+
+// ---------- 목업 노션 (메모리) ----------
+
+const minute = (ms: number) => new Date(Math.floor(ms / 60_000) * 60_000).toISOString();
+
+function mockNotion(clock: () => number) {
+  const pages = new Map<string, { page: NPage; blocks: NBlock[] }>();
+  const calls = { blockTree: 0, updatePage: 0, created: 0 };
+  const port: NotionPort = {
+    async ensureDatabase() {
+      return { databaseId: "db-1", dataSourceId: "ds-1", databaseUrl: "https://www.notion.so/db1", created: false };
+    },
+    async queryAll() {
+      return Array.from(pages.values())
+        .map((x) => x.page)
+        .filter((p) => !p.in_trash)
+        .map((p) => structuredClone(p));
+    },
+    async blockTree(id) {
+      calls.blockTree++;
+      return structuredClone(pages.get(id)!.blocks);
+    },
+    async getPage(id) {
+      const x = pages.get(id);
+      return x ? structuredClone(x.page) : null;
+    },
+    async updatePage(id, properties) {
+      calls.updatePage++;
+      const x = pages.get(id)!;
+      for (const [k, v] of Object.entries(properties)) {
+        const val = v as { url?: string | null; rich_text?: { text: { content: string } }[] };
+        if ("url" in val) x.page.properties[k] = { type: "url", url: val.url ?? null };
+        if (val.rich_text) x.page.properties[k] = { type: "rich_text", rich_text: val.rich_text.map((r) => rt(r.text.content)) };
+      }
+      x.page.last_edited_time = minute(clock()); // 노션처럼 분 단위로 잘림
+      return structuredClone(x.page);
+    },
+  };
+  // 사장님이 노션에서 고침 → 페이지 시각이 바뀜
+  const edit = (id: string, fn: (x: { page: NPage; blocks: NBlock[] }) => void) => {
+    const x = pages.get(id)!;
+    fn(x);
+    x.page.last_edited_time = minute(clock());
+  };
+  return { port, pages, calls, edit };
+}
+
+function memoryStore() {
+  const posts: (PostRow & { pair_key: string; created_at: string })[] = [];
+  const uploads: string[] = [];
+  let state: Record<string, unknown> | null = {};
+  const store: SyncStore = {
+    async listLinkedPosts() {
+      return structuredClone(posts.filter((p) => p.pair_key.startsWith("notion:"))) as unknown as StoredPost[];
+    },
+    async insertPost(row) {
+      if (posts.some((p) => p.slug === row.slug)) return "duplicate";
+      posts.push(structuredClone(row));
+      return "ok";
+    },
+    async updatePost(id, patch) {
+      const p = posts.find((x) => x.id === id)!;
+      Object.assign(p, structuredClone(patch));
+    },
+    async loadState() {
+      return state === null ? null : structuredClone(state);
+    },
+    async saveState(s) {
+      state = structuredClone(s);
+    },
+    async disclosure() {
+      return "고지 문구";
+    },
+    async uploadImage(path) {
+      uploads.push(path);
+      return `https://cdn.example/shop-images/${path}`;
+    },
+  };
+  return { store, posts, uploads, getState: () => state, dropState: () => (state = null) };
+}
+
+const okImage = async (): Promise<FetchedImage> => ({ bytes: new Uint8Array([1, 2, 3]), contentType: "image/jpeg" });
+
+async function main() {
+  console.log("노션 동기화 테스트");
+
+  // ---------- 속성 읽기 ----------
+  await test("속성: 제목·상태(select/status 둘 다)·카테고리·검색 설명", () => {
+    const p = readPageProps(page("p1", { status: "발행", category: "청소기", desc: "  설명  " }));
+    assert.deepEqual([p.title, p.status, p.category, p.description], ["무선청소기 A100 한 달 후기", "publish", "청소기", "설명"]);
+    assert.equal(readPageProps(page("p1", { status: "내림", statusType: "status" })).status, "down");
+    assert.equal(readPageProps(page("p1", { status: "작성중" })).status, "draft");
+    assert.equal(readPageProps(page("p1")).status, "none");
+    // 제목 속성 이름을 바꿔도 title 형식이면 읽는다
+    const renamed = page("p1");
+    renamed.properties["이름"] = renamed.properties[PROP.title];
+    delete renamed.properties[PROP.title];
+    assert.equal(readPageProps(renamed).title, "무선청소기 A100 한 달 후기");
+  });
+
+  // ---------- 변환 ----------
+  await test("문단: 굵게·일반 링크는 조각(spans)으로 유지, 노션 내부 링크·멘션은 링크를 뗀다", () => {
+    const r = convertNotionBlocks(
+      [
+        para(rt("가볍고 "), rt("흡입력", { bold: true }), rt("이 좋아요. "), rt("공식 사이트", { href: "https://example.com/a" }), rt(" 참고")),
+        para(rt("다른 글", { href: "https://www.notion.so/abc" }), rt(" · "), rt("@사장님", { mention: true, href: "https://www.notion.so/u" })),
+        para(rt(P, { href: P })),
+      ],
+      "제목",
+    );
+    const p0 = r.blocks[0] as Extract<ShopManualBlock, { type: "paragraph" }>;
+    assert.equal(p0.text, "가볍고 흡입력이 좋아요. 공식 사이트 참고");
+    assert.deepEqual(p0.spans, [
+      { text: "가볍고 " },
+      { text: "흡입력", bold: true },
+      { text: "이 좋아요. " },
+      { text: "공식 사이트", href: "https://example.com/a" },
+      { text: " 참고" },
+    ]);
+    const p1 = r.blocks[1] as Extract<ShopManualBlock, { type: "paragraph" }>;
+    assert.equal(p1.spans, undefined); // 링크·굵게가 없으면 조각 없이 글만
+    assert.equal(p1.text, "다른 글 · @사장님");
+  });
+
+  await test("쿠팡 링크: 한 줄 링크·꾸밈 글자+링크·북마크·임베드·링크 미리보기 → 그 자리에 구매 버튼, 같은 링크는 상품 하나", () => {
+    const r = convertNotionBlocks(
+      [
+        para(rt("첫 문단이에요.")),
+        para(rt("👉 "), rt("샘플 A100 보러 가기", { href: P })), // 꾸밈 + 링크
+        para(rt(P)), // 링크 없이 주소만 적힌 줄
+        blk("bookmark", { url: P2, caption: [rt("샘플 B200")] }),
+        blk("embed", { url: P2 }),
+        blk("link_preview", { url: P }),
+      ],
+      "글 제목",
+    );
+    assert.deepEqual(types(r.blocks), ["paragraph", "link", "link", "link", "link", "link"]);
+    assert.deepEqual(
+      r.blocks.filter((b) => b.type === "link").map((b) => (b as { product: number }).product),
+      [0, 0, 1, 1, 0],
+    );
+    assert.deepEqual(r.products, [
+      { name: "샘플 A100", link: P }, // 링크 글자 끝 "보러 가기"는 뗀다
+      { name: "샘플 B200", link: P2 },
+    ]);
+    assert.deepEqual(r.problems, []);
+  });
+
+  await test("쿠팡 링크: 링크 글자가 흔한 문구(최저가 보러가기 등)면 상품 이름은 글 제목", () => {
+    const r = convertNotionBlocks([para(rt("본문")), para(rt("최저가 보러가기", { href: P }))], "글 제목");
+    assert.equal(r.products[0].name, "글 제목");
+  });
+
+  await test("쿠팡 링크: 문장 속 링크는 링크로 두고, 글 끝에 그 상품 구매 버튼을 하나 붙인다", () => {
+    const r = convertNotionBlocks([para(rt("이 제품은 "), rt("여기", { href: P }), rt("에서 볼 수 있어요."))], "청소기 후기");
+    assert.deepEqual(types(r.blocks), ["paragraph", "link"]);
+    const p = r.blocks[0] as Extract<ShopManualBlock, { type: "paragraph" }>;
+    assert.equal(p.spans?.[1].href, P);
+    assert.equal(r.products[0].name, "청소기 후기");
+    assert.equal(r.blocks[1].id, "nbtn0");
+  });
+
+  await test("검사: 일반 쿠팡 주소·쿠팡 링크 없음·제목 없음은 발행을 막는다", () => {
+    const plain = convertNotionBlocks([para(rt("본문")), para(rt("쿠팡", { href: PLAIN }))], "제목");
+    assert.ok(plain.problems.some((x) => x.includes("일반 쿠팡 주소")));
+    assert.ok(!plain.problems.some((x) => x.includes("쿠팡 파트너스 링크가 없어요"))); // 같은 원인을 두 번 말하지 않음
+    const none = convertNotionBlocks([para(rt("본문만 있어요."))], "제목");
+    assert.ok(none.problems.some((x) => x.includes("쿠팡 파트너스 링크가 없어요")));
+    const noTitle = convertNotionBlocks([para(rt("본문")), para(rt(P, { href: P }))], "");
+    assert.ok(noTitle.problems.includes("글 제목이 비었어요"));
+    const inline = convertNotionBlocks([para(rt("문장 속 "), rt("일반 주소", { href: PLAIN }), rt(" 예요.")), para(rt(P, { href: P }))], "제목");
+    assert.ok(inline.problems.some((x) => x.includes("일반 쿠팡 주소")));
+  });
+
+  await test("블록 종류: 소제목·목록(하위 항목 펼침)·표(첫 행 머리)·인용·콜아웃·토글·구분선·사진·지원 안 하는 블록", () => {
+    const r = convertNotionBlocks(
+      [
+        h(1, "큰 소제목"),
+        h(3, "작은 소제목"),
+        bullet("가벼워요", [bullet("1.3kg")]),
+        bullet("조용해요"),
+        num("첫째"),
+        num("둘째"),
+        blk("divider", {}),
+        blk("table", { table_width: 2, has_column_header: false }, [row("항목", "값"), row("무게", "1.3kg"), row("배터리", "25분", "넘친 칸")]),
+        blk("quote", { rich_text: [rt("인용문이에요.")] }),
+        blk("callout", { rich_text: [rt("콜아웃이에요.")], icon: { emoji: "💡" } }),
+        blk("toggle", { rich_text: [rt("자주 묻는 질문")] }, [para(rt("토글 속 답이에요."))]),
+        img("https://s3.notion/img1.png", "file", "제품 사진"),
+        blk("video", { type: "external", external: { url: "https://youtu.be/x" } }),
+        para(rt(P, { href: P })),
+      ],
+      "제목",
+    );
+    assert.deepEqual(types(r.blocks), ["heading", "heading", "list", "list", "table", "paragraph", "paragraph", "paragraph", "paragraph", "image", "link"]);
+    const [h1, h3] = r.blocks as Extract<ShopManualBlock, { type: "heading" }>[];
+    assert.deepEqual([h1.level, h3.level], [2, 3]);
+    assert.deepEqual((r.blocks[2] as { items: string[] }).items, ["가벼워요", "1.3kg", "조용해요"]);
+    assert.equal((r.blocks[3] as { ordered: boolean }).ordered, true);
+    const t = r.blocks[4] as Extract<ShopManualBlock, { type: "table" }>;
+    assert.deepEqual(t.head, ["항목", "값", ""]);
+    assert.deepEqual(t.rows, [["무게", "1.3kg", ""], ["배터리", "25분", "넘친 칸"]]);
+    assert.equal((r.blocks[9] as { alt: string }).alt, "제품 사진");
+    assert.equal(r.images.length, 1);
+    assert.equal(r.images[0].kind, "file");
+    assert.equal(r.images[0].blockId, r.blocks[9].id);
+    assert.match(r.blocks[9].id, /^n[0-9a-f]{32}$/);
+    assert.ok(r.notes.some((x) => x.includes("동영상")));
+  });
+
+  await test("목록 줄 전체가 쿠팡 링크면 목록을 끊고 구매 버튼", () => {
+    const r = convertNotionBlocks(
+      [bullet("장점"), blk("bulleted_list_item", { rich_text: [rt("쿠팡에서 보기", { href: P })] }), bullet("단점")],
+      "제목",
+    );
+    assert.deepEqual(types(r.blocks), ["list", "link", "list"]);
+  });
+
+  await test("richToSpans: 같은 모양 조각은 합친다", () => {
+    assert.deepEqual(richToSpans([rt("가"), rt("나"), rt("다", { bold: true }), rt("라", { bold: true })]), [{ text: "가나" }, { text: "다라", bold: true }]);
+  });
+
+  // ---------- 판단 ----------
+  await test("판단: 발행(새 글)·변경 없음·같은 분 안 고침은 다시 확인·내림·작성중·실패 기억", () => {
+    const p = page("p1", { status: "발행", edited: "2026-11-14T01:00:00.000Z" });
+    const props = readPageProps(p);
+    assert.equal(decidePage(p, props, undefined).action, "publish");
+    const ex = (syncedAt: string, status: "draft" | "published" = "published") => ({
+      id: "x",
+      slug: "s",
+      status,
+      notion: { pageId: "p1", url: "", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt },
+    });
+    assert.deepEqual(decidePage(p, props, ex("2026-11-14T01:05:00.000Z")), { action: "skip", why: "unchanged" });
+    // 같은 분(01:00:40)에 가져왔으면 그 뒤 같은 분 안에 고친 것을 놓칠 수 있어 다시 확인
+    assert.equal(decidePage(p, props, ex("2026-11-14T01:00:40.000Z")).action, "publish");
+    // 사이트에서 관리자가 내린 글도 노션이 안 바뀌었으면 그대로
+    assert.equal(decidePage(p, props, ex("2026-11-14T01:05:00.000Z", "draft")).action, "skip");
+    const down = page("p1", { status: "내림" });
+    assert.equal(decidePage(down, readPageProps(down), ex("2026-11-14T01:05:00.000Z")).action, "unpublish");
+    assert.equal(decidePage(down, readPageProps(down), ex("2026-11-14T01:05:00.000Z", "draft")).action, "skip");
+    const draft = page("p1", { status: "작성중" });
+    assert.deepEqual(decidePage(draft, readPageProps(draft), ex("2026-11-14T01:05:00.000Z")), { action: "skip", why: "draft" });
+    assert.deepEqual(decidePage(p, props, undefined, { edited: p.last_edited_time, at: "2026-11-14T01:03:00.000Z" }), { action: "skip", why: "failed-unchanged" });
+  });
+
+  await test("메모: 시각을 뺀 내용으로 비교한다", () => {
+    assert.equal(memoCore(failedMemo("2026-11-14T01:00:00Z", ["A"])), memoCore(failedMemo("2026-11-14T03:00:00Z", ["A"])));
+    assert.notEqual(memoCore(failedMemo("2026-11-14T01:00:00Z", ["A"])), memoCore(failedMemo("2026-11-14T01:00:00Z", ["B"])));
+  });
+
+  // ---------- 동기화 전체 ----------
+  await test("동기화: 새 글 발행 → 변경 없음 → 노션 고침 갱신(사진 재사용) → 내림 → 휴지통", async () => {
+    let clock = Date.parse("2026-11-14T01:00:10.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10 };
+    const id = "aaaaaaaa-1111-2222-3333-444444444444";
+    const photo = img("https://s3.notion/p.png?X-Amz=1");
+    n.pages.set(id, {
+      page: page(id, { status: "발행", category: "청소기", edited: "2026-11-14T01:00:00.000Z" }),
+      blocks: [para(rt("가벼워서 매일 써요.")), photo, para(rt("샘플 A100", { href: P }))],
+    });
+
+    // 1) 새 글
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.published, 1);
+    assert.equal(s.posts.length, 1);
+    const post = s.posts[0];
+    assert.equal(post.status, "published");
+    assert.equal(post.slug, notionSlug(n.pages.get(id)!.page));
+    assert.match(post.slug, /^20261114-[0-9a-f]{6}$/); // 노션 페이지를 만든 날(KST) + 해시
+    assert.equal(post.pair_key, `notion:${id}`);
+    assert.equal(post.content.category, "청소기");
+    assert.equal(post.content.disclosure, "고지 문구");
+    assert.equal(post.content.descriptionAuto, true);
+    assert.equal(post.description, "가벼워서 매일 써요.");
+    assert.deepEqual(post.products, [{ name: "샘플 A100", link: P }]);
+    assert.equal(s.uploads.length, 1);
+    assert.ok(s.uploads[0].startsWith(`${post.id}/notion-n`));
+    const imgBlock = post.content.blocks.find((b) => b.type === "image") as { src?: string };
+    assert.ok(imgBlock.src?.startsWith("https://cdn.example/"));
+    const props = n.pages.get(id)!.page.properties;
+    assert.equal(props[PROP.siteUrl].url, `https://www.eloan.kr/shop/${post.slug}`);
+    assert.match(readPageProps(n.pages.get(id)!.page).memo, /^발행됨 2026-11-14 10:00/);
+    assert.deepEqual(r.changedSlugs, [post.slug]);
+    assert.deepEqual(r.newlyPublished, [post.slug]);
+
+    // 2) 같은 분에 다시 실행: 메모 쓰기로 바뀐 시각이라 한 번 더 확인 → 내용이 같으니 노션에 다시 쓰지 않음
+    clock += 20_000;
+    const writes = n.calls.updatePage;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.unchanged, 1);
+    assert.equal(r.summary.updated, 0);
+    assert.equal(n.calls.updatePage, writes);
+    assert.equal(s.uploads.length, 1);
+
+    // 3) 10분 뒤: 2)도 같은 분 안의 확인이었으니 한 번 더 확인 (그 분 뒤쪽에 고친 것을 놓치지 않게) — 쓰기는 없음
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.unchanged, 1);
+    assert.equal(n.calls.updatePage, writes);
+
+    // 3-2) 또 10분 뒤: 이제 본문도 안 가져온다
+    clock += 10 * 60_000;
+    const trees = n.calls.blockTree;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.unchanged, 1);
+    assert.equal(n.calls.blockTree, trees);
+    assert.deepEqual(r.changedSlugs, []);
+
+    // 4) 노션에서 글을 고침 → 같은 글(같은 주소) 갱신, 안 바뀐 사진은 다시 올리지 않음
+    clock += 60_000;
+    n.edit(id, (x) => {
+      x.blocks[0] = para(rt("가벼워서 매일 써요. 배터리도 넉넉해요."));
+    });
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.updated, 1);
+    assert.equal(s.posts.length, 1);
+    assert.equal(s.posts[0].slug, post.slug);
+    assert.equal(s.uploads.length, 1);
+    assert.ok(s.posts[0].content.blocks.some((b) => b.type === "paragraph" && b.text.includes("배터리")));
+    assert.equal(s.posts[0].published_at, post.published_at); // 처음 발행일 유지
+
+    // 5) 작성중으로 돌림 → 사이트 글 그대로
+    clock += 60_000;
+    n.edit(id, (x) => {
+      x.page.properties[PROP.status] = { type: "select", select: { name: "작성중" } };
+    });
+    r = await runNotionSync(deps, opts);
+    assert.equal(s.posts[0].status, "published");
+    assert.deepEqual(r.changedSlugs, []);
+
+    // 6) 내림 → 초안으로 (삭제 안 함) + 메모
+    clock += 60_000;
+    n.edit(id, (x) => {
+      x.page.properties[PROP.status] = { type: "select", select: { name: "내림" } };
+    });
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.unpublished, 1);
+    assert.equal(s.posts[0].status, "draft");
+    assert.match(readPageProps(n.pages.get(id)!.page).memo, /^내림 /);
+
+    // 7) 다시 발행 → 다시 공개 (같은 주소)
+    clock += 60_000;
+    n.edit(id, (x) => {
+      x.page.properties[PROP.status] = { type: "select", select: { name: "발행" } };
+    });
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.updated, 1);
+    assert.equal(s.posts[0].status, "published");
+    assert.equal(s.posts.length, 1);
+
+    // 8) 노션에서 페이지를 휴지통으로 → 목록에서 빠짐 → 확인 후 내림
+    clock += 60_000;
+    n.pages.get(id)!.page.in_trash = true;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.unpublished, 1);
+    assert.equal(s.posts[0].status, "draft");
+    assert.equal(s.posts.length, 1);
+  });
+
+  await test("동기화: 실패는 발행하지 않고 메모에 이유 — 같은 이유면 노션에 다시 쓰지 않고, 고치면 발행", async () => {
+    let clock = Date.parse("2026-11-14T02:00:10.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10 };
+    const id = "bbbbbbbb-1111-2222-3333-444444444444";
+    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-14T02:00:00.000Z" }), blocks: [para(rt("링크가 없는 글이에요."))] });
+
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.failed, 1);
+    assert.equal(s.posts.length, 0);
+    const memo = readPageProps(n.pages.get(id)!.page).memo;
+    assert.match(memo, /^발행 안 됨 — 쿠팡 파트너스 링크가 없어요/);
+    assert.ok(r.summary.items[0].reasons?.[0].includes("쿠팡 파트너스 링크가 없어요"));
+    const writes = n.calls.updatePage;
+
+    clock += 20_000; // 같은 분: 다시 확인하지만 같은 이유라 노션에 안 씀
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.failed, 1);
+    assert.equal(n.calls.updatePage, writes);
+
+    clock += 10 * 60_000; // 같은 분 안의 확인이었으니 한 번 더 — 역시 같은 이유라 노션에 안 씀
+    r = await runNotionSync(deps, opts);
+    assert.equal(n.calls.updatePage, writes);
+
+    clock += 10 * 60_000; // 그 뒤로는 본문도 안 가져옴
+    const trees = n.calls.blockTree;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.failed, 0);
+    assert.equal(n.calls.blockTree, trees);
+
+    n.edit(id, (x) => x.blocks.push(para(rt(P, { href: P }))));
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.published, 1);
+    assert.equal(s.posts.length, 1);
+    assert.equal((s.getState() as { failed: Record<string, unknown> }).failed[id], undefined);
+  });
+
+  await test("동기화: 노션 사진 복사 실패는 발행을 막고, 외부 사진 복사 실패는 원래 주소로 + 메모", async () => {
+    const clock = Date.parse("2026-11-14T03:00:30.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const failing = async (url: string): Promise<FetchedImage> => {
+      throw new Error(url.includes("s3") ? "HTTP 403" : "HTTP 451");
+    };
+    const deps = { notion: n.port, store: s.store, fetchImage: failing, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const a = "cccccccc-1111-2222-3333-444444444444";
+    const b = "dddddddd-1111-2222-3333-444444444444";
+    n.pages.set(a, { page: page(a, { status: "발행", title: "노션 사진 글" }), blocks: [para(rt("본문")), img("https://s3.notion/x.png"), para(rt(P, { href: P }))] });
+    n.pages.set(b, {
+      page: page(b, { status: "발행", title: "외부 사진 글" }),
+      blocks: [para(rt("본문")), img("https://img.example.com/y.jpg", "external"), para(rt(P2, { href: P2 }))],
+    });
+    const r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 10 });
+    assert.equal(r.summary.failed, 1);
+    assert.equal(r.summary.published, 1);
+    assert.ok(r.summary.items.find((x) => x.action === "failed")?.reasons?.[0].includes("사진 복사 실패"));
+    assert.equal(s.posts.length, 1);
+    const ext = s.posts[0].content.blocks.find((x) => x.type === "image") as { src?: string };
+    assert.equal(ext.src, "https://img.example.com/y.jpg");
+    assert.match(readPageProps(n.pages.get(b)!.page).memo, /외부 사진 1장/);
+  });
+
+  await test("동기화: 한 번에 처리할 페이지 수 상한 — 남은 것은 다음 번에", async () => {
+    let clock = Date.parse("2026-11-14T04:00:30.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    for (const c of ["e", "f", "a"]) {
+      const id = `${c.repeat(8)}-1111-2222-3333-444444444444`;
+      n.pages.set(id, { page: page(id, { status: "발행", title: `글 ${c}` }), blocks: [para(rt("본문")), para(rt(P, { href: P }))] });
+    }
+    let r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 2 });
+    assert.equal(r.summary.published, 2);
+    assert.equal(r.summary.remaining, 1);
+    clock += 60_000;
+    r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 2 });
+    assert.equal(r.summary.published, 1);
+    assert.equal(r.summary.remaining, 0);
+    assert.equal(s.posts.length, 3);
+  });
+
+  await test("동기화: 다른 실행이 같은 페이지를 먼저 만들었으면(주소 겹침) 글을 하나 더 만들지 않는다", async () => {
+    const clock = Date.parse("2026-11-14T05:00:30.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const id = "99999999-1111-2222-3333-444444444444";
+    n.pages.set(id, { page: page(id, { status: "발행" }), blocks: [para(rt("본문")), para(rt(P, { href: P }))] });
+    // 목록을 읽은 뒤 저장 직전에 다른 실행이 같은 글을 넣은 상황
+    const realInsert = s.store.insertPost;
+    let first = true;
+    s.store.insertPost = async (row) => {
+      if (first) {
+        first = false;
+        await realInsert({ ...row, id: "other-run" });
+      }
+      return realInsert(row);
+    };
+    const r = await runNotionSync({ notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) }, {
+      trigger: "admin",
+      parentPageId: "p",
+      maxPages: 5,
+    });
+    assert.equal(s.posts.length, 1);
+    assert.equal(r.summary.published, 0);
+  });
+
+  await test("동기화: 저장 칸(SQL) 없이도 동작, 노션 오류는 요약의 error 로", async () => {
+    const clock = Date.parse("2026-11-14T06:00:30.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    s.dropState();
+    const id = "12121212-1111-2222-3333-444444444444";
+    n.pages.set(id, { page: page(id, { status: "발행" }), blocks: [para(rt("본문")), para(rt(P, { href: P }))] });
+    const r = await runNotionSync({ notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) }, {
+      trigger: "cron",
+      parentPageId: "p",
+      maxPages: 5,
+    });
+    assert.equal(r.summary.published, 1);
+    assert.equal(s.getState(), null);
+
+    n.port.queryAll = async () => {
+      throw new NotionError(401, "unauthorized", "노션 토큰이 올바르지 않아요");
+    };
+    const r2 = await runNotionSync({ notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x" }, { trigger: "cron", parentPageId: "p", maxPages: 5 });
+    assert.match(r2.summary.error ?? "", /토큰/);
+  });
+
+  // ---------- HTTP 클라이언트 (가짜 fetch) ----------
+  await test("노션 클라이언트: 버전 헤더, 429 Retry-After 기다렸다 다시, children 이어 받기·재귀", async () => {
+    const seen: { url: string; headers: Record<string, string> }[] = [];
+    const slept: number[] = [];
+    let first429 = true;
+    const json = (status: number, body: unknown, headers: Record<string, string> = {}) => ({
+      status,
+      ok: status < 300,
+      headers: { get: (k: string) => headers[k.toLowerCase()] ?? null },
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    });
+    const fake = async (url: string, init: { headers: Record<string, string> }) => {
+      seen.push({ url, headers: init.headers });
+      if (url.includes("/blocks/page1/children") && first429) {
+        first429 = false;
+        return json(429, { code: "rate_limited", message: "slow" }, { "retry-after": "2" });
+      }
+      if (url.includes("/blocks/page1/children") && !url.includes("start_cursor")) {
+        return json(200, { results: [{ id: "t1", type: "toggle", has_children: true, toggle: { rich_text: [] } }], has_more: true, next_cursor: "c2" });
+      }
+      if (url.includes("/blocks/page1/children")) return json(200, { results: [{ id: "p2", type: "paragraph", has_children: false, paragraph: { rich_text: [] } }], has_more: false, next_cursor: null });
+      if (url.includes("/blocks/t1/children")) return json(200, { results: [{ id: "p3", type: "paragraph", has_children: false, paragraph: { rich_text: [] } }], has_more: false, next_cursor: null });
+      return json(404, { code: "object_not_found", message: "x" });
+    };
+    const c = createNotionClient({ token: "secret_test", fetch: fake, minIntervalMs: 0, sleep: async (ms) => void slept.push(ms) });
+    const tree = await c.blockTree("page1");
+    assert.deepEqual(tree.map((b) => b.id), ["t1", "p2"]);
+    assert.deepEqual(tree[0].children?.map((b) => b.id), ["p3"]);
+    assert.ok(slept.includes(2000));
+    assert.equal(seen[0].headers["notion-version"], "2026-03-11");
+    assert.equal(seen[0].headers.authorization, "Bearer secret_test");
+    assert.equal(await c.getPage("nope"), null); // 404 → null
+    await assert.rejects(() => c.request("GET", "/users/me").then(() => undefined), (e: unknown) => e instanceof NotionError && e.status === 404);
+  });
+
+  // ---------- 기타 ----------
+  await test("화면 갱신 서명: 맞는 서명만, 5분 지나면 거부", () => {
+    const sig = signRevalidate("key", ["a", "b"], 1_000_000);
+    assert.ok(verifyRevalidate("key", ["a", "b"], sig, 1_000_000 + 60_000));
+    assert.ok(!verifyRevalidate("key", ["a"], sig, 1_000_000));
+    assert.ok(!verifyRevalidate("other", ["a", "b"], sig, 1_000_000));
+    assert.ok(!verifyRevalidate("key", ["a", "b"], sig, 1_000_000 + 6 * 60_000));
+  });
+
+  await test("저장 전 정리: 노션 연결 정보·문단 조각 유지, 위험한 링크는 버리고, 글과 안 맞는 조각은 버린다", () => {
+    const r = sanitizeManualInput({
+      title: "t",
+      description: "",
+      content: {
+        kind: "manual",
+        notion: { pageId: "aaaaaaaa-1111-2222-3333-444444444444", url: "https://www.notion.so/x", lastEditedTime: "t", syncedAt: "s", images: { a: { edited: "e", src: "https://c/x.jpg" } } },
+        blocks: [
+          { id: "a1", type: "paragraph", text: "가나", spans: [{ text: "가", href: "javascript:alert(1)" }, { text: "나", bold: true }] },
+          { id: "a2", type: "paragraph", text: "고친 글", spans: [{ text: "예전 글" }] },
+        ],
+      },
+      products: [{ name: "A", link: P }],
+    });
+    assert.ok(r);
+    assert.equal(r.content.notion?.pageId, "aaaaaaaa-1111-2222-3333-444444444444");
+    assert.deepEqual((r.content.blocks[0] as { spans?: unknown }).spans, [{ text: "가" }, { text: "나", bold: true }]);
+    assert.equal((r.content.blocks[1] as { spans?: unknown }).spans, undefined);
+  });
+
+  console.log(`\n${passed}개 통과`);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

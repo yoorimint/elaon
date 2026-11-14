@@ -6,7 +6,9 @@ import {
   isManualContent,
   type ShopManualBlock,
   type ShopManualBlockType,
+  type ShopInlineSpan,
   type ShopManualContent,
+  type ShopNotionRef,
   type ShopPost,
   type ShopPostInputProduct,
 } from "./shop-post-types";
@@ -249,7 +251,11 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
     let id = /^[a-z0-9]{1,40}$/.test(String(o.id)) ? String(o.id) : newBlockId();
     if (seen.has(id)) id = newBlockId(); // id 가 겹치면 사진이 두 자리에 들어가므로 새로 준다
     seen.add(id);
-    if (o.type === "paragraph") blocks.push({ id, type: "paragraph", text: str(o.text) });
+    if (o.type === "paragraph") {
+      const text = str(o.text);
+      const spans = sanitizeSpans(o.spans, text);
+      blocks.push({ id, type: "paragraph", text, ...(spans ? { spans } : {}) });
+    }
     else if (o.type === "heading") blocks.push({ id, type: "heading", level: o.level === 3 ? 3 : 2, text: str(o.text, 200) });
     else if (o.type === "list") {
       const items = Array.isArray(o.items) ? o.items.slice(0, 50).map((x) => str(x, 1000)) : [];
@@ -278,7 +284,45 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
       ...(str(content.category, 50).trim() ? { category: str(content.category, 50).trim() } : {}),
       ...(str(content.disclosure, 500).trim() ? { disclosure: str(content.disclosure, 500).trim() } : {}),
       ...(content.descriptionAuto ? { descriptionAuto: true } : {}),
+      // 노션에서 온 글의 연결 정보는 그대로 둔다 (지우면 다음 동기화 때 같은 페이지가 새 글로 하나 더 생김)
+      ...(sanitizeNotionRef(content.notion) ? { notion: sanitizeNotionRef(content.notion)! } : {}),
     },
     products,
+  };
+}
+
+// 문단 글자 조각: 이어 붙인 글자가 문단 글과 같을 때만 (편집기에서 글을 고치면 조각은 버리고 글만 남김). 링크는 http(s) 만
+function sanitizeSpans(v: unknown, text: string): ShopInlineSpan[] | undefined {
+  if (!Array.isArray(v) || !v.length) return undefined;
+  const spans = v.slice(0, 200).map((x) => {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const href = str(o.href, 1000).trim();
+    return {
+      text: str(o.text),
+      ...(/^https?:\/\/\S+$/i.test(href) ? { href } : {}),
+      ...(o.bold === true ? { bold: true } : {}),
+    };
+  });
+  return spans.map((x) => x.text).join("") === text ? spans : undefined;
+}
+
+function sanitizeNotionRef(v: unknown): ShopNotionRef | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const pageId = str(o.pageId, 64).trim();
+  if (!/^[0-9a-f-]{32,36}$/i.test(pageId)) return undefined;
+  const images: ShopNotionRef["images"] = {};
+  if (o.images && typeof o.images === "object") {
+    for (const [k, x] of Object.entries(o.images as Record<string, unknown>).slice(0, 400)) {
+      const im = (x ?? {}) as Record<string, unknown>;
+      if (typeof im.src === "string" && typeof im.edited === "string") images[k.slice(0, 64)] = { edited: im.edited.slice(0, 40), src: im.src.slice(0, 1000) };
+    }
+  }
+  return {
+    pageId,
+    url: str(o.url, 500),
+    lastEditedTime: str(o.lastEditedTime, 40),
+    syncedAt: str(o.syncedAt, 40),
+    images,
   };
 }

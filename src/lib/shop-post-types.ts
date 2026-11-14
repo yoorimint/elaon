@@ -163,8 +163,12 @@ export type ShopPostStats = {
 // 다른 곳에서 쓴 글을 관리자 화면에 붙여넣으면 src/lib/shop-paste.ts 가 블록으로 나눈다.
 // 블록 순서 그대로 화면에 그린다 (src/components/ShopManualArticle.tsx).
 // 블록 id 는 글 안에서 유일 — 사진은 블록마다 따로 저장해 위아래에 같은 사진이 들어가지 않게 한다.
+// 문단 안 글자 조각 (노션에서 가져온 글의 링크·굵게 유지용). text 를 이어 붙이면 문단의 text 와 같다
+export type ShopInlineSpan = { text: string; href?: string; bold?: boolean };
+
 export type ShopManualBlock =
-  | { id: string; type: "paragraph"; text: string }
+  // spans: 있으면 링크·굵게를 살려 그린다 (노션 글). 없으면 text 만 (붙여넣은 글)
+  | { id: string; type: "paragraph"; text: string; spans?: ShopInlineSpan[] }
   | { id: string; type: "heading"; level: 2 | 3; text: string }
   | { id: string; type: "list"; ordered: boolean; items: string[] }
   // src: 올린 사진 주소 (없으면 빈 사진 자리 — 공개 글에선 안 보임). alt: 사진 설명(대체 텍스트)
@@ -182,6 +186,17 @@ export type ShopManualContent = {
   category?: string; // 관련 글 묶음용 (AI 글의 content.category 와 같은 자리라 관련 글 조회가 그대로 동작)
   disclosure?: string; // 공정위 고지 문구 (작성 시점 설정값)
   descriptionAuto?: boolean; // true = 검색 설명을 비워 둬서 저장 때마다 본문 앞부분으로 다시 만든다
+  notion?: ShopNotionRef; // 노션에서 가져온 글 (src/lib/notion-sync.ts). 본문은 노션에서만 고친다
+};
+
+// 노션 페이지와 사이트 글의 연결 정보. 같은 페이지는 언제나 같은 글(같은 주소)로 갱신한다
+export type ShopNotionRef = {
+  pageId: string; // 노션 페이지 id (대시 포함 uuid)
+  url: string; // 노션 페이지 주소 (관리자 화면 "노션에서 열기")
+  lastEditedTime: string; // 마지막으로 가져온 노션 last_edited_time — 같으면 다시 가져오지 않는다
+  syncedAt: string; // 마지막으로 가져온 시각 (노션 시각은 분 단위라, 같은 분에 가져온 글은 한 번 더 확인)
+  // 노션 사진 블록 id → 이미 사이트 저장소에 올린 사진 (블록이 안 바뀌었으면 다시 올리지 않음)
+  images?: Record<string, { edited: string; src: string }>;
 };
 
 export function isManualContent(c: unknown): c is ShopManualContent {

@@ -3,7 +3,8 @@
 // 쇼핑 글 관리 (2026-11-13~ 직접 쓴 글 중심으로 개편).
 // 다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들고, 사진은 사이트에 올리고,
 // 구매 링크는 쿠팡 파트너스 링크를 붙여넣어 건다.
-// 탭: ✍️ 붙여넣어 초안 만들기 / 📝 초안 / ✅ 발행된 글 / ⚙️ 설정(쿠팡 파트너스 API 키·고지 문구)
+// 탭: 📒 노션(노션 "쇼핑 글" → 사이트 발행, 2026-11-14~ 기본) / ✍️ 붙여넣어 초안 만들기(예비) / 📝 초안 / ✅ 발행된 글 /
+//     ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·고지 문구)
 // 매시간 AI 자동 글은 꺼 둠 (.github/workflows/shop-post.yml). 자동 글 설정 화면(실행·상품 선정·정보 수집·직접 입력 상품·
 // 실행 기록·Gemini/Claude/네이버 키)은 화면에서만 뺐다 — 코드(scripts/shop, ShopRunsAdmin 등)와 저장된 값은 그대로.
 
@@ -14,11 +15,13 @@ import { ShopAdminPosts } from "@/components/ShopAdminPosts";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { ShopPasteDraft } from "@/components/ShopPasteDraft";
 import { useAdminGuard } from "@/lib/use-admin-guard";
-import { getShopConfig, updateDisclosureText, type ShopConfig } from "@/lib/shop-config";
+import { ShopNotionPanel } from "@/components/ShopNotionPanel";
+import { getSecretStatus, getShopConfig, updateDisclosureText, type ShopConfig } from "@/lib/shop-config";
 import { DEFAULT_POST_DISCLOSURE } from "@/lib/shop-post-types";
 
-type Tab = "paste" | "draft" | "published" | "settings";
+type Tab = "notion" | "paste" | "draft" | "published" | "settings";
 const TABS: { id: Tab; label: string }[] = [
+  { id: "notion", label: "📒 노션" },
   { id: "paste", label: "✍️ 붙여넣어 초안 만들기" },
   { id: "draft", label: "📝 초안" },
   { id: "published", label: "✅ 발행된 글" },
@@ -27,7 +30,8 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AdminShopPage() {
   const guard = useAdminGuard("/admin/shop");
-  const [tab, setTab] = useState<Tab>("paste");
+  const [tab, setTab] = useState<Tab>("notion");
+  const [hasNotionToken, setHasNotionToken] = useState<boolean | null>(null);
   const [config, setConfig] = useState<ShopConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   // 초안·발행 탭에서 열어 둔 글
@@ -42,6 +46,9 @@ export default function AdminShopPage() {
     } catch (e) {
       setLoadError(`설정 불러오기 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
+    getSecretStatus()
+      .then((st) => setHasNotionToken(!!st.NOTION_TOKEN))
+      .catch(() => setHasNotionToken(null));
   }, []);
 
   useEffect(() => {
@@ -75,7 +82,7 @@ export default function AdminShopPage() {
       <div className="mb-2">
         <h1 className="text-2xl sm:text-3xl font-bold">쇼핑 글 관리</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들어요. 사진을 올리고 쿠팡 파트너스 링크를 넣어 발행하세요.
+          노션 &lsquo;쇼핑 글&rsquo;에서 쓰고 상태를 &lsquo;발행&rsquo;으로 바꾸면 사이트에 올라가요. 다른 곳에서 쓴 글을 붙여넣어 만들 수도 있어요.
         </p>
       </div>
       <AdminNav />
@@ -100,6 +107,19 @@ export default function AdminShopPage() {
         <div className="mb-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
           {loadError} — 고지 문구는 기본 문구를 씁니다.
         </div>
+      )}
+
+      {tab === "notion" && (
+        <ShopNotionPanel
+          // 칸이 없으면(SQL 미실행) undefined, 설정을 못 읽었으면 null
+          state={config ? ("notion_sync" in config ? config.notion_sync ?? {} : undefined) : null}
+          hasToken={hasNotionToken}
+          onSynced={() => {
+            void load();
+            setReloadKey((k) => k + 1);
+          }}
+          onOpenSettings={() => go("settings")}
+        />
       )}
 
       {tab === "paste" && (
@@ -158,8 +178,8 @@ function SettingsTab({ config, onSaved }: { config: ShopConfig | null; onSaved: 
 
   return (
     <div className="space-y-6">
-      {/* 쿠팡 그룹만 보여 줌 (다른 키는 화면에서만 숨김 — 저장된 값은 지우지 않음) */}
-      <ShopApiKeys check={config?.key_check ?? {}} checkedAt={config?.key_check_at ?? null} only={["coupang"]} />
+      {/* 쿠팡·노션만 보여 줌 (다른 키는 화면에서만 숨김 — 저장된 값은 지우지 않음) */}
+      <ShopApiKeys check={config?.key_check ?? {}} checkedAt={config?.key_check_at ?? null} only={["coupang", "notion"]} onSaved={onSaved} />
 
       <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
         <h2 className="font-bold">쿠팡 파트너스 고지 문구</h2>

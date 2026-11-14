@@ -24,10 +24,12 @@ export function ShopApiKeys({
   check,
   checkedAt,
   only,
+  onSaved,
 }: {
   check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
   checkedAt: string | null;
   only?: ApiKeyGroupId[];
+  onSaved?: () => void; // 키를 저장·삭제한 뒤 (노션 탭의 "토큰 있음" 표시 갱신용)
 }) {
   const groups = only ? API_KEY_GROUPS.filter((g) => only.includes(g.id)) : API_KEY_GROUPS;
   const [status, setStatus] = useState<StatusMap>({});
@@ -45,6 +47,11 @@ export function ShopApiKeys({
   useEffect(() => {
     reload();
   }, [reload]);
+
+  const afterSave = useCallback(async () => {
+    await reload();
+    onSaved?.();
+  }, [reload, onSaved]);
 
   return (
     <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
@@ -91,7 +98,7 @@ export function ShopApiKeys({
                   name={f.name}
                   label={f.label}
                   status={status[f.name]}
-                  onSaved={reload}
+                  onSaved={afterSave}
                 />
               ))}
             </div>

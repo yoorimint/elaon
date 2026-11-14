@@ -1,0 +1,58 @@
+// 노션 "쇼핑 글" → 사이트 동기화 (GitHub Actions "shop notion sync", 10분마다 + 수동 실행).
+// 관리자 "지금 노션에서 가져오기" 버튼(src/app/api/shop/notion-sync)과 같은 모듈(src/lib/notion-sync.ts)을 쓴다.
+// 필요: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (기존 shop 워크플로 비밀값). 노션 토큰은 관리자 화면에서 저장한 값.
+// 저장소가 공개라 실행 로그도 공개 — 토큰·본문은 찍지 않고 제목·건수만 남긴다.
+
+import { createClient } from "@supabase/supabase-js";
+import { pingIndexNow } from "@/lib/indexnow";
+import { summaryLine } from "@/lib/notion-shop";
+import { runNotionSync } from "@/lib/notion-sync";
+import { SITE_URL, loadNotionToken, parentPageId, syncDeps } from "@/lib/notion-sync-store";
+import { signRevalidate } from "@/lib/revalidate-signature";
+
+const MAX_PAGES_PER_RUN = 20;
+const TIME_BUDGET_MS = 6 * 60 * 1000; // 워크플로 제한(10분) 안에서
+
+async function main() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요");
+  const sb = createClient(url, key, { auth: { persistSession: false } });
+
+  const token = await loadNotionToken(sb);
+  if (!token) {
+    // 토큰을 아직 안 넣었으면 조용히 끝낸다 (10분마다 실패 알림이 쌓이지 않게)
+    console.log("노션 토큰이 없어 건너뜀 — 관리자 화면 ⚙️ 설정 탭에서 넣으면 다음 실행부터 동작");
+    return;
+  }
+
+  const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, token, (m) => console.log(`  ${m}`)), {
+    trigger: "cron",
+    parentPageId: parentPageId(),
+    maxPages: MAX_PAGES_PER_RUN,
+    deadline: Date.now() + TIME_BUDGET_MS,
+  });
+  console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
+
+  if (changedSlugs.length) {
+    // 사이트 화면 바로 새로 만들기 (실패해도 글 화면은 1분 안에 저절로 갱신됨)
+    const res = await fetch(`${SITE_URL}/api/shop/revalidate`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-shop-signature": signRevalidate(key, changedSlugs) },
+      body: JSON.stringify({ slugs: changedSlugs }),
+    }).catch((e: unknown) => ({ ok: false, status: String(e) }) as const);
+    console.log(`화면 갱신 요청: ${res.ok ? "완료" : `실패 (${res.status}) — 1분 안에 저절로 갱신돼요`}`);
+  }
+  if (newlyPublished.length) await pingIndexNow([...newlyPublished.map((s) => `/shop/${s}`), "/shop"]).catch(() => undefined);
+
+  // 노션 쪽 문제(토큰·권한)는 실패로 표시해 Actions 화면에서 보이게 한다
+  if (summary.error) {
+    console.error(`중단: ${summary.error}`);
+    process.exit(1);
+  }
+}
+
+main().catch((e) => {
+  console.error(e instanceof Error ? e.message : e);
+  process.exit(1);
+});

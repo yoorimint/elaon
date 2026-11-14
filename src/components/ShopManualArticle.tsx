@@ -6,11 +6,13 @@
 //  - 구매 버튼: 기존 AI 글과 같은 버튼·문구(BuyButton). 링크가 없으면 공개 글에선 숨김
 //  - 표: 휴대폰에서 칸이 많으면 표만 가로로 밀어 볼 수 있게 (글 전체가 옆으로 밀리지 않게)
 //  - "※"로 시작하는 안내 문단은 작은 회색 글씨로, 위 블록(특히 구매 버튼)과 넉넉히 띄운다
+//  - 노션에서 온 문단(spans)은 링크·굵게를 살린다. 쿠팡 파트너스 링크는 rel="sponsored", 다른 링크는 nofollow
 //  - 머리: 경로는 "홈 / 쇼핑", 제목 위 분류는 카테고리(없으면 안 보임) — AI 글의 "쇼핑 비교 / REVIEW" 와 구분
 
 import { ImageIcon } from "lucide-react";
 import { BuyButton, Paragraphs, PostHeader, RelatedPosts } from "@/components/ShopPostParts";
-import type { ManualShopPost, RelatedPost, ShopManualBlock } from "@/lib/shop-post-types";
+import { isPartnersLink } from "@/lib/coupang-link";
+import type { ManualShopPost, RelatedPost, ShopInlineSpan, ShopManualBlock } from "@/lib/shop-post-types";
 
 type ImageBlock = Extract<ShopManualBlock, { type: "image" }>;
 
@@ -52,6 +54,17 @@ export function ShopManualArticle({
           switch (b.type) {
             case "paragraph":
               if (!b.text.trim()) return null;
+              // 노션에서 온 문단: 링크·굵게를 살려 한 문단 그대로 (노션 문단 = 사장님이 나눈 문단)
+              if (b.spans?.length) {
+                return (
+                  <p
+                    key={b.id}
+                    className={`${gap} whitespace-pre-line ${isNote(b.text) ? "text-[14px] leading-relaxed text-neutral-500" : ""}`}
+                  >
+                    <InlineSpans spans={b.spans} />
+                  </p>
+                );
+              }
               return isNote(b.text) ? (
                 <Paragraphs key={b.id} text={b.text} gap="space-y-2" className={`${i === 0 ? "" : "mt-10"} text-[14px] leading-relaxed text-neutral-500`} />
               ) : (
@@ -175,5 +188,28 @@ export function ShopManualArticle({
       </p>
       <RelatedPosts related={related} />
     </article>
+  );
+}
+
+// 문단 속 링크·굵게. 주소는 저장 전에 http(s) 만 남긴다 (src/lib/notion-shop.ts·shop-manual.ts sanitize)
+function InlineSpans({ spans }: { spans: ShopInlineSpan[] }) {
+  return (
+    <>
+      {spans.map((s, i) => {
+        const inner = s.bold ? <strong className="font-semibold text-neutral-900 dark:text-white">{s.text}</strong> : s.text;
+        if (!s.href || !/^https?:\/\//i.test(s.href)) return <span key={i}>{inner}</span>;
+        return (
+          <a
+            key={i}
+            href={s.href}
+            target="_blank"
+            rel={isPartnersLink(s.href) ? "sponsored nofollow noopener" : "nofollow noopener noreferrer"}
+            className="font-medium text-brand underline underline-offset-2 hover:text-brand-dark"
+          >
+            {inner}
+          </a>
+        );
+      })}
+    </>
   );
 }

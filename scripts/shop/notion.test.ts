@@ -13,6 +13,8 @@ import {
   decidePage,
   memoCore,
   failedMemo,
+  knownQueued,
+  publishAllConfirmText,
   queuedMemo,
   readPageProps,
   richToSpans,
@@ -39,6 +41,7 @@ import {
   CRON_SECRET_NAME,
   ROUTE_TIME_BUDGET_MS,
   loadNotionSchedule,
+  parseAdminSyncMode,
   routeSyncOptions,
   sameSecret,
   supabaseSyncStore,
@@ -48,6 +51,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   DEFAULT_NOTION_SCHEDULE,
   hourLabel,
+  kstDateHourLabel,
   kstHour,
   nextPublishAt,
   normalizeSchedule,
@@ -1552,6 +1556,146 @@ async function main() {
     assert.deepEqual(await loadNotionSchedule(fakeSupabase([{ id: 1 }], 1000).client), DEFAULT_NOTION_SCHEDULE);
     assert.deepEqual(await loadNotionSchedule(fakeSupabase([], 1000).client), DEFAULT_NOTION_SCHEDULE);
     assert.deepEqual(await loadNotionSchedule(fakeSupabase([{ id: 1, notion_schedule: { hours: [], perRun: 1 } }], 1000).client), { hours: [], perRun: 1 });
+  });
+
+  // ---------- 관리자 버튼 둘: "수정만 지금 반영"(기본) / "대기 글까지 전부 지금 올리기" ----------
+
+  await test("관리자 버튼 '수정만 지금 반영'(updates): 새 글 0편·대기 메모만, 공개 글 수정·내림·휴지통은 전체 조회로 반영 / '전부 올리기'(all)는 기존처럼 전부", async () => {
+    let clock = Date.parse("2026-11-15T01:00:20.000Z"); // 한국시간 10시 (기본 일정 1·9·17시 — 발행 시각 아님)
+    const n = mockNotion(() => clock, { honorFilter: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const all = { trigger: "admin" as const, parentPageId: "p", maxPages: 50, mode: "all" as const };
+    const updates = { trigger: "admin" as const, parentPageId: "p", maxPages: 50, mode: "updates" as const };
+    const mk = (c: string) => `${c.repeat(8)}-1212-3434-5656-787878787878`;
+    const body = () => [para(rt("본문")), para(rt(P, { href: P }))];
+    const [u1, u2, u3, q1, q2] = ["1", "2", "3", "a", "b"].map(mk);
+    const slugOf = (id: string) => s.posts.find((p) => p.pair_key === `notion:${id}`)?.slug;
+    const statusOf = (id: string) => s.posts.find((p) => p.pair_key === `notion:${id}`)?.status;
+    const memo = (id: string) => readPageProps(n.pages.get(id)!.page).memo;
+
+    // 공개 글 3편 ("전부 올리기"로)
+    for (const id of [u1, u2, u3]) n.pages.set(id, { page: page(id, { status: "발행", title: `공개 ${id[0]}`, edited: "2026-11-15T00:00:00.000Z" }), blocks: body() });
+    let r = await runNotionSync(deps, all);
+    assert.equal(r.summary.published, 3);
+    assert.equal(r.summary.mode, "all");
+
+    // 새 글 2편 발행으로 + u1 수정 + u2 내림 + u3 휴지통
+    clock = Date.parse("2026-11-15T01:10:20.000Z");
+    for (const [id, edited] of [
+      [q1, "2026-11-15T01:05:00.000Z"],
+      [q2, "2026-11-15T01:06:00.000Z"],
+    ]) {
+      n.pages.set(id, { page: page(id, { status: "발행", title: `새 글 ${id[0]}`, edited }), blocks: body() });
+    }
+    n.edit(u1, (x) => x.blocks.unshift(para(rt("고친 문단"))));
+    n.edit(u2, (x) => (x.page.properties[PROP.status] = { type: "select", select: { name: "내림" } }));
+    n.pages.get(u3)!.page.in_trash = true;
+    clock += 60_000;
+    r = await runNotionSync(deps, updates);
+    assert.equal(r.summary.mode, "updates");
+    assert.equal(r.summary.scan, "full"); // 버튼은 언제나 전체 조회 → 휴지통도 바로
+    assert.equal(r.summary.published, 0); // 새 글 0편
+    assert.ok(!slugOf(q1) && !slugOf(q2));
+    assert.equal(r.summary.updated, 1);
+    assert.equal(r.summary.unpublished, 2); // 내림 + 휴지통
+    assert.equal(statusOf(u2), "draft");
+    assert.equal(statusOf(u3), "draft");
+    assert.equal(r.summary.queued, 2);
+    assert.equal(r.summary.nextPublishAt, "2026-11-15T08:00:00.000Z"); // 한국시간 17시
+    assert.equal(r.summary.publishTime, undefined);
+    assert.equal(r.newlyPublished.length, 0);
+    assert.equal(memo(q1), queuedMemo(1, "2026-11-15T08:00:00.000Z", 1)); // 대기 메모는 기존 규칙대로
+    assert.match(memo(q2), /^발행 대기 — 2번째, 예정 약 2026-11-16 01:00/);
+    assert.equal(knownQueued(r.summary), 2);
+
+    // 내렸던 글을 다시 발행으로 = 새로 공개 → "수정만"에서는 올리지 않음
+    clock += 60_000;
+    n.edit(u2, (x) => (x.page.properties[PROP.status] = { type: "select", select: { name: "발행" } }));
+    r = await runNotionSync(deps, updates);
+    assert.equal(r.summary.published, 0);
+    assert.equal(statusOf(u2), "draft");
+    assert.equal(r.summary.queued, 3);
+
+    // 예약 실행 대기열 순서는 "수정만"이 넣은 순서 그대로 (발행 시각 17시에 q1 부터)
+    clock = Date.parse("2026-11-15T08:00:20.000Z");
+    r = await runNotionSync(deps, { trigger: "cron", parentPageId: "p", maxPages: 50, newLimit: "schedule" });
+    assert.equal(r.summary.published, 1);
+    assert.ok(slugOf(q1) && !slugOf(q2));
+
+    // "전부 올리기": 기존 버튼과 같이 제한 없이 전부
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, all);
+    assert.equal(r.summary.published, 1); // q2
+    assert.equal(r.summary.updated, 1); // 내렸다 다시 발행한 u2 (이미 있던 글이라 "갱신"으로 셈)
+    assert.ok(slugOf(q2));
+    assert.equal(statusOf(u2), "published");
+    assert.equal(r.summary.queued, 0);
+    assert.equal(knownQueued(r.summary), null); // 전부 올리기 결과로는 대기 수를 모른다
+    assert.deepEqual((s.getState() as NotionSyncState).queue, {});
+  });
+
+  await test("'수정만 지금 반영': 실패했던 새 글의 같은 분 재확인도 공개하지 않고(실패 기억 유지) — '전부 올리기'나 다음 발행 시각에 다시 확인", async () => {
+    let clock = Date.parse("2026-11-15T02:00:10.000Z");
+    const n = mockNotion(() => clock, { honorFilter: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const id = "cdcdcdcd-1111-2222-3333-444444444444";
+    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-15T02:00:00.000Z" }), blocks: [] });
+    let r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 10, mode: "all" });
+    assert.equal(r.summary.failed, 1);
+    const failMemo = readPageProps(n.pages.get(id)!.page).memo;
+
+    // 같은 분 안에 고침 (노션 시각은 분 단위라 그대로) → "수정만"은 새 글이라 공개하지 않음, 실패 메모도 그대로
+    clock += 20_000;
+    n.edit(id, (x) => x.blocks.push(para(rt("이제 본문이 있어요.")), para(rt(P, { href: P }))));
+    const trees = n.calls.blockTree;
+    r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 10, mode: "updates" });
+    assert.equal(r.summary.published, 0);
+    assert.equal(r.summary.failed, 0);
+    assert.equal(n.calls.blockTree, trees); // 본문도 안 가져옴
+    assert.equal(s.posts.length, 0);
+    assert.equal(readPageProps(n.pages.get(id)!.page).memo, failMemo);
+    assert.ok((s.getState() as NotionSyncState).failed?.[id]);
+    assert.ok(Date.parse((s.getState() as NotionSyncState).changedSince!) <= Date.parse("2026-11-15T02:00:00.000Z"));
+
+    // "전부 올리기"는 다시 확인해서 공개
+    clock += 60_000;
+    r = await runNotionSync(deps, { trigger: "admin", parentPageId: "p", maxPages: 10, mode: "all" });
+    assert.equal(r.summary.published, 1);
+  });
+
+  await test("관리자 모드 읽기: 없음·이상한 값 = 'updates'(안전), 'all' 만 전부 / 라우트 옵션: 버튼 기본 updates, 예약 실행은 모드 없음", () => {
+    for (const b of [undefined, null, "all", {}, { mode: "x" }, { mode: "ALL" }, { mode: "updates" }, []]) assert.equal(parseAdminSyncMode(b), "updates");
+    assert.equal(parseAdminSyncMode({ mode: "all" }), "all");
+    assert.equal(routeSyncOptions("admin", "p", 1000).mode, "updates"); // 모드 없음 = updates
+    assert.equal(routeSyncOptions("admin", "p", 1000, parseAdminSyncMode(null)).mode, "updates");
+    const a = routeSyncOptions("admin", "p", 1000, "all");
+    assert.equal(a.mode, "all");
+    assert.equal(a.newLimit, undefined); // 제한 없음 (기존 버튼과 같음)
+    const c = routeSyncOptions("cron", "p", 1000, "all");
+    assert.equal(c.mode, undefined); // 예약 실행은 모드를 받지 않고 발행 일정대로
+    assert.equal(c.newLimit, "schedule");
+  });
+
+  await test("'전부 올리기' 확인 창 문구·대기 편수·다음 발행 시각 표시", () => {
+    const base = { trigger: "admin" as const, queued: 3 };
+    assert.equal(knownQueued({ ...base, mode: "updates" }), 3);
+    assert.equal(knownQueued({ trigger: "cron", queued: 2 }), 2);
+    assert.equal(knownQueued({ ...base, mode: "all" }), null);
+    assert.equal(knownQueued({ ...base }), null); // 예전 버튼 결과
+    assert.equal(knownQueued({ ...base, mode: "updates", error: "중단" }), null);
+    assert.equal(knownQueued({ trigger: "cron" }), null);
+    assert.equal(knownQueued(null), null);
+    assert.match(publishAllConfirmText(3, "5분 전"), /^대기 중인 새 글 3편이 지금 전부 공개돼요\.\n\(5분 전 확인 기준/);
+    assert.match(publishAllConfirmText(null), /^발행 대기 중인 새 글.*지금 전부 공개돼요/);
+    assert.doesNotMatch(publishAllConfirmText(null), /\d+편/);
+    assert.match(publishAllConfirmText(0), /대기 중인 새 글은 없었어요/);
+    for (const t of [publishAllConfirmText(1), publishAllConfirmText(null)]) assert.match(t, /계속할까요\?$/);
+    assert.equal(kstDateHourLabel("2026-11-15T08:00:00.000Z"), "11월 15일 오후 5시");
+    assert.equal(kstDateHourLabel("2026-11-14T16:00:00.000Z"), "11월 15일 새벽 1시");
+    assert.equal(kstDateHourLabel("x"), "");
+    assert.match(queuedMemo(1, null, 1), /"대기 글까지 전부 지금 올리기"/);
   });
 
   console.log(`\n${passed}개 통과`);

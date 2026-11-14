@@ -104,11 +104,13 @@ export async function refreshShopPages(slug: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-// "지금 노션에서 가져오기": 서버가 관리자 확인 후 동기화 모듈을 돌리고 결과 요약을 돌려준다 (src/app/api/shop/notion-sync)
-export async function syncFromNotion(): Promise<NotionSyncSummary> {
+// 관리자 📒 노션 탭 버튼: 서버가 관리자 확인 후 동기화 모듈을 돌리고 결과 요약을 돌려준다 (src/app/api/shop/notion-sync)
+// mode: "updates" = 수정만 지금 반영(새 글 0편), "all" = 대기 글까지 전부 지금 올리기
+export async function syncFromNotion(mode: "updates" | "all"): Promise<NotionSyncSummary> {
   const res = await fetch("/api/shop/notion-sync", {
     method: "POST",
-    headers: { authorization: `Bearer ${await accessToken()}` },
+    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
+    body: JSON.stringify({ mode }),
   });
   const body = (await res.json().catch(() => ({}))) as NotionSyncSummary & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `서버 오류 ${res.status}`);

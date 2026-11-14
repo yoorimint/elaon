@@ -12,6 +12,7 @@ import {
   type LinkedRow,
   type StoredPost,
   type SyncDeps,
+  type SyncMode,
   type SyncOptions,
   type SyncStore,
 } from "./notion-sync";
@@ -191,14 +192,23 @@ export async function verifyCronSecret(sb: SupabaseClient, given: string | null)
 
 // 실행 경로별 옵션 (Vercel 함수 60초 안에서: deadline 뒤에는 새 페이지를 시작하지 않는다 — 사진 많은 글도 한 편 10초 안팎)
 //  - cron: 예약 실행(매시 정각). 새 글은 발행 일정의 발행 시각에만 perRun 편, 공개 글 갱신·내림은 매번 시간 안에서 전부
-//  - admin: 관리자 "지금 노션에서 가져오기". 새 글 제한 없이 시간 안에서 전부 (남으면 화면에 "버튼 한 번 더" 안내)
+//  - admin: 관리자 버튼. 언제나 전체 조회(놓친 수정·휴지통까지). 모드는 버튼마다 (남으면 화면에 "버튼 한 번 더" 안내)
+//      updates(기본) = "수정만 지금 반영": 공개 글 갱신·내림만, 새 글 0편 — 대기 글은 그대로 다음 발행 시각에
+//      all = "대기 글까지 전부 지금 올리기": 새 글 제한 없이 시간 안에서 전부
+//    cron 은 모드를 받지 않는다 (발행 일정대로)
 export const ROUTE_TIME_BUDGET_MS = 35_000;
-export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, startMs: number): SyncOptions {
+export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, startMs: number, mode: SyncMode = "updates"): SyncOptions {
   return {
     trigger: kind,
     parentPageId,
     maxPages: 50,
     deadline: startMs + ROUTE_TIME_BUDGET_MS,
-    ...(kind === "cron" ? { newLimit: "schedule" as const } : {}),
+    ...(kind === "cron" ? { newLimit: "schedule" as const } : { mode }),
   };
+}
+
+// 관리자 요청 본문 { mode } 읽기. "all" 이라고 분명히 보낸 경우만 전부 올리기, 나머지(없음·이상한 값)는 안전한 "updates"
+export function parseAdminSyncMode(body: unknown): SyncMode {
+  const mode = body && typeof body === "object" ? (body as { mode?: unknown }).mode : undefined;
+  return mode === "all" ? "all" : "updates";
 }

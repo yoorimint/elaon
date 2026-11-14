@@ -6,7 +6,7 @@
 //  - 지금 한국시간 "시"가 hours 에 있으면 발행 시각 → 대기열의 새 글을 perRun 편까지 공개.
 //    같은 시에 실행이 두 번 와도(늦게 온 cron·재시도) 그 시에 공개한 편수를 state.publishSlot 에 기록해 perRun 을 넘지 않는다.
 //  - 발행 시각이 아니면 새 글은 공개하지 않고, 이미 공개된 글의 수정·내림만 반영한다 (매시간 → 사장님이 고친 게 빨리 보이게).
-//  - hours 가 비어 있으면 자동 발행 안 함 (관리자 "지금 노션에서 가져오기" 버튼으로만). 수정·내림 반영은 그대로 매시간.
+//  - hours 가 비어 있으면 자동 발행 안 함 (관리자 "대기 글까지 전부 지금 올리기" 버튼으로만). 수정·내림 반영은 그대로 매시간.
 
 export type NotionSchedule = {
   hours: number[]; // 한국시간 0~23 (정렬·중복 없음). 빈 목록 = 자동 발행 안 함
@@ -72,8 +72,15 @@ export function hourLabel(h: number): string {
   return `오후 ${h - 12}시`;
 }
 
+// 한국시간 날짜·시 → "11월 15일 오전 9시" (관리자 화면 "다음 발행 시각" 안내)
+export function kstDateHourLabel(iso: string): string {
+  const d = new Date(Date.parse(iso) + 9 * HOUR_MS);
+  if (!Number.isFinite(d.getTime())) return "";
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${hourLabel(d.getUTCHours())}`;
+}
+
 // 관리자 화면 미리보기·안내 문구
 export function scheduleSummary(s: NotionSchedule): string {
-  if (!s.hours.length) return "자동 발행 안 함 — '지금 노션에서 가져오기' 버튼으로만 올려요";
+  if (!s.hours.length) return "자동 발행 안 함 — '대기 글까지 전부 지금 올리기' 버튼으로만 올려요";
   return `하루 ${s.hours.length}번 × ${s.perRun}편 = 하루 최대 ${s.hours.length * s.perRun}편: ${s.hours.map(hourLabel).join(", ")}`;
 }

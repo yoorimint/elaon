@@ -1,6 +1,6 @@
 // 노션 "쇼핑 글" → 사이트 동기화 (GitHub Actions "shop notion sync" 수동 실행 전용 — 예비 경로).
 // 평소 예약 실행은 Supabase pg_cron 이 매시 정각 사이트 API 를 부른다 (supabase/shop-notion-cron.sql).
-// 수동 실행이라 발행 시각과 상관없이, 발행 일정의 "한 번에 몇 편"(perRun)만큼 새 글을 공개한다. 전부 바로 올리려면 관리자 "지금 노션에서 가져오기".
+// 수동 실행이라 발행 시각과 상관없이, 발행 일정의 "한 번에 몇 편"(perRun)만큼 새 글을 공개한다. 전부 바로 올리려면 관리자 "대기 글까지 전부 지금 올리기".
 // 관리자 버튼(src/app/api/shop/notion-sync)과 같은 모듈(src/lib/notion-sync.ts)을 쓴다.
 // 필요: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (기존 shop 워크플로 비밀값). 노션 토큰은 관리자 화면에서 저장한 값.
 // 저장소가 공개라 실행 로그도 공개 — 토큰·본문은 찍지 않고 제목·건수만 남긴다.

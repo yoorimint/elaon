@@ -1,10 +1,11 @@
 // 노션 "쇼핑 글" → 사이트 쇼핑 글 동기화 (서버 전용).
-// 예약 실행(Supabase pg_cron 매시 정각 → src/app/api/shop/notion-sync), 관리자 "지금 노션에서 가져오기"(같은 라우트),
+// 예약 실행(Supabase pg_cron 매시 정각 → src/app/api/shop/notion-sync), 관리자 버튼 두 개(같은 라우트 — "수정만 지금 반영"·"대기 글까지 전부 지금 올리기"),
 // GitHub Actions 수동 실행(scripts/shop/notion-sync.ts)이 모두 이 runNotionSync 하나를 쓴다. 노션·DB·사진 저장은 deps 로 받아서 테스트에서 목업으로 바꿔 끼운다.
 //
 // 규칙 (사장님 결정: 노션 = 글 쓰는 곳, 상태를 "발행"으로 바꾸면 사이트에 공개)
 //  - 새 글 공개 속도: 관리자 화면 "발행 일정"(src/lib/notion-schedule.ts)의 발행 시각에만 perRun 편씩, 나머지는 대기열 순서로 다음 발행 시각에.
-//    대기 글은 노션 "사이트 메모"에 순서·예정 시각. 관리자 버튼은 제한 없음. 이미 공개된 글의 갱신·내림은 매시간 언제나 전부
+//    대기 글은 노션 "사이트 메모"에 순서·예정 시각. 이미 공개된 글의 갱신·내림은 매시간 언제나 전부
+//    관리자 버튼: "수정만 지금 반영"(mode updates — 새 글 0편, 대기 글은 그대로 대기) / "대기 글까지 전부 지금 올리기"(mode all — 제한 없음)
 //  - 상태=발행: 본문을 가져와 변환·검사 → 통과하면 shop_posts 에 생성/갱신하고 공개. 같은 노션 페이지는 언제나 같은 글(같은 주소)
 //    노션이 안 바뀌었으면(last_edited_time 같음) 건너뜀 → 사진을 다시 올리지 않는다
 //    검사 실패(제목 없음·쿠팡 링크 없음·일반 쿠팡 주소·사진 복사 실패)는 발행하지 않고 노션 "사이트 메모"에 이유를 적는다
@@ -115,9 +116,16 @@ export type SyncOptions = {
   deadline?: number; // 이 시각(ms) 이후에는 새 페이지를 시작하지 않는다 (Vercel 함수 시간 제한)
   // 새로 공개할 글 수 상한
   //  "schedule" = 예약 실행: 발행 일정대로 (지금이 발행 시각이면 perRun 편 — 같은 시에 이미 공개한 만큼 뺌, 아니면 0)
-  //  숫자 = 그 편수까지 (GitHub Actions 수동 실행), 없음 = 제한 없음 (관리자 버튼)
+  //  숫자 = 그 편수까지 (GitHub Actions 수동 실행), 없음 = 제한 없음 (관리자 "대기 글까지 전부 지금 올리기")
   newLimit?: number | "schedule";
+  // 관리자 버튼 모드 (사장님 결정: 수정 하나 반영하려다 대기 글이 한꺼번에 올라가지 않게 버튼을 둘로)
+  //  "updates" = 이미 공개된 글의 갱신·내림만. 새 글 공개 0편 (같은 분 재확인도 공개하지 않음 — newLimit 은 무시)
+  //  "all" 또는 없음 = newLimit 대로 (관리자 "전부 올리기"는 newLimit 없음 = 제한 없음)
+  // 사이트 API 의 기본값은 "updates" (src/lib/notion-sync-store.ts parseAdminSyncMode)
+  mode?: SyncMode;
 };
+
+export type SyncMode = "updates" | "all";
 
 export type SyncResult = {
   summary: NotionSyncSummary;
@@ -232,8 +240,10 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
   const state: NotionSyncState = { ...(loaded ?? {}) };
   const failed = { ...(state.failed ?? {}) };
   const schedule = await deps.store.loadSchedule().catch(() => DEFAULT_NOTION_SCHEDULE);
-  const allow = newAllowance(opts.newLimit, schedule, loaded, new Date(startedAt));
-  if (opts.newLimit === "schedule") summary.publishTime = allow.slot !== undefined;
+  const updatesOnly = opts.mode === "updates";
+  const allow = updatesOnly ? { limit: 0 } : newAllowance(opts.newLimit, schedule, loaded, new Date(startedAt));
+  if (opts.mode) summary.mode = opts.mode;
+  if (opts.newLimit === "schedule" && !updatesOnly) summary.publishTime = allow.slot !== undefined;
 
   try {
     const db = await deps.notion.ensureDatabase(opts.parentPageId, state);
@@ -258,6 +268,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     const budgetDeferred: string[] = []; // 시간·개수 상한으로 넘긴 페이지의 last_edited_time
     const waiting: Todo[] = []; // 이번에 공개하지 못한 새 글 (새 글 제한·시간 상한, 대기열 순서) — 사이트 메모에 순서를 적는다
     let limited = 0; // 그중 새 글 제한 때문에 기다리는 수
+    const held: string[] = []; // "수정만" 모드에서 건드리지 않은 같은 분 재확인 새 글의 last_edited_time (다음 실행이 다시 받게)
     const queue: NonNullable<NotionSyncState["queue"]> = { ...(state.queue ?? {}) };
 
     for (const page of live) {
@@ -298,6 +309,12 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     let newPublished = 0;
     for (const t of todo) {
       const { page, props, existing, recheck, isNew } = t;
+      // "수정만" 모드: 실패했던 새 글의 같은 분 재확인도 공개하지 않는다. 실패 기억·메모는 그대로 둬서 다음 실행이 다시 확인한다
+      if (isNew && recheck && updatesOnly) {
+        held.push(page.last_edited_time);
+        summary.unchanged++;
+        continue;
+      }
       // 새 글 제한 (예약 실행). 같은 분 재확인(실패했던 글)은 제한·대기 메모에서 뺀다 (실패 메모를 덮지 않게)
       if (isNew && !recheck && allow.limit !== undefined && newPublished >= allow.limit) {
         waiting.push(t);
@@ -366,6 +383,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     // 순서는 state.queue 의 처음 값으로 정하고, 기준 시각은 아래에서 쓰기 전 시각으로 당겨 두므로 다음 실행이 꼭 다시 받는다).
     // 저장 칸이 없으면(SQL 미실행) 순서를 기억할 수 없어 메모도 쓰지 않는다. 시간 상한이 지났으면 다음 실행에 쓴다.
     summary.queued = limited;
+    if (limited) summary.nextPublishAt = publishTimesAfter(new Date(startedAt), schedule, 1)[0] ?? null;
     // 예정 시각은 발행 일정 설정으로 계산 (지금 시간대 다음 발행 시각부터 perRun 편씩). 설정이 바뀌면 문구가 달라져 새로 쓴다
     if (loaded !== null && waiting.length) {
       const etas = publishTimesAfter(new Date(startedAt), schedule, Math.ceil(waiting.length / schedule.perRun));
@@ -379,7 +397,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
 
     // 다음 "바뀐 글만" 조회 기준 = 이번 실행 시작 시각(조회 전). 못 하고 넘긴 페이지(대기 글 포함)가 있으면 그 페이지 시각까지 당긴다.
     // 전체 조회는 시간·개수 상한에 걸리지 않고 끝까지 마쳤을 때만 fullScan 에 남긴다 (대기 글은 다음 조회에 어차피 다시 오므로 상관없음)
-    const pulled = [...budgetDeferred, ...waiting.map((t) => t.page.last_edited_time)];
+    const pulled = [...budgetDeferred, ...held, ...waiting.map((t) => t.page.last_edited_time)];
     state.changedSince = pulled.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a), startedAt);
     if (plan.full && !budgetDeferred.length) state.fullScan = { at: startedAt, v: NOTION_CONVERT_VERSION, dataSourceId: db.dataSourceId };
     state.queue = queue;

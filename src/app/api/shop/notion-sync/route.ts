@@ -2,14 +2,16 @@
 //  1) 예약 실행: Supabase pg_cron 이 매시 정각 (supabase/shop-notion-cron.sql). 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
 //     → 이미 공개된 글의 갱신·내림은 매번 전부. 새 글은 관리자 화면 "발행 일정"의 발행 시각에만 정한 편수씩
 //       (발행 시각이 아니면 새 글은 건드리지 않음 — src/lib/notion-schedule.ts, 같은 시 중복 방지는 notion-sync.ts newAllowance)
-//  2) 관리자 "지금 노션에서 가져오기": 로그인한 관리자의 접속 토큰 (Authorization: Bearer …) → is_admin() — 새 글 제한 없음
+//  2) 관리자 버튼: 로그인한 관리자의 접속 토큰 (Authorization: Bearer …) → is_admin(). 본문 { mode }
+//     - "updates"(기본·없음·이상한 값): "수정만 지금 반영" — 공개 글 갱신·내림만, 새 글 0편 (대기 글은 다음 발행 시각에)
+//     - "all": "대기 글까지 전부 지금 올리기" — 새 글 제한 없음
 // Vercel 함수 시간 제한 때문에 시간 상한을 둔다 (남은 페이지는 다음 실행·버튼이 이어서).
 
 import { NextRequest, NextResponse } from "next/server";
 import { bearerToken, isAdminToken } from "@/lib/admin-token";
 import { pingIndexNow } from "@/lib/indexnow";
 import { runNotionSync } from "@/lib/notion-sync";
-import { CRON_SECRET_HEADER, loadNotionToken, parentPageId, routeSyncOptions, syncDeps, verifyCronSecret } from "@/lib/notion-sync-store";
+import { CRON_SECRET_HEADER, loadNotionToken, parentPageId, parseAdminSyncMode, routeSyncOptions, syncDeps, verifyCronSecret } from "@/lib/notion-sync-store";
 import { revalidateShop } from "@/lib/shop-revalidate";
 import { createServiceClient } from "@/lib/supabase-server";
 
@@ -37,12 +39,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "예약 실행 비밀값이 맞지 않아요" }, { status: 403 });
   }
   const kind = cronSecret !== null ? "cron" : "admin";
+  const mode = kind === "admin" ? parseAdminSyncMode(await req.json().catch(() => null)) : undefined;
   const notionToken = await loadNotionToken(sb);
   if (!notionToken) {
     return NextResponse.json({ error: "노션 토큰이 없어요 — ⚙️ 설정 탭의 '노션' 칸에 먼저 넣어 주세요" }, { status: 400 });
   }
 
-  const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, notionToken), routeSyncOptions(kind, parentPageId(), startMs));
+  const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, notionToken), routeSyncOptions(kind, parentPageId(), startMs, mode));
 
   if (changedSlugs.length) revalidateShop(changedSlugs);
   if (newlyPublished.length) await pingIndexNow([...newlyPublished.map((s) => `/shop/${s}`), "/shop"]).catch(() => undefined);

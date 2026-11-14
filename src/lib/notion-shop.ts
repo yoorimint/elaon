@@ -619,7 +619,7 @@ export function failedMemo(at: string, problems: string[]): string {
 // 발행 일정(src/lib/notion-schedule.ts) 때문에 기다리는 글. eta = 공개 예정 시각, null = 자동 발행 안 함(설정에 발행 시각 없음)
 // 설정(시각·편수)이 바뀌면 문구가 달라져 다음 실행이 메모를 새로 쓴다 (같으면 안 씀)
 export function queuedMemo(position: number, eta: string | null, perRun: number): string {
-  const now = '바로 올리려면 관리자 화면 "지금 노션에서 가져오기"';
+  const now = `바로 올리려면 관리자 화면 "${SYNC_BUTTON.all}"`;
   if (!eta) return `발행 대기 — ${position}번째, 자동 발행이 꺼져 있어요 (${now})`;
   return `발행 대기 — ${position}번째, 예정 약 ${kstStamp(eta)} (발행 시각마다 ${perRun}편씩 공개. ${now})`;
 }
@@ -668,6 +668,8 @@ export type NotionSyncSummary = {
   remaining: number; // 시간·개수 상한으로 이번에 못 하고 다음 번으로 넘긴 페이지 수
   queued?: number; // 발행 대기 중인 새 글 수 (예약 실행은 발행 시각에만 정한 편수씩 공개)
   publishTime?: boolean; // 예약 실행만: 이번이 발행 시각이었는지 (false = 수정·내림만 반영)
+  mode?: "updates" | "all"; // 관리자 버튼만: 수정만 지금 반영 / 대기 글까지 전부 지금 올리기 (src/lib/notion-sync.ts SyncOptions.mode)
+  nextPublishAt?: string | null; // 발행 대기 글이 있을 때: 다음 발행 시각 (null = 자동 발행 꺼짐)
   scan?: "full" | "changed"; // 노션 조회 방식: 전체 조회 / 지난번 뒤로 바뀐 글만 (src/lib/notion-sync.ts planScan)
   checked?: number; // 노션에서 받아 확인한 페이지 수
   items: SyncItem[];
@@ -689,6 +691,25 @@ export type NotionSyncState = {
   // 마지막 발행 칸: 한국시간 "YYYY-MM-DDTHH" 와 그 시에 예약 실행이 새로 공개한 편수 — 같은 시에 다시 와도 perRun 을 넘지 않게
   publishSlot?: { slot: string; published: number };
 };
+
+// 관리자 버튼 이름 (화면·도움말·노션 메모가 같은 이름을 쓰게 한 곳에)
+export const SYNC_BUTTON = { updates: "수정만 지금 반영", all: "대기 글까지 전부 지금 올리기" } as const;
+
+// 결과 요약에서 믿을 수 있는 발행 대기 편수. 새 글을 붙잡아 두는 실행(예약 실행·"수정만")의 결과만 센다.
+// "전부 올리기"·예전 버튼 결과·중단된 실행은 대기 수를 모른다 → null
+export function knownQueued(s: Pick<NotionSyncSummary, "trigger" | "mode" | "queued" | "error"> | null | undefined): number | null {
+  if (!s || s.error || typeof s.queued !== "number") return null;
+  return s.trigger === "cron" || s.mode === "updates" ? s.queued : null;
+}
+
+// "대기 글까지 전부 지금 올리기" 확인 창 문구. n = knownQueued (null 이면 일반 문구), checkedAgo = 그 결과가 언제 것인지 ("3분 전")
+export function publishAllConfirmText(n: number | null, checkedAgo?: string): string {
+  const tail = "\n\n계속할까요?";
+  if (n === null) return `발행 대기 중인 새 글(상태 '발행', 아직 미공개)이 지금 전부 공개돼요. 발행 일정과 상관없이 한꺼번에 올라가요.${tail}`;
+  const basis = checkedAgo ? `${checkedAgo} 확인 기준 — ` : "";
+  if (n === 0) return `마지막 확인 때 대기 중인 새 글은 없었어요 (${basis}그 뒤에 '발행'으로 바꾼 새 글이 있으면 지금 전부 공개돼요).${tail}`;
+  return `대기 중인 새 글 ${n}편이 지금 전부 공개돼요.\n(${basis}그 뒤에 '발행'으로 바꾼 새 글도 함께 올라가요)${tail}`;
+}
 
 export function summaryLine(s: Pick<NotionSyncSummary, "published" | "updated" | "unpublished" | "failed" | "remaining" | "queued">): string {
   const parts = [`발행 ${s.published}`, `갱신 ${s.updated}`, `내림 ${s.unpublished}`, `실패 ${s.failed}`];

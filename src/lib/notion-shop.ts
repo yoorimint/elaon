@@ -11,9 +11,14 @@
 
 import { isCoupangLink, isPlainCoupangUrl } from "./coupang-link";
 import { publishProblems } from "./shop-manual";
-import type { ShopInlineSpan, ShopManualBlock, ShopNotionRef, ShopPostInputProduct } from "./shop-post-types";
+import { mapBlocksDeep, type ShopBoxBlock, type ShopInlineSpan, type ShopManualBlock, type ShopNotionRef, type ShopPostInputProduct } from "./shop-post-types";
 
 export const NOTION_VERSION = "2026-03-11";
+
+// 변환 규칙 버전. 변환 결과가 달라지게 고치면 1 올린다 → 이미 발행된 글도 노션이 안 바뀌었어도 다음 동기화 때 다시 변환한다
+// (사진은 노션 블록이 안 바뀌었으면 다시 올리지 않음). content.notion.convertVersion 에 저장
+//  2: 콜아웃·인용 → 박스 블록, 쿠팡 링크 글자 → 버튼 문구, 사진 캡션 표시 (2026-11-14)
+export const NOTION_CONVERT_VERSION = 2;
 export const NOTION_API_BASE = "https://api.notion.com/v1";
 
 // 사장님 노션 부모 페이지 ("쇼핑 글" 데이터베이스를 이 아래에 만든다). 페이지 id 만으로는 열 수 없다(비공개 + 토큰 필요)
@@ -155,8 +160,9 @@ export type ConvertResult = {
 const GENERIC_LINK_TEXT =
   /^(?:링크|여기|클릭|바로\s*가기|구매(?:하기)?|구입(?:하기)?|최저가.*|가격.*|쿠팡.*|상품\s*보기|자세히\s*보기|보러\s*가기|구매\s*링크|구매\s*버튼|https?:\/\/.*)$/i;
 
-// 링크 글자 끝의 버튼 문구 ("통세척 가습기 보러 가기" → "통세척 가습기") — 상품 이름에서 뗀다
-const TRAILING_ACTION = /\s*(?:최저가\s*)?(?:보러\s*가기|보러가기|구매\s*하기|구입\s*하기|바로\s*가기|자세히\s*보기|가격\s*보기|확인\s*하기)\s*[›>→▶]*$/;
+// 링크 글자 끝의 버튼 문구 ("통세척 가습기 보러 가기" → "통세척 가습기", "3.1L 상품·가격 보기 →" → "3.1L") — 상품 이름에서 뗀다
+const TRAILING_ACTION =
+  /\s*(?:상품\s*[·・,/]?\s*)?(?:최저가\s*)?(?:보러\s*가기|보러가기|구매\s*하기|구입\s*하기|바로\s*가기|자세히\s*보기|가격\s*보기|확인\s*하기)\s*[›>→▶]*$/;
 
 // 꾸밈 글자만 있는 조각 ("👉 ", "▶", "→", ":" 등) — "문단 전체가 링크인지" 볼 때 무시
 const DECORATION = /^[\s\p{Extended_Pictographic}\p{S}\p{P}️‍]*$/u;
@@ -202,6 +208,7 @@ export function soleLink(spans: ShopInlineSpan[]): { url: string; text: string }
 
 type Ctx = {
   out: ShopManualBlock[];
+  boxTitle: string; // 지금 콜아웃 박스 안이면 박스 첫 줄 (상품 이름으로 쓴다), 아니면 ""
   products: ShopPostInputProduct[];
   productIndex: Map<string, number>;
   images: ImageTask[];
@@ -221,12 +228,7 @@ function productFor(ctx: Ctx, url: string, nameHint: string): number {
   if (isPlainCoupangUrl(link)) {
     ctx.notes.push(`일반 쿠팡 주소예요 — 그대로 걸었지만 수수료는 쿠팡 파트너스 링크여야 잡혀요: ${shortUrl(link)}`);
   }
-  const name = nameHint
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(TRAILING_ACTION, "")
-    .trim();
-  const usable = name && !GENERIC_LINK_TEXT.test(name) ? name.slice(0, 200) : "";
+  const usable = productName(ctx.boxTitle) || productName(nameHint);
   const known = ctx.productIndex.get(link);
   if (known !== undefined) {
     if (!ctx.products[known].name && usable) ctx.products[known].name = usable;
@@ -237,7 +239,46 @@ function productFor(ctx: Ctx, url: string, nameHint: string): number {
   return ctx.products.length - 1;
 }
 
+// 링크 글자·박스 첫 줄 → 상품 이름 (버튼 문구·흔한 문구면 "")
+function productName(hint: string): string {
+  const name = hint
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(TRAILING_ACTION, "")
+    .replace(/[\s·・,/:\-]+$/, "")
+    .trim();
+  return name && !GENERIC_LINK_TEXT.test(name) ? name.slice(0, 200) : "";
+}
+
 const isCoupang = (url: string) => isCoupangLink(url);
+
+// 구매 버튼 문구: 노션 링크 글자 그대로. 글자가 주소 자체거나 비었으면 없음(기본 문구)
+export const BUTTON_LABEL_MAX = 80;
+function buttonLabel(text: string): string | undefined {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (!t || isHttp(t) || /^(?:www\.|link\.coupang\.com|coupang\.com)/i.test(t)) return undefined;
+  return t.slice(0, BUTTON_LABEL_MAX);
+}
+
+// 글자 조각을 줄("\n")마다 나눈다 (조각 모양은 유지)
+function splitLines(spans: ShopInlineSpan[]): ShopInlineSpan[][] {
+  const lines: ShopInlineSpan[][] = [[]];
+  for (const s of spans) {
+    s.text.split("\n").forEach((part, i) => {
+      if (i > 0) lines.push([]);
+      if (part) lines[lines.length - 1].push({ ...s, text: part });
+    });
+  }
+  return lines;
+}
+
+const joinLines = (lines: ShopInlineSpan[][]): ShopInlineSpan[] =>
+  lines.flatMap((l, i) => (i === 0 ? l : [{ text: "\n" }, ...l])).reduce<ShopInlineSpan[]>((out, s) => {
+    const last = out[out.length - 1];
+    if (last && last.href === s.href && !!last.bold === !!s.bold) last.text += s.text;
+    else out.push({ ...s });
+    return out;
+  }, []);
 
 function flushList(ctx: Ctx) {
   if (ctx.list && ctx.list.items.length) ctx.out.push(ctx.list);
@@ -249,21 +290,85 @@ function pushBlock(ctx: Ctx, b: ShopManualBlock) {
   ctx.out.push(b);
 }
 
-// 문단 하나 (문단·인용·콜아웃·토글 머리 공통)
+// 문단 하나 (문단·콜아웃 첫 줄·인용 첫 줄·토글 머리 공통).
+// 줄 하나가 통째로 쿠팡 링크면 그 줄은 구매 버튼 (문구 = 링크 글자 그대로), 나머지 줄은 문단으로 — 같은 블록 안에서
+// Shift+Enter 로 "제목 / 설명 / 링크" 를 줄만 바꿔 쓴 콜아웃도 노션에서 보이는 순서대로 옮긴다
 function paragraphFrom(ctx: Ctx, id: string, rt: NRichText[] | undefined) {
   const spans = richToSpans(rt);
-  const text = spansText(spans);
-  if (!text.trim()) return;
-  const sole = soleLink(spans);
-  if (sole && isCoupang(sole.url)) {
-    const p = productFor(ctx, sole.url, sole.text);
-    if (p >= 0) pushBlock(ctx, { id, type: "link", product: p });
-    return;
+  if (!spansText(spans).trim()) return;
+  const lines = splitLines(spans);
+  const isButtonLine = (l: ShopInlineSpan[]) => {
+    const sole = soleLink(l);
+    return !!sole && isCoupang(sole.url);
+  };
+  // 한 줄짜리 또는 버튼 줄이 없는 문단은 그대로 한 블록
+  const groups: { button: boolean; lines: ShopInlineSpan[][] }[] = [];
+  if (lines.length > 1 && lines.some(isButtonLine)) {
+    for (const l of lines) {
+      const button = isButtonLine(l);
+      const last = groups[groups.length - 1];
+      if (!button && last && !last.button) last.lines.push(l);
+      else groups.push({ button, lines: [l] });
+    }
+  } else groups.push({ button: isButtonLine(spans), lines: [spans] });
+
+  groups.forEach((g, k) => {
+    const bid = k === 0 ? id : `${id}l${k}`;
+    const part = g.lines.length === 1 ? g.lines[0] : joinLines(g.lines);
+    if (g.button) {
+      const sole = soleLink(part)!;
+      const p = productFor(ctx, sole.url, sole.text);
+      const label = buttonLabel(sole.text);
+      if (p >= 0) pushBlock(ctx, { id: bid, type: "link", product: p, ...(label ? { label } : {}) });
+      return;
+    }
+    // 앞뒤 빈 줄은 뗀다 (버튼 줄과 나눈 자리)
+    const text = spansText(part).replace(/^\n+|\n+$/g, "");
+    if (!text.trim()) return;
+    const trimmed = text === spansText(part) ? part : richTrim(part);
+    // 문장 속 쿠팡 링크: 글 속 링크 그대로 둔다 (버튼을 따로 붙이지 않음 — 쓴 그대로 옮기기)
+    for (const s of trimmed) if (s.href && isCoupang(s.href)) productFor(ctx, s.href, s.text);
+    const rich = trimmed.some((s) => s.href || s.bold);
+    pushBlock(ctx, { id: bid, type: "paragraph", text, ...(rich ? { spans: trimmed } : {}) });
+  });
+}
+
+// 조각 앞뒤의 줄바꿈만 뗀다 (이어 붙인 글자 = 문단 text 가 되게)
+function richTrim(spans: ShopInlineSpan[]): ShopInlineSpan[] {
+  const out = spans.map((s) => ({ ...s }));
+  while (out.length && /^\n*$/.test(out[0].text)) out.shift();
+  while (out.length && /^\n*$/.test(out[out.length - 1].text)) out.pop();
+  if (out.length) {
+    out[0].text = out[0].text.replace(/^\n+/, "");
+    out[out.length - 1].text = out[out.length - 1].text.replace(/\n+$/, "");
   }
-  // 문장 속 쿠팡 링크: 글 속 링크 그대로 둔다 (버튼을 따로 붙이지 않음 — 쓴 그대로 옮기기)
-  for (const s of spans) if (s.href && isCoupang(s.href)) productFor(ctx, s.href, s.text);
-  const rich = spans.some((s) => s.href || s.bold);
-  pushBlock(ctx, { id, type: "paragraph", text, ...(rich ? { spans } : {}) });
+  return out;
+}
+
+// 노션 색 이름 (blue_background, orange, default …). 모르는 모양은 버린다
+const colorOf = (v: unknown) => (typeof v === "string" && /^[a-z]{3,10}(?:_background)?$/.test(v) && v !== "default" ? v : undefined);
+
+// 콜아웃·인용 → 박스 블록. 첫 줄(콜아웃 글자) + 속 블록을 모두 박스 안에, 노션 순서 그대로
+function boxFrom(ctx: Ctx, id: string, b: NBlock, type: ShopBoxBlock["type"]) {
+  const v = (b[b.type] ?? {}) as { rich_text?: NRichText[]; icon?: { type?: string; emoji?: string } | null; color?: string };
+  flushList(ctx);
+  const outer = { out: ctx.out, boxTitle: ctx.boxTitle };
+  ctx.out = [];
+  if (type === "callout") {
+    // 박스 첫 줄을 상품 이름으로 (예: "3.1L · EE-DCH35K") — 박스 속 구매 버튼 상품 이름이 "3.1L 상품" 같은 버튼 문구가 되지 않게
+    const first = plain(v.rich_text).split("\n")[0].replace(/\s+/g, " ").trim();
+    ctx.boxTitle = first || outer.boxTitle;
+  }
+  paragraphFrom(ctx, `${id}t`, v.rich_text);
+  walk(ctx, b.children ?? []);
+  flushList(ctx);
+  const children = ctx.out;
+  ctx.out = outer.out;
+  ctx.boxTitle = outer.boxTitle;
+  if (!children.length) return;
+  const icon = type === "callout" && typeof v.icon?.emoji === "string" && v.icon.emoji.length <= 16 ? v.icon.emoji : undefined;
+  const color = colorOf(v.color);
+  pushBlock(ctx, { id, type, ...(icon ? { icon } : {}), ...(color ? { color } : {}), children });
 }
 
 // 북마크·링크 미리보기·임베드: 쿠팡 링크면 구매 버튼, 아니면 링크 문단
@@ -339,22 +444,26 @@ function walk(ctx: Ctx, blocks: NBlock[]) {
         }
         break;
       }
-      case "quote":
       case "callout":
+      case "quote":
+        // 콜아웃 → 색 박스, 인용 → 인용 박스 (첫 줄과 속 내용 모두 안에)
+        boxFrom(ctx, id, b, b.type);
+        break;
       case "toggle":
-        // 인용·콜아웃 → 문단, 토글 → 머리 문단 + 속 내용 펼침
+        // 토글 → 머리 문단 + 속 내용 펼침 (사이트 글에는 접기가 없음)
         paragraphFrom(ctx, id, richOf(b));
         walk(ctx, kids);
         break;
       case "image": {
         const img = b.image as (NFile & { caption?: NRichText[] }) | undefined;
+        // 노션 캡션 → 사진 아래 캡션 + 대체 텍스트
         const alt = plain(img?.caption).replace(/\s+/g, " ").trim().slice(0, 200);
         const url = img?.type === "file" ? img.file.url : img?.type === "external" ? img.external.url : "";
         if (!url || (img?.type !== "file" && img?.type !== "external")) {
           ctx.problems.push("사진 하나를 읽을 수 없어요 (노션에서 사진을 다시 넣어 주세요)");
           break;
         }
-        pushBlock(ctx, { id, type: "image", alt });
+        pushBlock(ctx, { id, type: "image", alt, ...(alt ? { caption: alt } : {}) });
         ctx.images.push({ blockId: id, notionBlockId: b.id, kind: img.type, url, edited: b.last_edited_time ?? "" });
         break;
       }
@@ -410,7 +519,7 @@ export const MAX_PRODUCTS = 10;
 
 // 페이지 블록(children 채운 트리) → 사이트 글 본문·상품·사진 할 일·검사 결과
 export function convertNotionBlocks(blocks: NBlock[], title: string): ConvertResult {
-  const ctx: Ctx = { out: [], products: [], productIndex: new Map(), images: [], problems: [], notes: [], skipped: new Map(), list: null };
+  const ctx: Ctx = { out: [], boxTitle: "", products: [], productIndex: new Map(), images: [], problems: [], notes: [], skipped: new Map(), list: null };
   walk(ctx, blocks);
   flushList(ctx);
 
@@ -427,9 +536,9 @@ export function convertNotionBlocks(blocks: NBlock[], title: string): ConvertRes
   return { blocks: ctx.out, products: ctx.products, images: ctx.images, problems, notes: ctx.notes };
 }
 
-// 올린 사진 주소를 블록에 넣는다 (블록 id 로만 — 다른 자리에 번지지 않게)
+// 올린 사진 주소를 블록에 넣는다 (블록 id 로만 — 다른 자리에 번지지 않게). 박스 속 사진도
 export function applyImages(blocks: ShopManualBlock[], srcByBlock: Record<string, string>): ShopManualBlock[] {
-  return blocks.map((b) => (b.type === "image" && srcByBlock[b.id] ? { ...b, src: srcByBlock[b.id] } : b));
+  return mapBlocksDeep(blocks, (b) => (b.type === "image" && srcByBlock[b.id] ? { ...b, src: srcByBlock[b.id] } : b));
 }
 
 // ---------- 동기화 판단 ----------
@@ -458,16 +567,22 @@ export type PageDecision =
   | { action: "skip"; why: "draft" | "unchanged" | "failed-unchanged" | "not-on-site" | "no-status" };
 
 // 실패 기억: 같은 페이지가 그대로면 매번 사진을 다시 받지 않게 (shop_config.notion_sync.failed)
-export type FailedMemory = { edited: string; at: string };
+// v: 실패를 판단한 변환 규칙 버전 (규칙이 바뀌면 한 번 다시 시도)
+export type FailedMemory = { edited: string; at: string; v?: number };
 
 export function decidePage(page: NPage, props: PageProps, existing: LinkedPost | undefined, failed?: FailedMemory): PageDecision {
   switch (props.status) {
     case "publish":
-      if (existing && existing.notion.lastEditedTime === page.last_edited_time && settledSince(page.last_edited_time, existing.notion.syncedAt)) {
+      if (
+        existing &&
+        existing.notion.lastEditedTime === page.last_edited_time &&
+        settledSince(page.last_edited_time, existing.notion.syncedAt) &&
+        existing.notion.convertVersion === NOTION_CONVERT_VERSION // 변환 규칙이 바뀌었으면 다시 변환
+      ) {
         // 노션이 안 바뀜 → 건너뜀. 사이트에서 관리자가 내린 글도 노션을 고치기 전까지는 그대로 둔다
         return { action: "skip", why: "unchanged" };
       }
-      if (failed && failed.edited === page.last_edited_time && settledSince(page.last_edited_time, failed.at)) {
+      if (failed && failed.edited === page.last_edited_time && settledSince(page.last_edited_time, failed.at) && failed.v === NOTION_CONVERT_VERSION) {
         return { action: "skip", why: "failed-unchanged" };
       }
       return { action: "publish", existing };

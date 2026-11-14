@@ -3,7 +3,9 @@
 
 import { isCoupangLink } from "./coupang-link";
 import {
+  flattenBlocks,
   isManualContent,
+  mapBlocksDeep,
   type ShopManualBlock,
   type ShopManualBlockType,
   type ShopInlineSpan,
@@ -38,6 +40,9 @@ export function makeBlock(type: ShopManualBlockType, id: string = newBlockId()):
       return { id, type, product: 0 };
     case "table":
       return { id, type, head: ["", ""], rows: [["", ""]] };
+    case "callout":
+    case "quote":
+      return { id, type, children: [] }; // 편집기에서는 만들지 않음 (노션 글 전용) — 타입을 맞추려고만 둔다
   }
 }
 
@@ -65,9 +70,9 @@ export function updateBlock(blocks: ShopManualBlock[], id: string, patch: Partia
   return blocks.map((b) => (b.id === id ? ({ ...b, ...patch } as ShopManualBlock) : b));
 }
 
-// 사진은 블록 id 로만 넣는다 — 다른 사진 자리에는 절대 번지지 않게 (예전 "위아래 같은 사진" 문제 방지)
+// 사진은 블록 id 로만 넣는다 — 다른 사진 자리에는 절대 번지지 않게 (예전 "위아래 같은 사진" 문제 방지). 박스 속 사진도
 export function setBlockImage(blocks: ShopManualBlock[], id: string, src: string): ShopManualBlock[] {
-  return blocks.map((b) => (b.id === id && b.type === "image" ? { ...b, src } : b));
+  return mapBlocksDeep(blocks, (b) => (b.id === id && b.type === "image" ? { ...b, src } : b));
 }
 
 // 상품 삭제: 그 상품을 가리키던 구매 버튼은 첫 상품으로, 뒤 상품 번호는 하나씩 당긴다. 상품은 최소 1개 남긴다.
@@ -79,7 +84,7 @@ export function removeProduct(
   if (products.length <= 1 || index < 0 || index >= products.length) return { products, blocks };
   return {
     products: products.filter((_, i) => i !== index),
-    blocks: blocks.map((b) => {
+    blocks: mapBlocksDeep(blocks, (b) => {
       if (b.type !== "link") return b;
       if (b.product === index) return { ...b, product: 0 };
       if (b.product > index) return { ...b, product: b.product - 1 };
@@ -131,8 +136,10 @@ export function removeTableColumn(t: TableBlock, col: number): Pick<TableBlock, 
 
 export type BlockCounts = { images: number; links: number; headings: number; paragraphs: number; lists: number; tables: number };
 
+// 박스(콜아웃·인용) 속 블록도 센다
 export function countBlocks(blocks: ShopManualBlock[]): BlockCounts {
-  const n = (t: ShopManualBlockType) => blocks.filter((b) => b.type === t).length;
+  const all = flattenBlocks(blocks);
+  const n = (t: ShopManualBlockType) => all.filter((b) => b.type === t).length;
   return { images: n("image"), links: n("link"), headings: n("heading"), paragraphs: n("paragraph"), lists: n("list"), tables: n("table") };
 }
 
@@ -141,7 +148,7 @@ export function countBlocks(blocks: ShopManualBlock[]): BlockCounts {
 export const AUTO_DESCRIPTION_MAX = 150;
 
 export function autoDescription(blocks: ShopManualBlock[], max = AUTO_DESCRIPTION_MAX): string {
-  const text = blocks
+  const text = flattenBlocks(blocks)
     .filter((b): b is Extract<ShopManualBlock, { type: "paragraph" }> => b.type === "paragraph")
     .map((b) => b.text.replace(/\s+/g, " ").trim())
     .filter(Boolean)
@@ -162,8 +169,10 @@ export type ManualDraftInput = {
 };
 
 // 발행을 막는 문제 (하나라도 있으면 발행 안 됨). 링크 빈 자리·잘못된 링크가 핵심
-export function publishProblems({ title, blocks, products }: ManualDraftInput): string[] {
+// 박스(콜아웃·인용) 속 문단·구매 버튼도 같이 본다
+export function publishProblems({ title, blocks: top, products }: ManualDraftInput): string[] {
   const out: string[] = [];
+  const blocks = flattenBlocks(top);
   if (!title.trim()) out.push("글 제목이 비었어요");
   if (!blocks.some((b) => (b.type === "paragraph" && b.text.trim()) || (b.type === "list" && b.items.some((x) => x.trim())))) {
     out.push("본문 글이 없어요");
@@ -186,8 +195,9 @@ export function publishProblems({ title, blocks, products }: ManualDraftInput): 
 }
 
 // 발행은 되지만 알려 줄 점
-export function publishNotes({ blocks }: ManualDraftInput): string[] {
+export function publishNotes({ blocks: top }: ManualDraftInput): string[] {
   const out: string[] = [];
+  const blocks = flattenBlocks(top);
   const empty = blocks.filter((b) => b.type === "image" && !b.src).length;
   if (empty) out.push(`사진 빈 자리 ${empty}곳 — 공개 글에서는 안 보여요`);
   if (!blocks.some((b) => b.type === "link")) out.push("구매 버튼이 하나도 없어요");
@@ -208,7 +218,7 @@ export function postCategory(post: Pick<ShopPost, "content">): string | undefine
 // 글에 들어간 사진 (검색·공유 미리보기용). 직접 쓴 글은 본문 사진 순서대로, 대표 사진은 첫 사진
 export function postImages(post: Pick<ShopPost, "content" | "products">): string[] {
   if (isManualContent(post.content)) {
-    const body = post.content.blocks.flatMap((b) => (b.type === "image" && b.src ? [b.src] : []));
+    const body = flattenBlocks(post.content.blocks).flatMap((b) => (b.type === "image" && b.src ? [b.src] : []));
     const product = post.products.flatMap((p) => (p.image ? [p.image] : []));
     return Array.from(new Set([...body, ...product]));
   }
@@ -244,36 +254,7 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
   });
   if (!products.length) products.push({ name: "", link: "" });
 
-  const seen = new Set<string>();
-  const blocks: ShopManualBlock[] = [];
-  for (const b of (content.blocks as unknown[]).slice(0, MAX_BLOCKS)) {
-    const o = (b ?? {}) as Record<string, unknown>;
-    let id = /^[a-z0-9]{1,40}$/.test(String(o.id)) ? String(o.id) : newBlockId();
-    if (seen.has(id)) id = newBlockId(); // id 가 겹치면 사진이 두 자리에 들어가므로 새로 준다
-    seen.add(id);
-    if (o.type === "paragraph") {
-      const text = str(o.text);
-      const spans = sanitizeSpans(o.spans, text);
-      blocks.push({ id, type: "paragraph", text, ...(spans ? { spans } : {}) });
-    }
-    else if (o.type === "heading") blocks.push({ id, type: "heading", level: o.level === 3 ? 3 : 2, text: str(o.text, 200) });
-    else if (o.type === "list") {
-      const items = Array.isArray(o.items) ? o.items.slice(0, 50).map((x) => str(x, 1000)) : [];
-      blocks.push({ id, type: "list", ordered: o.ordered === true, items });
-    } else if (o.type === "image") {
-      const src = str(o.src, 1000).trim();
-      blocks.push({ id, type: "image", alt: str(o.alt, 200), ...(src ? { src } : {}) });
-    } else if (o.type === "table") {
-      const cells = (v: unknown) => (Array.isArray(v) ? v.slice(0, TABLE_MAX_COLS).map((x) => str(x, 300)) : []);
-      const head = cells(o.head);
-      if (!head.length) continue;
-      const rows = Array.isArray(o.rows) ? o.rows.slice(0, TABLE_MAX_ROWS).map((r) => fitRow(cells(r), head.length)) : [];
-      blocks.push({ id, type: "table", head, rows });
-    } else if (o.type === "link") {
-      const n = Number(o.product);
-      blocks.push({ id, type: "link", product: Number.isInteger(n) && n >= 0 && n < products.length ? n : 0 });
-    }
-  }
+  const blocks = sanitizeBlocks(content.blocks as unknown[], products.length, new Set<string>(), { left: MAX_BLOCKS }, 0);
 
   return {
     title: str(r.title, 200).trim(),
@@ -289,6 +270,52 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
     },
     products,
   };
+}
+
+// 블록 목록 정리 (박스 속은 다시 이 함수로). seen: 글 전체에서 id 가 겹치지 않게, budget: 박스 속까지 합친 블록 수 상한
+const MAX_BOX_DEPTH = 3;
+const BOX_COLOR = /^[a-z]{3,10}(?:_background)?$/;
+
+function sanitizeBlocks(raw: unknown[], productCount: number, seen: Set<string>, budget: { left: number }, depth: number): ShopManualBlock[] {
+  const blocks: ShopManualBlock[] = [];
+  for (const b of raw) {
+    if (budget.left <= 0) break;
+    budget.left--;
+    const o = (b ?? {}) as Record<string, unknown>;
+    let id = /^[a-z0-9]{1,40}$/.test(String(o.id)) ? String(o.id) : newBlockId();
+    if (seen.has(id)) id = newBlockId(); // id 가 겹치면 사진이 두 자리에 들어가므로 새로 준다
+    seen.add(id);
+    if (o.type === "paragraph") {
+      const text = str(o.text);
+      const spans = sanitizeSpans(o.spans, text);
+      blocks.push({ id, type: "paragraph", text, ...(spans ? { spans } : {}) });
+    } else if (o.type === "heading") blocks.push({ id, type: "heading", level: o.level === 3 ? 3 : 2, text: str(o.text, 200) });
+    else if (o.type === "list") {
+      const items = Array.isArray(o.items) ? o.items.slice(0, 50).map((x) => str(x, 1000)) : [];
+      blocks.push({ id, type: "list", ordered: o.ordered === true, items });
+    } else if (o.type === "image") {
+      const src = str(o.src, 1000).trim();
+      const caption = str(o.caption, 300).trim();
+      blocks.push({ id, type: "image", alt: str(o.alt, 200), ...(src ? { src } : {}), ...(caption ? { caption } : {}) });
+    } else if (o.type === "table") {
+      const cells = (v: unknown) => (Array.isArray(v) ? v.slice(0, TABLE_MAX_COLS).map((x) => str(x, 300)) : []);
+      const head = cells(o.head);
+      if (!head.length) continue;
+      const rows = Array.isArray(o.rows) ? o.rows.slice(0, TABLE_MAX_ROWS).map((r) => fitRow(cells(r), head.length)) : [];
+      blocks.push({ id, type: "table", head, rows });
+    } else if (o.type === "link") {
+      const n = Number(o.product);
+      const label = str(o.label, 80).replace(/\s+/g, " ").trim();
+      blocks.push({ id, type: "link", product: Number.isInteger(n) && n >= 0 && n < productCount ? n : 0, ...(label ? { label } : {}) });
+    } else if ((o.type === "callout" || o.type === "quote") && depth < MAX_BOX_DEPTH) {
+      const children = Array.isArray(o.children) ? sanitizeBlocks(o.children, productCount, seen, budget, depth + 1) : [];
+      if (!children.length) continue;
+      const icon = str(o.icon, 16).trim();
+      const color = str(o.color, 30);
+      blocks.push({ id, type: o.type, ...(icon ? { icon } : {}), ...(BOX_COLOR.test(color) ? { color } : {}), children });
+    }
+  }
+  return blocks;
 }
 
 // 문단 글자 조각: 이어 붙인 글자가 문단 글과 같을 때만 (편집기에서 글을 고치면 조각은 버리고 글만 남김). 링크는 http(s) 만
@@ -318,11 +345,13 @@ function sanitizeNotionRef(v: unknown): ShopNotionRef | undefined {
       if (typeof im.src === "string" && typeof im.edited === "string") images[k.slice(0, 64)] = { edited: im.edited.slice(0, 40), src: im.src.slice(0, 1000) };
     }
   }
+  const version = Number(o.convertVersion);
   return {
     pageId,
     url: str(o.url, 500),
     lastEditedTime: str(o.lastEditedTime, 40),
     syncedAt: str(o.syncedAt, 40),
     images,
+    ...(Number.isInteger(version) && version > 0 ? { convertVersion: version } : {}),
   };
 }

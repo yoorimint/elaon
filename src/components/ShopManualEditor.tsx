@@ -32,7 +32,14 @@ import {
   updateBlock,
   type ManualPostInput,
 } from "@/lib/shop-manual";
-import type { ManualShopPost, ShopManualBlock, ShopManualBlockType, ShopPostInputProduct, ShopPostStatus } from "@/lib/shop-post-types";
+import {
+  flattenBlocks,
+  type ManualShopPost,
+  type ShopManualBlock,
+  type ShopManualBlockType,
+  type ShopPostInputProduct,
+  type ShopPostStatus,
+} from "@/lib/shop-post-types";
 import {
   createManualPost,
   deletePost,
@@ -91,6 +98,8 @@ const BLOCK_LABEL: Record<ShopManualBlockType, string> = {
   image: "사진",
   link: "구매 버튼",
   table: "표",
+  callout: "박스",
+  quote: "인용",
 };
 const INSERTABLE: ShopManualBlockType[] = ["image", "link", "paragraph", "heading", "list", "table"];
 
@@ -252,7 +261,7 @@ export function ShopManualEditor({
   const counts = countBlocks(draft.blocks);
   const input = toInput(draft);
   const pending = publishProblems(checkOf(input));
-  const linkUses = (i: number) => draft.blocks.filter((b) => b.type === "link" && b.product === i).length;
+  const linkUses = (i: number) => flattenBlocks(draft.blocks).filter((b) => b.type === "link" && b.product === i).length;
 
   const slot = (b: Extract<ShopManualBlock, { type: "image" }>, compact = false) => (
     <ImageSlot
@@ -703,9 +712,21 @@ function BlockCard({
             </label>
           </div>
         )}
+        {(b.type === "callout" || b.type === "quote") && (
+          // 노션 글에서만 생기는 블록 — 여기서는 고치지 않고 안의 내용만 보여 준다 (노션에서 고치기)
+          <p className="text-xs leading-relaxed text-neutral-500">
+            {b.icon ? `${b.icon} ` : ""}
+            {flattenBlocks(b.children)
+              .map((c) => (c.type === "paragraph" || c.type === "heading" ? c.text : c.type === "link" ? `[구매 버튼${c.label ? `: ${c.label}` : ""}]` : c.type === "image" ? "[사진]" : ""))
+              .filter(Boolean)
+              .join(" · ")
+              .slice(0, 200)}
+            <span className="ml-1 text-neutral-400">(노션에서 고쳐요)</span>
+          </p>
+        )}
         {b.type === "link" && (
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-neutral-600 dark:text-neutral-300">쿠팡에서 가격 보기 →</span>
+            <span className="text-neutral-600 dark:text-neutral-300">{b.label || "쿠팡에서 가격 보기 →"}</span>
             {products.length > 1 ? (
               <select
                 value={b.product}

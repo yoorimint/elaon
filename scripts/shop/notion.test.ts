@@ -5,7 +5,9 @@
 import assert from "node:assert/strict";
 import { createNotionClient, NotionError } from "@/lib/notion-api";
 import {
+  NOTION_CONVERT_VERSION,
   PROP,
+  applyImages,
   convertNotionBlocks,
   decidePage,
   memoCore,
@@ -18,8 +20,11 @@ import {
 } from "@/lib/notion-shop";
 import { notionSlug, runNotionSync, type FetchedImage, type NotionPort, type PostRow, type StoredPost, type SyncStore } from "@/lib/notion-sync";
 import { signRevalidate, verifyRevalidate } from "@/lib/revalidate-signature";
-import { sanitizeManualInput } from "@/lib/shop-manual";
-import type { ShopManualBlock } from "@/lib/shop-post-types";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ShopManualArticle } from "@/components/ShopManualArticle";
+import { autoDescription, publishProblems, sanitizeManualInput } from "@/lib/shop-manual";
+import { flattenBlocks, type ShopManualBlock } from "@/lib/shop-post-types";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -278,7 +283,13 @@ async function main() {
       ],
       "제목",
     );
-    assert.deepEqual(types(r.blocks), ["heading", "heading", "list", "list", "table", "paragraph", "paragraph", "paragraph", "paragraph", "image", "link"]);
+    // 인용·콜아웃은 박스 블록으로 (2026-11-14~, 예전엔 문단으로 풀었음)
+    assert.deepEqual(types(r.blocks), ["heading", "heading", "list", "list", "table", "quote", "callout", "paragraph", "paragraph", "image", "link"]);
+    const q = r.blocks[5] as Extract<ShopManualBlock, { type: "quote" }>;
+    assert.deepEqual(types(q.children), ["paragraph"]);
+    const c = r.blocks[6] as Extract<ShopManualBlock, { type: "callout" }>;
+    assert.equal(c.icon, "💡");
+    assert.equal((c.children[0] as { text: string }).text, "콜아웃이에요.");
     const [h1, h3] = r.blocks as Extract<ShopManualBlock, { type: "heading" }>[];
     assert.deepEqual([h1.level, h3.level], [2, 3]);
     assert.deepEqual((r.blocks[2] as { items: string[] }).items, ["가벼워요", "1.3kg", "조용해요"]);
@@ -315,7 +326,7 @@ async function main() {
       id: "x",
       slug: "s",
       status,
-      notion: { pageId: "p1", url: "", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt },
+      notion: { pageId: "p1", url: "", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt, convertVersion: NOTION_CONVERT_VERSION },
     });
     assert.deepEqual(decidePage(p, props, ex("2026-11-14T01:05:00.000Z")), { action: "skip", why: "unchanged" });
     // 같은 분(01:00:40)에 가져왔으면 그 뒤 같은 분 안에 고친 것을 놓칠 수 있어 다시 확인
@@ -327,7 +338,21 @@ async function main() {
     assert.equal(decidePage(down, readPageProps(down), ex("2026-11-14T01:05:00.000Z", "draft")).action, "skip");
     const draft = page("p1", { status: "작성중" });
     assert.deepEqual(decidePage(draft, readPageProps(draft), ex("2026-11-14T01:05:00.000Z")), { action: "skip", why: "draft" });
-    assert.deepEqual(decidePage(p, props, undefined, { edited: p.last_edited_time, at: "2026-11-14T01:03:00.000Z" }), { action: "skip", why: "failed-unchanged" });
+    assert.deepEqual(decidePage(p, props, undefined, { edited: p.last_edited_time, at: "2026-11-14T01:03:00.000Z", v: NOTION_CONVERT_VERSION }), {
+      action: "skip",
+      why: "failed-unchanged",
+    });
+  });
+
+  await test("판단: 변환 규칙 버전이 다르면(예전 규칙으로 만든 글·실패 기억) 노션이 안 바뀌어도 다시 변환", () => {
+    const p = page("p1", { status: "발행", edited: "2026-11-14T01:00:00.000Z" });
+    const props = readPageProps(p);
+    const notion = { pageId: "p1", url: "", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt: "2026-11-14T01:05:00.000Z" };
+    const old = { id: "x", slug: "s", status: "published" as const, notion };
+    assert.equal(decidePage(p, props, old).action, "publish"); // 버전 없음 = 예전 규칙
+    assert.equal(decidePage(p, props, { ...old, notion: { ...notion, convertVersion: NOTION_CONVERT_VERSION - 1 } }).action, "publish");
+    assert.equal(decidePage(p, props, { ...old, notion: { ...notion, convertVersion: NOTION_CONVERT_VERSION } }).action, "skip");
+    assert.equal(decidePage(p, props, undefined, { edited: p.last_edited_time, at: "2026-11-14T01:03:00.000Z" }).action, "publish");
   });
 
   await test("메모: 시각을 뺀 내용으로 비교한다", () => {
@@ -640,6 +665,180 @@ async function main() {
     assert.equal(r.content.notion?.pageId, "aaaaaaaa-1111-2222-3333-444444444444");
     assert.deepEqual((r.content.blocks[0] as { spans?: unknown }).spans, [{ text: "가" }, { text: "나", bold: true }]);
     assert.equal((r.content.blocks[1] as { spans?: unknown }).spans, undefined);
+  });
+
+  // ---------- 콜아웃 박스·링크 글자 버튼·사진 캡션 (2026-11-14 사장님 지적: "링크 두 개 있는 건? 노션에 있는 그대로 옮겨라") ----------
+  // 사장님 노션 글(조지루시 가습기 3.1L vs 4L) 구성: 색 콜아웃 2개(파랑·주황) + 💧 + 굵은 첫 줄 + 설명 + 서로 다른 쿠팡 링크 글자, 사진 캡션
+  const L31 = "https://link.coupang.com/a/zoji31";
+  const L40 = "https://link.coupang.com/a/zoji40";
+  const zojiBlocks = (style: "children" | "lines") => {
+    const box = (color: string, title: string, desc: string, linkText: string, url: string) =>
+      style === "children"
+        ? // 콜아웃 글자 = 굵은 첫 줄, 설명·링크는 콜아웃 속 블록
+          blk("callout", { rich_text: [rt(title, { bold: true })], icon: { type: "emoji", emoji: "💧" }, color }, [para(rt(desc)), para(rt(linkText, { href: url }))])
+        : // 콜아웃 글자 안에서 Shift+Enter 로 줄만 바꿔 쓴 경우
+          blk("callout", { rich_text: [rt(title, { bold: true }), rt(`\n${desc}\n`), rt(linkText, { href: url })], icon: { type: "emoji", emoji: "💧" }, color });
+    return [
+      para(rt("조지루시 가습기는 3.1L 와 4L 두 가지예요.")),
+      img("https://s3.notion/zoji31.png", "file", "조지루시 EE-DCH35K 3.1L 화이트 · 공식 제품 사진"),
+      box("blue_background", "3.1L · EE-DCH35K", "3.1L의 상품 구성과 판매가를 확인해보세요.", "3.1L 상품·가격 보기 →", L31),
+      box("orange_background", "4L · EE-DCH45K", "4L의 상품 구성과 판매가를 확인해보세요.", "4L 상품·가격 보기 →", L40),
+    ];
+  };
+  type Box = Extract<ShopManualBlock, { type: "callout" }>;
+  type Link = Extract<ShopManualBlock, { type: "link" }>;
+
+  for (const style of ["children", "lines"] as const) {
+    await test(`콜아웃 박스: 색·아이콘·굵은 첫 줄·설명·링크 글자 그대로 버튼, 박스마다 자기 링크 (${style === "children" ? "속 블록" : "한 블록 줄바꿈"})`, () => {
+      const r = convertNotionBlocks(zojiBlocks(style), "조지루시 가습기 3.1L vs 4L");
+      assert.deepEqual(r.problems, []);
+      assert.deepEqual(types(r.blocks), ["paragraph", "image", "callout", "callout"]);
+      const [b31, b40] = r.blocks.slice(2) as Box[];
+      assert.deepEqual([b31.icon, b31.color, b40.icon, b40.color], ["💧", "blue_background", "💧", "orange_background"]);
+      for (const [box, size, url] of [[b31, "3.1L", L31], [b40, "4L", L40]] as const) {
+        type Para = Extract<ShopManualBlock, { type: "paragraph" }>;
+        const desc = `${size}의 상품 구성과 판매가를 확인해보세요.`;
+        let link: Link;
+        if (style === "children") {
+          assert.deepEqual(types(box.children), ["paragraph", "paragraph", "link"]);
+          const [title, d] = box.children as Para[];
+          assert.deepEqual(title.spans, [{ text: title.text, bold: true }]); // 첫 줄 굵게 유지
+          assert.equal(d.text, desc);
+          link = box.children[2] as Link;
+        } else {
+          // 한 블록 안 줄바꿈은 노션처럼 한 문단 두 줄 그대로 + 링크 줄만 버튼으로
+          assert.deepEqual(types(box.children), ["paragraph", "link"]);
+          const t = box.children[0] as Para;
+          assert.equal(t.text.split("\n")[1], desc);
+          assert.equal(t.spans?.[0].bold, true);
+          assert.equal(t.spans?.map((x) => x.text).join(""), t.text);
+          link = box.children[1] as Link;
+        }
+        assert.equal(link.label, `${size} 상품·가격 보기 →`); // 고정 문구로 바꾸지 않고 링크 글자 그대로
+        assert.equal(r.products[link.product].link, url); // 버튼마다 자기 링크
+      }
+      // 서로 다른 링크 → 상품 둘. 이름은 박스 첫 줄 (버튼 문구 "3.1L 상품·가격 보기" 가 아니라)
+      assert.deepEqual(r.products, [
+        { name: "3.1L · EE-DCH35K", link: L31 },
+        { name: "4L · EE-DCH45K", link: L40 },
+      ]);
+      // 사진 캡션 → 사진 아래 캡션 + 대체 텍스트
+      const im = r.blocks[1] as Extract<ShopManualBlock, { type: "image" }>;
+      assert.equal(im.caption, "조지루시 EE-DCH35K 3.1L 화이트 · 공식 제품 사진");
+      assert.equal(im.alt, im.caption);
+      // 블록 id 는 글 전체에서 겹치지 않는다 (박스 속까지)
+      const ids = flattenBlocks(r.blocks).map((b) => b.id);
+      assert.equal(new Set(ids).size, ids.length);
+      assert.ok(ids.every((x) => /^[a-z0-9]{1,40}$/.test(x)));
+    });
+  }
+
+  await test("링크 버튼 문구: 링크 글자가 주소 자체면 기본 문구(문구 없음), 꾸밈 글자는 문구에 안 넣음", () => {
+    const r = convertNotionBlocks([para(rt("본문")), para(rt(P, { href: P })), para(rt("👉 "), rt("샘플 A100 보러 가기", { href: P2 }))], "제목");
+    const [a, b] = r.blocks.filter((x) => x.type === "link") as Link[];
+    assert.equal(a.label, undefined);
+    assert.equal(b.label, "샘플 A100 보러 가기");
+  });
+
+  await test("인용·박스 속 사진·버튼도 검사·사진 넣기·설명 자동에 들어간다", () => {
+    const r = convertNotionBlocks(
+      [blk("quote", { rich_text: [rt("인용 첫 줄이에요.")], color: "default" }, [img("https://s3.notion/q.png"), para(rt("보기", { href: P }))])],
+      "제목",
+    );
+    assert.deepEqual(types(r.blocks), ["quote"]);
+    const q = r.blocks[0] as Extract<ShopManualBlock, { type: "quote" }>;
+    assert.equal(q.color, undefined); // default 는 저장 안 함
+    assert.deepEqual(types(q.children), ["paragraph", "image", "link"]);
+    assert.deepEqual(r.problems, []); // 박스 속 문단도 "본문 글"로 센다
+    assert.equal(r.images[0].blockId, q.children[1].id);
+    const filled = applyImages(r.blocks, { [q.children[1].id]: "https://cdn/x.png" });
+    assert.equal(((filled[0] as typeof q).children[1] as { src?: string }).src, "https://cdn/x.png");
+    assert.equal(autoDescription(r.blocks), "인용 첫 줄이에요.");
+    // 박스 속 버튼이 가리키는 상품 링크가 비면 발행 검사가 잡는다
+    assert.ok(publishProblems({ title: "제목", blocks: r.blocks, products: [{ name: "A", link: "" }] }).some((x) => x.includes("링크가 비었어요")));
+  });
+
+  await test("저장 전 정리: 박스(콜아웃·인용)·버튼 문구·사진 캡션·변환 버전을 지우지 않는다", () => {
+    const conv = convertNotionBlocks(zojiBlocks("children"), "조지루시 가습기");
+    const r = sanitizeManualInput({
+      title: "조지루시 가습기",
+      description: "",
+      content: {
+        kind: "manual",
+        notion: { pageId: "aaaaaaaa-1111-2222-3333-444444444444", url: "u", lastEditedTime: "t", syncedAt: "s", images: {}, convertVersion: NOTION_CONVERT_VERSION },
+        blocks: [...conv.blocks, { id: "bad", type: "callout", color: "x;background:url(evil)", children: [{ id: "bad1", type: "paragraph", text: "색 이상" }] }],
+      },
+      products: conv.products,
+    });
+    assert.ok(r);
+    assert.deepEqual(r.content.blocks.slice(0, 4), conv.blocks);
+    assert.equal(r.content.notion?.convertVersion, NOTION_CONVERT_VERSION);
+    assert.equal((r.content.blocks[4] as Box).color, undefined); // 이상한 색 이름은 버림
+  });
+
+  await test("동기화: 박스 속 사진도 올리고, 예전 규칙으로 만든 글은 노션이 안 바뀌어도 다시 변환 (사진은 다시 안 올림)", async () => {
+    let clock = Date.parse("2026-11-14T05:00:10.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10 };
+    const id = "cccccccc-1111-2222-3333-444444444444";
+    const blocks = zojiBlocks("children");
+    blocks[2].children!.push(img("https://s3.notion/in-box.png"));
+    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-14T05:00:00.000Z", title: "조지루시 가습기 3.1L vs 4L" }), blocks });
+
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.published, 1);
+    assert.equal(s.uploads.length, 2);
+    const post = s.posts[0];
+    assert.equal(post.content.notion?.convertVersion, NOTION_CONVERT_VERSION);
+    const inBox = flattenBlocks(post.content.blocks).filter((b) => b.type === "image") as { src?: string }[];
+    assert.ok(inBox.every((b) => b.src?.startsWith("https://cdn.example/")));
+
+    // 예전 규칙(버전 없음)으로 만든 글처럼 되돌림: 콜아웃이 문단으로 풀려 있던 상태
+    clock += 30 * 60_000;
+    post.content.blocks = post.content.blocks.flatMap((b): ShopManualBlock[] => (b.type === "callout" ? b.children.filter((c) => c.type !== "link") : [b]));
+    delete post.content.notion!.convertVersion;
+    const trees = n.calls.blockTree;
+    r = await runNotionSync(deps, opts);
+    assert.equal(n.calls.blockTree, trees + 1); // 노션은 안 바뀌었어도 다시 가져옴
+    assert.equal(r.summary.updated, 1);
+    assert.equal(s.uploads.length, 2); // 사진은 다시 안 올림
+    assert.deepEqual(types(s.posts[0].content.blocks), ["paragraph", "image", "callout", "callout"]);
+    assert.equal(s.posts[0].content.notion?.convertVersion, NOTION_CONVERT_VERSION);
+
+    // 그 뒤로는 다시 가져오지 않는다
+    clock += 30 * 60_000;
+    r = await runNotionSync(deps, opts);
+    clock += 30 * 60_000;
+    const trees2 = n.calls.blockTree;
+    r = await runNotionSync(deps, opts);
+    assert.equal(n.calls.blockTree, trees2);
+    assert.equal(r.summary.unchanged, 1);
+  });
+
+  await test("글 화면: 박스(색·아이콘)·링크 글자 버튼(서로 다른 링크)·사진 캡션을 그린다", () => {
+    const conv = convertNotionBlocks(zojiBlocks("children"), "조지루시 가습기");
+    const blocks = applyImages(conv.blocks, { [conv.images[0].blockId]: "https://cdn.example/zoji31.png" });
+    // tsconfig 의 jsx: "preserve" 라 tsx 가 컴포넌트를 옛 방식(React.createElement)으로 옮긴다 → 전역 React 를 둔다
+    (globalThis as { React?: typeof React }).React = React;
+    const html = renderToStaticMarkup(
+      React.createElement(ShopManualArticle, {
+        post: {
+          id: "x", slug: "s", title: "조지루시 가습기", description: "", products: conv.products, sources: [],
+          stats: { naverReviews: 0, youtubeVideos: 0, youtubeComments: 0, webSources: 0 },
+          status: "published", created_at: "2026-11-14T00:00:00Z", published_at: "2026-11-14T00:00:00Z", updated_at: "2026-11-14T00:00:00Z",
+          content: { kind: "manual", blocks },
+        },
+      }),
+    );
+    assert.ok(html.includes("bg-[#e7f3f8]") && html.includes("bg-[#fbecdd]")); // 파랑·주황 박스
+    assert.equal(html.split("💧").length - 1, 2);
+    assert.ok(html.includes("3.1L 상품·가격 보기 →") && html.includes("4L 상품·가격 보기 →"));
+    assert.ok(!html.includes("쿠팡에서 가격 보기")); // 고정 문구로 바꾸지 않음
+    assert.ok(html.includes(`href="${L31}"`) && html.includes(`href="${L40}"`));
+    assert.ok(html.includes("<figcaption") && html.includes("조지루시 EE-DCH35K 3.1L 화이트 · 공식 제품 사진"));
+    assert.ok(html.includes("<strong") && html.includes("3.1L · EE-DCH35K"));
   });
 
   console.log(`\n${passed}개 통과`);

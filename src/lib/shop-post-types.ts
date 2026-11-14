@@ -172,13 +172,36 @@ export type ShopManualBlock =
   | { id: string; type: "heading"; level: 2 | 3; text: string }
   | { id: string; type: "list"; ordered: boolean; items: string[] }
   // src: 올린 사진 주소 (없으면 빈 사진 자리 — 공개 글에선 안 보임). alt: 사진 설명(대체 텍스트)
-  | { id: string; type: "image"; src?: string; alt: string }
+  // caption: 사진 아래 보이는 글 (노션 사진 캡션 그대로). 없으면 화면에 캡션 없음
+  | { id: string; type: "image"; src?: string; alt: string; caption?: string }
   // product: 이 구매 버튼이 가리키는 상품 (shop_posts.products 의 index)
-  | { id: string; type: "link"; product: number }
+  // label: 버튼 문구 (노션 링크 글자 그대로, 예: "3.1L 상품·가격 보기 →"). 없으면 기본 "쿠팡에서 가격 보기"
+  | { id: string; type: "link"; product: number; label?: string }
   // 표: head = 머리행 칸, rows = 나머지 행 (행마다 칸 수는 head 와 같게 맞춰 저장한다)
-  | { id: string; type: "table"; head: string[]; rows: string[][] };
+  | { id: string; type: "table"; head: string[]; rows: string[][] }
+  // 박스(노션 콜아웃)·인용: 안에 다른 블록을 담는다. 노션 글에서만 생긴다 (붙여넣기 편집기에서는 만들지 않음)
+  //  icon: 콜아웃 아이콘 이모지, color: 노션 색 이름 그대로 (blue_background, orange 등 — 화면 색은 ShopManualArticle 에서 정함)
+  | ShopBoxBlock;
+
+type ShopBoxFields = {
+  id: string;
+  icon?: string;
+  color?: string;
+  children: ShopManualBlock[];
+};
+export type ShopBoxBlock = (ShopBoxFields & { type: "callout" }) | (ShopBoxFields & { type: "quote" });
 
 export type ShopManualBlockType = ShopManualBlock["type"];
+
+// 박스 속까지 포함한 모든 블록 (글 순서대로). 사진·구매 버튼·문단을 셀 때는 언제나 이것으로 — 박스 속을 빠뜨리지 않게
+export function flattenBlocks(blocks: ShopManualBlock[]): ShopManualBlock[] {
+  return blocks.flatMap((b) => (b.type === "callout" || b.type === "quote" ? [b, ...flattenBlocks(b.children)] : [b]));
+}
+
+// 박스 속까지 블록마다 fn 을 적용한 새 배열 (fn 은 박스가 아닌 블록에만 불린다)
+export function mapBlocksDeep(blocks: ShopManualBlock[], fn: (b: ShopManualBlock) => ShopManualBlock): ShopManualBlock[] {
+  return blocks.map((b) => (b.type === "callout" || b.type === "quote" ? { ...b, children: mapBlocksDeep(b.children, fn) } : fn(b)));
+}
 
 export type ShopManualContent = {
   kind: "manual";
@@ -197,6 +220,8 @@ export type ShopNotionRef = {
   syncedAt: string; // 마지막으로 가져온 시각 (노션 시각은 분 단위라, 같은 분에 가져온 글은 한 번 더 확인)
   // 노션 사진 블록 id → 이미 사이트 저장소에 올린 사진 (블록이 안 바뀌었으면 다시 올리지 않음)
   images?: Record<string, { edited: string; src: string }>;
+  // 이 글을 만든 변환 규칙 버전 (src/lib/notion-shop.ts NOTION_CONVERT_VERSION). 다르면 노션이 안 바뀌어도 다시 가져와 변환한다
+  convertVersion?: number;
 };
 
 export function isManualContent(c: unknown): c is ShopManualContent {

@@ -46,14 +46,17 @@ export function BuyButton({
       </div>
     );
   }
+  // 글쓴이가 정한 문구(노션 링크 글자)는 줄바꿈을 허용하고, 문구 끝에 화살표가 이미 있으면 아이콘을 또 붙이지 않는다
+  const custom = label !== "쿠팡에서 가격 보기";
+  const ownArrow = /[→›>▶➜➔↗]\s*$/.test(label);
   return (
     <a
       href={product.link}
       target="_blank"
       rel="sponsored nofollow noopener"
-      className={`flex items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-brand px-3 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-brand-dark active:scale-[0.99] ${className}`}
+      className={`flex items-center justify-center gap-1 ${custom ? "text-center leading-snug" : "whitespace-nowrap"} rounded-xl bg-brand px-3 py-3 text-[15px] font-bold text-white shadow-sm transition hover:bg-brand-dark active:scale-[0.99] ${className}`}
     >
-      {label} <ArrowUpRight className="h-4 w-4" strokeWidth={2.5} />
+      {label} {!ownArrow && <ArrowUpRight className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
     </a>
   );
 }

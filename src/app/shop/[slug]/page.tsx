@@ -5,6 +5,7 @@ import { ShopPostView } from "@/components/ShopPostView";
 import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
 import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
 import { isManualPost } from "@/lib/shop-post-types";
+import { ShopViewTracker } from "@/components/ShopViewTracker";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
 export const revalidate = 60;
@@ -85,6 +86,8 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
       />
       {!isManualPost(post) && post.content.faq.length > 0 && <JsonLd data={faqLd(post.content.faq)} />}
       <ShopPostView post={post} related={await listRelatedPosts(postCategory(post), post.slug)} />
+      {/* 조회수: 공개 글에서만 (초안 미리보기는 안 셈) — src/lib/shop-views.ts */}
+      <ShopViewTracker slug={post.slug} />
     </main>
   );
 }

@@ -7,7 +7,7 @@
     "build": "node scripts/build-corp-codes.mjs && next build",
     "start": "next start",
     "lint": "next lint",
-    "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/webreviews.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/paste.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/notion.test.ts"
+    "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/webreviews.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/paste.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/notion.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/views.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

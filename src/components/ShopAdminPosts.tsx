@@ -6,10 +6,13 @@
 //  - 노션에서 온 글: 사이트 편집기를 열지 않고 "노션에서 고치기" 링크만. 본문·사진·링크 모두 노션에서 고친다
 //    (사이트에서 고치면 다음에 노션을 고칠 때 노션 내용으로 덮여 사라지므로 — 고칠 곳을 하나로 둔다).
 //    급할 때를 위해 "내리기"는 둔다 (노션 상태는 그대로라, 노션 페이지를 다시 고치면 다시 공개됨 — 확인 창에 안내).
+//  - 발행된 글 탭: 글마다 "조회 오늘 n · 7일 n · 전체 n" (한 번의 집계 RPC, src/lib/shop-views.ts), 최신순/조회순 정렬,
+//    "이 기기 조회수 제외" 켜기/끄기. 조회수 SQL(supabase/shop-views.sql) 실행 전이면 "조회수 준비 중".
 
 import { useCallback, useEffect, useState } from "react";
 import { ShopManualEditor, draftFromPost, type SavedPostRef } from "@/components/ShopManualEditor";
 import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
+import { ShopViewExcludeToggle } from "@/components/ShopViewExcludeToggle";
 import { timeAgo } from "@/lib/community";
 import { isManualPost, type ManualShopPost } from "@/lib/shop-post-types";
 import {
@@ -21,6 +24,14 @@ import {
   setPostStatus,
   type AdminPostRow,
 } from "@/lib/shop-posts";
+import { NO_VIEWS, formatViews, sortByViews, type PostViewStats, type ViewSort } from "@/lib/shop-views";
+import { getShopViewStats } from "@/lib/shop-views-client";
+
+const SORTS: { id: ViewSort; label: string }[] = [
+  { id: "latest", label: "최신순" },
+  { id: "total", label: "전체 조회순" },
+  { id: "today", label: "오늘 조회순" },
+];
 
 const BTN = "rounded-full border border-neutral-300 dark:border-neutral-700 px-3 py-1 text-xs font-semibold disabled:opacity-60";
 
@@ -39,15 +50,20 @@ export function ShopAdminPosts({
 }) {
   const [posts, setPosts] = useState<AdminPostRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 조회수: undefined = 불러오는 중, null = 준비 중(SQL 실행 전·실패)
+  const [views, setViews] = useState<Map<string, PostViewStats> | null | undefined>(undefined);
+  const [sort, setSort] = useState<ViewSort>("latest");
+  const showViews = status === "published";
 
   const reload = useCallback(async () => {
+    if (showViews) void getShopViewStats().then(setViews);
     try {
       setPosts(await listAllPosts());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [showViews]);
 
   useEffect(() => {
     reload();
@@ -57,7 +73,8 @@ export function ShopAdminPosts({
     return <OpenPost id={openId} notice={notice} onClose={() => onOpen(null)} onChanged={reload} />;
   }
 
-  const shown = (posts ?? []).filter((p) => (status === "published" ? p.status === "published" : p.status !== "published"));
+  const filtered = (posts ?? []).filter((p) => (status === "published" ? p.status === "published" : p.status !== "published"));
+  const shown = showViews ? sortByViews(filtered, views ?? null, sort) : filtered;
   return (
     <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-2">
@@ -66,6 +83,28 @@ export function ShopAdminPosts({
           새로고침
         </button>
       </div>
+      {showViews && (
+        <>
+          <ShopViewExcludeToggle />
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {SORTS.map((o) => (
+              <button
+                key={o.id}
+                disabled={o.id !== "latest" && !views}
+                onClick={() => setSort(o.id)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50 ${
+                  sort === o.id
+                    ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                    : "border border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+            {views === null && <span className="text-xs text-neutral-500">조회수 준비 중 (DB 설정 전)</span>}
+          </div>
+        </>
+      )}
       {error && <p className="mt-3 text-sm text-red-600">글 목록 불러오기 실패: {error}</p>}
       {posts && shown.length === 0 && !error ? (
         <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-center text-sm text-neutral-500">
@@ -74,7 +113,13 @@ export function ShopAdminPosts({
       ) : (
         <ul className="mt-4 grid gap-2">
           {shown.map((p) => (
-            <PostRow key={p.id} post={p} onOpen={() => onOpen(p.id)} onChanged={reload} />
+            <PostRow
+              key={p.id}
+              post={p}
+              views={showViews ? (views === undefined ? undefined : views ? views.get(p.id) ?? NO_VIEWS : null) : false}
+              onOpen={() => onOpen(p.id)}
+              onChanged={reload}
+            />
           ))}
         </ul>
       )}
@@ -82,7 +127,18 @@ export function ShopAdminPosts({
   );
 }
 
-function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: () => void; onChanged: () => Promise<void> }) {
+function PostRow({
+  post: p,
+  views,
+  onOpen,
+  onChanged,
+}: {
+  post: AdminPostRow;
+  // false = 조회수 안 보임(초안 탭), undefined = 불러오는 중, null = 준비 중
+  views: PostViewStats | null | undefined | false;
+  onOpen: () => void;
+  onChanged: () => Promise<void>;
+}) {
   const [busy, setBusy] = useState(false);
   const [editLinks, setEditLinks] = useState(false);
   const notion = !!p.notion_url;
@@ -123,6 +179,11 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
         <span className="min-w-0 truncate">{p.products.map((x) => x.name).filter(Boolean).join(" · ")}</span>
       </div>
       <div className="mt-1 text-sm font-semibold">{p.title}</div>
+      {views !== false && (
+        <div className="mt-1 text-xs tabular-nums text-neutral-500">
+          {views === undefined ? "조회수 불러오는 중…" : views === null ? "조회수 준비 중" : formatViews(views)}
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap gap-2">
         {notion && (
           <a
@@ -181,7 +242,7 @@ function PostRow({ post: p, onOpen, onChanged }: { post: AdminPostRow; onOpen: (
       </div>
       {notion && (
         <p className="mt-2 text-[11px] leading-relaxed text-neutral-500">
-          노션에서 온 글은 본문·사진·링크를 노션에서 고치세요. {published ? "고치면 10분 안에 사이트에 반영돼요." : "노션 상태를 '발행'으로 바꾸면 공개돼요."}
+          노션에서 온 글은 본문·사진·링크를 노션에서 고치세요. {published ? "고치면 다음 정각(최대 1시간)에 사이트에 반영돼요. 바로 보려면 노션 탭의 '수정만 지금 반영'." : "노션 상태를 '발행'으로 바꾸면 공개돼요."}
         </p>
       )}
       {editLinks && <ShopPostProductsEditor post={p} onSaved={onChanged} />}

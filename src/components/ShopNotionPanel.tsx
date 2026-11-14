@@ -111,6 +111,11 @@ function SummaryBox({ title, s, muted = false }: { title: string; s: NotionSyncS
         <span className="text-xs font-semibold text-neutral-500">{title}</span>
         <span className="text-sm font-bold">{summaryLine(s)}</span>
       </div>
+      {s.checked !== undefined && (
+        <p className="mt-1 text-xs text-neutral-500">
+          확인한 노션 글 {s.checked}개 ({s.scan === "full" ? "전체 확인" : "지난번 뒤로 바뀐 글만"})
+        </p>
+      )}
       {s.error && <p className="mt-2 text-sm font-medium text-red-600">중단: {s.error}</p>}
       {s.remaining > 0 && (
         <p className="mt-1 text-xs text-neutral-500">한 번에 다 못 한 {s.remaining}개는 다음 실행(또는 버튼 한 번 더)에서 이어서 해요.</p>
@@ -186,7 +191,7 @@ function NotionHelp() {
           &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 10분 안에 공개, &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
         </li>
         <li>
-          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(또는 페이지 삭제) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
+          공개된 글을 고치면 다시 가져와 갱신돼요. 내리려면 <b>{STATUS_LABEL.down}</b>(10분 안에 반영) 또는 페이지 삭제(휴지통은 6시간마다 하는 전체 확인 때 반영 — 바로 하려면 위 버튼) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
         </li>
       </ol>
     </section>

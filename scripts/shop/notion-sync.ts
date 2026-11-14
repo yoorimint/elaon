@@ -33,6 +33,7 @@ async function main() {
     deadline: Date.now() + TIME_BUDGET_MS,
   });
   console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
+  console.log(`확인한 노션 글 ${summary.checked ?? 0}개 (${summary.scan === "full" ? "전체 조회" : "바뀐 글만"})`);
 
   if (changedSlugs.length) {
     // 사이트 화면 바로 새로 만들기 (실패해도 글 화면은 1분 안에 저절로 갱신됨)

@@ -11,7 +11,7 @@
 //  POST  /databases                      "쇼핑 글" 데이터베이스 만들기 (initial_data_source.properties)
 //  GET   /data_sources/{id}              속성 구성 확인
 //  PATCH /data_sources/{id}              빠진 속성 추가
-//  POST  /data_sources/{id}/query        페이지 목록 (휴지통 페이지는 기본으로 빠진다)
+//  POST  /data_sources/{id}/query        페이지 목록 (휴지통 페이지는 기본으로 빠진다. last_edited_time 필터로 바뀐 것만)
 //  GET   /pages/{id}, PATCH /pages/{id}  페이지 확인, "사이트 주소"·"사이트 메모" 쓰기
 //  GET   /users/me                       토큰 점검
 
@@ -131,12 +131,16 @@ export function createNotionClient(opts: NotionClientOptions) {
     return fill(pageId, 0);
   }
 
-  async function queryAll(dataSourceId: string): Promise<NPage[]> {
+  // 페이지 목록 (100개씩 이어 받기). editedSince 를 주면 그 시각 이후에 고친 페이지만 받는다
+  // (공식 문서 "Filter data source entries" 의 timestamp filter — 속성 이름 없이 timestamp 키만, 시각까지 주면 ms 단위 비교)
+  async function queryAll(dataSourceId: string, opts: { editedSince?: string } = {}): Promise<NPage[]> {
     const out: NPage[] = [];
     let cursor: string | null = null;
+    const filter = opts.editedSince ? { timestamp: "last_edited_time", last_edited_time: { on_or_after: opts.editedSince } } : undefined;
     do {
       const page: List<NPage> = await request("POST", `/data_sources/${dataSourceId}/query`, {
         page_size: 100,
+        ...(filter ? { filter } : {}),
         sorts: [{ timestamp: "last_edited_time", direction: "ascending" }],
         ...(cursor ? { start_cursor: cursor } : {}),
       });

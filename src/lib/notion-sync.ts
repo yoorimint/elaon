@@ -10,6 +10,10 @@
 //  - 상태=내림, 또는 노션에서 페이지를 휴지통으로 → 사이트 글을 초안으로 내림 (삭제하지 않음)
 //  - 상태=작성중 → 아무것도 안 함 (src/lib/notion-shop.ts decidePage 주석)
 //  - 노션에 메모를 쓰면 그 페이지의 last_edited_time 도 바뀐다 → 쓴 뒤의 시각을 저장해 다음 번에 "바뀜"으로 보지 않게 한다
+//
+// 글이 많아져도 가볍게 (10분마다 도니까 실행 1번의 양 × 144 = 하루 양)
+//  - 노션: 평소에는 지난 실행 뒤로 바뀐 페이지만 받는다(planScan). 휴지통·전체 맞춤은 주기적인 전체 조회에서
+//  - DB: 판단용 가벼운 목록(본문 없음)만 읽고, 실제로 갱신·내림할 글만 본문까지 읽는다(loadPost)
 
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
@@ -43,12 +47,16 @@ export type NotionPort = {
     parentPageId: string,
     known?: { databaseId?: string; dataSourceId?: string },
   ): Promise<{ databaseId: string; dataSourceId: string; databaseUrl?: string; created: boolean }>;
-  queryAll(dataSourceId: string): Promise<NPage[]>;
+  queryAll(dataSourceId: string, opts?: { editedSince?: string }): Promise<NPage[]>; // editedSince: 그 뒤에 고친 페이지만
   blockTree(pageId: string): Promise<NBlock[]>;
   getPage(pageId: string): Promise<NPage | null>;
   updatePage(pageId: string, properties: Record<string, unknown>): Promise<NPage>;
 };
 
+// 판단용 가벼운 목록 한 줄 (본문·상품 없음)
+export type LinkedRow = LinkedPost & { title: string };
+
+// 본문까지 읽은 글 (갱신·내림할 때만)
 export type StoredPost = {
   id: string;
   slug: string;
@@ -73,7 +81,9 @@ export type PostRow = {
 };
 
 export type SyncStore = {
-  listLinkedPosts(): Promise<StoredPost[]>; // 노션에서 온 글 (pair_key = notion:<pageId>)
+  // 노션에서 온 글(pair_key = notion:<pageId>)의 가벼운 목록. pageIds 를 주면 그 페이지 것만
+  listLinked(pageIds?: string[]): Promise<LinkedRow[]>;
+  loadPost(id: string): Promise<StoredPost | null>; // 본문까지 — 실제로 갱신·내림할 글만 부른다
   insertPost(row: PostRow & { pair_key: string; created_at: string }): Promise<"ok" | "duplicate">; // duplicate = slug 겹침
   updatePost(id: string, patch: Partial<PostRow>): Promise<void>;
   loadState(): Promise<NotionSyncState | null>; // null = 저장 칸 없음 (supabase/shop-notion.sql 미실행)
@@ -142,6 +152,38 @@ export const pairKeyOf = (pageId: string) => `notion:${pageId}`;
 
 // ---------- 본체 ----------
 
+// ---------- 노션 조회 방식 ----------
+
+// 전체 조회 주기. 휴지통으로 보낸 페이지는 노션 목록에서 빠질 뿐 "바뀐 글"로 오지 않아서 전체 조회 때만 잡힌다
+// → 휴지통 내림은 최대 이 시간만큼 늦을 수 있다 (관리자 버튼은 언제나 전체 조회라 바로 잡힘).
+//   상태를 "내림"으로 바꾸는 것은 페이지 시각이 바뀌어 바로 반영된다.
+// 1,000편 기준 전체 조회 1번 = 노션 목록 호출 10번 + 가벼운 DB 목록 1,000줄 → 6시간에 1번(하루 4번)이면 부담 없다.
+export const FULL_SCAN_EVERY_MS = 6 * 60 * 60 * 1000;
+// "바뀐 글만" 조회의 여유: 기준 시각에서 이만큼 빼고 받는다 (서버 시계 차이·노션 시각 분 단위 잘림·반영 지연 대비).
+// 여유 안에 들어온 안 바뀐 페이지는 판단에서 바로 건너뛰므로(본문 안 가져옴) 넉넉해도 비용이 거의 없다.
+export const CHANGED_SINCE_MARGIN_MS = 10 * 60 * 1000;
+
+export type ScanPlan = { full: true; why: "no-state" | "admin" | "first" | "database" | "version" | "interval" } | { full: false; since: string };
+
+// 이번 실행을 전체 조회로 할지, 바뀐 글만 받을지.
+// 전체 조회: 저장 칸 없음(SQL 미실행 — 예전처럼 매번 전체), 관리자 버튼(누르면 모두 확인), 처음(기준 시각 없음),
+//           데이터베이스가 바뀜, 변환 규칙 버전이 바뀜(노션이 안 바뀐 글도 다시 변환해야 함), 마지막 전체 조회 뒤 FULL_SCAN_EVERY_MS 지남.
+// 전체 조회를 상한·시간 때문에 끝까지 못 하면 fullScan 을 남기지 않아 다음 실행도 전체 조회로 이어 간다 (runNotionSync 끝부분).
+export function planScan(state: NotionSyncState | null, dataSourceId: string, trigger: SyncOptions["trigger"], now: Date): ScanPlan {
+  if (!state) return { full: true, why: "no-state" };
+  if (trigger === "admin") return { full: true, why: "admin" };
+  const since = Date.parse(state.changedSince ?? "");
+  const full = state.fullScan;
+  if (!Number.isFinite(since) || !full) return { full: true, why: "first" };
+  if (full.dataSourceId !== dataSourceId) return { full: true, why: "database" };
+  if (full.v !== NOTION_CONVERT_VERSION) return { full: true, why: "version" };
+  const lastFull = Date.parse(full.at);
+  if (!Number.isFinite(lastFull) || now.getTime() - lastFull >= FULL_SCAN_EVERY_MS) return { full: true, why: "interval" };
+  return { full: false, since: new Date(since - CHANGED_SINCE_MARGIN_MS).toISOString() };
+}
+
+// ---------- 본체 ----------
+
 export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncResult> {
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? (() => undefined);
@@ -171,32 +213,36 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     if (db.databaseUrl) state.databaseUrl = db.databaseUrl;
     if (db.created) log("노션에 '쇼핑 글' 데이터베이스를 새로 만들었어요");
 
-    const pages = await deps.notion.queryAll(db.dataSourceId);
-    const posts = await deps.store.listLinkedPosts();
-    const byPage = new Map(posts.map((p) => [p.content.notion.pageId, p]));
+    const plan = planScan(loaded, db.dataSourceId, opts.trigger, new Date(startedAt));
+    const pages = await deps.notion.queryAll(db.dataSourceId, plan.full ? undefined : { editedSince: plan.since });
+    summary.scan = plan.full ? "full" : "changed";
+    summary.checked = pages.length;
+    const live = pages.filter((p) => !isTrashed(p)); // 휴지통은 아래 "목록에 없는 글"과 같이 처리 (seen 에 넣지 않음)
+    // 전체 조회면 연결된 글 전부(가벼운 목록), 바뀐 글만이면 받은 페이지의 글만 pair_key 로 찾는다
+    const posts = plan.full ? await deps.store.listLinked() : live.length ? await deps.store.listLinked(live.map((p) => p.id)) : [];
+    const byPage = new Map(posts.map((p) => [p.notion.pageId, p]));
     const seen = new Set<string>();
     // 본문을 가져올 페이지: 실제로 바뀐 페이지(새 글·시각이 바뀐 글)를 먼저, 같은 분 재확인은 뒤로 (상한을 재확인이 먼저 쓰지 않게)
-    const todo: { page: NPage; props: PageProps; existing?: StoredPost; recheck: boolean }[] = [];
+    const todo: { page: NPage; props: PageProps; existing?: LinkedRow; recheck: boolean }[] = [];
+    const deferred: string[] = []; // 이번에 못 하고 넘긴 페이지의 last_edited_time (다음 "바뀐 글만" 조회가 꼭 다시 받게)
 
-    for (const page of pages) {
-      if (isTrashed(page)) continue; // 아래 "목록에 없는 글"과 같이 처리 (seen 에 넣지 않음)
+    for (const page of live) {
       seen.add(page.id);
       const props = readPageProps(page);
       const existing = byPage.get(page.id);
-      const decision = decidePage(page, props, existing && linked(existing), failed[page.id]);
+      const decision = decidePage(page, props, existing, failed[page.id]);
 
       if (decision.action === "skip") {
         if (decision.why === "unchanged" || decision.why === "failed-unchanged") summary.unchanged++;
         continue;
       }
       if (decision.action === "unpublish") {
-        await unpublish(deps, existing!, page, props, summary, now);
-        changed.add(existing!.slug);
+        if (await unpublish(deps, existing!, page, props, summary, now)) changed.add(existing!.slug);
         continue;
       }
       // 변환 규칙이 바뀌어 다시 변환하는 글도 "실제 할 일"로 센다 (재확인 묶음 뒤로 밀려 계속 미뤄지지 않게)
-      const seenTime = existing ? existing.content.notion.lastEditedTime : failed[page.id]?.edited;
-      const sameVersion = existing ? existing.content.notion.convertVersion === NOTION_CONVERT_VERSION : failed[page.id]?.v === NOTION_CONVERT_VERSION;
+      const seenTime = existing ? existing.notion.lastEditedTime : failed[page.id]?.edited;
+      const sameVersion = existing ? existing.notion.convertVersion === NOTION_CONVERT_VERSION : failed[page.id]?.v === NOTION_CONVERT_VERSION;
       todo.push({ page, props, existing, recheck: seenTime === page.last_edited_time && sameVersion });
     }
     todo.sort((a, b) => Number(a.recheck) - Number(b.recheck)); // 안정 정렬: 같은 묶음 안에서는 노션 순서(오래 고친 것부터)
@@ -204,6 +250,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
     let started = 0;
     for (const { page, props, existing, recheck } of todo) {
       if (started >= opts.maxPages || (opts.deadline && Date.now() > opts.deadline)) {
+        deferred.push(page.last_edited_time);
         // 재확인만 남은 것은 "다음 번으로"에 세지 않는다 (사장님 화면에 할 일처럼 보이지 않게)
         if (recheck) summary.unchanged++;
         else summary.remaining++;
@@ -234,22 +281,30 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
       log(`${r.kind === "published" ? "발행" : "갱신"}: ${props.title} → /shop/${r.slug}`);
     }
 
-    // 목록에 없는 공개 글: 노션에서 휴지통으로 보냈거나(목록에서 빠짐) 다른 곳으로 옮긴 페이지 → 한 번 더 확인하고 내림
-    for (const post of posts) {
-      if (post.status !== "published" || seen.has(post.content.notion.pageId)) continue;
-      const page = await deps.notion.getPage(post.content.notion.pageId);
-      const gone = !page || isTrashed(page) || (page.parent?.data_source_id && page.parent.data_source_id !== db.dataSourceId);
-      if (!gone) continue;
-      await deps.store.updatePost(post.id, { status: "draft", updated_at: now().toISOString() });
-      changed.add(post.slug);
-      summary.unpublished++;
-      summary.items.push({ title: post.title, action: "unpublished", slug: post.slug, reasons: ["노션에서 페이지가 휴지통으로 가서 사이트 글을 초안으로 내렸어요"] });
-      log(`내림(노션 휴지통): ${post.title}`);
+    if (plan.full) {
+      // 목록에 없는 공개 글: 노션에서 휴지통으로 보냈거나(목록에서 빠짐) 다른 곳으로 옮긴 페이지 → 한 번 더 확인하고 내림
+      // (바뀐 글만 받은 실행에서는 "목록에 없음" = "안 바뀜"이라 이 확인을 하지 않는다)
+      for (const post of posts) {
+        if (post.status !== "published" || seen.has(post.notion.pageId)) continue;
+        const page = await deps.notion.getPage(post.notion.pageId);
+        const gone = !page || isTrashed(page) || (page.parent?.data_source_id && page.parent.data_source_id !== db.dataSourceId);
+        if (!gone) continue;
+        await deps.store.updatePost(post.id, { status: "draft", updated_at: now().toISOString() });
+        changed.add(post.slug);
+        summary.unpublished++;
+        summary.items.push({ title: post.title, action: "unpublished", slug: post.slug, reasons: ["노션에서 페이지가 휴지통으로 가서 사이트 글을 초안으로 내렸어요"] });
+        log(`내림(노션 휴지통): ${post.title}`);
+      }
+      // 실패 기억은 지금 목록에 있는 페이지 것만 남긴다
+      for (const id of Object.keys(failed)) if (!seen.has(id)) delete failed[id];
     }
 
-    // 실패 기억은 지금 목록에 있는 페이지 것만 남긴다
-    for (const id of Object.keys(failed)) if (!seen.has(id)) delete failed[id];
+    // 다음 "바뀐 글만" 조회 기준 = 이번 실행 시작 시각(조회 전). 못 하고 넘긴 페이지가 있으면 그 페이지 시각까지 당긴다.
+    // 전체 조회는 끝까지 마쳤을 때만 fullScan 에 남긴다 (못 마쳤으면 다음 실행도 전체 조회)
+    state.changedSince = deferred.reduce((a, b) => (Date.parse(b) < Date.parse(a) ? b : a), startedAt);
+    if (plan.full && !deferred.length) state.fullScan = { at: startedAt, v: NOTION_CONVERT_VERSION, dataSourceId: db.dataSourceId };
   } catch (e) {
+    // 중단되면 기준 시각을 옮기지 않는다 (다음 실행이 이번 몫까지 다시 받게)
     summary.error = errText(e);
     log(`중단: ${summary.error}`);
   }
@@ -260,8 +315,6 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
   return { summary, changedSlugs: Array.from(changed), newlyPublished };
 }
 
-const linked = (p: StoredPost): LinkedPost => ({ id: p.id, slug: p.slug, status: p.status, notion: p.content.notion });
-
 export const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
 
 type PublishOutcome =
@@ -269,7 +322,9 @@ type PublishOutcome =
   | { kind: "same"; slug: string }
   | { kind: "failed"; reasons: string[] };
 
-async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, existing: StoredPost | undefined, now: () => Date): Promise<PublishOutcome> {
+async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linkedRow: LinkedRow | undefined, now: () => Date): Promise<PublishOutcome> {
+  // 본문까지 읽는 것은 실제로 갱신할 글만 (사진 기억·같은 내용 비교·처음 발행일·고지 문구에 필요)
+  const existing = linkedRow ? ((await deps.store.loadPost(linkedRow.id)) ?? undefined) : undefined;
   const tree = await deps.notion.blockTree(page.id);
   const conv = convertNotionBlocks(tree, props.title);
   if (conv.problems.length) return { kind: "failed", reasons: conv.problems };
@@ -358,7 +413,7 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, existi
     let res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id), created_at: at });
     if (res === "duplicate") {
       // 다른 실행이 방금 같은 페이지를 만들었으면 그쪽에 맡긴다. 아니면(드문 주소 겹침) 주소 끝을 바꿔 다시
-      const again = (await deps.store.listLinkedPosts()).find((p) => p.content.notion.pageId === page.id);
+      const again = (await deps.store.listLinked([page.id])).find((p) => p.notion.pageId === page.id);
       if (again) return { kind: "same", slug: again.slug };
       row.slug = `${row.slug.slice(0, 9)}${randomBytes(3).toString("hex")}`;
       res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id), created_at: at });
@@ -395,7 +450,7 @@ async function writeFailure(
   page: NPage,
   props: PageProps,
   reasons: string[],
-  existing: StoredPost | undefined,
+  existing: Pick<StoredPost, "status"> | undefined,
   now: () => Date,
 ): Promise<{ edited: string; at: string; v: number }> {
   const at = now().toISOString();
@@ -412,7 +467,10 @@ async function writeFailure(
   return { edited, at: now().toISOString(), v: NOTION_CONVERT_VERSION };
 }
 
-async function unpublish(deps: SyncDeps, post: StoredPost, page: NPage, props: PageProps, summary: NotionSyncSummary, now: () => Date) {
+async function unpublish(deps: SyncDeps, row: LinkedRow, page: NPage, props: PageProps, summary: NotionSyncSummary, now: () => Date) {
+  // content 칸을 통째로 다시 쓰므로 이 글만 본문까지 읽는다
+  const post = await deps.store.loadPost(row.id);
+  if (!post) return false;
   const at = now().toISOString();
   const memo = unpublishedMemo(at);
   let edited = page.last_edited_time;
@@ -430,4 +488,5 @@ async function unpublish(deps: SyncDeps, post: StoredPost, page: NPage, props: P
   summary.unpublished++;
   const item: SyncItem = { title: post.title, action: "unpublished", slug: post.slug, notionUrl: page.url };
   summary.items.push(item);
+  return true;
 }

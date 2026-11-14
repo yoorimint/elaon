@@ -4,21 +4,96 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createNotionClient } from "./notion-api";
 import { NOTION_PARENT_PAGE_ID, type NotionSyncState } from "./notion-shop";
-import { fetchImageDefault, type StoredPost, type SyncDeps, type SyncStore } from "./notion-sync";
+import { fetchImageDefault, pairKeyOf, type LinkedRow, type StoredPost, type SyncDeps, type SyncStore } from "./notion-sync";
 import { DEFAULT_POST_DISCLOSURE, isManualContent } from "./shop-post-types";
 
 const BUCKET = "shop-images";
 
+// 가벼운 목록에 읽는 칸 (별칭:content->notion->>키 — PostgREST JSON 경로 select)
+const LINKED_COLUMNS = [
+  "id",
+  "slug",
+  "status",
+  "title",
+  "kind:content->>kind",
+  "pageId:content->notion->>pageId",
+  "lastEditedTime:content->notion->>lastEditedTime",
+  "syncedAt:content->notion->>syncedAt",
+  "convertVersion:content->notion->convertVersion",
+].join(",");
+const FULL_COLUMNS = "id,slug,status,published_at,title,description,content,products";
+const LINKED_PAGE = 1000;
+const MAX_LINKED_ROWS = 20_000; // 안전 상한 (무한 반복 방지)
+const PAIR_KEY_CHUNK = 50;
+
+type LinkedSelectRow = {
+  id: string;
+  slug: string;
+  status: LinkedRow["status"];
+  title: string;
+  kind: string | null;
+  pageId: string | null;
+  lastEditedTime: string | null;
+  syncedAt: string | null;
+  convertVersion: unknown;
+};
+
+// 수동 글(kind=manual)이면서 노션 페이지 id 가 있는 것만 (예전 listLinkedPosts 의 isManualContent 거르기와 같은 뜻)
+function toLinkedRow(r: LinkedSelectRow): LinkedRow[] {
+  if (r.kind !== "manual" || !r.pageId) return [];
+  return [
+    {
+      id: r.id,
+      slug: r.slug,
+      status: r.status,
+      title: r.title,
+      notion: {
+        pageId: r.pageId,
+        lastEditedTime: r.lastEditedTime ?? "",
+        syncedAt: r.syncedAt ?? "",
+        ...(typeof r.convertVersion === "number" ? { convertVersion: r.convertVersion } : {}),
+      },
+    },
+  ];
+}
+
 export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
   return {
-    async listLinkedPosts() {
-      const { data, error } = await sb
-        .from("shop_posts")
-        .select("id,slug,status,published_at,title,description,content,products")
-        .like("pair_key", "notion:%")
-        .limit(2000);
+    // 판단용 가벼운 목록: 본문(content 전체)·상품은 읽지 않고 content.notion 안의 필요한 값만 JSON 경로로 꺼낸다
+    // (글 1,000편이면 본문까지는 실행마다 수십 MB, 이 목록은 수백 KB)
+    async listLinked(pageIds) {
+      const rows: LinkedSelectRow[] = [];
+      if (pageIds) {
+        // 받은 페이지의 글만 pair_key 로 (인덱스 shop_posts_pair_idx). 주소가 너무 길어지지 않게 나눠서
+        for (let i = 0; i < pageIds.length; i += PAIR_KEY_CHUNK) {
+          const keys = pageIds.slice(i, i + PAIR_KEY_CHUNK).map(pairKeyOf);
+          const { data, error } = await sb.from("shop_posts").select(LINKED_COLUMNS).in("pair_key", keys);
+          if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
+          rows.push(...((data ?? []) as unknown as LinkedSelectRow[]));
+        }
+      } else {
+        // 전체: 서버 한 번 응답 줄 수 상한(Supabase 기본 1,000)이 있어 받은 줄 수만큼 넘기며 빈 응답까지 이어 받는다
+        for (let from = 0; from < MAX_LINKED_ROWS; ) {
+          const { data, error } = await sb
+            .from("shop_posts")
+            .select(LINKED_COLUMNS)
+            .like("pair_key", "notion:%")
+            .order("id")
+            .range(from, from + LINKED_PAGE - 1);
+          if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
+          const got = (data ?? []) as unknown as LinkedSelectRow[];
+          if (!got.length) break;
+          rows.push(...got);
+          from += got.length;
+        }
+      }
+      return rows.flatMap(toLinkedRow);
+    },
+    async loadPost(id) {
+      const { data, error } = await sb.from("shop_posts").select(FULL_COLUMNS).eq("id", id).maybeSingle();
       if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
-      return ((data ?? []) as StoredPost[]).filter((p) => isManualContent(p.content) && !!p.content.notion?.pageId);
+      const p = data as StoredPost | null;
+      return p && isManualContent(p.content) && p.content.notion?.pageId ? p : null;
     },
     async insertPost(row) {
       const { error } = await sb.from("shop_posts").insert({ ...row, sources: [], stats: {} });

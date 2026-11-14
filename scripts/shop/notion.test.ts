@@ -9,6 +9,7 @@ import {
   PROP,
   applyImages,
   convertNotionBlocks,
+  databaseProperties,
   decidePage,
   memoCore,
   failedMemo,
@@ -17,8 +18,22 @@ import {
   type NBlock,
   type NPage,
   type NRichText,
+  type NotionSyncState,
 } from "@/lib/notion-shop";
-import { notionSlug, runNotionSync, type FetchedImage, type NotionPort, type PostRow, type StoredPost, type SyncStore } from "@/lib/notion-sync";
+import {
+  CHANGED_SINCE_MARGIN_MS,
+  FULL_SCAN_EVERY_MS,
+  notionSlug,
+  planScan,
+  runNotionSync,
+  type FetchedImage,
+  type NotionPort,
+  type PostRow,
+  type StoredPost,
+  type SyncStore,
+} from "@/lib/notion-sync";
+import { supabaseSyncStore } from "@/lib/notion-sync-store";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { signRevalidate, verifyRevalidate } from "@/lib/revalidate-signature";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -93,17 +108,20 @@ const types = (bs: ShopManualBlock[]) => bs.map((b) => b.type);
 
 const minute = (ms: number) => new Date(Math.floor(ms / 60_000) * 60_000).toISOString();
 
-function mockNotion(clock: () => number) {
+// honorFilter=false: "바뀐 글만" 조회에도 전부 돌려준다 (필터는 줄이기용일 뿐, 더 받아도 판단이 맞아야 함 — 예전 테스트 그대로 유지)
+function mockNotion(clock: () => number, o: { honorFilter?: boolean } = {}) {
   const pages = new Map<string, { page: NPage; blocks: NBlock[] }>();
-  const calls = { blockTree: 0, updatePage: 0, created: 0 };
+  const calls = { blockTree: 0, updatePage: 0, created: 0, queries: [] as (string | undefined)[] };
   const port: NotionPort = {
     async ensureDatabase() {
       return { databaseId: "db-1", dataSourceId: "ds-1", databaseUrl: "https://www.notion.so/db1", created: false };
     },
-    async queryAll() {
+    async queryAll(_ds, q) {
+      calls.queries.push(q?.editedSince);
+      const since = o.honorFilter && q?.editedSince ? Date.parse(q.editedSince) : -Infinity;
       return Array.from(pages.values())
         .map((x) => x.page)
-        .filter((p) => !p.in_trash)
+        .filter((p) => !p.in_trash && Date.parse(p.last_edited_time) >= since)
         .map((p) => structuredClone(p));
     },
     async blockTree(id) {
@@ -139,9 +157,21 @@ function memoryStore() {
   const posts: (PostRow & { pair_key: string; created_at: string })[] = [];
   const uploads: string[] = [];
   let state: Record<string, unknown> | null = {};
+  const reads = { listCalls: 0, listedRows: 0, fullLoads: 0 }; // DB 에서 읽은 양 (가벼운 목록 줄 수·본문까지 읽은 글 수)
   const store: SyncStore = {
-    async listLinkedPosts() {
-      return structuredClone(posts.filter((p) => p.pair_key.startsWith("notion:"))) as unknown as StoredPost[];
+    async listLinked(pageIds) {
+      reads.listCalls++;
+      const keys = pageIds && new Set(pageIds.map((id) => `notion:${id}`));
+      const rows = posts
+        .filter((p) => (keys ? keys.has(p.pair_key) : p.pair_key.startsWith("notion:")) && p.content.notion?.pageId)
+        .map((p) => ({ id: p.id, slug: p.slug, status: p.status, title: p.title, notion: structuredClone(p.content.notion!) }));
+      reads.listedRows += rows.length;
+      return rows;
+    },
+    async loadPost(id) {
+      reads.fullLoads++;
+      const p = posts.find((x) => x.id === id);
+      return p ? (structuredClone(p) as unknown as StoredPost) : null;
     },
     async insertPost(row) {
       if (posts.some((p) => p.slug === row.slug)) return "duplicate";
@@ -166,7 +196,88 @@ function memoryStore() {
       return `https://cdn.example/shop-images/${path}`;
     },
   };
-  return { store, posts, uploads, getState: () => state, dropState: () => (state = null) };
+  return { store, posts, uploads, reads, getState: () => state, setState: (v: Record<string, unknown>) => (state = v), dropState: () => (state = null) };
+}
+
+// ---------- 목업 Supabase (select 칸·JSON 경로·응답 줄 수 상한만 흉내) ----------
+
+type FakeRow = Record<string, unknown>;
+
+// PostgREST select 한 칸: "별칭:칸->키->>키" → [이름, 값]
+function pickColumn(row: FakeRow, spec: string): [string, unknown] {
+  const [alias, path] = spec.includes(":") ? spec.split(":") : [undefined, spec];
+  const parts = path.split(/(->>|->)/);
+  let v: unknown = row[parts[0]];
+  let name = parts[0];
+  for (let i = 1; i < parts.length; i += 2) {
+    const op = parts[i];
+    name = parts[i + 1];
+    v = v && typeof v === "object" ? (v as Record<string, unknown>)[name] : undefined;
+    if (v === undefined) v = null;
+    if (op === "->>" && v !== null) v = typeof v === "object" ? JSON.stringify(v) : String(v);
+  }
+  return [alias ?? name, v ?? null];
+}
+
+function fakeSupabase(rows: FakeRow[], maxRows: number) {
+  const selects: string[] = [];
+  const returned: unknown[] = [];
+  const client = {
+    from() {
+      let cols = "*";
+      const preds: ((r: FakeRow) => boolean)[] = [];
+      let order: string | undefined;
+      let range: [number, number] | undefined;
+      const run = () => {
+        let out = rows.filter((r) => preds.every((p) => p(r)));
+        if (order) out = out.slice().sort((x, y) => String(x[order!]).localeCompare(String(y[order!])));
+        if (range) out = out.slice(range[0], range[1] + 1);
+        out = out.slice(0, maxRows); // 서버 한 번 응답 줄 수 상한
+        const data = out.map((r) => (cols === "*" ? r : Object.fromEntries(cols.split(",").map((c) => pickColumn(r, c.trim())))));
+        returned.push(...data);
+        return data;
+      };
+      const b = {
+        select(c: string) {
+          cols = c;
+          selects.push(c);
+          return b;
+        },
+        like(col: string, pattern: string) {
+          preds.push((r) => String(r[col]).startsWith(pattern.replace(/%$/, "")));
+          return b;
+        },
+        in(col: string, vals: string[]) {
+          preds.push((r) => vals.includes(String(r[col])));
+          return b;
+        },
+        eq(col: string, val: unknown) {
+          preds.push((r) => r[col] === val);
+          return b;
+        },
+        order(col: string) {
+          order = col;
+          return b;
+        },
+        range(from: number, to: number) {
+          range = [from, to];
+          return b;
+        },
+        async maybeSingle() {
+          return { data: run()[0] ?? null, error: null };
+        },
+        then(resolve: (v: { data: unknown[]; error: null }) => unknown, reject?: (e: unknown) => unknown) {
+          try {
+            return Promise.resolve(resolve({ data: run(), error: null }));
+          } catch (e) {
+            return reject ? Promise.resolve(reject(e)) : Promise.reject(e);
+          }
+        },
+      };
+      return b;
+    },
+  };
+  return { client: client as unknown as SupabaseClient, selects, returned };
 }
 
 const okImage = async (): Promise<FetchedImage> => ({ bytes: new Uint8Array([1, 2, 3]), contentType: "image/jpeg" });
@@ -463,10 +574,16 @@ async function main() {
     assert.equal(s.posts[0].status, "published");
     assert.equal(s.posts.length, 1);
 
-    // 8) 노션에서 페이지를 휴지통으로 → 목록에서 빠짐 → 확인 후 내림
+    // 8) 노션에서 페이지를 휴지통으로 → 목록에서 빠짐 → 전체 조회 때 확인 후 내림
+    //    (10분 자동 실행은 평소 "바뀐 글만" 받아 휴지통을 못 본다 — 관리자 버튼·6시간마다 전체 조회에서 잡힘)
     clock += 60_000;
     n.pages.get(id)!.page.in_trash = true;
     r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "changed");
+    assert.equal(r.summary.unpublished, 0);
+    assert.equal(s.posts[0].status, "published");
+    r = await runNotionSync(deps, { ...opts, trigger: "admin" });
+    assert.equal(r.summary.scan, "full");
     assert.equal(r.summary.unpublished, 1);
     assert.equal(s.posts[0].status, "draft");
     assert.equal(s.posts.length, 1);
@@ -839,6 +956,272 @@ async function main() {
     assert.ok(html.includes(`href="${L31}"`) && html.includes(`href="${L40}"`));
     assert.ok(html.includes("<figcaption") && html.includes("조지루시 EE-DCH35K 3.1L 화이트 · 공식 제품 사진"));
     assert.ok(html.includes("<strong") && html.includes("3.1L · EE-DCH35K"));
+  });
+
+  // ---------- 글이 많아져도 가볍게 (노션 조회 줄이기·DB 가벼운 목록) ----------
+
+  await test("저장소: 판단용 목록은 본문(content 전체)·상품을 읽지 않고 JSON 경로로 필요한 값만 — 1,000줄 상한 넘어도 끝까지, 갱신할 글만 본문까지", async () => {
+    const rows = Array.from({ length: 2300 }, (_, i) => ({
+      id: `id-${String(i).padStart(5, "0")}`,
+      slug: `s${i}`,
+      status: "published",
+      title: `글 ${i}`,
+      description: "설명",
+      published_at: null,
+      pair_key: `notion:page-${i}`,
+      products: [{ name: "상품", link: P }],
+      content: {
+        kind: "manual",
+        blocks: [{ type: "paragraph", id: "b1", text: "본문 ".repeat(3000) }],
+        notion: { pageId: `page-${i}`, url: "u", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt: "2026-11-14T01:05:00.000Z", convertVersion: NOTION_CONVERT_VERSION, images: {} },
+      },
+    }));
+    rows.push({ ...structuredClone(rows[0]), id: "id-auto", pair_key: "notion:auto", content: { ...structuredClone(rows[0].content), kind: "auto" } }); // 수동 글이 아니면 뺀다
+    const sb = fakeSupabase(rows, 1000);
+    const store = supabaseSyncStore(sb.client);
+
+    const all = await store.listLinked();
+    assert.equal(all.length, 2300); // 서버 응답 상한(1,000줄)을 넘어도 이어 받음
+    assert.deepEqual(all[5], {
+      id: "id-00005",
+      slug: "s5",
+      status: "published",
+      title: "글 5",
+      notion: { pageId: "page-5", lastEditedTime: "2026-11-14T01:00:00.000Z", syncedAt: "2026-11-14T01:05:00.000Z", convertVersion: NOTION_CONVERT_VERSION },
+    });
+    const listSelects = sb.selects.slice();
+    assert.ok(listSelects.length >= 3);
+    for (const sel of listSelects) {
+      const cols = sel.split(",").map((c) => c.split(":").pop()!.trim());
+      for (const heavy of ["content", "products", "description", "content->blocks", "content->notion"]) assert.ok(!cols.includes(heavy), `${heavy} 를 통째로 읽음: ${sel}`);
+    }
+    assert.ok(JSON.stringify(sb.returned).length < 2300 * 400); // 줄마다 수백 바이트 (본문이면 줄마다 수 KB 이상)
+
+    // 받은 페이지의 글만: pair_key 로 50개씩 나눠서, 빈 목록이면 부르지 않음
+    sb.selects.length = 0;
+    const some = await store.listLinked(Array.from({ length: 120 }, (_, i) => `page-${i * 3}`));
+    assert.equal(some.length, 120);
+    assert.equal(sb.selects.length, 3);
+    assert.deepEqual(await store.listLinked([]), []);
+    assert.equal(sb.selects.length, 3);
+
+    // 본문까지는 한 글씩
+    const full = await store.loadPost("id-00007");
+    assert.equal(full?.content.notion.pageId, "page-7");
+    assert.ok(full?.content.blocks.length);
+    assert.equal(await store.loadPost("id-auto"), null);
+  });
+
+  await test("동기화: 평소엔 바뀐 글만(last_edited_time 필터·여유 10분), 6시간마다·관리자 버튼·규칙 버전 바뀜·전체 조회 미완료면 전체 조회", async () => {
+    const t0 = Date.parse("2026-11-14T00:00:30.000Z");
+    let clock = t0;
+    const n = mockNotion(() => clock, { honorFilter: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "p", maxPages: 10 };
+    const a = "a1a1a1a1-1111-2222-3333-444444444444";
+    const b = "b1b1b1b1-1111-2222-3333-444444444444";
+    for (const id of [a, b]) {
+      n.pages.set(id, { page: page(id, { status: "발행", title: `글 ${id[0]}`, edited: "2026-11-13T20:00:00.000Z" }), blocks: [para(rt("본문")), para(rt(P, { href: P }))] });
+    }
+    const st = () => s.getState() as NotionSyncState;
+    const iso = (ms: number) => new Date(ms).toISOString();
+
+    // 저장 칸이 없으면(SQL 미실행) 예전처럼 언제나 전체
+    assert.deepEqual(planScan(null, "ds-1", "cron", new Date(t0)), { full: true, why: "no-state" });
+
+    // 1) 처음: 전체 조회 (필터 없음) → 기준 시각·전체 조회 기록
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "full");
+    assert.equal(n.calls.queries.at(-1), undefined);
+    assert.equal(r.summary.published, 2);
+    assert.equal(st().changedSince, iso(t0));
+    assert.deepEqual(st().fullScan, { at: iso(t0), v: NOTION_CONVERT_VERSION, dataSourceId: "ds-1" });
+
+    // 2) 10분 뒤: 바뀐 글만 — 기준 = 지난 실행 시작 − 10분. 같은 분 재확인(메모 쓴 시각)은 여유 안이라 다시 받는다
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "changed");
+    assert.equal(n.calls.queries.at(-1), iso(t0 - CHANGED_SINCE_MARGIN_MS));
+    assert.equal(r.summary.checked, 2);
+    assert.equal(r.summary.unchanged, 2);
+
+    // 3) 또 10분 뒤: 아무것도 안 바뀜 → 노션이 0개를 돌려주고 DB 목록도 안 읽는다
+    clock += 10 * 60_000;
+    let lists = s.reads.listCalls;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.checked, 0);
+    assert.equal(s.reads.listCalls, lists);
+
+    // 4) b 를 고침 → 그 글만 받아 갱신 (본문까지 읽는 글도 그 하나)
+    clock += 60_000;
+    n.edit(b, (x) => x.blocks.unshift(para(rt("추가 문단"))));
+    const loads = s.reads.fullLoads;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.checked, 1);
+    assert.equal(r.summary.updated, 1);
+    assert.equal(s.reads.fullLoads, loads + 1);
+
+    // 5) 상한 때문에 못 한 글: 기준 시각이 그 글 시각까지 당겨져, 여유(10분)보다 한참 뒤 실행에서도 다시 받는다
+    clock += 10 * 60_000;
+    n.edit(a, (x) => x.blocks.unshift(para(rt("a 도 고침"))));
+    const aEdited = n.pages.get(a)!.page.last_edited_time;
+    r = await runNotionSync(deps, { ...opts, maxPages: 0 });
+    assert.equal(r.summary.remaining, 1);
+    assert.ok(Date.parse(st().changedSince!) <= Date.parse(aEdited));
+    clock += 40 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "changed");
+    assert.equal(r.summary.updated, 1);
+
+    // 6) 노션 오류로 중단되면 기준 시각을 옮기지 않는다
+    const before = st().changedSince;
+    const realQuery = n.port.queryAll;
+    n.port.queryAll = async () => {
+      throw new NotionError(503, "service_unavailable", "잠깐 장애");
+    };
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.ok(r.summary.error);
+    assert.equal(st().changedSince, before);
+    n.port.queryAll = realQuery;
+
+    // 7) 마지막 전체 조회 뒤 6시간 → 전체 조회, 그다음은 다시 바뀐 글만
+    clock = t0 + FULL_SCAN_EVERY_MS;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "full");
+    assert.equal(r.summary.checked, 2);
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "changed");
+
+    // 8) 변환 규칙 버전이 바뀌면(마지막 전체 조회가 옛 규칙) 전체 조회
+    s.setState({ ...st(), fullScan: { ...st().fullScan!, v: NOTION_CONVERT_VERSION - 1 } });
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "full");
+    assert.equal(st().fullScan?.v, NOTION_CONVERT_VERSION);
+
+    // 9) 관리자 버튼은 언제나 전체 조회
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, { ...opts, trigger: "admin" });
+    assert.equal(r.summary.scan, "full");
+
+    // 10) 전체 조회를 상한 때문에 끝까지 못 하면 fullScan 을 남기지 않아 다음 실행도 전체 조회
+    s.setState({ ...st(), fullScan: undefined });
+    clock += 10 * 60_000;
+    n.edit(a, (x) => x.blocks.unshift(para(rt("또 고침"))));
+    r = await runNotionSync(deps, { ...opts, maxPages: 0 });
+    assert.equal(r.summary.scan, "full");
+    assert.equal(st().fullScan, undefined);
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "full");
+    assert.equal(r.summary.updated, 1);
+    assert.ok(st().fullScan);
+  });
+
+  await test("1,000편: 1편만 바뀌면 노션 호출 5번(DB 확인 2·바뀐 글 목록 1·본문 1·메모 1), DB 는 가벼운 1줄 + 본문 1편만", async () => {
+    const N = 1000;
+    const old = "2026-11-14T08:00:00.000Z";
+    let clock = Date.parse("2026-11-14T12:00:30.000Z");
+    const notionPages = new Map<string, { page: NPage; blocks: NBlock[] }>();
+    const s = memoryStore();
+    const ids: string[] = [];
+    for (let i = 0; i < N; i++) {
+      const id = `${i.toString(16).padStart(8, "0")}-1111-2222-3333-444444444444`;
+      ids.push(id);
+      notionPages.set(id, { page: page(id, { status: "발행", title: `글 ${i}`, edited: old }), blocks: [para(rt(`본문 ${i}`)), para(rt(P, { href: P }))] });
+      s.posts.push({
+        id: `post-${i}`,
+        slug: `s-${i}`,
+        title: `글 ${i}`,
+        description: `본문 ${i}`,
+        content: {
+          kind: "manual",
+          blocks: [],
+          notion: { pageId: id, url: "u", lastEditedTime: old, syncedAt: "2026-11-14T08:05:00.000Z", images: {}, convertVersion: NOTION_CONVERT_VERSION },
+        },
+        products: [],
+        status: "published",
+        published_at: old,
+        updated_at: old,
+        pair_key: `notion:${id}`,
+        created_at: old,
+      });
+    }
+    s.setState({
+      databaseId: "db-1",
+      dataSourceId: "ds-1",
+      changedSince: "2026-11-14T11:50:30.000Z",
+      fullScan: { at: "2026-11-14T09:00:00.000Z", v: NOTION_CONVERT_VERSION, dataSourceId: "ds-1" },
+    });
+    const target = ids[777];
+    notionPages.get(target)!.page.last_edited_time = "2026-11-14T11:58:00.000Z";
+    notionPages.get(target)!.blocks.unshift(para(rt("고친 문단")));
+
+    // 노션 HTTP 목업: 목록은 100개씩 + last_edited_time 필터, 요청을 모두 센다
+    const reqs: string[] = [];
+    const res = (body: unknown) => ({ status: 200, ok: true, headers: { get: () => null }, json: async () => body, text: async () => JSON.stringify(body) });
+    const fake = async (url: string, init: { method: string; body?: string }) => {
+      const path = url.replace(/^https:\/\/api\.notion\.com\/v1/, "");
+      reqs.push(`${init.method} ${path.split("?")[0]}`);
+      if (path === "/databases/db-1") return res({ id: "db-1", url: "https://www.notion.so/db1", data_sources: [{ id: "ds-1", name: "쇼핑 글" }] });
+      if (path === "/data_sources/ds-1" && init.method === "GET") {
+        return res({ id: "ds-1", properties: Object.fromEntries(Object.keys(databaseProperties()).map((k) => [k, { type: "x" }])) });
+      }
+      if (path === "/data_sources/ds-1/query") {
+        const body = JSON.parse(init.body ?? "{}") as { start_cursor?: string; page_size: number; filter?: { timestamp: string; last_edited_time: { on_or_after: string } } };
+        const since = body.filter ? Date.parse(body.filter.last_edited_time.on_or_after) : -Infinity;
+        const list = Array.from(notionPages.values())
+          .map((x) => x.page)
+          .filter((p) => Date.parse(p.last_edited_time) >= since)
+          .sort((x, y) => Date.parse(x.last_edited_time) - Date.parse(y.last_edited_time));
+        const start = Number(body.start_cursor ?? 0);
+        const more = start + body.page_size < list.length;
+        return res({ results: list.slice(start, start + body.page_size), has_more: more, next_cursor: more ? String(start + body.page_size) : null });
+      }
+      const kids = path.match(/^\/blocks\/([^/]+)\/children/);
+      if (kids) return res({ results: notionPages.get(kids[1])!.blocks, has_more: false, next_cursor: null });
+      const pg = path.match(/^\/pages\/([^/?]+)/);
+      if (pg) {
+        const x = notionPages.get(pg[1])!;
+        if (init.method === "PATCH") x.page.last_edited_time = minute(clock);
+        return res(x.page);
+      }
+      return { status: 404, ok: false, headers: { get: () => null }, json: async () => ({ code: "object_not_found", message: path }), text: async () => "" };
+    };
+    const client = createNotionClient({ token: "t", fetch: fake, minIntervalMs: 0, sleep: async () => undefined });
+    const deps = { notion: client, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "p", maxPages: 20 };
+
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.scan, "changed");
+    assert.equal(r.summary.checked, 1);
+    assert.equal(r.summary.updated, 1);
+    assert.deepEqual(reqs, ["GET /databases/db-1", "GET /data_sources/ds-1", "POST /data_sources/ds-1/query", `GET /blocks/${target}/children`, `PATCH /pages/${target}`]);
+    assert.equal(s.reads.listedRows, 1); // 가벼운 목록 1줄
+    assert.equal(s.reads.fullLoads, 1); // 본문까지 읽은 글 1편
+
+    // 10분 뒤: 같은 분 재확인 1편 (본문 같음 → 노션에 다시 안 씀)
+    clock += 10 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.checked, 1);
+    assert.equal(r.summary.updated, 0);
+
+    // 비교: 관리자 버튼(전체 조회)이면 목록 호출 10번 + 가벼운 목록 1,000줄 — 그래도 본문은 하나도 안 읽는다
+    clock += 10 * 60_000;
+    reqs.length = 0;
+    s.reads.listedRows = 0;
+    s.reads.fullLoads = 0;
+    r = await runNotionSync(deps, { ...opts, trigger: "admin" });
+    assert.equal(r.summary.scan, "full");
+    assert.equal(r.summary.checked, N);
+    assert.equal(r.summary.unchanged, N);
+    assert.equal(reqs.filter((x) => x.endsWith("/query")).length, 10);
+    assert.equal(reqs.length, 12);
+    assert.equal(s.reads.listedRows, N);
+    assert.equal(s.reads.fullLoads, 0);
   });
 
   console.log(`\n${passed}개 통과`);

@@ -554,11 +554,12 @@ export function settledSince(lastEditedTime: string, checkedAt: string | undefin
   return Number.isFinite(edited) && Number.isFinite(at) && at >= edited + EDIT_TIME_GRANULARITY_MS;
 }
 
+// 판단에 필요한 연결 정보만 (본문은 빼고 — 글이 많아도 가볍게 읽으려고. src/lib/notion-sync-store.ts listLinked)
 export type LinkedPost = {
   id: string;
   slug: string;
   status: "draft" | "published";
-  notion: ShopNotionRef;
+  notion: Pick<ShopNotionRef, "pageId" | "lastEditedTime" | "syncedAt" | "convertVersion">;
 };
 
 export type PageDecision =
@@ -657,6 +658,8 @@ export type NotionSyncSummary = {
   failed: number;
   unchanged: number;
   remaining: number; // 시간·개수 상한으로 이번에 못 하고 다음 번으로 넘긴 페이지 수
+  scan?: "full" | "changed"; // 노션 조회 방식: 전체 조회 / 지난번 뒤로 바뀐 글만 (src/lib/notion-sync.ts planScan)
+  checked?: number; // 노션에서 받아 확인한 페이지 수
   items: SyncItem[];
   error?: string; // 전체가 멈춘 이유 (토큰 없음·권한 없음 등)
 };
@@ -668,6 +671,9 @@ export type NotionSyncState = {
   databaseUrl?: string;
   failed?: Record<string, FailedMemory>;
   lastRun?: NotionSyncSummary;
+  // 노션 조회 줄이기 (src/lib/notion-sync.ts planScan)
+  changedSince?: string; // 다음 "바뀐 글만" 조회의 기준 시각 (여유를 빼고 이 뒤에 고친 페이지만 받는다)
+  fullScan?: { at: string; v: number; dataSourceId: string }; // 마지막으로 끝까지 마친 전체 조회 (시각·변환 규칙 버전)
 };
 
 export function summaryLine(s: Pick<NotionSyncSummary, "published" | "updated" | "unpublished" | "failed" | "remaining">): string {

@@ -9,8 +9,6 @@ const DISALLOW_PATHS = [
   "/admin/",
   "/me",
   "/suggest",
-  "/paper-trade",
-  "/paper-trade/",
   "/api/",
   "/login",
   "/signup",

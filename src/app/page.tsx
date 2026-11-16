@@ -1,185 +1,206 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { createServerClient } from "@/lib/supabase-server";
-import { STRATEGIES } from "@/lib/strategies";
-import { timeAgo } from "@/lib/community";
-import { BeginnerPresetSection } from "@/components/BeginnerPresetSection";
-import { SupportedStrategiesGrid } from "@/components/SupportedStrategiesGrid";
-import { TodayBuyHighlight } from "@/components/TodayBuyHighlight";
-import { PopularCoinsTop } from "@/components/PopularCoinsTop";
+import { PICK_CATEGORIES, getHub, totalPickCount } from "@/lib/picks";
+import { COMPARISONS, getComparison } from "@/lib/comparisons";
+import { CHECKLISTS } from "@/lib/checklists";
+import { listPublishedPosts } from "@/lib/shop-posts-server";
 import { SajudayAd } from "@/components/SajudayAd";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-// 홈 데이터(오늘 신호·인기 코인)는 하루 1번 크론으로 바뀌고, "최근 공유"만 수시로 바뀐다 → 10분 캐시.
-// (예전 30초는 방문이 있으면 30초마다 서버에서 다시 그려 CPU 를 썼다)
-export const revalidate = 600;
+// 홈 = 주소모음 + 쇼핑 글. 주소모음은 내장 데이터(배포 때만 바뀜), 쇼핑 글은 발행·삭제 때
+// revalidateShop() 이 "/" 도 바로 새로 만든다 → 평소엔 1시간 캐시면 충분 (서버 계산 거의 없음)
+export const revalidate = 3600;
+
+const SITE = "https://www.eloan.kr";
 
 export const metadata: Metadata = {
   // 홈은 브랜드를 앞에 (하위 페이지는 제목 뒤에 사이트 이름을 붙이지 않음)
-  title: { absolute: "eloan — 코인·주식 전략 백테스트 & 모의투자 무료 도구" },
+  title: { absolute: "eloan — 유용한 사이트 주소모음 · 실사용 후기 쇼핑 비교" },
   description:
-    "코인·주식 투자 전략을 3분 만에 백테스트하고 모의투자로 검증하세요. 12종 전략 무료 제공.",
-  alternates: { canonical: "https://www.eloan.kr" },
+    "AI 도구·정부지원금·무료 리소스·취업·여행·가격비교 사이트를 카테고리별로 정리한 주소모음과, 실사용 후기로 비교한 쇼핑 글.",
+  alternates: { canonical: SITE },
   openGraph: {
-    title: "eloan — 코인·주식 백테스트 무료 도구",
-    description:
-      "코인·주식 전략을 3분 만에 백테스트하고 모의투자로 검증하는 무료 도구.",
-    url: "https://www.eloan.kr",
+    title: "eloan — 유용한 사이트 주소모음 · 쇼핑 비교",
+    description: "한국에서 바로 쓰는 사이트를 카테고리별로 정리한 주소모음과 실사용 후기 쇼핑 비교.",
+    url: SITE,
   },
 };
 
-type SharedRow = {
-  slug: string;
-  market: string;
-  strategy: string;
-  days: number;
-  return_pct: number;
-  benchmark_return_pct: number;
-  trade_count: number;
-  created_at: string;
-};
+// 인기 페이지 — 네이버 서치어드바이저 30일 클릭 상위 (2026-11 기준). 순서 = 클릭 많은 순.
+// 없는 항목(데이터에서 빠진 것)은 자동으로 건너뛴다.
+const POPULAR_HUBS: [string, string][] = [
+  ["study", "megastudy"],
+  ["coin", "hankyung-consensus"],
+  ["jobs", "jobkorea"],
+  ["coin", "finviz"],
+  ["coin", "yahoo-finance"],
+  ["ai", "suno"],
+];
+const POPULAR_VS = ["yanolja-vs-yeogi", "jobkorea-vs-saramin"];
 
-async function loadHomeData() {
-  const sb = createServerClient();
-  // "최근 공유된 백테스트" 섹션용 — 사회적 증거 (봇 + 유저가 자발적으로 공유한 것).
-  // "검증된 전략" 은 TodayBuyHighlight 컴포넌트가 board_top_signals 직접 SELECT.
-  const sharedRes = await sb
-    .from("shared_backtests")
-    .select("slug,market,strategy,days,return_pct,benchmark_return_pct,trade_count,created_at")
-    .eq("is_private", false)
-    // SNS 봇 전용 자동 스캔 결과는 리스트에서 제외 (슬러그로는 접근 가능)
-    .or("source.is.null,source.neq.social-scan")
-    .order("created_at", { ascending: false })
-    .limit(3);
-  return {
-    shared: (sharedRes.data ?? []) as SharedRow[],
-  };
-}
-
-function strategyName(id: string) {
-  return STRATEGIES.find((s) => s.id === id)?.name ?? id;
+function popularLinks() {
+  const hubs = POPULAR_HUBS.flatMap(([cat, hub]) => {
+    const e = getHub(cat, hub);
+    if (!e) return [];
+    const c = PICK_CATEGORIES.find((x) => x.slug === cat);
+    return [{ href: `/picks/${cat}/${hub}`, label: e.item.name, sub: c?.shortTitle ?? "" }];
+  });
+  const vs = POPULAR_VS.flatMap((slug) => {
+    const c = getComparison(slug);
+    return c ? [{ href: `/picks/vs/${slug}`, label: c.shortTitle, sub: "비교" }] : [];
+  });
+  // 허브 2개마다 비교 1개를 섞어 한쪽으로 몰리지 않게
+  return [...hubs.slice(0, 3), vs[0], ...hubs.slice(3), vs[1]].filter(Boolean) as {
+    href: string;
+    label: string;
+    sub: string;
+  }[];
 }
 
 export default async function HomePage() {
-  const { shared } = await loadHomeData();
+  const posts = await listPublishedPosts(6).catch(() => []);
+  const popular = popularLinks();
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-10 sm:py-14">
+    <main className="mx-auto max-w-4xl px-5 py-8 sm:py-12">
       <div className="mb-4 flex justify-end">
         <ThemeToggle />
       </div>
-      <section className="mb-12">
-        <div className="text-brand text-xs sm:text-sm font-semibold tracking-widest">
-          ELOAN BACKTEST
-        </div>
-        <h1 className="mt-2 text-[22px] sm:text-4xl font-bold leading-tight whitespace-nowrap">
-          아직 소문 듣고 매매하세요?
+
+      <section className="mb-10">
+        <h1 className="text-[24px] sm:text-4xl font-bold leading-tight">
+          자주 찾는 사이트,
           <br />
-          전략이 없으면 수익도 없어요.
+          한곳에 모아뒀어요
         </h1>
-        <p className="mt-4 text-neutral-600 dark:text-neutral-400 text-base sm:text-lg">
-          업비트·Yahoo Finance·OKX 실제 과거 시세로 돌려봅니다. 결과 보고 모의투자로 이어서 검증까지.
+        <p className="mt-3 text-neutral-600 dark:text-neutral-400 text-[15px] sm:text-lg">
+          한국에서 바로 쓰는 사이트 {totalPickCount()}곳을 카테고리별로 정리했어요. 실사용 후기로 비교한 쇼핑 글도 있어요.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-2.5">
           <Link
-            href="/backtest"
-            className="inline-flex items-center rounded-full bg-brand px-6 py-3 text-white font-semibold hover:bg-brand-dark"
+            href="/picks"
+            className="inline-flex items-center rounded-full bg-brand px-5 py-2.5 text-white font-semibold hover:bg-brand-dark"
           >
-            백테스트 시작
+            주소모음 보기
           </Link>
           <Link
-            href="/community"
-            className="inline-flex items-center rounded-full border border-neutral-300 dark:border-neutral-700 px-6 py-3 font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900"
+            href="/shop"
+            className="inline-flex items-center rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2.5 font-semibold hover:bg-neutral-100 dark:hover:bg-neutral-900"
           >
-            커뮤니티 보기
+            쇼핑 글 보기
           </Link>
         </div>
       </section>
 
-      <PopularCoinsTop />
+      <section className="mb-10">
+        <h2 className="text-lg sm:text-xl font-bold">카테고리</h2>
+        <ul className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          {PICK_CATEGORIES.map((cat) => {
+            const count = cat.groups.reduce((s, g) => s + g.items.length, 0);
+            return (
+              <li key={cat.slug}>
+                <Link
+                  href={`/picks/${cat.slug}`}
+                  className="flex h-full items-center gap-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-3 hover:border-brand hover:bg-brand/5 transition"
+                >
+                  <span className="text-2xl shrink-0">{cat.emoji}</span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-[15px] leading-snug">{cat.shortTitle}</span>
+                    <span className="block text-xs text-neutral-500">{count}곳</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+          <li>
+            <Link
+              href="/picks/vs"
+              className="flex h-full items-center gap-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-3 hover:border-brand hover:bg-brand/5 transition"
+            >
+              <span className="text-2xl shrink-0">🆚</span>
+              <span className="min-w-0">
+                <span className="block font-semibold text-[15px] leading-snug">서비스 비교</span>
+                <span className="block text-xs text-neutral-500">{COMPARISONS.length}개</span>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/picks/checklist"
+              className="flex h-full items-center gap-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 px-3 py-3 hover:border-brand hover:bg-brand/5 transition"
+            >
+              <span className="text-2xl shrink-0">✅</span>
+              <span className="min-w-0">
+                <span className="block font-semibold text-[15px] leading-snug">체크리스트</span>
+                <span className="block text-xs text-neutral-500">{CHECKLISTS.length}개</span>
+              </span>
+            </Link>
+          </li>
+        </ul>
+      </section>
 
-      <SajudayAd />
+      {popular.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg sm:text-xl font-bold">많이 찾는 페이지</h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {popular.map((p) => (
+              <li key={p.href}>
+                <Link
+                  href={p.href}
+                  className="inline-flex items-baseline gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-800 px-3.5 py-1.5 text-sm hover:border-brand hover:text-brand"
+                >
+                  <span className="font-medium">{p.label}</span>
+                  <span className="text-[11px] text-neutral-500">{p.sub}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      <TodayBuyHighlight />
-
-      <BeginnerPresetSection />
-
-      <section className="mb-12">
+      <section className="mb-10">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-lg sm:text-xl font-bold">최근 공유된 백테스트</h2>
-          <Link href="/backtest" className="text-sm text-neutral-500 hover:underline">
-            내 전략 돌려보기 →
+          <h2 className="text-lg sm:text-xl font-bold">최신 쇼핑 글</h2>
+          <Link href="/shop" className="text-sm text-brand hover:underline">
+            전체 보기 ›
           </Link>
         </div>
-        {shared.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-8 text-center text-sm text-neutral-500">
-            아직 공유된 결과가 없습니다. 첫 번째가 되어보세요.
+        {posts.length === 0 ? (
+          <div className="mt-3 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-center text-sm text-neutral-500">
+            아직 글이 없습니다.
           </div>
         ) : (
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {shared.map((s) => {
-              const beat = s.return_pct > s.benchmark_return_pct;
-              return (
-                <li key={s.slug}>
-                  <Link
-                    href={`/r/${s.slug}`}
-                    className="block rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand/50 hover:bg-brand/5 transition"
-                  >
-                    <div className="flex flex-wrap gap-1.5 text-xs text-neutral-500">
-                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
-                        {s.market}
-                      </span>
-                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
-                        {strategyName(s.strategy)}
-                      </span>
-                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
-                        {s.days}일
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-baseline gap-3">
-                      <span
-                        className={`text-2xl font-bold ${
-                          s.return_pct >= 0
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
-                      >
-                        {s.return_pct.toFixed(1)}%
-                      </span>
-                      <span className="text-xs text-neutral-500">
-                        vs 보유 {s.benchmark_return_pct.toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="mt-2 text-xs text-neutral-500 flex gap-2">
-                      <span>거래 {s.trade_count}회</span>
-                      <span>·</span>
-                      <span>{timeAgo(s.created_at)}</span>
-                      {beat && (
-                        <span className="ml-auto text-emerald-600 dark:text-emerald-400 font-semibold">
-                          ✓ 초과수익
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
+          <ul className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {posts.map((p) => (
+              <li key={p.slug}>
+                <Link
+                  href={`/shop/${p.slug}`}
+                  className="block h-full rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 hover:border-brand"
+                >
+                  <div className="font-semibold leading-snug line-clamp-2">{p.title}</div>
+                  {p.description && (
+                    <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2">{p.description}</p>
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </section>
 
-      <SupportedStrategiesGrid />
+      <SajudayAd />
 
       <footer className="mt-12 pb-8 text-xs text-neutral-500 space-y-2">
-        <div>
-          * 투자 판단은 본인 책임입니다. 과거 수익률이 미래 수익을 보장하지 않습니다.
-        </div>
+        <div>쇼핑 글의 일부 링크는 제휴 링크이며, 구매 시 일정액의 수수료를 받을 수 있습니다.</div>
         <div className="flex gap-4">
           <Link href="/terms" className="hover:text-neutral-900 dark:hover:text-white">
             이용약관
           </Link>
           <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white font-semibold">
             개인정보처리방침
+          </Link>
+          <Link href="/suggest" className="hover:text-neutral-900 dark:hover:text-white">
+            건의하기
           </Link>
         </div>
       </footer>

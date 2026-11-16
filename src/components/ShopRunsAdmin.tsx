@@ -6,7 +6,7 @@
 // 데이터: shop_runs (supabase/shop.sql). 표가 없으면 SQL 실행 안내.
 
 import { useEffect, useState } from "react";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 import { supabase } from "@/lib/supabase";
 
 type Run = {

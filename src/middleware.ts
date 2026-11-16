@@ -1,4 +1,4 @@
-// 2026-11 에 없앤 주식·코인 도구 경로에 410 Gone 을 돌려준다.
+// 2026-11 에 없앤 경로(주식·코인 도구, 커뮤니티·회원가입)에 410 Gone 을 돌려준다.
 // 404 보다 410 이 "영구 삭제"라는 뜻이라 검색엔진이 색인에서 더 빨리 뺀다.
 //
 // 가볍게: matcher 에 적은 경로에서만 실행된다 (다른 모든 화면에는 미들웨어가 아예 안 돈다).
@@ -42,5 +42,7 @@ export const config = {
     "/api/stock-resolve/:path*",
     "/api/admin/board-scan/:path*",
     "/api/admin/popular-scan/:path*",
+    "/community/:path*",
+    "/signup/:path*",
   ],
 };

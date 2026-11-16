@@ -6,7 +6,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { isAdmin } from "@/lib/community";
+import { isAdmin } from "@/lib/admin";
 import { autoExcludeIfAdmin, recordShopView } from "@/lib/shop-views-client";
 
 export function ShopViewTracker({ slug }: { slug: string }) {

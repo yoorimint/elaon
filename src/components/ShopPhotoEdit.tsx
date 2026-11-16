@@ -6,7 +6,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ImageIcon, Loader2 } from "lucide-react";
-import { isAdmin } from "@/lib/community";
+import { isAdmin } from "@/lib/admin";
 import { uploadProductImage } from "@/lib/shop-images";
 import { ownPhoto, photoFor, withPhoto, type PhotoSpot, type ShopPostInputProduct } from "@/lib/shop-post-types";
 

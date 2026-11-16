@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ShopManualEditor, draftFromPost, type SavedPostRef } from "@/components/ShopManualEditor";
 import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
 import { ShopViewExcludeToggle } from "@/components/ShopViewExcludeToggle";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 import { isManualPost, type ManualShopPost } from "@/lib/shop-post-types";
 import {
   deletePost,

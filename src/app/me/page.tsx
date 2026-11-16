@@ -1,33 +1,27 @@
 "use client";
 
+// 내정보 — 2026-11 커뮤니티·회원가입을 없애면서 로그인한 사람(주로 관리자)용 최소 기능만 남겼다:
+// 닉네임·비밀번호 변경 + 관리자 화면·건의함으로 가는 링크.
+// (닉네임은 이제 관리자 건의함에만 보이지만, 개인정보처리방침에 "변경 가능"으로 적혀 있어 남긴다)
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase";
-import { categoryLabel, timeAgo, type Category } from "@/lib/community";
+import { isAdmin } from "@/lib/admin";
 
 type Profile = { user_id: string; username: string };
-
-type MyPost = {
-  slug: string;
-  title: string;
-  category: Category;
-  comment_count: number;
-  created_at: string;
-};
 
 export default function MyPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [admin, setAdmin] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameMessage, setNameMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
-
-  const [myPosts, setMyPosts] = useState<MyPost[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const [pw1, setPw1] = useState("");
   const [pw2, setPw2] = useState("");
@@ -42,24 +36,17 @@ export default function MyPage() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    (async () => {
-      const [prof, posts] = await Promise.all([
-        supabase.from("profiles").select("user_id,username").eq("user_id", user.id).maybeSingle(),
-        supabase
-          .from("posts")
-          .select("slug,title,category,comment_count,created_at")
-          .eq("author_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(30),
-      ]);
-      if (prof.data) {
-        setProfile(prof.data as Profile);
-        setUsernameInput((prof.data as Profile).username);
-      }
-      setMyPosts((posts.data ?? []) as MyPost[]);
-      setLoading(false);
-    })();
+    isAdmin().then(setAdmin);
+    supabase
+      .from("profiles")
+      .select("user_id,username")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setProfile(data as Profile);
+        setUsernameInput((data as Profile).username);
+      });
   }, [user]);
 
   async function onSaveUsername(e: React.FormEvent) {
@@ -68,28 +55,19 @@ export default function MyPage() {
     setNameMessage(null);
     const name = usernameInput.trim();
     if (!/^[a-zA-Z0-9_가-힣]{2,20}$/.test(name)) {
-      setNameMessage({
-        kind: "err",
-        text: "2~20자, 한글/영문/숫자/밑줄만 가능합니다",
-      });
+      setNameMessage({ kind: "err", text: "2~20자, 한글/영문/숫자/밑줄만 가능합니다" });
       return;
     }
     if (name === profile.username) return;
 
     setSavingName(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ username: name })
-      .eq("user_id", user.id);
+    const { error } = await supabase.from("profiles").update({ username: name }).eq("user_id", user.id);
     setSavingName(false);
 
     if (error) {
       setNameMessage({
         kind: "err",
-        text:
-          error.code === "23505" || error.message.includes("duplicate")
-            ? "이미 사용 중인 닉네임입니다"
-            : error.message,
+        text: error.code === "23505" || error.message.includes("duplicate") ? "이미 사용 중인 닉네임입니다" : error.message,
       });
       return;
     }
@@ -126,36 +104,51 @@ export default function MyPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-8">
-      <h1 className="text-2xl font-bold">마이페이지</h1>
+      <h1 className="text-2xl font-bold">내정보</h1>
       <p className="mt-1 text-sm text-neutral-500">{user.email}</p>
 
-      <section className="mt-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
-        <h2 className="text-base font-semibold">닉네임</h2>
-        <form onSubmit={onSaveUsername} className="mt-3 flex gap-2">
-          <input
-            type="text"
-            value={usernameInput}
-            onChange={(e) => setUsernameInput(e.target.value)}
-            className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
-          />
-          <button
-            type="submit"
-            disabled={savingName}
-            className="rounded-full bg-brand px-5 py-2 text-white text-sm font-semibold hover:bg-brand-dark disabled:opacity-60"
+      <div className="mt-6 flex flex-wrap gap-2">
+        {admin && (
+          <Link
+            href="/admin"
+            className="rounded-full bg-brand px-5 py-2 text-white text-sm font-semibold hover:bg-brand-dark"
           >
-            {savingName ? "저장 중…" : "저장"}
-          </button>
-        </form>
-        {nameMessage && (
-          <div
-            className={`mt-2 text-sm ${
-              nameMessage.kind === "ok" ? "text-emerald-600" : "text-red-600"
-            }`}
-          >
-            {nameMessage.text}
-          </div>
+            관리자 화면
+          </Link>
         )}
-      </section>
+        <Link
+          href="/suggest"
+          className="rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-900"
+        >
+          건의하기
+        </Link>
+      </div>
+
+      {profile && (
+        <section className="mt-8 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
+          <h2 className="text-base font-semibold">닉네임</h2>
+          <form onSubmit={onSaveUsername} className="mt-3 flex gap-2">
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value)}
+              className="flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
+            />
+            <button
+              type="submit"
+              disabled={savingName}
+              className="rounded-full bg-brand px-5 py-2 text-white text-sm font-semibold hover:bg-brand-dark disabled:opacity-60"
+            >
+              {savingName ? "저장 중…" : "저장"}
+            </button>
+          </form>
+          {nameMessage && (
+            <div className={`mt-2 text-sm ${nameMessage.kind === "ok" ? "text-emerald-600" : "text-red-600"}`}>
+              {nameMessage.text}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="mt-6 rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5">
         <h2 className="text-base font-semibold">비밀번호 변경</h2>
@@ -194,40 +187,6 @@ export default function MyPage() {
           </div>
         )}
       </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-bold">내 글 ({myPosts.length})</h2>
-        {loading ? (
-          <div className="mt-3 text-sm text-neutral-500">불러오는 중…</div>
-        ) : myPosts.length === 0 ? (
-          <div className="mt-3 text-sm text-neutral-500">아직 작성한 글이 없습니다.</div>
-        ) : (
-          <ul className="mt-3 divide-y divide-neutral-200 dark:divide-neutral-800 border-t border-b border-neutral-200 dark:border-neutral-800">
-            {myPosts.map((p) => (
-              <li key={p.slug}>
-                <Link
-                  href={`/community/${p.slug}`}
-                  className="flex items-center gap-3 py-3 px-2 -mx-2 rounded hover:bg-neutral-50 dark:hover:bg-neutral-900"
-                >
-                  <span className="shrink-0 text-xs rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5">
-                    {categoryLabel(p.category)}
-                  </span>
-                  <span className="flex-1 truncate">
-                    {p.title}
-                    {p.comment_count > 0 && (
-                      <span className="ml-2 text-brand text-sm">[{p.comment_count}]</span>
-                    )}
-                  </span>
-                  <span className="text-xs text-neutral-500 shrink-0">
-                    {timeAgo(p.created_at)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
     </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getVisitCounters, type VisitCounters } from "@/lib/community";
+import { getVisitCounters, type VisitCounters } from "@/lib/site-stats";
 
 // 헤더에 표시할 공개 방문자 카운터. anon 권한으로 호출되므로
 // 비로그인 방문자에게도 동일하게 노출된다. 60초마다 자동 갱신.

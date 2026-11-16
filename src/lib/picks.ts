@@ -10147,7 +10147,7 @@ const FREE: PickCategory = {
               "Google Fonts 는 Google 이 2010년부터 운영하는 무료 웹 폰트 라이브러리입니다. 2026년 현재 1,500+ 폰트가 SIL Open Font License(OFL) 또는 Apache 2.0 라이선스로 제공되어 상업·재배포·수정이 100% 자유롭습니다.",
               "한글 폰트도 본격적으로 지원됩니다. Noto Sans KR(노토 산스 KR), Noto Serif KR, Black Han Sans, Do Hyeon, Gowun Batang 등 메이저 한글 폰트가 포함되어 있어 한국 웹사이트·디자인에 그대로 사용 가능.",
               "가장 큰 강점은 CDN 임베드입니다. 다운로드·설치 없이 한 줄 HTML 또는 CSS 로 폰트를 웹사이트에 즉시 적용할 수 있습니다. 빌드 시 폰트 파일을 로컬 호스팅하는 옵션도 제공.",
-              "100% 무료, 회원가입 없음, 라이선스 분쟁 가능성 거의 없음. 본 사이트(eloan) 도 Google Fonts 를 사용합니다.",
+              "100% 무료, 회원가입 없음, 라이선스 분쟁 가능성 거의 없음.",
             ],
             features: [
               { title: "1,500+ 무료 폰트", body: "라틴·한글·일본어·중국어·아랍어 등 전 세계 언어 지원." },
@@ -10176,7 +10176,7 @@ const FREE: PickCategory = {
               "디자인 톤이 글로벌 표준 위주",
             ],
             koreanContext:
-              "Noto Sans KR 가 한국 웹사이트의 사실상 표준 폰트. 본 사이트(eloan) 도 Noto Sans KR + Tailwind 조합. 한국 디자인에 어울리는 글로벌·미니멀 톤 폰트가 강점. 카카오·네이버·기업 폰트 같은 한국식 폰트는 눈누·폰트프리에서 별도 다운로드해 사용.",
+              "Noto Sans KR 가 한국 웹사이트의 사실상 표준 폰트. 한국 디자인에 어울리는 글로벌·미니멀 톤 폰트가 강점. 카카오·네이버·기업 폰트 같은 한국식 폰트는 눈누·폰트프리에서 별도 다운로드해 사용.",
             startingGuide: [
               { step: 1, title: "사이트 접속", body: "fonts.google.com 접속. 가입 불필요." },
               { step: 2, title: "폰트 선택", body: "검색 또는 카테고리(Serif·Sans Serif·Display·Handwriting) 탐색. 본인 텍스트로 미리보기." },
@@ -14112,7 +14112,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "TradingView Pine Script 학습?",
-                a: "Pine Script = TradingView 본인 전략 코딩 언어. 강점: ① JavaScript·Python 와 비슷한 문법 ② 1~2일 입문(코딩 경험자) ③ 1주일 단순 인디케이터·전략 작성 ④ 공식 문서 풍부 ⑤ 유튜브·블로그 한국어 강의 다수 ⑥ Pine Script v6 최신. 활용: ① 본인 매매 전략 코드화 ② 백테스트 = strategy() 함수 ③ 본인 인디케이터 만들기 ④ 본인 알림 설정 ⑤ 커뮤니티 공개 가능. 학습 자료: ① TradingView 공식 문서(영문 + 일부 한국어) ② 인프런·생활코딩 한국어 강의 ③ 유튜브 한국 트레이더 채널. 한국 본격 트레이더 = Pine Script 학습 = 평생 자산. 비코딩자 = eloan 우선.",
+                a: "Pine Script = TradingView 본인 전략 코딩 언어. 강점: ① JavaScript·Python 와 비슷한 문법 ② 1~2일 입문(코딩 경험자) ③ 1주일 단순 인디케이터·전략 작성 ④ 공식 문서 풍부 ⑤ 유튜브·블로그 한국어 강의 다수 ⑥ Pine Script v6 최신. 활용: ① 본인 매매 전략 코드화 ② 백테스트 = strategy() 함수 ③ 본인 인디케이터 만들기 ④ 본인 알림 설정 ⑤ 커뮤니티 공개 가능. 학습 자료: ① TradingView 공식 문서(영문 + 일부 한국어) ② 인프런·생활코딩 한국어 강의 ③ 유튜브 한국 트레이더 채널. 한국 본격 트레이더 = Pine Script 학습 = 평생 자산.",
               },
               {
                 q: "TradingView 한국어·한국 주식?",
@@ -14120,11 +14120,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "TradingView 백테스트·전략 검증?",
-                a: "TradingView Pine Script 백테스트 = 무료 기능. 활용: ① strategy() 함수로 본인 매매 전략 코드 ② 차트에 적용 = 자동 백테스트 ③ 결과 = 승률·MDD·총 수익률·샤프 비율. 단 ① 슬리피지·체결지연·시장 충격 = 완벽 반영 X ② 실전 대비 10~20% 할인해서 보기 ③ 본인 전략 검증 우선 도구. 백테스트 결과 해석: ① 승률 50%+ + Risk Reward 1.5+ ② MDD 30% 미만 ③ 샤프 비율 1+ = 양호 ④ 1년+ 백테스트 권장. 한국 트레이더: ① TradingView Pine Script 백테스트 + eloan 백테스트 = 다중 검증 ② 실전 적용 = 작은 자금 시작 + 점진 확대.",
-              },
-              {
-                q: "TradingView vs eloan 차이? 백테스트?",
-                a: "TradingView vs eloan 차이: ① TradingView = 글로벌 전 시장·본인 전략 코딩(Pine Script)·차트 분석 1티어 ② eloan = 한국 KRW 코인 시장 특화·12종 빌트인 전략 무료 백테스트·결과 슬러그 URL 공유·코딩 없이 클릭 기반. 추천: ① 코딩 없이 빠른 전략 검증 = eloan 우선 ② 복잡한 본인 전략 개발 = TradingView Pine Script ③ 글로벌 시장 분석 = TradingView ④ 한국 KRW 코인 = eloan 가성비. 한국 본격 트레이더 표준: eloan(한국 KRW 코인 빠른 백테스트) + TradingView Pine Script(본인 전략 + 글로벌). 두 도구 분담 활용 = 평생 자산. eloan = 진입 장벽 1티어 낮음.",
+                a: "TradingView Pine Script 백테스트 = 무료 기능. 활용: ① strategy() 함수로 본인 매매 전략 코드 ② 차트에 적용 = 자동 백테스트 ③ 결과 = 승률·MDD·총 수익률·샤프 비율. 단 ① 슬리피지·체결지연·시장 충격 = 완벽 반영 X ② 실전 대비 10~20% 할인해서 보기 ③ 본인 전략 검증 우선 도구. 백테스트 결과 해석: ① 승률 50%+ + Risk Reward 1.5+ ② MDD 30% 미만 ③ 샤프 비율 1+ = 양호 ④ 1년+ 백테스트 권장. 한국 트레이더: ① TradingView Pine Script 백테스트 + 다른 도구(QuantConnect·pyupbit 등) 교차 검증 ② 실전 적용 = 작은 자금 시작 + 점진 확대.",
               },
               {
                 q: "TradingView 인디케이터·기술적 분석?",
@@ -14156,7 +14152,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "TradingView 한국 사용자 활용 시나리오?",
-                a: "한국 사용자 표준 활용: ① 차트 분석(가장 많음) — 한국 주식·KRW 코인·미국 주식·외환 ② 본인 Pine Script 전략 + 백테스트 ③ 알림 + 본인 매수·매도 시점 ④ 본인 차트 아이디어 공유 ⑤ Webhook 자동매매 ⑥ 글로벌 매크로 추적. 평생 활용: 매일 TradingView 차트 + 본인 매매 결정 = 평생 자산 형성. 한국 본격 트레이더에게 사실상 표준 도구. 한국어 1티어 + 글로벌 1티어 + Pine Script + 자동매매 통합 = 평생 자산. 본인 학습 + 정기 확인 + 본인 전략 = 평생 트레이더 자산. TradingView + 거래소 HTS + eloan 분담 = 평생 가성비.",
+                a: "한국 사용자 표준 활용: ① 차트 분석(가장 많음) — 한국 주식·KRW 코인·미국 주식·외환 ② 본인 Pine Script 전략 + 백테스트 ③ 알림 + 본인 매수·매도 시점 ④ 본인 차트 아이디어 공유 ⑤ Webhook 자동매매 ⑥ 글로벌 매크로 추적. 평생 활용: 매일 TradingView 차트 + 본인 매매 결정 = 평생 자산 형성. 한국 본격 트레이더에게 사실상 표준 도구. 한국어 1티어 + 글로벌 1티어 + Pine Script + 자동매매 통합 = 평생 자산. 본인 학습 + 정기 확인 + 본인 전략 = 평생 트레이더 자산. TradingView + 거래소 HTS 분담 = 평생 가성비.",
               },
             ],
             relatedKeywords: [
@@ -14164,7 +14160,6 @@ const COIN: PickCategory = {
               "TradingView 가격 플랜",
               "TradingView 무료 한도",
               "Pine Script 사용법",
-              "TradingView vs eloan",
               "차트 분석 도구",
               "트레이딩뷰 한국 주식",
               "트레이딩뷰 코인",
@@ -14195,7 +14190,7 @@ const COIN: PickCategory = {
               "QuantConnect 는 2012년 출시된 글로벌 알고리즘 트레이딩 플랫폼입니다. Python·C# 코드로 본인 매매 전략을 작성하고 무료 클라우드 컴퓨팅으로 백테스트·실전 자동매매까지 한 곳에서 처리합니다.",
               "주식·옵션·선물·외환·코인 통합 데이터가 무료로 제공되며 Tick·Second·Minute 단위까지 정밀 데이터 액세스. 슬리피지·체결지연·거래수수료 같은 시장 충격을 백테스트에 반영해 결과가 실전 대비 신뢰도가 높습니다.",
               "Interactive Brokers·Coinbase·Binance 같은 거래소·증권사와 직접 연동되어 백테스트 통과 전략을 실전 자동매매로 즉시 배포 가능. 풀스택 알고리즘 트레이딩 인프라.",
-              "본 사이트(eloan) 가 한국 코인 백테스트 입문이라면 QuantConnect 는 글로벌 전 시장 알고리즘 트레이딩 본격 개발 환경. 코딩 경험 있는 트레이더용.",
+              "TradingView 가 차트·간단 백테스트 입문이라면 QuantConnect 는 글로벌 전 시장 알고리즘 트레이딩 본격 개발 환경. 코딩 경험 있는 트레이더용.",
             ],
             features: [
               { title: "Python·C# 코드", body: "두 언어 모두 지원. LEAN 엔진 기반." },
@@ -14228,7 +14223,7 @@ const COIN: PickCategory = {
               "인터페이스 영문 전용",
             ],
             koreanContext:
-              "한국 IP 와 신용카드 결제 정상. 카카오·네이버페이 미지원. 한국 KRW 코인 시장 데이터는 부족하지만 글로벌 시장 + USDT 페어 코인은 우수. 한국 트레이더가 글로벌 알고리즘 트레이딩으로 확장할 때 1순위. 본 사이트(eloan) 의 한국 KRW 코인 백테스트와 QuantConnect 의 글로벌 시장 백테스트 조합이 자연스러움.",
+              "한국 IP 와 신용카드 결제 정상. 카카오·네이버페이 미지원. 한국 KRW 코인 시장 데이터는 부족하지만 글로벌 시장 + USDT 페어 코인은 우수. 한국 트레이더가 글로벌 알고리즘 트레이딩으로 확장할 때 1순위. 한국 KRW 코인은 업비트 API·pyupbit 로 따로 검증하고 글로벌 시장은 QuantConnect 로 백테스트하는 조합이 자연스러움.",
             startingGuide: [
               { step: 1, title: "가입", body: "quantconnect.com 가입. 무료 즉시." },
               { step: 2, title: "튜토리얼", body: "Bootcamp 무료 강의로 LEAN 엔진·Python API 학습." },
@@ -14239,15 +14234,15 @@ const COIN: PickCategory = {
             faq: [
               {
                 q: "QuantConnect 한국에서 가입·사용? VPN?",
-                a: "QuantConnect(quantconnect.com) = 글로벌 1티어 알고리즘 트레이딩 + 백테스트 플랫폼. 한국 가입 가능, VPN 불필요. 가입 = Google·이메일 SSO 1분. 무료 기본 + Researcher($20/월·연 $200) + Quant($100/월·연 $1,000) + Team($600+). 사설 'QuantConnect 강의 패키지' 업체는 위험 — quantconnect.com 공식만. 핵심 강점: Python·C# 본격 알고리즘 트레이딩 + LEAN 오픈소스 엔진 + Interactive Brokers·Binance 실전 연동. 한국 본격 퀀트 트레이더·알고리즘 트레이딩 개발자에게 글로벌 1티어 도구. 본 사이트(eloan) 와 분담 활용 권장.",
+                a: "QuantConnect(quantconnect.com) = 글로벌 1티어 알고리즘 트레이딩 + 백테스트 플랫폼. 한국 가입 가능, VPN 불필요. 가입 = Google·이메일 SSO 1분. 무료 기본 + Researcher($20/월·연 $200) + Quant($100/월·연 $1,000) + Team($600+). 사설 'QuantConnect 강의 패키지' 업체는 위험 — quantconnect.com 공식만. 핵심 강점: Python·C# 본격 알고리즘 트레이딩 + LEAN 오픈소스 엔진 + Interactive Brokers·Binance 실전 연동. 한국 본격 퀀트 트레이더·알고리즘 트레이딩 개발자에게 글로벌 1티어 도구.",
               },
               {
-                q: "QuantConnect vs TradingView·eloan 차이?",
-                a: "백테스트·알고리즘 트레이딩 도구 비교: ① QuantConnect = 본격 Python·C# 알고리즘·실전 자동매매·글로벌 전 시장·LEAN 엔진 1티어 ② TradingView = 차트 + Pine Script 간단 백테스트·다양 시장·진입 장벽 낮음 ③ eloan = 한국 KRW 코인 시장 특화·코드 없는 12종 빌트인 전략·진입 장벽 1티어 낮음 ④ Backtrader(Python) = 오픈소스 무료 ⑤ Zipline(Python) = 오픈소스. 추천: ① 코딩 없는 빠른 백테스트 = eloan ② 가벼운 차트 + 백테스트 = TradingView ③ 본격 알고리즘 = QuantConnect Python ④ 자체 구축 = Backtrader. 한국 본격 퀀트 트레이더 표준: eloan(한국 KRW) + TradingView(차트) + QuantConnect(글로벌 본격) 분담.",
+                q: "QuantConnect vs TradingView 차이?",
+                a: "백테스트·알고리즘 트레이딩 도구 비교: ① QuantConnect = 본격 Python·C# 알고리즘·실전 자동매매·글로벌 전 시장·LEAN 엔진 1티어 ② TradingView = 차트 + Pine Script 간단 백테스트·다양 시장·진입 장벽 낮음 ③ Backtrader(Python) = 오픈소스 무료 ④ Zipline(Python) = 오픈소스. 추천: ① 가벼운 차트 + 백테스트 = TradingView ② 본격 알고리즘 = QuantConnect Python ③ 자체 구축 = Backtrader. 한국 본격 퀀트 트레이더 표준: TradingView(차트) + QuantConnect(글로벌 본격) 분담.",
               },
               {
                 q: "QuantConnect Python·C# 학습?",
-                a: "QuantConnect 학습 진입 장벽: ① Python·C# 기초 필수 ② 알고리즘 트레이딩 개념 ③ 매매 전략 이론 ④ LEAN 엔진 API. 학습 자료: ① Bootcamp 무료 강의(공식·영문) ② QuantConnect Docs ③ 유튜브 한국어 강의 일부 ④ 한국 가상자산·주식 알고리즘 커뮤니티(블라인드·디스코드). 학습 기간: ① Python 기초 = 1~2개월 ② QuantConnect 입문 = 2~4주 ③ 본격 알고리즘 = 3~6개월. 추천 학습 순서: ① 인프런·생활코딩 Python 기초 ② QuantConnect Bootcamp ③ 간단한 알고리즘(이동평균 교차) ④ 점진 확대. 코딩 부담 시 = eloan 우선. 한국 본격 트레이더 = 평생 자산 학습.",
+                a: "QuantConnect 학습 진입 장벽: ① Python·C# 기초 필수 ② 알고리즘 트레이딩 개념 ③ 매매 전략 이론 ④ LEAN 엔진 API. 학습 자료: ① Bootcamp 무료 강의(공식·영문) ② QuantConnect Docs ③ 유튜브 한국어 강의 일부 ④ 한국 가상자산·주식 알고리즘 커뮤니티(블라인드·디스코드). 학습 기간: ① Python 기초 = 1~2개월 ② QuantConnect 입문 = 2~4주 ③ 본격 알고리즘 = 3~6개월. 추천 학습 순서: ① 인프런·생활코딩 Python 기초 ② QuantConnect Bootcamp ③ 간단한 알고리즘(이동평균 교차) ④ 점진 확대. 코딩 부담 시 = TradingView Pine Script 부터. 한국 본격 트레이더 = 평생 자산 학습.",
               },
               {
                 q: "QuantConnect LEAN 엔진·오픈소스?",
@@ -14255,19 +14250,19 @@ const COIN: PickCategory = {
               },
               {
                 q: "QuantConnect 백테스트·Cloud Compute?",
-                a: "QuantConnect Cloud Compute 백테스트: ① 무료 = 일일 백테스트 횟수 제한 + 단순 알고리즘 ② Researcher($20) = 일일 한도 ↑ + 본격 백테스트 ③ Quant($100) = 무제한 + 실전 자동매매 + Live Trading. 강점: ① 클라우드 = 본인 PC 부담 X ② 빠른 백테스트(클러스터 컴퓨팅) ③ 본인 알고리즘 GitHub 백업. 추천: ① 학습 = 무료 충분 ② 본격 백테스트 = Researcher ③ 실전 자동매매 = Quant. 본 사이트(eloan) 백테스트 + QuantConnect = 한국 KRW + 글로벌 = 종합 검증. 한국 본격 퀀트 트레이더 = QuantConnect Quant + eloan + TradingView 분담 활용 표준.",
+                a: "QuantConnect Cloud Compute 백테스트: ① 무료 = 일일 백테스트 횟수 제한 + 단순 알고리즘 ② Researcher($20) = 일일 한도 ↑ + 본격 백테스트 ③ Quant($100) = 무제한 + 실전 자동매매 + Live Trading. 강점: ① 클라우드 = 본인 PC 부담 X ② 빠른 백테스트(클러스터 컴퓨팅) ③ 본인 알고리즘 GitHub 백업. 추천: ① 학습 = 무료 충분 ② 본격 백테스트 = Researcher ③ 실전 자동매매 = Quant. 한국 본격 퀀트 트레이더 = QuantConnect Quant + TradingView 분담 활용 표준.",
               },
               {
                 q: "QuantConnect 실전 자동매매·거래소 연동?",
-                a: "QuantConnect Quant($100/월) 실전 자동매매: ① Interactive Brokers(미국 1위 증권사) ② Binance·Bybit·Kraken(가상자산) ③ Tradier·Tradier OAuth ④ OANDA(외환) ⑤ Charles Schwab. 한국 사용자: ① 미국 주식 = Interactive Brokers 추천 ② 가상자산 = Binance·Bybit ③ 한국 주식 = QuantConnect 미지원, 키움 OpenAPI 별도 ④ 한국 KRW 코인 = QuantConnect 미지원, eloan 또는 본인 코드 + 업비트·빗썸 API. 단 ① 실전 자동매매 = 슬리피지·체결지연·시장 충격 = 백테스트 대비 차이 ② 소액 충분 검증 후 본격 ③ 손실 위험 본인 책임. 한국 본격 퀀트 트레이더 = QuantConnect + 거래소 API.",
+                a: "QuantConnect Quant($100/월) 실전 자동매매: ① Interactive Brokers(미국 1위 증권사) ② Binance·Bybit·Kraken(가상자산) ③ Tradier·Tradier OAuth ④ OANDA(외환) ⑤ Charles Schwab. 한국 사용자: ① 미국 주식 = Interactive Brokers 추천 ② 가상자산 = Binance·Bybit ③ 한국 주식 = QuantConnect 미지원, 키움 OpenAPI 별도 ④ 한국 KRW 코인 = QuantConnect 미지원, 본인 코드 + 업비트·빗썸 API. 단 ① 실전 자동매매 = 슬리피지·체결지연·시장 충격 = 백테스트 대비 차이 ② 소액 충분 검증 후 본격 ③ 손실 위험 본인 책임. 한국 본격 퀀트 트레이더 = QuantConnect + 거래소 API.",
               },
               {
                 q: "QuantConnect 한국 코인 KRW 마켓?",
-                a: "QuantConnect 한국 KRW 코인 직접 연동 = 미지원. 한국 KRW 코인 백테스트 옵션: ① eloan(한국 KRW 코인 특화 1티어) ② 본인 코드 + 업비트·빗썸 API 수집 + QuantConnect 업로드 ③ pyupbit + Backtrader 자체 구축 ④ TradingView Pine Script + 업비트 데이터. 추천: ① 코딩 없는 빠른 백테스트 = eloan ② 본격 Python = pyupbit + Backtrader ③ 글로벌 USDT 페어 = QuantConnect. 한국 본격 퀀트 트레이더 워크플로우: ① 한국 KRW = eloan + 본인 자동매매(업비트 API) ② 글로벌 USDT = QuantConnect + 본인 알고리즘 ③ 분담 활용 = 평생 자산. eloan + QuantConnect 결합 = 한국 + 글로벌 종합 검증.",
+                a: "QuantConnect 한국 KRW 코인 직접 연동 = 미지원. 한국 KRW 코인 백테스트 옵션: ① 본인 코드 + 업비트·빗썸 API 수집 + QuantConnect 업로드 ② pyupbit + Backtrader 자체 구축 ③ TradingView Pine Script + 업비트 데이터. 추천: ① 코딩 부담 적은 검증 = TradingView Pine Script ② 본격 Python = pyupbit + Backtrader ③ 글로벌 USDT 페어 = QuantConnect. 한국 본격 퀀트 트레이더 워크플로우: ① 한국 KRW = pyupbit 백테스트 + 본인 자동매매(업비트 API) ② 글로벌 USDT = QuantConnect + 본인 알고리즘 ③ 분담 활용 = 평생 자산.",
               },
               {
                 q: "QuantConnect Researcher·Quant 결제 가치?",
-                a: "QuantConnect 플랜 가치: ① Free = 학습·기본 백테스트(일일 한도) ② Researcher($20/월·연 $200) = 본격 백테스트(한도 ↑) + 데이터 풀 + 커뮤니티 ③ Quant($100/월·연 $1,000) = 실전 자동매매 + Live Trading + 거래소 연동 ④ Team($600+) = 팀·기관. 추천: ① 학습 = 무료(2~3개월) ② 본격 알고리즘 학습 = Researcher ③ 실전 자동매매 = Quant ④ 본인 자동매매 회사·헤지펀드 = Team. 한국 사용자: ① 일반 = 무료 학습 ② 본격 = Researcher ③ 실전 = Quant. 한 달만 결제 후 해지 자유. eloan + QuantConnect 결합 = 한국·글로벌 종합 = 평생 자산.",
+                a: "QuantConnect 플랜 가치: ① Free = 학습·기본 백테스트(일일 한도) ② Researcher($20/월·연 $200) = 본격 백테스트(한도 ↑) + 데이터 풀 + 커뮤니티 ③ Quant($100/월·연 $1,000) = 실전 자동매매 + Live Trading + 거래소 연동 ④ Team($600+) = 팀·기관. 추천: ① 학습 = 무료(2~3개월) ② 본격 알고리즘 학습 = Researcher ③ 실전 자동매매 = Quant ④ 본인 자동매매 회사·헤지펀드 = Team. 한국 사용자: ① 일반 = 무료 학습 ② 본격 = Researcher ③ 실전 = Quant. 한 달만 결제 후 해지 자유.",
               },
               {
                 q: "QuantConnect 백테스트 정확도·실전 차이?",
@@ -14275,7 +14270,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "QuantConnect 한국 사용자 활용 시나리오?",
-                a: "한국 사용자 표준 활용: ① Python 알고리즘 트레이딩 학습(가장 많음) ② 글로벌 시장(미국 주식·USDT 코인·외환·선물) 본격 백테스트 ③ 실전 자동매매 = Interactive Brokers·Binance ④ LEAN 엔진 자체 호스팅 = 본인 서버 ⑤ 본인 알고리즘 + 본인 데이터 ⑥ 본 사이트(eloan) + QuantConnect 결합 = 한국·글로벌. 평생 활용: QuantConnect 학습 + 본인 알고리즘 + 실전 자동매매 = 평생 퀀트 트레이더 자산. 한국 본격 퀀트 개발자에게 글로벌 1티어 도구. 단 ① 진입 장벽 = Python + 알고리즘 학습 ② 시간 투자 6~12개월 ③ 본인 학습 + 신중한 실전. 평생 자산 형성.",
+                a: "한국 사용자 표준 활용: ① Python 알고리즘 트레이딩 학습(가장 많음) ② 글로벌 시장(미국 주식·USDT 코인·외환·선물) 본격 백테스트 ③ 실전 자동매매 = Interactive Brokers·Binance ④ LEAN 엔진 자체 호스팅 = 본인 서버 ⑤ 본인 알고리즘 + 본인 데이터. 평생 활용: QuantConnect 학습 + 본인 알고리즘 + 실전 자동매매 = 평생 퀀트 트레이더 자산. 한국 본격 퀀트 개발자에게 글로벌 1티어 도구. 단 ① 진입 장벽 = Python + 알고리즘 학습 ② 시간 투자 6~12개월 ③ 본인 학습 + 신중한 실전. 평생 자산 형성.",
               },
               {
                 q: "QuantConnect 커뮤니티·전략 공유?",
@@ -14322,11 +14317,11 @@ const COIN: PickCategory = {
           url: "https://upbit.com",
           blurb: "한국 1위 코인 거래소. 공개 API 무료.",
           details:
-            "두나무에서 운영하며 한국 코인 거래량 1위로 KRW 마켓이 가장 큽니다. 공개 REST API 가 인증 없이 분당 1만 회까지 무료로 제공되어 본 사이트(eloan) 백테스트의 1차 데이터 소스로 사용됩니다. 차트, 시세, 호가 조회는 무료입니다.",
+            "두나무에서 운영하며 한국 코인 거래량 1위로 KRW 마켓이 가장 큽니다. 공개 REST API 가 인증 없이 분당 1만 회까지 무료로 제공되어 개인 백테스트·자동매매 데이터 소스로 많이 쓰입니다. 차트, 시세, 호가 조회는 무료입니다.",
           useCases: [
             "한국 코인 거래 1위",
             "공개 API 무료 (개발자)",
-            "본 사이트 백테스트 데이터",
+            "개인 백테스트용 시세 데이터",
             "KRW 마켓 시세",
           ],
           pricing: "free",
@@ -14340,7 +14335,7 @@ const COIN: PickCategory = {
             longIntro: [
               "업비트(Upbit) 는 두나무가 운영하는 한국 1위 코인 거래소입니다. 2017년 출시 이후 KRW 마켓 거래량과 사용자 수에서 압도적 1위를 유지하고 있으며, 2026년 현재 한국 전체 코인 거래량의 70% 이상이 업비트에서 발생합니다.",
               "케이뱅크 계좌 연동이 필수입니다. 다른 은행 계좌로는 업비트에 원화 입금이 불가능하므로 업비트 시작 전 케이뱅크 계좌부터 개설해야 합니다. 카카오뱅크·신한 같은 시중 은행은 빗썸·코빗에서 사용 가능하지만 업비트와는 호환되지 않습니다.",
-              "본 사이트(eloan) 백테스트의 1차 데이터 소스이기도 합니다. 업비트는 공개 REST API 를 인증 없이 분당 1만 회까지 무료로 개방해 개발자가 손쉽게 데이터를 가져올 수 있게 해두었습니다. KRW 마켓 모든 코인의 분봉·일봉 데이터가 무료로 제공됩니다.",
+              "업비트는 공개 REST API 를 인증 없이 분당 1만 회까지 무료로 개방해 개발자가 손쉽게 데이터를 가져올 수 있게 해두었습니다. KRW 마켓 모든 코인의 분봉·일봉 데이터가 무료로 제공됩니다.",
               "거래 수수료는 0.05% 로 메이커·테이커 동일. 일부 결제 수단에서는 추가 할인 적용. 가입은 본인인증·실명계좌 연동 후 약 1~3일 안에 거래 가능 상태가 됩니다.",
             ],
             features: [
@@ -14391,13 +14386,13 @@ const COIN: PickCategory = {
               "수수료 0.05% 는 빗썸(0.04%) 보다 약간 높음",
             ],
             koreanContext:
-              "한국 법인 운영, 한국어 고객지원, 한국 세무 신고용 거래내역 자동 다운로드 등 한국 사용자 친화 환경이 가장 잘 갖춰진 거래소입니다. 케이뱅크 계좌 연동 외에는 다른 은행을 사용할 수 없으므로 업비트를 쓰려면 케이뱅크 계좌부터 만들어야 합니다. 본인인증은 휴대폰 본인인증 + 실명 KYC 가 필요하며 1~3영업일 소요. 본 사이트(eloan) 백테스트도 업비트 API 를 1차 데이터 소스로 사용합니다.",
+              "한국 법인 운영, 한국어 고객지원, 한국 세무 신고용 거래내역 자동 다운로드 등 한국 사용자 친화 환경이 가장 잘 갖춰진 거래소입니다. 케이뱅크 계좌 연동 외에는 다른 은행을 사용할 수 없으므로 업비트를 쓰려면 케이뱅크 계좌부터 만들어야 합니다. 본인인증은 휴대폰 본인인증 + 실명 KYC 가 필요하며 1~3영업일 소요.",
             startingGuide: [
               { step: 1, title: "케이뱅크 계좌 개설", body: "업비트 사용에는 케이뱅크 계좌가 필수. 케이뱅크 앱에서 비대면 계좌 개설 (10분). 다른 은행 계좌로는 업비트 원화 입금 불가." },
               { step: 2, title: "업비트 가입", body: "upbit.com 또는 모바일 앱 → 가입 → 휴대폰 본인인증 + KYC 신분증 인증. 1~3영업일 안에 거래 가능 상태." },
               { step: 3, title: "케이뱅크 → 업비트 입금", body: "업비트 입출금 메뉴 → 원화 입금. 케이뱅크 계좌에서 업비트 가상계좌로 송금. 24시간 즉시 반영." },
               { step: 4, title: "거래소·KRW 마켓 둘러보기", body: "KRW 마켓 탭에서 비트코인·이더리움·솔라나 등 200+ 코인 시세 확인. 호가창·차트·체결 데이터 무료." },
-              { step: 5, title: "백테스트 활용 (선택)", body: "본인 매매 전략을 실전 진입 전 eloan 백테스트에서 검증. 업비트 데이터 그대로 사용하므로 결과 신뢰도 높음." },
+              { step: 5, title: "백테스트 활용 (선택)", body: "본인 매매 전략은 실전 진입 전 백테스트로 검증. 업비트 공개 API 시세로 pyupbit·TradingView 등에서 직접 돌려볼 수 있음." },
             ],
             faq: [
               {
@@ -14418,7 +14413,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "업비트 공개 API 어떻게 활용?",
-                a: "업비트 공개 API(api.upbit.com) = 무료 + 인증 없이 분당 1만 회 호출. 활용: ① 시세·호가·체결 데이터 다운로드 ② 본인 백테스트 데이터 ③ 자동매매 시스템 구축 ④ 본인 포트폴리오 트래커 ⑤ 알림 봇(텔레그램·디스코드). 인증 API(거래용) = API 키 발급(보안 등급 별로). 활용 사례: ① Python 백테스트 — pyupbit 라이브러리 ② 자동매매 — REST·WebSocket API ③ 본인 대시보드 = React + 업비트 API. 한국 가상자산 개발자 = 업비트 API 우선 + Binance·CoinGecko 보조. 본 사이트(eloan) 백테스트도 업비트 API 데이터 1차 사용 — 신뢰도 1티어.",
+                a: "업비트 공개 API(api.upbit.com) = 무료 + 인증 없이 분당 1만 회 호출. 활용: ① 시세·호가·체결 데이터 다운로드 ② 본인 백테스트 데이터 ③ 자동매매 시스템 구축 ④ 본인 포트폴리오 트래커 ⑤ 알림 봇(텔레그램·디스코드). 인증 API(거래용) = API 키 발급(보안 등급 별로). 활용 사례: ① Python 백테스트 — pyupbit 라이브러리 ② 자동매매 — REST·WebSocket API ③ 본인 대시보드 = React + 업비트 API. 한국 가상자산 개발자 = 업비트 API 우선 + Binance·CoinGecko 보조.",
               },
               {
                 q: "업비트 스테이킹·예치·DeFi?",
@@ -14434,11 +14429,11 @@ const COIN: PickCategory = {
               },
               {
                 q: "업비트 자동매매·트레이딩 봇 활용?",
-                a: "업비트 자동매매 활용: ① 업비트 공개 API + 본인 Python·Node.js 스크립트 ② 인증 API = 거래 자동 실행 ③ pyupbit(Python)·node-upbit(Node.js) 라이브러리 ④ 본인 전략 백테스트 → 실전 적용. 인기 전략: ① 그리드 트레이딩 ② 이동평균선 교차(MA Cross) ③ RSI 과매도/과매수 ④ 변동성 돌파(Larry Williams) ⑤ DCA(Dollar Cost Averaging) — 정기 자동 매수. 단 ① 자동매매 = 손실 가능성 큼 ② 본인 전략 충분한 백테스트 필수 ③ 실전 자금 = 작게 시작 ④ 슬리피지 고려 ⑤ 시장 급변 대응. eloan 백테스트로 사전 검증 권장.",
+                a: "업비트 자동매매 활용: ① 업비트 공개 API + 본인 Python·Node.js 스크립트 ② 인증 API = 거래 자동 실행 ③ pyupbit(Python)·node-upbit(Node.js) 라이브러리 ④ 본인 전략 백테스트 → 실전 적용. 인기 전략: ① 그리드 트레이딩 ② 이동평균선 교차(MA Cross) ③ RSI 과매도/과매수 ④ 변동성 돌파(Larry Williams) ⑤ DCA(Dollar Cost Averaging) — 정기 자동 매수. 단 ① 자동매매 = 손실 가능성 큼 ② 본인 전략 충분한 백테스트 필수 ③ 실전 자금 = 작게 시작 ④ 슬리피지 고려 ⑤ 시장 급변 대응.",
               },
               {
-                q: "업비트 본 사이트(eloan) 백테스트 활용?",
-                a: "eloan 백테스트 + 업비트 통합 워크플로우: ① eloan 에서 본인 매매 전략 백테스트 ② 업비트 API 데이터 1차 사용 = 신뢰도 1티어 ③ 백테스트 결과 검증 ④ 업비트 실전 거래로 옮기기. 활용: ① 다양 전략 비교(이동평균·RSI·MACD·볼린저밴드 등) ② 본인 자산·기간 시뮬레이션 ③ 손익·MDD(최대 낙폭)·승률 분석. 백테스트 결과 해석: ① 슬리피지·체결지연 = 실전 대비 10~20% 할인 ② 수수료 포함 계산 ③ 1년+ 검증 권장. 한국 가상자산 투자자 = eloan 백테스트 → 업비트 실전 = 검증된 전략으로 손실 최소화. 본인 자산 보호의 핵심 워크플로우.",
+                q: "업비트 데이터로 백테스트하려면?",
+                a: "업비트 데이터 백테스트 워크플로우: ① 업비트 공개 REST API(또는 pyupbit)로 분봉·일봉 시세 받기 ② Backtrader·TradingView Pine Script 등으로 본인 매매 전략 백테스트 ③ 백테스트 결과 검증 ④ 업비트 실전 거래로 옮기기. 활용: ① 다양 전략 비교(이동평균·RSI·MACD·볼린저밴드 등) ② 본인 자산·기간 시뮬레이션 ③ 손익·MDD(최대 낙폭)·승률 분석. 백테스트 결과 해석: ① 슬리피지·체결지연 = 실전 대비 10~20% 할인 ② 수수료 포함 계산 ③ 1년+ 검증 권장. 한국 가상자산 투자자 = 백테스트 검증 → 업비트 소액 실전 = 검증된 전략으로 손실 최소화. 본인 자산 보호의 핵심 워크플로우.",
               },
               {
                 q: "업비트 환불·해지·계정 정리?",
@@ -14549,7 +14544,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "빗썸 공개 API·자동매매?",
-                a: "빗썸 공개 API(api.bithumb.com) = 무료 + 인증 없이 시세·호가·체결 데이터. 인증 API = 거래 자동 실행. 활용: ① 시세·차트 데이터 ② 자동매매 시스템 ③ 본인 백테스트 ④ 알림 봇 ⑤ 본인 대시보드. 라이브러리: ① Python = pybithumb ② Node.js = node-bithumb ③ REST API + WebSocket 모두 지원. 활용 시나리오: ① 그리드 트레이딩 ② 이동평균 교차 ③ RSI 전략 ④ 정기 자동 매수(DCA) ⑤ 차익거래(업비트-빗썸 가격 차). 단 ① 자동매매 = 손실 가능성 큼 ② 충분한 백테스트 ③ 작게 시작 ④ 슬리피지 고려. eloan 백테스트로 사전 검증 권장.",
+                a: "빗썸 공개 API(api.bithumb.com) = 무료 + 인증 없이 시세·호가·체결 데이터. 인증 API = 거래 자동 실행. 활용: ① 시세·차트 데이터 ② 자동매매 시스템 ③ 본인 백테스트 ④ 알림 봇 ⑤ 본인 대시보드. 라이브러리: ① Python = pybithumb ② Node.js = node-bithumb ③ REST API + WebSocket 모두 지원. 활용 시나리오: ① 그리드 트레이딩 ② 이동평균 교차 ③ RSI 전략 ④ 정기 자동 매수(DCA) ⑤ 차익거래(업비트-빗썸 가격 차). 단 ① 자동매매 = 손실 가능성 큼 ② 충분한 백테스트 ③ 작게 시작 ④ 슬리피지 고려.",
               },
               {
                 q: "빗썸 KYC·실명계좌 본인인증?",
@@ -14585,7 +14580,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "빗썸 한국 사용자 활용 시나리오?",
-                a: "한국 사용자 표준 활용: ① 농협·NH 사용자 = 빗썸 메인(케이뱅크 없는 경우) ② 단타·고빈도 트레이더 = 빗썸 수수료 우위 활용 ③ 알트코인 투자자 = 빗썸 신규 상장 빠른 진입 ④ 업비트 + 빗썸 동시 사용 = 메인 + 보조 ⑤ 차익거래(김치 프리미엄) = 빗썸 + 글로벌 거래소 ⑥ 본인 자동매매 = 빗썸 API ⑦ 장기 투자자 = 스테이킹. 평생 활용: 매월 거래 + 정기 신고 + 본인 전략 백테스트 = 평생 자산 형성. 한국 가상자산 투자자에게 업비트와 함께 핵심 거래소. 농협 + 빗썸 = 한국 가상자산 시장 진입의 또 다른 핵심 인프라. 본 사이트(eloan) 백테스트도 빗썸 데이터 활용 가능.",
+                a: "한국 사용자 표준 활용: ① 농협·NH 사용자 = 빗썸 메인(케이뱅크 없는 경우) ② 단타·고빈도 트레이더 = 빗썸 수수료 우위 활용 ③ 알트코인 투자자 = 빗썸 신규 상장 빠른 진입 ④ 업비트 + 빗썸 동시 사용 = 메인 + 보조 ⑤ 차익거래(김치 프리미엄) = 빗썸 + 글로벌 거래소 ⑥ 본인 자동매매 = 빗썸 API ⑦ 장기 투자자 = 스테이킹. 평생 활용: 매월 거래 + 정기 신고 + 본인 전략 백테스트 = 평생 자산 형성. 한국 가상자산 투자자에게 업비트와 함께 핵심 거래소. 농협 + 빗썸 = 한국 가상자산 시장 진입의 또 다른 핵심 인프라.",
               },
             ],
             relatedKeywords: [
@@ -14832,7 +14827,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Binance 자동매매·API·트레이딩 봇?",
-                a: "Binance API = 무료 + 강력한 자동매매. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 데이터 ③ Spot·Futures API ④ 본인 자동매매 시스템. 라이브러리: ① Python = python-binance ② Node.js = node-binance ③ Java·Go·Rust 등 다양. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-Binance) ③ DCA(정기 자동 매수) ④ 모멘텀·이동평균. 트레이딩 봇 플랫폼: ① 3Commas ② Bitsgap ③ Cryptohopper ④ Pionex(자체 봇 제공). 단 ① 자동매매 = 손실 가능성 큼 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안(IP 화이트리스트) ⑤ 출금 권한 X. eloan 백테스트 + 업비트 백테스트로 사전 검증.",
+                a: "Binance API = 무료 + 강력한 자동매매. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 데이터 ③ Spot·Futures API ④ 본인 자동매매 시스템. 라이브러리: ① Python = python-binance ② Node.js = node-binance ③ Java·Go·Rust 등 다양. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-Binance) ③ DCA(정기 자동 매수) ④ 모멘텀·이동평균. 트레이딩 봇 플랫폼: ① 3Commas ② Bitsgap ③ Cryptohopper ④ Pionex(자체 봇 제공). 단 ① 자동매매 = 손실 가능성 큼 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안(IP 화이트리스트) ⑤ 출금 권한 X.",
               },
               {
                 q: "Binance 한국 세금 신고?",
@@ -14969,7 +14964,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Bybit 자동매매·API·트레이딩 봇?",
-                a: "Bybit API = 무료 + 강력. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 ③ Spot·Futures API. 라이브러리: ① Python = pybit ② Node.js = node-bybit ③ Java·Go 등. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-Bybit) ③ 모멘텀 전략 ④ DCA. 트레이딩 봇: ① 3Commas ② Bitsgap ③ Cryptohopper ④ Bybit 자체 봇 일부. 단 ① 자동매매 = 손실 가능성 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안(IP 화이트리스트·출금 권한 X). 한국 본격 트레이더 = Bybit API + eloan 백테스트 검증 + 실전 = 표준 워크플로우. Bybit Copy Trading API = 본인 트레이더 운영 가능.",
+                a: "Bybit API = 무료 + 강력. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 ③ Spot·Futures API. 라이브러리: ① Python = pybit ② Node.js = node-bybit ③ Java·Go 등. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-Bybit) ③ 모멘텀 전략 ④ DCA. 트레이딩 봇: ① 3Commas ② Bitsgap ③ Cryptohopper ④ Bybit 자체 봇 일부. 단 ① 자동매매 = 손실 가능성 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안(IP 화이트리스트·출금 권한 X). 한국 본격 트레이더 = Bybit API + 충분한 백테스트 검증 + 실전 = 표준 워크플로우. Bybit Copy Trading API = 본인 트레이더 운영 가능.",
               },
               {
                 q: "Bybit KYC·신분증 영문?",
@@ -15111,7 +15106,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "OKX 자동매매·API·트레이딩 봇?",
-                a: "OKX API = 무료 + 강력. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 ③ Spot·Futures·Options API ④ Web3 Wallet API. 라이브러리: ① Python = python-okx ② Node.js = node-okx ③ Java·Go·Rust 등. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-OKX) ③ DeFi 차익거래 ④ DCA. 트레이딩 봇: ① 3Commas ② Bitsgap ③ Cryptohopper ④ OKX 자체 봇 일부. 단 ① 자동매매 = 손실 가능성 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안. OKX 강점: ① Web3 + CEX 통합 자동매매 ② DeFi 차익거래. 한국 본격 트레이더 = OKX API + eloan 백테스트.",
+                a: "OKX API = 무료 + 강력. 활용: ① REST API = 거래·시세 ② WebSocket = 실시간 ③ Spot·Futures·Options API ④ Web3 Wallet API. 라이브러리: ① Python = python-okx ② Node.js = node-okx ③ Java·Go·Rust 등. 인기 자동매매: ① 그리드 트레이딩 ② 차익거래(업비트-OKX) ③ DeFi 차익거래 ④ DCA. 트레이딩 봇: ① 3Commas ② Bitsgap ③ Cryptohopper ④ OKX 자체 봇 일부. 단 ① 자동매매 = 손실 가능성 ② 충분한 백테스트 ③ 작게 시작 ④ API 키 보안. OKX 강점: ① Web3 + CEX 통합 자동매매 ② DeFi 차익거래. 한국 본격 트레이더 = OKX API + 충분한 백테스트 검증.",
               },
               {
                 q: "OKX KYC·신분증 영문?",
@@ -15158,7 +15153,7 @@ const COIN: PickCategory = {
           url: "https://www.coingecko.com",
           blurb: "광고 적은 코인 시세 표준.",
           details:
-            "싱가포르에서 운영합니다. CoinMarketCap 대비 광고가 적어 데이터 가독성이 좋다는 평가가 있습니다. DeFi, NFT, 체인별 통계가 디테일하고 API 무료 한도가 큽니다. 본 사이트(eloan) 의 외부 시세 조회에도 일부 사용됩니다.",
+            "싱가포르에서 운영합니다. CoinMarketCap 대비 광고가 적어 데이터 가독성이 좋다는 평가가 있습니다. DeFi, NFT, 체인별 통계가 디테일하고 API 무료 한도가 큽니다.",
           useCases: [
             "알트코인·DeFi·NFT 데이터",
             "체인별 자금흐름",
@@ -15174,7 +15169,7 @@ const COIN: PickCategory = {
           detailContent: {
             longIntro: [
               "CoinGecko 는 2014년 싱가포르에서 출시된 무료 코인 시세·데이터 사이트입니다. CoinMarketCap 과 함께 글로벌 코인 데이터 양강 구도를 형성하며 광고가 적고 데이터 가독성이 좋다는 평가가 일관적입니다.",
-              "1만+ 코인의 가격·시총·거래량·도미넌스 외에도 DeFi TVL·NFT 거래량·체인별 통계·공포 탐욕 지수 같은 매크로 지표를 제공합니다. 본 사이트(eloan) 도 일부 외부 시세 조회에 CoinGecko API 사용.",
+              "1만+ 코인의 가격·시총·거래량·도미넌스 외에도 DeFi TVL·NFT 거래량·체인별 통계·공포 탐욕 지수 같은 매크로 지표를 제공합니다.",
               "API 무료 한도가 분당 30회로 다른 서비스 대비 후함. 개인 백테스트·자동매매·웹 임베드에 충분히 활용 가능.",
               "한국어 인터페이스 지원. 광고가 적어 깔끔한 데이터 조회 환경.",
             ],
@@ -15205,7 +15200,7 @@ const COIN: PickCategory = {
               "한국 시장 디테일은 부족",
             ],
             koreanContext:
-              "한국 트레이더가 시세·시총 빠른 조회에 자주 사용. 한국어 인터페이스 + 광고 적은 환경이 매력. 본 사이트(eloan) 외부 시세 조회도 CoinGecko API 활용. 한국 코인 거래소(업비트·빗썸) 가격 비교도 자연스럽게 표시.",
+              "한국 트레이더가 시세·시총 빠른 조회에 자주 사용. 한국어 인터페이스 + 광고 적은 환경이 매력. 한국 코인 거래소(업비트·빗썸) 가격 비교도 자연스럽게 표시.",
             startingGuide: [
               { step: 1, title: "접속", body: "coingecko.com 접속. 가입 없이도 시세·차트 조회 가능." },
               { step: 2, title: "한국어 설정", body: "우측 상단 언어 메뉴 → 한국어." },
@@ -15224,7 +15219,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "CoinGecko API 무료 한도·자동매매 활용?",
-                a: "CoinGecko API(api.coingecko.com) = 무료 + 인증 없이 분당 30회 호출. 활용: ① 시세·차트 데이터 ② 본인 백테스트 ③ 자동매매 시세 트래킹 ④ 본인 대시보드 ⑤ 알림 봇(텔레그램·디스코드). 라이브러리: ① Python = pycoingecko ② Node.js = node-coingecko. 본격 사용: API Pro($129/월·연 $1,290) = 분당 500회 호출 + 우선 처리. 한국 개발자 표준: ① 개인 프로젝트·블로그 = 무료 충분 ② 본인 SaaS·트레이딩 봇 = API Pro ③ 백테스트 = CoinGecko + 업비트·Binance API 결합. eloan 백테스트도 CoinGecko 데이터 일부 활용 가능.",
+                a: "CoinGecko API(api.coingecko.com) = 무료 + 인증 없이 분당 30회 호출. 활용: ① 시세·차트 데이터 ② 본인 백테스트 ③ 자동매매 시세 트래킹 ④ 본인 대시보드 ⑤ 알림 봇(텔레그램·디스코드). 라이브러리: ① Python = pycoingecko ② Node.js = node-coingecko. 본격 사용: API Pro($129/월·연 $1,290) = 분당 500회 호출 + 우선 처리. 한국 개발자 표준: ① 개인 프로젝트·블로그 = 무료 충분 ② 본인 SaaS·트레이딩 봇 = API Pro ③ 백테스트 = CoinGecko + 업비트·Binance API 결합.",
               },
               {
                 q: "CoinGecko 공포·탐욕 지수 활용?",
@@ -15379,7 +15374,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "CoinMarketCap API 한도·자동매매?",
-                a: "CMC API(api.coinmarketcap.com) = 무료 + 인증 필수. 한도: ① Free = 일 333회 호출(분당 30회 안 되는 수준) ② Hobbyist($29/월) = 일 1만 회 ③ Startup($79/월) = 일 12만 회 ④ Standard($299/월) ⑤ Professional($699/월). 활용: ① 시세·차트 데이터 ② 본인 백테스트 ③ 자동매매. 한도 비교: ① CMC 무료 = 일 333회(작음) ② CoinGecko 무료 = 분당 30회(약 일 43,000회). 추천: ① 가벼운 사용·블로그 = CoinGecko API 우선 ② 본격 SaaS·트레이딩 봇 = CMC 유료 또는 CoinGecko Pro. 한국 개발자 = CoinGecko API 가성비 1티어. eloan 백테스트도 CoinGecko 위주.",
+                a: "CMC API(api.coinmarketcap.com) = 무료 + 인증 필수. 한도: ① Free = 일 333회 호출(분당 30회 안 되는 수준) ② Hobbyist($29/월) = 일 1만 회 ③ Startup($79/월) = 일 12만 회 ④ Standard($299/월) ⑤ Professional($699/월). 활용: ① 시세·차트 데이터 ② 본인 백테스트 ③ 자동매매. 한도 비교: ① CMC 무료 = 일 333회(작음) ② CoinGecko 무료 = 분당 30회(약 일 43,000회). 추천: ① 가벼운 사용·블로그 = CoinGecko API 우선 ② 본격 SaaS·트레이딩 봇 = CMC 유료 또는 CoinGecko Pro. 한국 개발자 = CoinGecko API 가성비 1티어.",
               },
               {
                 q: "CoinMarketCap 광고 너무 많아? CoinGecko 대안?",
@@ -15476,7 +15471,7 @@ const COIN: PickCategory = {
               "차트 도구가 TradingView 만큼 정교하지 않음",
             ],
             koreanContext:
-              "한국 주식 투자자에게 1순위 시세 사이트. 본 사이트(eloan) 가 코인 백테스트라면 네이버 증권은 한국 주식 정보의 표준. 일반 투자자는 네이버 증권 + 증권사 HTS, 본격 트레이더는 네이버 증권 + TradingView 조합.",
+              "한국 주식 투자자에게 1순위 시세 사이트. 일반 투자자는 네이버 증권 + 증권사 HTS, 본격 트레이더는 네이버 증권 + TradingView 조합.",
             startingGuide: [
               { step: 1, title: "접속", body: "finance.naver.com 또는 네이버 검색에서 종목명 입력." },
               { step: 2, title: "종목 페이지", body: "종목명 클릭 → 시세·차트·재무·뉴스·공시·토론 통합 페이지." },
@@ -15519,7 +15514,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "네이버 증권 API·자동매매?",
-                a: "네이버 증권 = 공식 API 없음. 비공식 크롤링: ① 약관 위반 가능 ② 사이트 차단 위험 ③ 본인 IP 차단. 한국 주식 API 필요 시: ① 키움 OpenAPI = 한국 1위, REST·SOAP 지원 ② 한국투자증권 OpenAPI = REST API ③ 대신증권·미래에셋 등 OpenAPI ④ Pykrx(파이썬 크롤링) ⑤ FinanceDataReader(파이썬) ⑥ KRX 정보데이터시스템(공식). 활용: ① 본인 자동매매 = 증권사 OpenAPI 우선 ② 본인 백테스트 = FinanceDataReader + KRX ③ 시세 데이터 = Yahoo Finance API. 한국 주식 본격 개발자 표준: 키움 OpenAPI + Python pykrx + 본인 전략. eloan 백테스트 활용 가능.",
+                a: "네이버 증권 = 공식 API 없음. 비공식 크롤링: ① 약관 위반 가능 ② 사이트 차단 위험 ③ 본인 IP 차단. 한국 주식 API 필요 시: ① 키움 OpenAPI = 한국 1위, REST·SOAP 지원 ② 한국투자증권 OpenAPI = REST API ③ 대신증권·미래에셋 등 OpenAPI ④ Pykrx(파이썬 크롤링) ⑤ FinanceDataReader(파이썬) ⑥ KRX 정보데이터시스템(공식). 활용: ① 본인 자동매매 = 증권사 OpenAPI 우선 ② 본인 백테스트 = FinanceDataReader + KRX ③ 시세 데이터 = Yahoo Finance API. 한국 주식 본격 개발자 표준: 키움 OpenAPI + Python pykrx + 본인 전략.",
               },
               {
                 q: "네이버 증권 글로벌 종목·해외 주식?",
@@ -15612,7 +15607,7 @@ const COIN: PickCategory = {
               "한국 시간대 미지원 (UTC)",
             ],
             koreanContext:
-              "한국 주식 보조 + 미국·글로벌 주식 1순위. 한국 종목은 네이버 증권·증권사 HTS, 미국 주식·ETF·테슬라·애플 같은 글로벌은 Yahoo Finance. 본 사이트(eloan) 같은 백테스트 도구의 글로벌 데이터 소스로 yfinance 라이브러리 자주 사용.",
+              "한국 주식 보조 + 미국·글로벌 주식 1순위. 한국 종목은 네이버 증권·증권사 HTS, 미국 주식·ETF·테슬라·애플 같은 글로벌은 Yahoo Finance. 백테스트 도구의 글로벌 데이터 소스로 yfinance 라이브러리 자주 사용.",
             startingGuide: [
               { step: 1, title: "접속", body: "finance.yahoo.com 접속. 가입 없이 시세 조회." },
               { step: 2, title: "종목 검색", body: "Apple → AAPL, 삼성전자 → 005930.KS 형식." },
@@ -15635,7 +15630,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Yahoo Finance Python yfinance 백테스트?",
-                a: "yfinance Python 라이브러리(비공식) = Yahoo Finance 데이터 자동 다운로드. 활용: ① pip install yfinance ② import yfinance as yf ③ yf.Ticker('AAPL').history(period='1y') ④ 본인 백테스트·분석. 강점: ① 무료 + 무인증 ② 글로벌 주식·ETF·가상자산·환율 ③ 30~50년 과거 데이터 ④ Python 표준 라이브러리 ⑤ pandas DataFrame 호환. 활용 시나리오: ① 본인 백테스트 — 매수·매도 전략 ② 본인 포트폴리오 분석 ③ 통계·기술적 지표 계산 ④ 머신러닝 학습 데이터. 단 ① 비공식 라이브러리 — Yahoo 정책 변경 시 영향 ② 비상업 사용 권장 ③ 본격 상업 사용 = 공식 API. eloan 백테스트도 활용 가능.",
+                a: "yfinance Python 라이브러리(비공식) = Yahoo Finance 데이터 자동 다운로드. 활용: ① pip install yfinance ② import yfinance as yf ③ yf.Ticker('AAPL').history(period='1y') ④ 본인 백테스트·분석. 강점: ① 무료 + 무인증 ② 글로벌 주식·ETF·가상자산·환율 ③ 30~50년 과거 데이터 ④ Python 표준 라이브러리 ⑤ pandas DataFrame 호환. 활용 시나리오: ① 본인 백테스트 — 매수·매도 전략 ② 본인 포트폴리오 분석 ③ 통계·기술적 지표 계산 ④ 머신러닝 학습 데이터. 단 ① 비공식 라이브러리 — Yahoo 정책 변경 시 영향 ② 비상업 사용 권장 ③ 본격 상업 사용 = 공식 API.",
               },
               {
                 q: "Yahoo Finance 과거 데이터·CSV 다운로드?",
@@ -15791,7 +15786,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "finviz API·자동매매?",
-                a: "finviz API = Elite 결제자 한정 + 제한적. 한국 미국 주식 자동매매 도구: ① Yahoo Finance + yfinance(Python·무료) = 표준 ② Alpha Vantage(무료 한도) ③ IEX Cloud(유료) ④ Polygon.io(유료) ⑤ Quandl/Nasdaq Data Link ⑥ FinanceDataReader(파이썬). 활용: ① finviz 스크리닝 = 종목 선정 ② Python yfinance = 데이터 다운로드 + 백테스트 ③ 본인 매매 = 증권사 OpenAPI(키움·미래에셋 해외 주식). 단 ① 미국 주식 자동매매 = 한국 증권사 API 제한 ② Interactive Brokers·TD Ameritrade(미국 증권사) = 본격 자동매매 가능 ③ 한국 사용자 = 일부 우회 필요. eloan 백테스트 활용 가능.",
+                a: "finviz API = Elite 결제자 한정 + 제한적. 한국 미국 주식 자동매매 도구: ① Yahoo Finance + yfinance(Python·무료) = 표준 ② Alpha Vantage(무료 한도) ③ IEX Cloud(유료) ④ Polygon.io(유료) ⑤ Quandl/Nasdaq Data Link ⑥ FinanceDataReader(파이썬). 활용: ① finviz 스크리닝 = 종목 선정 ② Python yfinance = 데이터 다운로드 + 백테스트 ③ 본인 매매 = 증권사 OpenAPI(키움·미래에셋 해외 주식). 단 ① 미국 주식 자동매매 = 한국 증권사 API 제한 ② Interactive Brokers·TD Ameritrade(미국 증권사) = 본격 자동매매 가능 ③ 한국 사용자 = 일부 우회 필요.",
               },
               {
                 q: "finviz 매매 신호·기술적 분석?",
@@ -16049,7 +16044,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Glassnode API·자동매매 활용?",
-                a: "Glassnode API = Advanced·Professional 결제자 + 일부 무료(제한적). 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 매크로 분석 자동화. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적 ③ 본인 자동매매 = API 비용 + 정확성 = 가성비 평가. 대안: ① CoinGecko API = 무료 + 시세 데이터 ② Coin Metrics = 일부 무료 ③ TradingView = 차트 기반 알림 ④ Python on-chain 라이브러리. 한국 본격 트레이더: Glassnode 학습 + CoinGecko API + 본인 전략 = 평생 자산. eloan 백테스트 활용 가능.",
+                a: "Glassnode API = Advanced·Professional 결제자 + 일부 무료(제한적). 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 매크로 분석 자동화. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적 ③ 본인 자동매매 = API 비용 + 정확성 = 가성비 평가. 대안: ① CoinGecko API = 무료 + 시세 데이터 ② Coin Metrics = 일부 무료 ③ TradingView = 차트 기반 알림 ④ Python on-chain 라이브러리. 한국 본격 트레이더: Glassnode 학습 + CoinGecko API + 본인 전략 = 평생 자산.",
               },
               {
                 q: "Glassnode ETH·알트 코인 분석?",
@@ -16132,7 +16127,7 @@ const COIN: PickCategory = {
               "고급 분석은 Token Terminal 이 우위",
             ],
             koreanContext:
-              "한국 DeFi 투자자에게 1순위. 한국 코인 거래소에 없는 DeFi 수익률 농사·스테이블코인 예치를 비교 분석할 때 핵심. 영문이지만 데이터 위주라 영어 부담 적음. 본 사이트(eloan) 의 KRW 마켓 백테스트와 글로벌 DeFi 분석은 보완 관계.",
+              "한국 DeFi 투자자에게 1순위. 한국 코인 거래소에 없는 DeFi 수익률 농사·스테이블코인 예치를 비교 분석할 때 핵심. 영문이지만 데이터 위주라 영어 부담 적음.",
             startingGuide: [
               { step: 1, title: "접속", body: "defillama.com 접속. 가입 불필요." },
               { step: 2, title: "TVL 메인", body: "메인 화면에 전체 DeFi TVL·체인별 비중·상위 프로토콜 표시." },
@@ -16171,7 +16166,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "DefiLlama API·자동매매?",
-                a: "DefiLlama API(api.llama.fi) = 무료 + 무제한 + 인증 불필요. 활용: ① 본인 DeFi 분석 자동화 ② TVL·Yield 데이터 본인 PC ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 DeFi 백테스트. 한도: 분당 수십 회 적정 사용 권장. 라이브러리: Python·Node.js·기타. 활용 시나리오: ① 본인 DeFi 포트폴리오 추적 ② Yield 변화 알림 ③ 본인 매매 결정 보조 ④ DeFi 사이클 분석. 한국 가상자산 개발자: DefiLlama API + CoinGecko API + 본인 전략 = 평생 자산. eloan 백테스트도 DeFi 데이터 일부 활용 가능. 비영리 운영 = 영구 무료 보장.",
+                a: "DefiLlama API(api.llama.fi) = 무료 + 무제한 + 인증 불필요. 활용: ① 본인 DeFi 분석 자동화 ② TVL·Yield 데이터 본인 PC ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 DeFi 백테스트. 한도: 분당 수십 회 적정 사용 권장. 라이브러리: Python·Node.js·기타. 활용 시나리오: ① 본인 DeFi 포트폴리오 추적 ② Yield 변화 알림 ③ 본인 매매 결정 보조 ④ DeFi 사이클 분석. 한국 가상자산 개발자: DefiLlama API + CoinGecko API + 본인 전략 = 평생 자산. 비영리 운영 = 영구 무료 보장.",
               },
               {
                 q: "DefiLlama 안전 vs 고수익 프로토콜?",
@@ -16270,7 +16265,7 @@ const COIN: PickCategory = {
               "초보자에게 진입 장벽",
             ],
             koreanContext:
-              "한국 DeFi 리서처·NFT 분석가·온체인 데이터 분석가에게 표준 도구. SQL 경험 있으면 본인 쿼리 작성, 없으면 커뮤니티 대시보드 활용. 본 사이트(eloan) 가 KRW 코인 백테스트라면 Dune 은 글로벌 온체인 SQL 분석.",
+              "한국 DeFi 리서처·NFT 분석가·온체인 데이터 분석가에게 표준 도구. SQL 경험 있으면 본인 쿼리 작성, 없으면 커뮤니티 대시보드 활용.",
             startingGuide: [
               { step: 1, title: "가입", body: "dune.com 접속 후 가입. 무료." },
               { step: 2, title: "Browse 대시보드", body: "Browse → Featured/Popular 에서 인기 대시보드 둘러보기." },
@@ -16317,7 +16312,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Dune API·자동매매?",
-                a: "Dune API = Plus 결제자 한정 + 일부 무료. 활용: ① 본인 SQL 결과 자동 다운로드 ② 본인 분석 자동화 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 백테스트 데이터. 추천: ① 일반 사용자 = 웹 인터페이스 ② 본인 분석가·자동화 = Plus + API ③ 본격 SaaS·기관 = Plus. 한국 가상자산 개발자: ① 본인 학습 = 웹 인터페이스 ② 본인 SaaS·서비스 통합 = Plus API ③ 본인 자동매매 = Dune + Glassnode + 본인 전략. eloan 백테스트 = Dune 데이터 일부 활용 가능. DefiLlama API(무료) 와 Dune API(Plus) 분담 활용.",
+                a: "Dune API = Plus 결제자 한정 + 일부 무료. 활용: ① 본인 SQL 결과 자동 다운로드 ② 본인 분석 자동화 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합 ⑤ 본인 백테스트 데이터. 추천: ① 일반 사용자 = 웹 인터페이스 ② 본인 분석가·자동화 = Plus + API ③ 본격 SaaS·기관 = Plus. 한국 가상자산 개발자: ① 본인 학습 = 웹 인터페이스 ② 본인 SaaS·서비스 통합 = Plus API ③ 본인 자동매매 = Dune + Glassnode + 본인 전략. DefiLlama API(무료) 와 Dune API(Plus) 분담 활용.",
               },
               {
                 q: "Dune 한국어·진입 장벽?",
@@ -16455,7 +16450,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "CryptoQuant API·자동매매?",
-                a: "CryptoQuant API = Pro+ 이상 결제자 + 일부 무료. 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적. 대안: ① CoinGecko API = 무료 + 시세 ② Glassnode API = 일부 무료 ③ DefiLlama API = 무료 + DeFi. 한국 본격 트레이더: CryptoQuant Pro+ API + 본인 전략 = 평생 자산. eloan 백테스트 = CryptoQuant 데이터 일부 활용 가능. 본인 자동매매 = CryptoQuant + Python + 본인 전략 + 충분한 백테스트. 본격 개발자 = Pro+ API 가성비.",
+                a: "CryptoQuant API = Pro+ 이상 결제자 + 일부 무료. 활용: ① 본인 자동매매 시스템 ② 본인 백테스트 ③ 본인 알림 봇 ④ 본인 SaaS·블로그 통합. 단 ① API 비용 = 본격 사용 시 큼 ② 무료 한도 = 매우 제한적. 대안: ① CoinGecko API = 무료 + 시세 ② Glassnode API = 일부 무료 ③ DefiLlama API = 무료 + DeFi. 한국 본격 트레이더: CryptoQuant Pro+ API + 본인 전략 = 평생 자산. 본인 자동매매 = CryptoQuant + Python + 본인 전략 + 충분한 백테스트. 본격 개발자 = Pro+ API 가성비.",
               },
               {
                 q: "CryptoQuant 고래 지갑·온체인 추적?",
@@ -16603,7 +16598,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "Token Terminal API·자동 분석?",
-                a: "Token Terminal API = Pro 결제자 한정. 활용: ① 본인 가상자산 펀더멘털 자동 추적 ② 본인 알림 봇(매출 변화·P/S 변화) ③ 본인 SaaS·블로그 통합 ④ 본인 백테스트 데이터. 추천: ① 일반 투자자 = 웹 인터페이스 ② 본격 분석가·VC·기관 = Pro API ③ 본인 자동매매 = Token Terminal + 매크로 + 본인 전략. 대안 무료 API: ① DefiLlama API(무료) ② CoinGecko API(무료) ③ The Graph(인덱싱). 한국 가상자산 본격 개발자 = Token Terminal Pro API + 본인 전략. eloan 백테스트 = Token Terminal 데이터 일부 활용 가능.",
+                a: "Token Terminal API = Pro 결제자 한정. 활용: ① 본인 가상자산 펀더멘털 자동 추적 ② 본인 알림 봇(매출 변화·P/S 변화) ③ 본인 SaaS·블로그 통합 ④ 본인 백테스트 데이터. 추천: ① 일반 투자자 = 웹 인터페이스 ② 본격 분석가·VC·기관 = Pro API ③ 본인 자동매매 = Token Terminal + 매크로 + 본인 전략. 대안 무료 API: ① DefiLlama API(무료) ② CoinGecko API(무료) ③ The Graph(인덱싱). 한국 가상자산 본격 개발자 = Token Terminal Pro API + 본인 전략.",
               },
               {
                 q: "Token Terminal 모바일·휴대폰?",
@@ -17390,7 +17385,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "KRX pykrx·Python 자동화?",
-                a: "KRX 공식 API 미제공. Python 자동화: ① pykrx(Python 비공식 패키지) — 가장 보편, KRX 데이터 자동 다운로드 ② FinanceDataReader — 한국·미국 데이터 통합 ③ 본인 코드 + KRX 사이트 크롤링. 추천 라이브러리: pykrx. 활용: ① pip install pykrx ② from pykrx import stock ③ stock.get_market_ohlcv_by_date(시작일, 종료일, 종목코드) → DataFrame 자동 ④ 본인 백테스트·분석. 활용 시나리오: ① 본인 한국 주식 백테스트 ② 본인 종목 스크리닝 자동화 ③ 본인 알림 봇 ④ 본인 SaaS 통합. 한국 주식 본격 개발자 = pykrx + KRX = 평생 자산. eloan 백테스트도 일부 활용 가능.",
+                a: "KRX 공식 API 미제공. Python 자동화: ① pykrx(Python 비공식 패키지) — 가장 보편, KRX 데이터 자동 다운로드 ② FinanceDataReader — 한국·미국 데이터 통합 ③ 본인 코드 + KRX 사이트 크롤링. 추천 라이브러리: pykrx. 활용: ① pip install pykrx ② from pykrx import stock ③ stock.get_market_ohlcv_by_date(시작일, 종료일, 종목코드) → DataFrame 자동 ④ 본인 백테스트·분석. 활용 시나리오: ① 본인 한국 주식 백테스트 ② 본인 종목 스크리닝 자동화 ③ 본인 알림 봇 ④ 본인 SaaS 통합. 한국 주식 본격 개발자 = pykrx + KRX = 평생 자산.",
               },
               {
                 q: "KRX 장기 데이터·과거 백테스트?",
@@ -17410,7 +17405,7 @@ const COIN: PickCategory = {
               },
               {
                 q: "KRX 본격 한국 주식 본인 백테스트?",
-                a: "KRX 데이터 활용 본격 백테스트: ① pykrx Python 다운로드(자동) ② Python pandas + numpy + matplotlib 분석 ③ 본인 매매 전략 백테스트 ④ 슬리피지·수수료 반영. 백테스트 가능 데이터: ① 일별 OHLCV(시가·고가·저가·종가·거래량) ② 외국인·기관 매매 ③ 공매도 ④ 종목 펀더멘털 일부. 백테스트 전략 예시: ① 이동평균 교차 ② 외국인 순매수 + 가격 추세 ③ 공매도 잔고 감소 + 가격 상승 ④ 본인 커스텀. 한국 본격 퀀트 트레이더 = KRX + pykrx + 본인 전략 = 평생 자산. eloan(한국 코인) + KRX(한국 주식) = 한국 시장 본격 백테스트 완성.",
+                a: "KRX 데이터 활용 본격 백테스트: ① pykrx Python 다운로드(자동) ② Python pandas + numpy + matplotlib 분석 ③ 본인 매매 전략 백테스트 ④ 슬리피지·수수료 반영. 백테스트 가능 데이터: ① 일별 OHLCV(시가·고가·저가·종가·거래량) ② 외국인·기관 매매 ③ 공매도 ④ 종목 펀더멘털 일부. 백테스트 전략 예시: ① 이동평균 교차 ② 외국인 순매수 + 가격 추세 ③ 공매도 잔고 감소 + 가격 상승 ④ 본인 커스텀. 한국 본격 퀀트 트레이더 = KRX + pykrx + 본인 전략 = 평생 자산.",
               },
               {
                 q: "KRX 모바일·휴대폰?",

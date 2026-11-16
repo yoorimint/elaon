@@ -80,12 +80,7 @@ function LoginForm() {
         <Link href="/forgot-password" className="text-brand underline">
           비밀번호 찾기
         </Link>
-        <span>
-          계정이 없으신가요?{" "}
-          <Link href="/signup" className="text-brand underline">
-            회원가입
-          </Link>
-        </span>
+        {/* 회원가입은 2026-11 종료 (커뮤니티 제거) — 로그인은 관리자·기존 회원용 */}
       </div>
     </main>
   );

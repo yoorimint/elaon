@@ -1,5 +1,6 @@
-// 2026-11 주식·코인 도구 제거 — 없앤 경로를 어떻게 응답할지 한 곳에 정리.
-// (사장님 결정: Vercel 사용량 초과 → 주식·코인 기능 제거, 사이트를 주소모음·쇼핑 중심으로)
+// 2026-11 없앤 경로를 어떻게 응답할지 한 곳에 정리.
+// - 주식·코인 도구 (사장님 결정: Vercel 사용량 초과 → 주식·코인 기능 제거, 사이트를 주소모음·쇼핑 중심으로)
+// - 커뮤니티·회원가입 (사장님 결정: 사람이 쓴 글·댓글이 전체 기간 0개, 봇 글만 174개 → 제거)
 //
 // - 410 Gone: src/middleware.ts 가 처리 (matcher 와 이 목록이 같아야 함 — scripts/cache-config.test.ts 가 확인)
 // - 301: next.config.mjs redirects() 가 이 파일의 MOVED 를 그대로 쓴다 (서버 함수 없이 라우팅 단계에서 바로 응답)
@@ -23,6 +24,13 @@ export const GONE_PREFIXES = [
   "/api/stock-resolve",
   "/api/admin/board-scan", // 신호 스캔 크론
   "/api/admin/popular-scan",
+  // 커뮤니티 목록·글·새 글. 목록(/community)도 301 대신 410:
+  //  사람이 쓴 글 0개라 즐겨찾기·외부 링크 유입이 사실상 없고(네이버·구글 유입 상위에 없음),
+  //  남은 글은 봇 글뿐이라 색인에서 빨리 빠지는 게 낫다. 홈으로 301 해도 검색엔진은 soft 404 로 본다.
+  "/community",
+  // 회원가입 — 커뮤니티가 없으면 일반 회원이 할 일이 없다. /login 으로 301 하면 가입하려던 사람이
+  //  로그인 화면에서 헤매므로 "종료"를 바로 알리는 410. (robots 에서 막혀 있던 화면이라 검색 영향 없음)
+  "/signup",
 ];
 
 // 301 로 옮길 경로. 유입이 조금이라도 있던 곳은 410 대신 가까운 새 화면으로 보낸다.
@@ -34,4 +42,4 @@ export const MOVED = [
   { source: "/picks/coin/eloan-backtest", destination: "/picks/coin", why: "주소모음 항목 삭제" },
 ];
 
-export const GONE_HTML = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>종료된 페이지 — eloan</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1.25rem;line-height:1.6;color:#262626"><h1 style="font-size:1.4rem">종료된 페이지입니다</h1><p>주식·코인 도구(백테스트·모의투자·종목 페이지 등)는 서비스를 종료했습니다.</p><p><a href="/picks" style="color:#2563eb">주소모음</a> · <a href="/shop" style="color:#2563eb">쇼핑</a> · <a href="/" style="color:#2563eb">홈</a></p></body></html>`;
+export const GONE_HTML = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>종료된 페이지 — eloan</title></head><body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1.25rem;line-height:1.6;color:#262626"><h1 style="font-size:1.4rem">종료된 페이지입니다</h1><p>주식·코인 도구(백테스트·모의투자·종목 페이지 등)와 커뮤니티·회원가입은 서비스를 종료했습니다.</p><p><a href="/picks" style="color:#2563eb">주소모음</a> · <a href="/shop" style="color:#2563eb">쇼핑</a> · <a href="/" style="color:#2563eb">홈</a></p></body></html>`;

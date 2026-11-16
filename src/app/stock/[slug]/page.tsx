@@ -32,8 +32,18 @@ function relatedStocks(report: StockReport, count = 6) {
 
 const SITE = "https://www.eloan.kr";
 
-// 검색 시 on-demand 생성 + ISR 5분 캐시.
-export const revalidate = 300;
+// 첫 방문 때 만들어 6시간 캐시 (ISR). 일봉 기준 보고서라 6시간이면 충분하다.
+// 예전엔 야후 fetch 가 cache: "no-store" 라 페이지 전체가 요청마다 서버에서 다시 그려졌다
+// (검색 로봇 크롤링만으로 Vercel CPU 한도 초과의 주원인). 아래 세 줄이 그걸 막는다.
+//  - force-static: no-store fetch 가 있어도 페이지를 동적으로 바꾸지 않는다
+//  - force-no-store: 다시 만들 때마다 야후·뉴스를 새로 받는다 (fetch 데이터 캐시에 쌓지 않음)
+//  - generateStaticParams 빈 배열: 빌드 때는 안 만들고, 첫 요청 때 만들어 캐시 (Vercel ISR 로 등록)
+export const revalidate = 21600;
+export const dynamic = "force-static";
+export const fetchCache = "force-no-store";
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 // server-side 에서 자기 /api/yahoo proxy 호출용 절대 URL.
 // production 사이트 도메인 사용 — Edge runtime proxy 가 yahoo 로 요청.
@@ -138,7 +148,14 @@ async function safeFetchYahooCandles(
 
 type LoadResult =
   | { ok: true; report: StockReport }
-  | { ok: false; symbolTried: string[]; log: { source: string; status: string }[]; reason?: string };
+  | {
+      ok: false;
+      symbolTried: string[];
+      log: { source: string; status: string }[];
+      reason?: string;
+      // true = 시세 서버 일시 장애일 수 있음 → 캐시하지 않고 다음 요청 때 다시 시도
+      transient?: boolean;
+    };
 
 async function loadReport(slug: string): Promise<LoadResult> {
   const symbolTried: string[] = [];
@@ -199,7 +216,7 @@ async function loadReport(slug: string): Promise<LoadResult> {
     }
 
     if (candles.length === 0) {
-      return { ok: false, symbolTried, log: allLog, reason: "모든 데이터 소스에서 빈 결과" };
+      return { ok: false, symbolTried, log: allLog, reason: "모든 데이터 소스에서 빈 결과", transient: true };
     }
 
     if (name === symbol) {
@@ -224,7 +241,7 @@ async function loadReport(slug: string): Promise<LoadResult> {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[stock] loadReport error:", slug, e);
-    return { ok: false, symbolTried, log: allLog, reason: `예외: ${msg}` };
+    return { ok: false, symbolTried, log: allLog, reason: `예외: ${msg}`, transient: true };
   }
 }
 
@@ -331,7 +348,14 @@ export default async function StockDetailPage({
   params: { slug: string };
 }) {
   const result = await loadReport(params.slug);
-  if (!result.ok) return <NotFoundFallback slug={params.slug} result={result} />;
+  if (!result.ok) {
+    // 일시 장애(빈 결과·예외)는 오류로 던진다 → 이 화면은 캐시되지 않고, 이미 캐시된 정상 화면이 있으면
+    // 그걸 계속 보여 준다. 사용자에게는 error.tsx 의 안내 화면이 나온다.
+    if (result.transient) {
+      throw new Error(`종목 데이터를 불러오지 못했습니다 (${result.reason ?? "알 수 없음"})`);
+    }
+    return <NotFoundFallback slug={params.slug} result={result} />;
+  }
   const report = result.report;
 
   const url = `${SITE}/stock/${symbolToSlug(report.symbol)}`;

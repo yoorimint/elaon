@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# 커밋은 단계마다 하되 push 는 맨 끝에서 한 번만 한다.
+# 이유: main 에 push 할 때마다 Vercel 배포가 새로 생기고, 배포마다 ISR 캐시가 비워져 모든 화면을
+# 첫 요청 때 다시 계산한다(서버 CPU). 예전엔 데이터 4종을 따로 push 해 하루 배포 4번 → 이제 1번.
+# 배포 수가 줄면 Deployment Storage(배포 보관 용량)도 덜 쌓인다.
+
 jobs:
   update:
     runs-on: ubuntu-latest
@@ -42,12 +47,10 @@ jobs:
         env:
           OPEN_DART_API_KEY: ${{ secrets.OPEN_DART_API_KEY }}
         run: node scripts/fetch-dart-financials.mjs
-      - name: Commit DART data (이후 단계 실패해도 보존)
+      - name: Commit DART data (이후 단계 실패해도 마지막 단계에서 push)
         run: |
           git add src/lib/dart-corps-data.ts src/lib/dart-financial-data.ts src/lib/dart-filings-data.ts || true
           git diff --cached --quiet || git commit -m "chore(dart): auto-update KR data"
-          git pull --rebase origin main || true
-          git push origin HEAD:main || true
 
       # ─── Yahoo (미국) ────────────────────────────────────
       - name: Fetch Yahoo financial data (US)
@@ -56,8 +59,6 @@ jobs:
         run: |
           git add src/lib/yahoo-financial-data.ts || true
           git diff --cached --quiet || git commit -m "chore(yahoo): auto-update US financial data"
-          git pull --rebase origin main || true
-          git push origin HEAD:main || true
 
       # ─── SEC (미국) ──────────────────────────────────────
       - name: Fetch SEC EDGAR filings (US)
@@ -66,8 +67,6 @@ jobs:
         run: |
           git add src/lib/sec-filings-data.ts || true
           git diff --cached --quiet || git commit -m "chore(sec): auto-update US filings"
-          git pull --rebase origin main || true
-          git push origin HEAD:main || true
 
       # ─── 검색 인덱스 ──────────────────────────────────────
       - name: Build stocks autocomplete index (KR + US + 한글명)
@@ -78,5 +77,14 @@ jobs:
         run: |
           git add public/stocks-index.json || true
           git diff --cached --quiet || git commit -m "chore(search): auto-update stocks index"
+
+      # ─── 한 번에 push (앞 단계가 실패·시간 초과여도 이미 만든 커밋은 보존) ─────
+      - name: Push all data commits once
+        if: always()
+        run: |
+          if [ "$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)" = "0" ]; then
+            echo "새 데이터 커밋 없음 — push 안 함 (배포도 안 생김)"
+            exit 0
+          fi
           git pull --rebase origin main || true
           git push origin HEAD:main || true

@@ -12,7 +12,9 @@ import {
 const SITE = "https://www.eloan.kr";
 const HUB_URL = `${SITE}/picks/checklist`;
 
-export const revalidate = 3600;
+// 내용은 내장 데이터(배포 때만 바뀜) + 일부 화면의 "최신 쇼핑 글" 링크뿐 → 하루 캐시.
+// (예전 1시간은 페이지마다 하루 24번까지 다시 그렸다)
+export const revalidate = 86400;
 
 export function generateStaticParams() {
   return CHECKLISTS.map((c) => ({ slug: c.slug }));

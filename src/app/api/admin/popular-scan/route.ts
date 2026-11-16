@@ -14,6 +14,7 @@ import { runBacktest } from "@/lib/backtest";
 import { computeDIYSignals } from "@/lib/diy-strategy";
 import { getCachedDailyCandles } from "@/lib/signal-cache";
 import { createServiceClient } from "@/lib/supabase-server";
+import { computedToday, isForced } from "@/lib/scan-guard";
 import { compactSignals } from "@/lib/share";
 import { SCAN_CUSTOM_TEMPLATES } from "@/lib/scan-custom-templates";
 import type { Candle } from "@/lib/upbit";
@@ -145,6 +146,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // 같은 날 두 번째·세 번째 예약 실행은 건너뜀 (CPU 절약 — src/lib/scan-guard.ts)
+    if (!isForced(new URL(req.url)) && (await computedToday(createServiceClient(), "popular_coin_strategies"))) {
+      return NextResponse.json({ skipped: "오늘(UTC) 이미 스캔함 — 다시 하려면 ?force=1" });
+    }
     return await runScan();
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

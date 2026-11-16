@@ -13,6 +13,7 @@ import { runBacktest } from "@/lib/backtest";
 import { computeDIYSignals } from "@/lib/diy-strategy";
 import { getCachedDailyCandles } from "@/lib/signal-cache";
 import { createServiceClient } from "@/lib/supabase-server";
+import { computedToday, isForced } from "@/lib/scan-guard";
 import { compactSignals } from "@/lib/share";
 import type { Candle } from "@/lib/upbit";
 import type { Trade } from "@/lib/backtest";
@@ -92,6 +93,11 @@ export async function POST(req: NextRequest) {
       { error: "kind 쿼리 파라미터 필요 (crypto|crypto_fut|stock_kr|stock_us)" },
       { status: 400 },
     );
+  }
+
+  // 같은 날 두 번째·세 번째 예약 실행은 건너뜀 (CPU 절약 — src/lib/scan-guard.ts)
+  if (!isForced(url) && (await computedToday(createServiceClient(), "board_top_signals", { market_kind: kind }))) {
+    return NextResponse.json({ kind, skipped: "오늘(UTC) 이미 스캔함 — 다시 하려면 ?force=1" });
   }
 
   const combos = universeFor(kind);

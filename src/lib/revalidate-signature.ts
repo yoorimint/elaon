@@ -20,3 +20,23 @@ export function verifyRevalidate(secret: string, slugs: string[], signature: str
   const got = Buffer.from(mac);
   return want.length === got.length && timingSafeEqual(want, got);
 }
+
+// 스크립트(GitHub Actions)에서 사이트에 "쇼핑 화면 새로 만들기" 요청 → 결과를 한 줄 글로 돌려준다 (로그용).
+// 글 화면은 하루, 목록·RSS 는 1시간 캐시라, 글을 공개·삭제한 스크립트는 꼭 이걸 불러야 바로 반영된다.
+// siteUrl 기본값은 SITE_URL 환경변수(없으면 운영 주소), fetchImpl 은 테스트용 (기본: 전역 fetch)
+export async function requestShopRevalidate(
+  secret: string,
+  slugs: string[],
+  {
+    siteUrl = (process.env.SITE_URL ?? "https://www.eloan.kr").replace(/\/$/, ""),
+    fetchImpl = fetch,
+  }: { siteUrl?: string; fetchImpl?: typeof fetch } = {},
+): Promise<string> {
+  if (!slugs.length) return "화면 갱신 요청: 바뀐 글 없음";
+  const res = await fetchImpl(`${siteUrl}/api/shop/revalidate`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-shop-signature": signRevalidate(secret, slugs) },
+    body: JSON.stringify({ slugs }),
+  }).catch((e: unknown) => ({ ok: false, status: String(e) }) as const);
+  return `화면 갱신 요청: ${res.ok ? "완료" : `실패 (${res.status}) — 목록은 1시간, 글 화면은 하루 안에 저절로 갱신돼요`}`;
+}

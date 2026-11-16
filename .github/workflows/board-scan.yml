@@ -11,6 +11,8 @@ name: Board Scan (daily signals)
 # 이슈가 있어 30분~1시간 간격으로 3번 예약. 엔드포인트가 멱등
 # (기존 row 전부 지우고 다시 insert) + 캔들 캐시로 외부 거래소 재호출
 # 없음 → 중복 실행 무해. 1슬롯 실패해도 나머지가 커버.
+# (2026-11-15) 단, 같은 날 이미 결과가 있으면 사이트가 스캔을 건너뛴다 (src/lib/scan-guard.ts) —
+# 예전엔 3번 모두 전체 백테스트를 다시 돌려 Vercel CPU 를 3배로 썼다. 수동 실행은 force=1 로 항상 다시 돈다.
 
 on:
   schedule:
@@ -55,6 +57,8 @@ jobs:
         env:
           SITE_URL: ${{ vars.SITE_URL }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          # 수동 실행은 "오늘 이미 스캔함" 건너뛰기를 무시하고 다시 돌린다 (예약 실행은 하루 첫 성공만 실제로 돎)
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && '&force=1' || '' }}
         run: |
           set -euo pipefail
           IFS=',' read -ra kinds <<< "${{ steps.kinds.outputs.list }}"
@@ -65,7 +69,7 @@ jobs:
               -H "Authorization: Bearer $ADMIN_TOKEN" \
               -H "Content-Length: 0" \
               --max-time 90 \
-              "$SITE_URL/api/admin/board-scan?kind=$k" \
+              "$SITE_URL/api/admin/board-scan?kind=$k$FORCE" \
               | tee /tmp/resp.json || echo "scan failed for $k"
             echo
             echo "::endgroup::"
@@ -76,6 +80,8 @@ jobs:
         env:
           SITE_URL: ${{ vars.SITE_URL }}
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          # 수동 실행은 "오늘 이미 스캔함" 건너뛰기를 무시하고 다시 돌린다 (예약 실행은 하루 첫 성공만 실제로 돎)
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && '&force=1' || '' }}
         run: |
           set -euo pipefail
           echo "::group::popular-scan"
@@ -83,7 +89,7 @@ jobs:
             -H "Authorization: Bearer $ADMIN_TOKEN" \
             -H "Content-Length: 0" \
             --max-time 90 \
-            "$SITE_URL/api/admin/popular-scan" \
+            "$SITE_URL/api/admin/popular-scan${FORCE/&/?}" \
             | tee /tmp/popular-resp.json || echo "popular-scan failed (non-fatal)"
           echo
           echo "::endgroup::"

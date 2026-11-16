@@ -6,7 +6,8 @@ import { COMPARISONS } from "@/lib/comparisons";
 import { buildRss, rssResponse, type RssItem } from "@/lib/rss";
 import { listPublishedPosts } from "@/lib/shop-posts-server";
 
-export const revalidate = 600;
+// 쇼핑 글이 바뀌면 revalidateShop() 이 바로 새로 만든다 → 평소엔 1시간 캐시면 충분
+export const revalidate = 3600;
 
 const SITE = "https://www.eloan.kr";
 

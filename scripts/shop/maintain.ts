@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { isManualContent, ownPhoto, withPhoto, type PhotoSpot, type ShopPostContent, type ShopPostInputProduct } from "@/lib/shop-post-types";
 import { lintPost } from "./qa";
+import { requestShopRevalidate } from "@/lib/revalidate-signature";
 
 const REQUEST_FILE = ".github/shop-maintain-request";
 
@@ -71,12 +72,18 @@ async function listPosts(): Promise<void> {
 }
 
 async function deletePosts(slugs: string[]): Promise<void> {
+  const deleted: string[] = [];
   for (const slug of slugs) {
     const { data, error } = await sb.from("shop_posts").delete().eq("slug", slug).select("slug,title,status");
     if (error) console.error(`❌ ${slug}: 삭제 실패 — ${error.message}`);
     else if (!data?.length) console.warn(`⚠ ${slug}: 그런 글 없음`);
-    else console.log(`🗑 삭제: ${slug} (${data[0].status}) ${data[0].title}`);
+    else {
+      console.log(`🗑 삭제: ${slug} (${data[0].status}) ${data[0].title}`);
+      deleted.push(slug);
+    }
   }
+  // 사이트 글 화면은 하루 캐시라, 지운 글이 바로 사라지게 갱신 요청
+  if (deleted.length) console.log(await requestShopRevalidate(process.env.SUPABASE_SERVICE_ROLE_KEY ?? "", deleted));
 }
 
 // 사진 파일 이름: "{상품 번호}-{자리}-{시각}.jpg" (예전 형식 "{상품 번호}-{시각}.jpg" 는 대표 사진)

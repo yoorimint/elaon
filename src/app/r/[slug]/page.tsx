@@ -20,15 +20,25 @@ import { currencyOf } from "@/lib/market";
 import { expandSignals } from "@/lib/share";
 import type { SharedBacktest } from "@/lib/supabase";
 
-export const revalidate = 60;
+// 공유 결과는 한 번 만들면 바뀌지 않는 고정 결과 → 첫 방문 때 만들어 다음 배포까지 영구 캐시 (revalidate = false).
+// generateStaticParams 빈 배열 = 빌드 때는 안 만들고 첫 요청 때 만들어 캐시.
+// (예전엔 이게 없어 동적 경로(ƒ)였고, 함수 호출 1위였다 — 2026-11 Vercel Observability 실측)
+// 사이트 안에는 공유 결과를 수정·삭제·비공개로 바꾸는 화면이 없다. 그런 기능을 만들면 그때 revalidatePath(`/r/${slug}`) 를 부를 것.
+// 크론(board-scan·popular-scan)이 매일 지우는 자동 공유는 캐시가 남아 있는 동안 404 대신 마지막 결과가 보인다.
+export const revalidate = false;
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 async function loadShare(slug: string): Promise<SharedBacktest | null> {
   const sb = createServerClient();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("shared_backtests")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
+  // DB 일시 오류를 "없는 글(404)"로 처리하면 그 404 가 다음 배포까지 영구 캐시된다 → 오류로 던져 캐시 안 되게
+  if (error) throw new Error(`공유 결과 조회 실패: ${error.message}`);
   return (data as SharedBacktest | null) ?? null;
 }
 

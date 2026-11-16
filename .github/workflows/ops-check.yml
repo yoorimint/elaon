@@ -1,0 +1,74 @@
+name: ops check
+
+# 운영 점검 (읽기만 함): 작업 브랜치(ccr-*)에서 .github/ops-check-request 를 바꿔 push 하면 1회 실행.
+# 사장님께 서버 명령을 시키지 않고 운영자(Claude)가 직접 확인하려고 만든 것 (2026-11-16 iwinv 이전 후).
+#  1) 바깥에서: 주요 페이지 응답 코드, 실제 HTTPS 인증서 만료일 (GitHub 서버에서 보므로 중계 없이 진짜 인증서)
+#  2) 서버 안(배포 계정 eloan, 읽기 전용 명령만): 서비스 상태·메모리·디스크·재부팅 필요 여부
+#  3) Supabase: 노션 예약 실행(pg_cron → /api/shop/notion-sync) 마지막 기록
+# 저장소가 공개라 로그도 공개 — 비밀값·방문자 IP 는 찍지 않는다.
+on:
+  push:
+    branches: ["ccr-*"]
+    paths: [".github/ops-check-request"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY_HOST: 115.68.229.136
+  DEPLOY_USER: eloan
+  SITE: https://www.eloan.kr
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 바깥에서 페이지·인증서
+        run: |
+          for p in / /picks /picks/study/megastudy /shop /community /login /admin/shop /sitemap.xml /rss.xml /backtest /stock/005930; do
+            curl -s -o /dev/null -m 30 -w "$p %{http_code} %{time_total}s\n" "$SITE$p" || echo "$p 실패"
+          done
+          echo "--- eloan.kr → $(curl -sI -m 20 https://eloan.kr/ | grep -i '^location' | tr -d '\r')"
+          echo "--- 인증서"
+          echo | timeout 20 openssl s_client -connect www.eloan.kr:443 -servername www.eloan.kr 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -enddate
+
+      - name: 서버 상태 (읽기 전용)
+        env:
+          IWINV_SSH_KEY: ${{ secrets.IWINV_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          python3 scripts/ci/write-ssh-key.py
+          ssh-keyscan -T 15 "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" '
+            echo "서비스: eloan=$(systemctl is-active eloan) nginx=$(systemctl is-active nginx) sajuday=$(systemctl is-active sajuday 2>/dev/null)"
+            echo "eloan $(systemctl show eloan -p MemoryCurrent -p ActiveEnterTimestamp -p NRestarts | tr "\n" " ")"
+            echo "--- 메모리"; free -m
+            echo "--- 디스크"; df -h / | tail -1
+            echo "--- 가동"; uptime
+            echo "--- 재부팅 필요: $( [ -f /var/run/reboot-required ] && echo 예 || echo 아니오 )"
+            echo "--- 인증서 자동갱신 타이머: $(systemctl is-active certbot.timer 2>/dev/null) / $(systemctl is-enabled certbot.timer 2>/dev/null)"
+          '
+
+      - name: 노션 예약 실행 마지막 기록 (Supabase)
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_config?id=eq.1&select=notion_sync,notion_schedule" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c '
+          import json, sys
+          rows = json.load(sys.stdin)
+          if not isinstance(rows, list) or not rows:
+              print("읽기 실패:", str(rows)[:200]); sys.exit(0)
+          st = rows[0].get("notion_sync") or {}
+          last = st.get("lastRun") or {}
+          keep = {k: v for k, v in last.items() if k not in ("items",)}
+          print("마지막 실행:", json.dumps(keep, ensure_ascii=False))
+          print("발행 일정:", json.dumps(rows[0].get("notion_schedule"), ensure_ascii=False))
+          print("이번 시 발행 기록:", json.dumps(st.get("publishSlot"), ensure_ascii=False))
+          '

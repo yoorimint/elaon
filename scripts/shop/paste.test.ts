@@ -6,11 +6,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isManualContent, isManualPost, type ShopManualBlock, type ShopPost } from "@/lib/shop-post-types";
+import { isShopPostPath } from "@/lib/ads-config";
 import { AUTO_PLACEMENT, inferTableColumns, nameHintOf, parsePastedDraft, reparseInto, tableFromText } from "@/lib/shop-paste";
 import {
   addTableColumn,
   addTableRow,
   autoDescription,
+  bottomBarProduct,
   countBlocks,
   insertBlock,
   makeBlock,
@@ -561,6 +563,23 @@ function main() {
     assert.match(r.content.blocks[3].id, /^[a-z0-9]+$/);
     assert.deepEqual(r.products, [{ name: "A", link: "https://link.coupang.com/a/t" }]);
     assert.equal(sanitizeManualInput({ content: { summary: "AI 글" }, products: [] }), null);
+  });
+
+  // 2026-11-16 사장님 요청: 쇼핑 글 하단 바는 공용 쿠팡 배너 대신 그 글의 상품
+  test("글 하단 상품 바: 쿠팡 링크 있는 첫 상품 + 사진(상품 → 글 첫 사진), 쿠팡 링크 없으면 공용 배너", () => {
+    const content = { kind: "manual", blocks: [{ id: "i1", type: "image", alt: "", src: "https://img/body.jpg" }] } as unknown as ShopPost["content"];
+    const post = (products: ShopPost["products"]) => ({ title: "글 제목", content, products });
+    assert.deepEqual(bottomBarProduct(post([{ name: "", link: "https://example.com/x" }, { name: "스마트카라 400 Pro 2", link: " https://link.coupang.com/a/iFeedEM2KG " }])), {
+      name: "스마트카라 400 Pro 2",
+      href: "https://link.coupang.com/a/iFeedEM2KG",
+      image: "https://img/body.jpg",
+    });
+    assert.equal(bottomBarProduct(post([{ name: "A", link: "https://link.coupang.com/a/1", image: "https://img/p.jpg" }]))?.image, "https://img/p.jpg");
+    assert.equal(bottomBarProduct(post([{ name: "", link: "https://link.coupang.com/a/1" }]))?.name, "글 제목");
+    assert.equal(bottomBarProduct(post([])), null);
+    // 공용 배너는 글 화면에서만 숨긴다 (목록·RSS·다른 화면은 그대로)
+    assert.ok(isShopPostPath("/shop/20261114-b23402"));
+    for (const p of ["/shop", "/shop/", "/shop/rss.xml", "/picks", "/shop/a/b"]) assert.ok(!isShopPostPath(p), p);
   });
 
   console.log(`\n${passed}개 통과`);

@@ -225,6 +225,17 @@ export function postImages(post: Pick<ShopPost, "content" | "products">): string
   return post.products.map((p) => p.image).filter((x): x is string => !!x);
 }
 
+// 쇼핑 글 화면 하단 고정 바에 띄울 "이 글의 상품" (2026-11-16 사장님 요청: 공용 쿠팡 배너 대신 그 글의 상품).
+// 쿠팡 링크가 있는 첫 상품 (비교글이면 글에 먼저 나온 상품). 사진은 상품 사진 → 없으면 글의 첫 사진.
+// 쿠팡 링크가 없는 글이면 null → 화면은 공용 배너를 그대로 띄운다.
+export type ShopBottomProduct = { name: string; href: string; image?: string };
+
+export function bottomBarProduct(post: Pick<ShopPost, "title" | "content" | "products">): ShopBottomProduct | null {
+  const p = post.products.find((x) => isCoupangLink(x.link));
+  if (!p) return null;
+  return { name: (p.name || post.title).trim(), href: p.link.trim(), image: p.image ?? postImages(post)[0] };
+}
+
 // ---------- 저장 전 정리 (서버 API·관리자 화면 공용) ----------
 // 브라우저에서 온 값을 그대로 믿지 않고, 알려진 블록 모양만 남긴다.
 

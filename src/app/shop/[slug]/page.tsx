@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { JsonLd, articleLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
 import { getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
-import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
+import { bottomBarProduct, postCategory, postDescription, postImages } from "@/lib/shop-manual";
 import { isManualPost } from "@/lib/shop-post-types";
 import { ShopViewTracker } from "@/components/ShopViewTracker";
+import { ShopProductBottomBar } from "@/components/ShopProductBottomBar";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
 // 공개 글은 첫 방문 때 만들어 하루 캐시 (ISR). 발행·수정·내림·삭제 때는 revalidateShop()
@@ -77,6 +78,7 @@ export default async function ShopPostPage({ params }: { params: { slug: string 
       <ShopPostView post={post} related={await listRelatedPosts(postCategory(post), post.slug)} />
       {/* 조회수: 공개 글에서만 (초안 미리보기는 안 셈) — src/lib/shop-views.ts */}
       <ShopViewTracker slug={post.slug} />
+      <ShopProductBottomBar product={bottomBarProduct(post)} />
     </main>
   );
 }

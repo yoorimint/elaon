@@ -1,13 +1,14 @@
 "use client";
 
 // 화면 하단 고정 쿠팡 배너 + 공정위 고지 문구.
+// - 쇼핑 글 화면은 공용 배너 대신 그 글의 상품 바(ShopProductBottomBar — 같은 BottomBarShell 사용)를 띄운다.
 // - 쿠팡 다이나믹 배너(g.js)를 먼저 시도하고, 광고 차단·로드 실패·광고 없음·시간 초과면
 //   자체 대체 배너(파트너스 링크)로 바꾼다.
 // - 바의 실제 높이를 --bottom-ad-h 로 내보내고 body 가 그만큼 아래 여백을 가져서
 //   끝까지 스크롤하면 본문이 배너 위로 올라온다(본문을 가리지 않음).
 // - 요소 숨김 필터에 걸리지 않도록 클래스/ID 에 ad·banner 같은 단어를 쓰지 않는다.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
   BOTTOM_BANNER_HIDDEN_PATHS,
@@ -16,6 +17,7 @@ import {
   COUPANG_FALLBACK,
   COUPANG_LOAD_TIMEOUT_MS,
   COUPANG_SCRIPT_SRC,
+  isShopPostPath,
 } from "@/lib/ads-config";
 
 const HEIGHT_VAR = "--bottom-ad-h";
@@ -55,18 +57,29 @@ function loadCoupangScript(): Promise<PartnersCoupangGlobal> {
   return scriptPromise;
 }
 
+// 사이트 공용 (layout.tsx). 관리자 화면·쇼핑 글 화면에서는 안 띄운다
 export function CoupangBottomBanner() {
   const pathname = usePathname() ?? "";
-  const hidden = BOTTOM_BANNER_HIDDEN_PATHS.some((p) => pathname.startsWith(p));
+  const hidden = BOTTOM_BANNER_HIDDEN_PATHS.some((p) => pathname.startsWith(p)) || isShopPostPath(pathname);
   if (hidden) return null;
-  return <BottomBar />;
+  return <GenericBottomBar />;
 }
 
 type Mode = "coupang" | "fallback";
 
-function BottomBar() {
-  const barRef = useRef<HTMLDivElement>(null);
+// 쿠팡 다이나믹 배너 → 실패하면 대체 배너 (쿠팡 링크가 없는 쇼핑 글도 이것을 쓴다)
+export function GenericBottomBar() {
   const [mode, setMode] = useState<Mode>("coupang");
+  return (
+    <BottomBarShell>
+      {mode === "coupang" ? <CoupangSlot onFail={() => setMode("fallback")} /> : <FallbackCard />}
+    </BottomBarShell>
+  );
+}
+
+// 하단 고정 바 틀: 높이를 CSS 변수로 알리고, 내용 아래에 공정위 고지 문구
+export function BottomBarShell({ children }: { children: ReactNode }) {
+  const barRef = useRef<HTMLDivElement>(null);
 
   // 바 높이를 CSS 변수로 공유 (body 하단 여백, 다른 플로팅 버튼 위치에 사용)
   useEffect(() => {
@@ -89,11 +102,7 @@ function BottomBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950 pb-[env(safe-area-inset-bottom)]"
     >
       <div className="flex flex-col items-center px-1 pt-1 pb-1">
-        {mode === "coupang" ? (
-          <CoupangSlot onFail={() => setMode("fallback")} />
-        ) : (
-          <FallbackCard />
-        )}
+        {children}
         <p className="mt-0.5 px-2 text-center text-[11px] leading-tight text-neutral-500">
           {COUPANG_DISCLOSURE}
         </p>

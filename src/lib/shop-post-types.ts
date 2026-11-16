@@ -218,8 +218,9 @@ export type ShopNotionRef = {
   url: string; // 노션 페이지 주소 (관리자 화면 "노션에서 열기")
   lastEditedTime: string; // 마지막으로 가져온 노션 last_edited_time — 같으면 다시 가져오지 않는다
   syncedAt: string; // 마지막으로 가져온 시각 (노션 시각은 분 단위라, 같은 분에 가져온 글은 한 번 더 확인)
-  // 노션 사진 블록 id → 이미 사이트 저장소에 올린 사진 (블록이 안 바뀌었으면 다시 올리지 않음)
-  images?: Record<string, { edited: string; src: string }>;
+  // 노션 사진 블록 id → 이미 사이트 저장소에 올린 사진 (원본 파일이 같으면 다시 올리지 않음)
+  //  source: 원본 식별값 해시 (src/lib/notion-sync.ts imageSourceKey — 노션 파일은 만료 서명을 뗀 주소). 예전 기록에는 없음 → edited 로 비교
+  images?: Record<string, { edited: string; src: string; source?: string }>;
   // 이 글을 만든 변환 규칙 버전 (src/lib/notion-shop.ts NOTION_CONVERT_VERSION). 다르면 노션이 안 바뀌어도 다시 가져와 변환한다
   convertVersion?: number;
 };

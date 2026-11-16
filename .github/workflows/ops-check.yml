@@ -51,6 +51,8 @@ jobs:
             echo "--- 디스크"; df -h / | tail -1
             echo "--- 가동"; uptime
             echo "--- 재부팅 필요: $( [ -f /var/run/reboot-required ] && echo 예 || echo 아니오 )"
+            # 바깥으로 나간 트래픽(iwinv 는 아웃바운드만 과금) — 부팅 후 누적 ÷ 가동일 = 하루 평균 (서버 전체, 다른 사이트 포함)
+            awk -v up="$(cut -d. -f1 /proc/uptime)" '\''$1 ~ /^(ens|eth)[0-9]+:/ {rx=$2; tx=$10; printf "--- 트래픽(%s): 나감 %.1fGB, 들어옴 %.1fGB, 하루 평균 나감 %.2fGB\n", $1, tx/1e9, rx/1e9, tx/1e9/(up/86400)}'\'' /proc/net/dev
             echo "--- 인증서 자동갱신 타이머: $(systemctl is-active certbot.timer 2>/dev/null) / $(systemctl is-enabled certbot.timer 2>/dev/null)"
           '
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { CATEGORIES, createPost, type Category } from "@/lib/community";
 
@@ -22,17 +22,10 @@ export default function NewPostPage() {
 
 function NewPostInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const prefillSlug = searchParams.get("backtest_slug");
-  const [category, setCategory] = useState<Category>(
-    prefillSlug ? "strategy" : "free",
-  );
+  const [category, setCategory] = useState<Category>("free");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [backtestUrl, setBacktestUrl] = useState(
-    prefillSlug ? `${typeof window !== "undefined" ? window.location.origin : ""}/r/${prefillSlug}` : "",
-  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,17 +34,6 @@ function NewPostInner() {
       router.replace("/login");
     }
   }, [user, authLoading, router]);
-
-  function extractBacktestSlug(input: string): string | null {
-    const trimmed = input.trim();
-    if (!trimmed) return null;
-    const pathMatch = trimmed.match(/\/r\/([a-z0-9]{4,16})(?:[/?#]|$)/i);
-    if (pathMatch) return pathMatch[1];
-    const queryMatch = trimmed.match(/[?&]id=([a-z0-9]{4,16})/i);
-    if (queryMatch) return queryMatch[1];
-    if (/^[a-z0-9]{4,16}$/i.test(trimmed)) return trimmed;
-    return null;
-  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,18 +48,9 @@ function NewPostInner() {
       return;
     }
 
-    let backtestSlug: string | null = null;
-    if (backtestUrl.trim()) {
-      backtestSlug = extractBacktestSlug(backtestUrl);
-      if (!backtestSlug) {
-        setError("백테스트 URL 형식이 올바르지 않습니다");
-        return;
-      }
-    }
-
     setSubmitting(true);
     try {
-      const slug = await createPost({ category, title, body, backtest_slug: backtestSlug });
+      const slug = await createPost({ category, title, body });
       router.push(`/community/${slug}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "작성 실패");
@@ -140,20 +113,6 @@ function NewPostInner() {
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium">백테스트 결과 첨부 (선택)</span>
-          <input
-            type="text"
-            placeholder="공유 URL 붙여넣기 (예: https://eloan.kr/r/abcd1234)"
-            className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2"
-            value={backtestUrl}
-            onChange={(e) => setBacktestUrl(e.target.value)}
-          />
-          <span className="mt-1 block text-xs text-neutral-500">
-            백테스트 페이지에서 공유하기로 받은 링크를 붙여넣으면 글 하단에 결과 카드가 뜹니다.
-          </span>
         </label>
 
         {error && <div className="text-sm text-red-600">{error}</div>}

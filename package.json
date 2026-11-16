@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-corp-codes.mjs && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/webreviews.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/paste.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/notion.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/views.test.ts && npx tsx --tsconfig tsconfig.json scripts/cache-config.test.ts"
@@ -14,8 +14,6 @@
     "@supabase/supabase-js": "^2.45.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "fflate": "^0.8.3",
-    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.454.0",
     "next": "14.2.35",
     "react": "18.3.1",

@@ -16,7 +16,7 @@ export default async function ShopListPage() {
   const posts = await listPublishedPosts();
   return (
     <main className="mx-auto max-w-3xl px-5 py-8 sm:py-12">
-      <h1 className="text-2xl sm:text-3xl font-bold">쇼핑 비교</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold">쇼핑</h1>
       <p className="mt-1 text-sm text-neutral-500">실사용 후기를 바탕으로 인기 제품의 장단점과 고르는 법을 정리했어요.</p>
 
       {posts.length === 0 ? (

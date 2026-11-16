@@ -1,25 +1,36 @@
-name: Deploy to GitHub Pages
+name: Deploy to iwinv
 
-# 사이트는 Vercel 에서 배포된다(eloan.kr 응답 server: Vercel).
-# 이 GitHub Pages 배포는 정적 export(out/)가 없어 매번 실패하던 예전 방식이라
-# 자동 실행을 끄고 수동 실행만 남겨둔다. 다시 쓰려면 아래 push 트리거를 복구.
+# 사이트 배포: GitHub 에서 빌드 → iwinv 서버(/srv/eloan/app)로 보내고 → 서비스 재시작.
+# (2026-11 Vercel 무료 한도 초과로 사이트가 멈춰, 이미 운영 중인 iwinv 서버로 옮김)
+#
+# 서버는 메모리 2GB 를 다른 사이트와 함께 써서 서버에서 빌드하지 않는다 (빌드는 1.5GB 이상 먹음).
+# 서버 쪽 준비(한 번만): Node 20, 배포 계정 eloan, systemd 서비스 eloan(127.0.0.1:3100), nginx 프록시.
+#
+# 필요한 GitHub Secrets:
+#   IWINV_SSH_KEY                   — 서버 /root/eloan_deploy_key (배포 계정 eloan 접속용 개인 키)
+#   NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY — 기존 값 재사용
 on:
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# 배포가 겹치면 앞의 것을 끝까지 하고 다음 것을 한다 (중간에 끊으면 서버 파일이 반쯤 바뀐 채 남음)
 concurrency:
-  group: pages
+  group: deploy-iwinv
   cancel-in-progress: false
 
+env:
+  DEPLOY_HOST: 115.68.229.136
+  DEPLOY_USER: eloan
+  DEPLOY_DIR: /srv/eloan/app
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,24 +38,54 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-      - run: npm run build
+      - name: Build
+        run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      - name: Add CNAME and nojekyll
-        run: |
-          cp CNAME out/CNAME
-          touch out/.nojekyll
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./out
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: https://www.eloan.kr
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # standalone 묶음 + 정적 파일 + public 을 한 폴더로 (Next 공식 standalone 실행 방식)
+      - name: Assemble
+        run: |
+          rm -rf deploy && mkdir deploy
+          cp -r .next/standalone/. deploy/
+          mkdir -p deploy/.next && cp -r .next/static deploy/.next/static
+          if [ -d public ]; then cp -r public deploy/public; fi
+          test -f deploy/server.js
+
+      # 실행 때 필요한 값 (.env 는 서버에만 두고 저장소에는 올리지 않음)
+      - name: Write runtime env
+        run: |
+          umask 077
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}"
+            echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}"
+            echo "SITE_URL=https://www.eloan.kr"
+          } > deploy/.env
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      - name: SSH setup
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$IWINV_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -T 15 "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+        env:
+          IWINV_SSH_KEY: ${{ secrets.IWINV_SSH_KEY }}
+
+      # --delete: 지난 배포의 남은 파일 정리. 페이지 캐시(.next/cache)도 같이 비워져 새 코드로 다시 만들어진다
+      - name: Upload
+        run: |
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key -o BatchMode=yes" \
+            deploy/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/"
+
+      - name: Restart
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "sudo /usr/bin/systemctl restart eloan && sleep 5 && sudo /usr/bin/systemctl is-active eloan && curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3100/"

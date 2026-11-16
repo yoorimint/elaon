@@ -166,12 +166,6 @@ function CommunityList() {
                           <span className="text-red-500">♥ {p.like_count}</span>
                         </>
                       )}
-                      {p.backtest_slug && (
-                        <>
-                          <span>·</span>
-                          <span className="text-brand">백테스트 첨부</span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </Link>

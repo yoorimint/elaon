@@ -9,7 +9,7 @@ export function createServerClient() {
   });
 }
 
-// 크론/관리용. RLS 우회해서 board_top_signals 같은 시스템 테이블 쓰기 가능.
+// 관리용 (쇼핑 글 수동 발행·노션 동기화). RLS 우회.
 // SUPABASE_SERVICE_ROLE_KEY 환경변수 필요 (Vercel secrets 로 추가).
 export function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

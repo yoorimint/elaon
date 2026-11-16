@@ -32,7 +32,7 @@ export async function GET() {
       title: "eloan",
       link: SITE,
       self: `${SITE}/rss.xml`,
-      description: "실사용 후기로 비교한 제품·서비스 글과 코인·주식 백테스트 정보",
+      description: "실사용 후기로 비교한 제품 글과 서비스 비교 글",
       items,
     }),
   );

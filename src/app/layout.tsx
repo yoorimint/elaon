@@ -9,29 +9,24 @@ import { CoupangBottomBanner } from "@/components/CoupangBottomBanner";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.eloan.kr"),
   title: {
-    default: "eloan 백테스트 — 코인·주식 전략을 3분 안에 검증하는 무료 도구",
+    default: "eloan — 유용한 사이트 주소모음 · 실사용 후기 쇼핑 비교",
     // 하위 페이지 제목 뒤에 사이트 이름을 붙이지 않는다 (검색 결과에 도메인·사이트 이름이 따로 보이고,
-    // 모바일에서 잘릴 때 키워드 자리만 차지함. 쇼핑 글에 "백테스트"가 붙는 문제도 있었음)
+    // 모바일에서 잘릴 때 키워드 자리만 차지함)
     template: "%s",
   },
   description:
-    "코인·주식 투자 전략을 과거 시세로 백테스트하고 모의투자로 검증하는 무료 도구. 12종 전략 제공.",
+    "AI 도구·정부지원금·무료 리소스·취업·여행·가격비교 사이트를 카테고리별로 정리한 주소모음과, 실사용 후기로 비교한 쇼핑 글.",
   keywords: [
-    "백테스트",
-    "코인 백테스트",
-    "비트코인 백테스트",
-    "주식 백테스트",
-    "모의투자",
-    "퀀트 투자",
-    "퀀트",
-    "투자 전략",
-    "이동평균",
-    "RSI",
-    "볼린저 밴드",
-    "MACD",
-    "그리드 매매",
-    "DCA",
-    "업비트 백테스트",
+    "주소모음",
+    "사이트 모음",
+    "유용한 사이트",
+    "AI 도구 추천",
+    "정부지원금 사이트",
+    "무료 폰트 사이트",
+    "가격비교 사이트",
+    "최저가 사이트",
+    "쇼핑 비교",
+    "제품 후기 비교",
     "eloan",
   ],
   authors: [{ name: "eloan" }],
@@ -41,14 +36,13 @@ export const metadata: Metadata = {
     siteName: "eloan",
     locale: "ko_KR",
     url: "https://www.eloan.kr",
-    title: "eloan 백테스트 — 코인·주식 전략을 3분 안에 검증",
-    description:
-      "코인·주식 투자 전략을 과거 시세로 백테스트하고 모의투자로 검증하는 무료 도구.",
+    title: "eloan — 유용한 사이트 주소모음 · 쇼핑 비교",
+    description: "한국에서 바로 쓰는 사이트를 카테고리별로 정리한 주소모음과 실사용 후기 쇼핑 비교.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "eloan 백테스트",
-    description: "코인·주식 전략을 실제 데이터로 3분 만에 백테스트",
+    title: "eloan — 주소모음 · 쇼핑 비교",
+    description: "한국에서 바로 쓰는 사이트 주소모음과 실사용 후기 쇼핑 비교",
   },
   alternates: {
     canonical: "https://www.eloan.kr",
@@ -77,25 +71,10 @@ const websiteJsonLd = {
   "@type": "WebSite",
   // 구글 검색 결과 위에 표시되는 사이트 이름
   name: "eloan",
-  alternateName: ["eloan.kr", "eloan 백테스트"],
+  alternateName: ["eloan.kr", "eloan 주소모음"],
   url: "https://www.eloan.kr/",
   inLanguage: "ko-KR",
-  description: "코인·주식 전략 백테스트와 실사용 후기로 비교한 쇼핑 정보",
-};
-
-const orgJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "eloan 백테스트",
-  url: "https://www.eloan.kr",
-  applicationCategory: "FinanceApplication",
-  operatingSystem: "Web",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "KRW",
-  },
-  inLanguage: "ko-KR",
+  description: "한국에서 바로 쓰는 사이트 주소모음과 실사용 후기로 비교한 쇼핑 정보",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -134,10 +113,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
         />
         <AuthProvider>
           <VisitLogger />

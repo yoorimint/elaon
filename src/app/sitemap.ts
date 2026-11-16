@@ -3,8 +3,6 @@ import { createServerClient } from "@/lib/supabase-server";
 import { PICK_CATEGORIES, listHubs } from "@/lib/picks";
 import { CHECKLISTS } from "@/lib/checklists";
 import { COMPARISONS } from "@/lib/comparisons";
-import { STOCK_MARKETS } from "@/lib/market";
-import { symbolToSlug } from "@/lib/stock-resolver";
 
 const SITE = "https://www.eloan.kr";
 
@@ -15,14 +13,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${SITE}/backtest`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${SITE}/ranking`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
-    { url: `${SITE}/community`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE}/community`, lastModified: now, changeFrequency: "daily", priority: 0.5 },
     { url: `${SITE}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
-    { url: `${SITE}/login`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${SITE}/signup`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
-    { url: `${SITE}/picks`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    // 유입 대부분이 주소모음(/picks) — 홈 다음 우선순위
+    { url: `${SITE}/picks`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     ...PICK_CATEGORIES.map((c) => ({
       url: `${SITE}/picks/${c.slug}`,
       lastModified: now,
@@ -42,24 +37,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
-    { url: `${SITE}/stock`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.7 },
-    // 인기 한국·미국 종목 (50개씩 우선) — long-tail 검색 색인 유도
-    ...STOCK_MARKETS.filter((m) => m.kind === "stock_kr")
-      .slice(0, 50)
-      .map((m) => ({
-        url: `${SITE}/stock/${symbolToSlug(m.id.replace(/^yahoo:/, ""))}`,
-        lastModified: now,
-        changeFrequency: "weekly" as const,
-        priority: 0.55,
-      })),
-    ...STOCK_MARKETS.filter((m) => m.kind === "stock_us")
-      .slice(0, 30)
-      .map((m) => ({
-        url: `${SITE}/stock/${symbolToSlug(m.id.replace(/^yahoo:/, ""))}`,
-        lastModified: now,
-        changeFrequency: "weekly" as const,
-        priority: 0.55,
-      })),
     { url: `${SITE}/picks/vs`, lastModified: now, changeFrequency: "weekly" as const, priority: 0.75 },
     ...COMPARISONS.map((c) => ({
       url: `${SITE}/picks/vs/${c.slug}`,
@@ -69,23 +46,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  // 공개 공유 백테스트 + 커뮤니티 글도 색인에 노출
+  // 커뮤니티 글 + 쇼핑 글도 색인에 노출 (주식·코인 도구·공유 결과 /r 는 2026-11 제거 → 410)
   try {
     const sb = createServerClient();
-    const [shares, posts, shopPosts] = await Promise.all([
-      sb
-        .from("shared_backtests")
-        .select("slug, created_at")
-        .eq("is_private", false)
-        // 사용자가 직접 공유한 것만 (source 없음). 크론 자동 공유(board-scan:*·popular-scan)는 매일 지우고
-        // 새 주소로 다시 만들어서, 사이트맵에 넣으면 로봇이 매일 새 주소 수십 개를 긁고(서버 CPU)
-        // 다음 날엔 404 가 쌓인다. social-scan 은 SNS 전용 (랭킹·홈 목록에서도 뺀다)
-        .is("source", null)
-        .order("created_at", { ascending: false })
-        .limit(1000),
+    const [posts, shopPosts] = await Promise.all([
       sb
         .from("posts")
         .select("slug, created_at")
+        // 봇 글(백테스트 자동 분석)은 커뮤니티 목록에서도 숨긴다
+        .neq("category", "bot")
         .order("created_at", { ascending: false })
         .limit(1000),
       sb
@@ -95,12 +64,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .order("published_at", { ascending: false })
         .limit(1000),
     ]);
-    const shareRoutes = (shares.data ?? []).map((s: { slug: string; created_at: string }) => ({
-      url: `${SITE}/r/${s.slug}`,
-      lastModified: new Date(s.created_at),
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
     const postRoutes = (posts.data ?? []).map((p: { slug: string; created_at: string }) => ({
       url: `${SITE}/community/${p.slug}`,
       lastModified: new Date(p.created_at),
@@ -115,8 +78,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
     return [
       ...staticRoutes,
-      { url: `${SITE}/shop`, lastModified: now, changeFrequency: "daily" as const, priority: 0.6 },
-      ...shareRoutes,
+      { url: `${SITE}/shop`, lastModified: now, changeFrequency: "daily" as const, priority: 0.8 },
       ...postRoutes,
       ...shopRoutes,
     ];

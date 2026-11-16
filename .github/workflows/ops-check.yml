@@ -91,3 +91,18 @@ jobs:
           curl -s -m 70 -o /tmp/r.json -w "응답 %{http_code} (%{time_total}s)\n" -X POST "$SITE/api/shop/notion-sync" \
             -H "content-type: application/json" -H "x-notion-cron-secret: $SECRET" -d '{}'
           python3 -c 'import json; d=json.load(open("/tmp/r.json")); s=d.get("summary",d); print({k:v for k,v in s.items() if k!="items"} if isinstance(s,dict) else str(d)[:300])' || head -c 300 /tmp/r.json
+
+      # 커뮤니티 실제 이용 현황 (글·댓글 수, 봇 제외) — 개인정보 없이 숫자만
+      - name: 커뮤니티 이용 현황
+        if: contains(github.event.head_commit.message, '커뮤니티')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cnt() { curl -s -m 20 -o /dev/null -D - "$SUPABASE_URL/rest/v1/$1&select=id" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" -H "Prefer: count=exact" -H "Range: 0-0" | grep -i '^content-range' | sed 's/.*\///' | tr -d '\r'; }
+          since90=$(date -u -d '90 days ago' +%Y-%m-%dT%H:%M:%SZ); since30=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "글 전체(봇 제외): $(cnt 'posts?category=neq.bot')  / 봇 글: $(cnt 'posts?category=eq.bot')"
+          echo "글 최근 90일(봇 제외): $(cnt "posts?category=neq.bot&created_at=gte.$since90")  / 최근 30일: $(cnt "posts?category=neq.bot&created_at=gte.$since30")"
+          echo "댓글 전체: $(cnt 'comments?id=not.is.null')  / 최근 30일: $(cnt "comments?created_at=gte.$since30")"
+          echo "--- 최근 90일 사람 글 카테고리별"
+          curl -s -m 20 "$SUPABASE_URL/rest/v1/posts?category=neq.bot&created_at=gte.$since90&select=category,created_at" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys,collections; r=json.load(sys.stdin); print(dict(collections.Counter(x["category"] for x in r))); print("가장 최근:", max((x["created_at"] for x in r), default="없음"))'

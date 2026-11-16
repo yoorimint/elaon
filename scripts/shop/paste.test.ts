@@ -584,6 +584,11 @@ function main() {
     // 공용 배너는 글 화면에서만 숨긴다 (목록·RSS·다른 화면은 그대로)
     assert.ok(isShopPostPath("/shop/20261114-b23402"));
     for (const p of ["/shop", "/shop/", "/shop/rss.xml", "/picks", "/shop/a/b"]) assert.ok(!isShopPostPath(p), p);
+    // 제휴 링크 표시: 본문 링크와 같게 sponsored + nofollow (네이버가 sponsored 를 읽는지 확실하지 않아서)
+    for (const f of ["ShopProductBottomBar.tsx", "CoupangBottomBanner.tsx"]) {
+      const src = readFileSync(join(process.cwd(), "src", "components", f), "utf8");
+      assert.ok(src.includes('rel="sponsored nofollow noopener"'), f);
+    }
   });
 
   console.log(`\n${passed}개 통과`);

@@ -166,7 +166,7 @@ function FallbackCard() {
     <a
       href={f.href}
       target="_blank"
-      rel="sponsored noopener"
+      rel="sponsored nofollow noopener"
       className="flex max-w-full items-center gap-3 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-gradient-to-r from-sky-50 to-white dark:from-sky-950/40 dark:to-neutral-900 px-3"
       style={{ width: SLOT_W, height: SLOT_H }}
     >

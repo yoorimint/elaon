@@ -10,7 +10,7 @@ import { pingIndexNow } from "@/lib/indexnow";
 import { summaryLine } from "@/lib/notion-shop";
 import { runNotionSync } from "@/lib/notion-sync";
 import { SITE_URL, loadNotionSchedule, loadNotionToken, parentPageId, syncDeps } from "@/lib/notion-sync-store";
-import { signRevalidate } from "@/lib/revalidate-signature";
+import { requestShopRevalidate } from "@/lib/revalidate-signature";
 
 const MAX_PAGES_PER_RUN = 20;
 const TIME_BUDGET_MS = 6 * 60 * 1000; // 워크플로 제한(10분) 안에서
@@ -38,15 +38,7 @@ async function main() {
   console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
   console.log(`확인한 노션 글 ${summary.checked ?? 0}개 (${summary.scan === "full" ? "전체 조회" : "바뀐 글만"})`);
 
-  if (changedSlugs.length) {
-    // 사이트 화면 바로 새로 만들기 (실패해도 글 화면은 1분 안에 저절로 갱신됨)
-    const res = await fetch(`${SITE_URL}/api/shop/revalidate`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-shop-signature": signRevalidate(key, changedSlugs) },
-      body: JSON.stringify({ slugs: changedSlugs }),
-    }).catch((e: unknown) => ({ ok: false, status: String(e) }) as const);
-    console.log(`화면 갱신 요청: ${res.ok ? "완료" : `실패 (${res.status}) — 1분 안에 저절로 갱신돼요`}`);
-  }
+  if (changedSlugs.length) console.log(await requestShopRevalidate(key, changedSlugs, { siteUrl: SITE_URL }));
   if (newlyPublished.length) await pingIndexNow([...newlyPublished.map((s) => `/shop/${s}`), "/shop"]).catch(() => undefined);
 
   // 노션 쪽 문제(토큰·권한)는 실패로 표시해 Actions 화면에서 보이게 한다

@@ -2,13 +2,12 @@
 
 // 홈의 "처음이신가요?" 섹션. 클라이언트 컴포넌트 이유:
 //  - 카테고리 탭(코인/주식/선물) 필터 인터랙션
-//  - 각 프리셋의 "오늘 신호"를 /api/signals 로 비동기 로드 (실패해도 뱃지만 빠짐)
+//  - 각 프리셋의 "오늘 신호"를 /api/signals/presets (1시간 캐시) 로 비동기 로드 (실패해도 뱃지만 빠짐)
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   BEGINNER_PRESETS,
-  presetStrategyParams,
   type BeginnerPreset,
   type PresetCategory,
 } from "@/lib/beginner-presets";
@@ -74,71 +73,31 @@ export function BeginnerPresetSection() {
     [active],
   );
 
-  // 탭이 바뀌면 아직 결과 없는 프리셋만 모아서 /api/signals 일괄 호출.
-  // buy_hold 는 매매 시점이 없으니 요청 안 함.
-  // (같은 market 에 전략만 다른 프리셋이 여러 개 있을 수 있어서 키는 preset.id)
+  // 모든 프리셋의 오늘 신호를 한 번에 받는다. /api/signals/presets 는 1시간 캐시(ISR)라
+  // 방문자가 많아도 서버 계산은 1시간에 한 번 (예전엔 방문자마다 POST /api/signals 로 매번 계산).
+  // buy_hold 는 매매 시점이 없어 응답에 없다 → 뱃지 안 뜸 (예전과 같음)
   useEffect(() => {
-    const needed = filtered.filter(
-      (p) => p.strategy !== "buy_hold" && !(p.id in signals),
-    );
-    if (needed.length === 0) return;
-
     let cancelled = false;
     (async () => {
       try {
-        const pairs = needed
-          .map((p) => {
-            const params = presetStrategyParams(p.id);
-            if (!params) return null;
-            return {
-              id: p.id,
-              item: {
-                market: p.market,
-                strategy: p.strategy,
-                params,
-              },
-            };
-          })
-          .filter((x): x is NonNullable<typeof x> => x !== null);
-        const res = await fetch("/api/signals", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ items: pairs.map((p) => p.item) }),
-        });
+        const res = await fetch("/api/signals/presets");
         if (!res.ok) throw new Error("signals api fail");
-        const data = (await res.json()) as {
-          items: { market: string; action: SignalAction; error?: string }[];
-        };
-        if (cancelled) return;
-        setSignals((prev) => {
-          const next = { ...prev };
-          (data.items ?? []).forEach((it, i) => {
-            const id = pairs[i]?.id;
-            if (!id) return;
-            next[id] = {
-              action: it.error ? "hold" : (it.action ?? "hold"),
-              error: !!it.error,
-            };
-          });
-          return next;
-        });
+        const data = (await res.json()) as { items?: SignalMap };
+        if (!cancelled) setSignals(data.items ?? {});
       } catch {
         // API 실패는 조용히 — 뱃지만 빠짐
         if (cancelled) return;
-        setSignals((prev) => {
-          const next = { ...prev };
-          for (const p of needed) {
-            next[p.id] = { action: "hold", error: true };
-          }
-          return next;
-        });
+        const failed: SignalMap = {};
+        for (const p of BEGINNER_PRESETS) {
+          if (p.strategy !== "buy_hold") failed[p.id] = { action: "hold", error: true };
+        }
+        setSignals(failed);
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [filtered, signals]);
+  }, []);
 
   return (
     <section className="mb-12">

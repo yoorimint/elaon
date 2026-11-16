@@ -6,7 +6,12 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "종목 보고서 — eloan.kr";
 
-export const dynamic = "force-dynamic";
+// 이미지 내용은 종목 이름·코드(내장 목록)뿐이라 자주 바뀌지 않는다 → 첫 요청 때 한 번 그리고 7일 캐시.
+// 예전엔 force-dynamic 이라 검색·SNS 로봇이 부를 때마다 satori 로 PNG 를 새로 그렸다 (CPU 많이 씀).
+export const revalidate = 604800;
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 async function loadFont(): Promise<ArrayBuffer | null> {
   try {
@@ -92,13 +97,15 @@ export default async function StockOG({
           >
             {name}
           </div>
+          {/* satori 는 자식이 여러 개(글자+변수)인 div 에 display:flex 가 없으면 오류(500)를 낸다 → 한 문자열로 */}
           <div
             style={{
+              display: "flex",
               fontSize: 36,
               color: "#d4d4d4",
             }}
           >
-            {(symbol || "").replace(/\.(KS|KQ)$/, "")} · {exchange}
+            {`${(symbol || "").replace(/\.(KS|KQ)$/, "")} · ${exchange}`}
           </div>
         </div>
 

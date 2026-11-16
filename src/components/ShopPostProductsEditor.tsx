@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { isPartnersLink, parsePartnersInput } from "@/lib/shop-config";
-import { updatePostProducts, type AdminPostRow } from "@/lib/shop-posts";
+import { refreshShopPages, updatePostProducts, type AdminPostRow } from "@/lib/shop-posts";
 import type { ShopPostInputProduct } from "@/lib/shop-post-types";
 
 export function ShopPostProductsEditor({
@@ -54,6 +54,8 @@ export function ShopPostProductsEditor({
         postId,
         draft.map((p, i) => ({ link: p.link, ...(p.image !== products[i].image ? { image: p.image } : {}) })),
       );
+      // 공개 글은 사이트 화면이 하루 캐시라, 고친 링크·사진이 바로 보이게 갱신 요청
+      if (post.status === "published") await refreshShopPages(post.slug);
       const complete = draft.every((p) => p.link.trim());
       setMsg(complete ? "저장됨 — 미리보기에서 확인 후 발행하세요" : "저장됨 (링크가 남았어요)");
       await onSaved();

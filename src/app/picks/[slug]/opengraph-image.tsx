@@ -4,6 +4,13 @@ import { getPickCategory } from "@/lib/picks";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// 이미지 내용은 내장 데이터(src/lib/picks.ts)뿐이라 배포 전까지 안 바뀐다 → 첫 요청 때 한 번 그리고 계속 캐시.
+// 예전엔 generateStaticParams 가 없어 동적 경로(ƒ)였고, 로봇이 부를 때마다 satori 로 PNG 를 새로 그렸다.
+export const revalidate = false;
+export function generateStaticParams() {
+  return [];
+}
+
 export function generateImageMetadata({ params }: { params: { slug: string } }) {
   return [{ id: "default", size, contentType, alt: params.slug }];
 }

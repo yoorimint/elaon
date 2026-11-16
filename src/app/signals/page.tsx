@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 // 크론이 하루 3번 채우는 board_top_signals 만 SELECT → 서버 사이드 렌더.
 // 클라 필터 인터랙션은 없음. kind 별 섹션으로 나눠 한 화면에 보여줌.
-export const revalidate = 300; // 5분 ISR — 크론 반영 시차 커버
+// 1시간 ISR — 신호 보드는 하루 1번(00:15 UTC 크론) 바뀐다. 크론 반영 시차는 최대 1시간
+export const revalidate = 3600;
 
 type BoardRow = {
   id: number;

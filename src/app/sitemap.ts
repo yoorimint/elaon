@@ -77,6 +77,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from("shared_backtests")
         .select("slug, created_at")
         .eq("is_private", false)
+        // 사용자가 직접 공유한 것만 (source 없음). 크론 자동 공유(board-scan:*·popular-scan)는 매일 지우고
+        // 새 주소로 다시 만들어서, 사이트맵에 넣으면 로봇이 매일 새 주소 수십 개를 긁고(서버 CPU)
+        // 다음 날엔 404 가 쌓인다. social-scan 은 SNS 전용 (랭킹·홈 목록에서도 뺀다)
+        .is("source", null)
         .order("created_at", { ascending: false })
         .limit(1000),
       sb

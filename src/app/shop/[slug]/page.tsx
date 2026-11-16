@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { unstable_noStore as noStore } from "next/cache";
 import { JsonLd, articleLd, breadcrumbLd, faqLd } from "@/components/JsonLd";
 import { ShopPostView } from "@/components/ShopPostView";
-import { getPostBySlugAnyStatus, getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
+import { getPublishedPost, listRelatedPosts } from "@/lib/shop-posts-server";
 import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
 import { isManualPost } from "@/lib/shop-post-types";
 import { ShopViewTracker } from "@/components/ShopViewTracker";
 import { ShopDraftPreview } from "./ShopDraftPreview";
 
-export const revalidate = 60;
+// 공개 글은 첫 방문 때 만들어 하루 캐시 (ISR). 발행·수정·내림·삭제 때는 revalidateShop()
+// (/api/shop/revalidate, 노션 동기화, 자동글·정리 스크립트)이 그 글 화면을 바로 새로 만든다.
+// 하루는 그 요청이 실패했을 때의 안전망. generateStaticParams 빈 배열 = 첫 요청 때 만들어 캐시
+// (없으면 동적 경로(ƒ)라 요청마다 서버에서 다시 그렸다).
+export const revalidate = 86400;
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 const SITE = "https://www.eloan.kr";
 
@@ -40,25 +46,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 export default async function ShopPostPage({ params }: { params: { slug: string } }) {
   const post = await getPublishedPost(params.slug);
   if (!post) {
-    // 초안: 주소를 아는 사람만 볼 수 있음 (목록·사이트맵에 없고 noindex)
-    // 사진 등록 직후 새로고침해도 바로 보이게 초안은 캐시하지 않음
-    noStore();
-    const draft = await getPostBySlugAnyStatus(params.slug);
-    if (draft) {
-      return (
-        <main>
-          <div className="bg-amber-100 dark:bg-amber-950/50 px-5 py-2 text-center text-sm font-semibold text-amber-900 dark:text-amber-200">
-            초안 미리보기 — 아직 공개되지 않은 글이에요 (주소를 아는 사람만 볼 수 있고 검색에 안 나와요)
-          </div>
-          <ShopPostView
-            post={draft}
-            preview
-            related={await listRelatedPosts(postCategory(draft), draft.slug)}
-          />
-        </main>
-      );
-    }
-    // RPC 가 아직 없으면 관리자 로그인 미리보기로 대체
+    // 초안·없는 글: 서버 HTML 은 모두 같은 뼈대(캐시됨)이고, 내용은 브라우저가 그때그때 불러온다.
+    // 그래서 사진 등록 직후 새로고침해도 바로 보인다 (주소를 아는 사람만 · 목록·사이트맵에 없고 noindex).
     return <ShopDraftPreview slug={params.slug} />;
   }
 

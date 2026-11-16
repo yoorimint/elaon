@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import type { ManualProduct, ShopConfig } from "@/lib/shop-config";
 import type { ShopPostQa } from "@/lib/shop-post-types";
 import { pingIndexNow } from "@/lib/indexnow";
+import { requestShopRevalidate } from "@/lib/revalidate-signature";
 import {
   countPostsSince,
   insertPost,
@@ -282,6 +283,8 @@ async function main() {
 
   // 바로 공개된 글이면 검색엔진(네이버 등)에 즉시 알림
   if (status === "published") {
+    // 사이트 목록·RSS·사이트맵은 1시간 캐시라 바로 새로 만들게 요청 (없으면 1시간 뒤에 보임)
+    console.log(await requestShopRevalidate(process.env.SUPABASE_SERVICE_ROLE_KEY ?? "", [slug]));
     const pings = await pingIndexNow([`/shop/${slug}`, "/shop"]);
     console.log(`🔔 검색엔진 알림: ${pings.map((p) => `${new URL(p.endpoint).host}=${p.status}`).join(", ")}`);
   }

@@ -10,7 +10,9 @@ import { PopularCoinsTop } from "@/components/PopularCoinsTop";
 import { SajudayAd } from "@/components/SajudayAd";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export const revalidate = 30;
+// 홈 데이터(오늘 신호·인기 코인)는 하루 1번 크론으로 바뀌고, "최근 공유"만 수시로 바뀐다 → 10분 캐시.
+// (예전 30초는 방문이 있으면 30초마다 서버에서 다시 그려 CPU 를 썼다)
+export const revalidate = 600;
 
 export const metadata: Metadata = {
   // 홈은 브랜드를 앞에 (하위 페이지는 제목 뒤에 사이트 이름을 붙이지 않음)

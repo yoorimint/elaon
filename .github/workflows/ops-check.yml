@@ -37,6 +37,20 @@ jobs:
           echo | timeout 20 openssl s_client -connect www.eloan.kr:443 -servername www.eloan.kr 2>/dev/null \
             | openssl x509 -noout -subject -issuer -enddate
 
+      # 사장님 휴대폰처럼 아직 옛 Vercel 화면이 뜨는지: 통신사 DNS 가 어느 주소를 주는지 (정답 115.68.229.136)
+      - name: DNS (통신사·위임)
+        run: |
+          sudo apt-get install -y -qq dnsutils > /dev/null 2>&1 || true
+          for r in "KT 168.126.63.1" "KT2 168.126.63.2" "SK 210.220.163.82" "SK2 219.250.36.130" "LG 164.124.101.2" "LG2 203.248.252.2" "구글 8.8.8.8" "클라우드플레어 1.1.1.1"; do
+            set -- $r
+            echo "$1($2): www=$(dig +short +time=3 +tries=1 @$2 www.eloan.kr A | tr "\n" " ") / 루트=$(dig +short +time=3 +tries=1 @$2 eloan.kr A | tr "\n" " ")"
+          done
+          TLD=$(dig +short kr. NS | head -1)
+          echo "--- .kr 등록소($TLD)가 알려 주는 네임서버:"; dig +norec +time=5 @"$TLD" eloan.kr NS | grep -E "IN\s+NS" | awk '{print $1, $2, $5}'
+          for ns in $(dig +norec +time=5 @"$TLD" eloan.kr NS | awk '/IN[[:space:]]+NS/ {print $5}' | sort -u); do
+            echo "--- $ns 답: www=$(dig +short +time=3 @$ns www.eloan.kr | tr "\n" " ") 루트=$(dig +short +time=3 @$ns eloan.kr | tr "\n" " ")"
+          done
+
       - name: 서버 상태 (읽기 전용)
         env:
           IWINV_SSH_KEY: ${{ secrets.IWINV_SSH_KEY }}

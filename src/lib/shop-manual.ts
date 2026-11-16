@@ -228,12 +228,17 @@ export function postImages(post: Pick<ShopPost, "content" | "products">): string
 // 쇼핑 글 화면 하단 고정 바에 띄울 "이 글의 상품" (2026-11-16 사장님 요청: 공용 쿠팡 배너 대신 그 글의 상품).
 // 쿠팡 링크가 있는 첫 상품 (비교글이면 글에 먼저 나온 상품). 사진은 상품 사진 → 없으면 글의 첫 사진.
 // 쿠팡 링크가 없는 글이면 null → 화면은 공용 배너를 그대로 띄운다.
+// 이름: 노션 글의 상품 이름은 콜아웃 문장이 들어가는 일이 많아서(실제: "400 Pro 2를 보고 있다면 …" 긴 문장)
+//   상품 하나짜리 글은 글 제목, 여러 상품 글은 상품 이름이 짧을 때만(BAR_NAME_MAX 자) 상품 이름, 아니면 글 제목.
 export type ShopBottomProduct = { name: string; href: string; image?: string };
+const BAR_NAME_MAX = 30;
 
 export function bottomBarProduct(post: Pick<ShopPost, "title" | "content" | "products">): ShopBottomProduct | null {
   const p = post.products.find((x) => isCoupangLink(x.link));
   if (!p) return null;
-  return { name: (p.name || post.title).trim(), href: p.link.trim(), image: p.image ?? postImages(post)[0] };
+  const own = (p.name ?? "").trim();
+  const name = post.products.length > 1 && own && own.length <= BAR_NAME_MAX ? own : post.title.trim();
+  return { name, href: p.link.trim(), image: p.image ?? postImages(post)[0] };
 }
 
 // ---------- 저장 전 정리 (서버 API·관리자 화면 공용) ----------

@@ -575,7 +575,11 @@ function main() {
       image: "https://img/body.jpg",
     });
     assert.equal(bottomBarProduct(post([{ name: "A", link: "https://link.coupang.com/a/1", image: "https://img/p.jpg" }]))?.image, "https://img/p.jpg");
-    assert.equal(bottomBarProduct(post([{ name: "", link: "https://link.coupang.com/a/1" }]))?.name, "글 제목");
+    // 상품 하나짜리 글은 글 제목 (노션 상품 이름에 콜아웃 긴 문장이 들어간 실제 사례)
+    const sentence = "400 Pro 2를 보고 있다면 모델명과 필터 포함 구성을 먼저 확인해 보세요.";
+    assert.equal(bottomBarProduct(post([{ name: sentence, link: "https://link.coupang.com/a/1" }]))?.name, "글 제목");
+    // 여러 상품 글: 짧은 상품 이름은 그대로, 긴 문장이면 글 제목
+    assert.equal(bottomBarProduct(post([{ name: sentence, link: "https://link.coupang.com/a/1" }, { name: "B", link: "https://link.coupang.com/a/2" }]))?.name, "글 제목");
     assert.equal(bottomBarProduct(post([])), null);
     // 공용 배너는 글 화면에서만 숨긴다 (목록·RSS·다른 화면은 그대로)
     assert.ok(isShopPostPath("/shop/20261114-b23402"));

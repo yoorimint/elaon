@@ -54,6 +54,12 @@ jobs:
             # 바깥으로 나간 트래픽(iwinv 는 아웃바운드만 과금) — 부팅 후 누적 ÷ 가동일 = 하루 평균 (서버 전체, 다른 사이트 포함)
             awk -v up="$(cut -d. -f1 /proc/uptime)" '\''$1 ~ /^(ens|eth)[0-9]+:/ {rx=$2; tx=$10; printf "--- 트래픽(%s): 나감 %.1fGB, 들어옴 %.1fGB, 하루 평균 나감 %.2fGB\n", $1, tx/1e9, rx/1e9, tx/1e9/(up/86400)}'\'' /proc/net/dev
             echo "--- 인증서 자동갱신 타이머: $(systemctl is-active certbot.timer 2>/dev/null) / $(systemctl is-enabled certbot.timer 2>/dev/null)"
+            # 노션 동기화 요청이 서버까지 왔는지 (Supabase pg_net 이 보낸 것인지 구분하려고 접속 프로그램 이름만, IP 는 안 찍음)
+            echo "--- nginx 설정의 접속 기록 위치: $(grep -h access_log /etc/nginx/sites-enabled/eloan 2>/dev/null | tr -s " " | tr "\n" " ")"
+            for f in /var/log/nginx/access.log /var/log/nginx/access.log.1; do
+              if [ -r "$f" ]; then echo "--- $f 의 notion-sync 요청 (시각 응답코드 프로그램)"; grep notion-sync "$f" | awk -F"\"" "{i=index(\$1,\"[\"); split(\$3,b,\" \"); print substr(\$1,i+1,20), b[1], \$6}" | tail -15
+              else echo "--- $f 읽기 권한 없음"; fi
+            done
           '
 
       - name: 노션 예약 실행 마지막 기록 (Supabase)

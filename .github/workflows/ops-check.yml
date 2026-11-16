@@ -1,0 +1,108 @@
+name: ops check
+
+# 운영 점검 (읽기만 함): 작업 브랜치(ccr-*)에서 .github/ops-check-request 를 바꿔 push 하면 1회 실행.
+# 사장님께 서버 명령을 시키지 않고 운영자(Claude)가 직접 확인하려고 만든 것 (2026-11-16 iwinv 이전 후).
+#  1) 바깥에서: 주요 페이지 응답 코드, 실제 HTTPS 인증서 만료일 (GitHub 서버에서 보므로 중계 없이 진짜 인증서)
+#  2) 서버 안(배포 계정 eloan, 읽기 전용 명령만): 서비스 상태·메모리·디스크·재부팅 필요 여부
+#  3) Supabase: 노션 예약 실행(pg_cron → /api/shop/notion-sync) 마지막 기록
+# 저장소가 공개라 로그도 공개 — 비밀값·방문자 IP 는 찍지 않는다.
+on:
+  push:
+    branches: ["ccr-*"]
+    paths: [".github/ops-check-request"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY_HOST: 115.68.229.136
+  DEPLOY_USER: eloan
+  SITE: https://www.eloan.kr
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 바깥에서 페이지·인증서
+        run: |
+          for p in / /picks /picks/study/megastudy /shop /community /login /admin/shop /sitemap.xml /rss.xml /backtest /stock/005930; do
+            curl -s -o /dev/null -m 30 -w "$p %{http_code} %{time_total}s\n" "$SITE$p" || echo "$p 실패"
+          done
+          echo "--- eloan.kr → $(curl -sI -m 20 https://eloan.kr/ | grep -i '^location' | tr -d '\r')"
+          echo "--- 인증서"
+          echo | timeout 20 openssl s_client -connect www.eloan.kr:443 -servername www.eloan.kr 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -enddate
+
+      - name: 서버 상태 (읽기 전용)
+        env:
+          IWINV_SSH_KEY: ${{ secrets.IWINV_SSH_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          python3 scripts/ci/write-ssh-key.py
+          ssh-keyscan -T 15 "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" '
+            echo "서비스: eloan=$(systemctl is-active eloan) nginx=$(systemctl is-active nginx) sajuday=$(systemctl is-active sajuday 2>/dev/null)"
+            echo "eloan $(systemctl show eloan -p MemoryCurrent -p ActiveEnterTimestamp -p NRestarts | tr "\n" " ")"
+            echo "--- 메모리"; free -m
+            echo "--- 디스크"; df -h / | tail -1
+            echo "--- 가동"; uptime
+            echo "--- 재부팅 필요: $( [ -f /var/run/reboot-required ] && echo 예 || echo 아니오 )"
+            # 바깥으로 나간 트래픽(iwinv 는 아웃바운드만 과금) — 부팅 후 누적 ÷ 가동일 = 하루 평균 (서버 전체, 다른 사이트 포함)
+            awk -v up="$(cut -d. -f1 /proc/uptime)" '\''$1 ~ /^(ens|eth)[0-9]+:/ {rx=$2; tx=$10; printf "--- 트래픽(%s): 나감 %.1fGB, 들어옴 %.1fGB, 하루 평균 나감 %.2fGB\n", $1, tx/1e9, rx/1e9, tx/1e9/(up/86400)}'\'' /proc/net/dev
+            echo "--- 인증서 자동갱신 타이머: $(systemctl is-active certbot.timer 2>/dev/null) / $(systemctl is-enabled certbot.timer 2>/dev/null)"
+          '
+
+      - name: 노션 예약 실행 마지막 기록 (Supabase)
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_config?id=eq.1&select=notion_sync,notion_schedule" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c '
+          import json, sys
+          rows = json.load(sys.stdin)
+          if not isinstance(rows, list) or not rows:
+              print("읽기 실패:", str(rows)[:200]); sys.exit(0)
+          st = rows[0].get("notion_sync") or {}
+          last = st.get("lastRun") or {}
+          keep = {k: v for k, v in last.items() if k not in ("items",)}
+          print("마지막 실행:", json.dumps(keep, ensure_ascii=False))
+          print("발행 일정:", json.dumps(rows[0].get("notion_schedule"), ensure_ascii=False))
+          print("이번 시 발행 기록:", json.dumps(st.get("publishSlot"), ensure_ascii=False))
+          '
+
+      # 예약 실행 경로를 GitHub 에서 똑같이 불러 본다 (Supabase pg_cron 이 보내는 것과 같은 비밀값 헤더).
+      # 응답 200 이면 사이트·인증은 정상 → 예약이 안 돈 원인은 Supabase 쪽(옛 주소 기억·예약 작업 상태).
+      # 지금이 발행 시각이 아니면 새 글은 안 올리고 수정·내림만 반영한다 (예약 실행과 같은 규칙).
+      - name: 예약 실행 경로 직접 호출
+        if: contains(github.event.head_commit.message, '예약경로')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          SECRET=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_secrets?name=eq.NOTION_CRON_SECRET&select=value" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r[0]["value"] if r else "")')
+          if [ -z "$SECRET" ]; then echo "비밀값 없음 (SQL 미실행?)"; exit 0; fi
+          echo "::add-mask::$SECRET"
+          curl -s -m 70 -o /tmp/r.json -w "응답 %{http_code} (%{time_total}s)\n" -X POST "$SITE/api/shop/notion-sync" \
+            -H "content-type: application/json" -H "x-notion-cron-secret: $SECRET" -d '{}'
+          python3 -c 'import json; d=json.load(open("/tmp/r.json")); s=d.get("summary",d); print({k:v for k,v in s.items() if k!="items"} if isinstance(s,dict) else str(d)[:300])' || head -c 300 /tmp/r.json
+
+      # 커뮤니티 실제 이용 현황 (글·댓글 수, 봇 제외) — 개인정보 없이 숫자만
+      - name: 커뮤니티 이용 현황
+        if: contains(github.event.head_commit.message, '커뮤니티')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          cnt() { curl -s -m 20 -o /dev/null -D - "$SUPABASE_URL/rest/v1/$1&select=id" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" -H "Prefer: count=exact" -H "Range: 0-0" | grep -i '^content-range' | sed 's/.*\///' | tr -d '\r'; }
+          since90=$(date -u -d '90 days ago' +%Y-%m-%dT%H:%M:%SZ); since30=$(date -u -d '30 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "글 전체(봇 제외): $(cnt 'posts?category=neq.bot')  / 봇 글: $(cnt 'posts?category=eq.bot')"
+          echo "글 최근 90일(봇 제외): $(cnt "posts?category=neq.bot&created_at=gte.$since90")  / 최근 30일: $(cnt "posts?category=neq.bot&created_at=gte.$since30")"
+          echo "댓글 전체: $(cnt 'comments?id=not.is.null')  / 최근 30일: $(cnt "comments?created_at=gte.$since30")"
+          echo "--- 최근 90일 사람 글 카테고리별"
+          curl -s -m 20 "$SUPABASE_URL/rest/v1/posts?category=neq.bot&created_at=gte.$since90&select=category,created_at" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys,collections; r=json.load(sys.stdin); print(dict(collections.Counter(x["category"] for x in r))); print("가장 최근:", max((x["created_at"] for x in r), default="없음"))'

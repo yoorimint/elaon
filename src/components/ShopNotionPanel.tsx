@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import { Loader2, RefreshCw, Upload } from "lucide-react";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 import {
   NOTION_DB_TITLE,
   PROP,

@@ -134,7 +134,17 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
 
   await test("헤더 메뉴·사이트맵·RSS·홈에 제거한 경로 링크가 없다", () => {
     const removed = [...GONE_PREFIXES, ...MOVED.map((m) => m.source)];
-    const targets = ["src/components/Header.tsx", "src/app/sitemap.ts", "src/app/rss.xml/route.ts", "src/app/page.tsx", "src/app/layout.tsx", "src/app/me/page.tsx"];
+    const targets = [
+      "src/components/Header.tsx",
+      "src/components/AdminNav.tsx",
+      "src/app/sitemap.ts",
+      "src/app/rss.xml/route.ts",
+      "src/app/page.tsx",
+      "src/app/layout.tsx",
+      "src/app/me/page.tsx",
+      "src/app/login/page.tsx",
+      "src/app/suggest/page.tsx",
+    ];
     const bad: string[] = [];
     for (const t of targets) {
       const s = read(join(ROOT, t));
@@ -147,6 +157,33 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     const s = read(join(ROOT, "src", "lib", "picks.ts"));
     assert.ok(!/url: "\/(backtest|stock|r|paper-trade|signals|ranking|glossary|quiz|watchlist)\b/.test(s));
     assert.ok(!s.includes('hubSlug: "eloan-backtest"'));
+  });
+
+  await test("주소모음 데이터에 없어진 eloan 자체 기능(백테스트·시세 조회) 언급이 없다", () => {
+    // 2026-11 주식·코인 도구 제거 후에도 "eloan 백테스트 활용 가능" 같은 문장이 50여 곳 남아 있었다.
+    // 다른 사이트의 백테스트 기능 설명은 괜찮고, 한 문장 안에 eloan(본 사이트)과 그 기능이 같이 나오면 안 된다.
+    const s = read(join(ROOT, "src", "lib", "picks.ts"));
+    const bad = s
+      .split(/[."\n]/)
+      .filter((x) => /eloan|본 사이트/.test(x) && /백테스트|시세 조회|빌트인 전략|모의투자/.test(x))
+      .map((x) => x.trim().slice(0, 80));
+    assert.deepEqual(bad, []);
+  });
+
+  // ─── 제거한 커뮤니티·회원가입 (2026-11, 사람이 쓴 글·댓글 0개) ─────────────
+  await test("커뮤니티 코드(src/lib/community.ts·신고 관리)가 되살아나지 않는다", () => {
+    assert.ok(!existsSync(join(ROOT, "src", "lib", "community.ts")), "src/lib/community.ts");
+    assert.ok(!existsSync(join(APP, "admin", "reports")), "app/admin/reports");
+    for (const p of ["/community", "/signup"]) assert.ok(GONE_PREFIXES.includes(p), `${p} 가 410 목록에 없음`);
+    const srcFiles = walk(join(ROOT, "src")).filter((p) => /\.(ts|tsx|mjs)$/.test(p));
+    const importers = srcFiles.filter((p) => /from ["'](@\/lib\/|\.\/)community["']/.test(read(p))).map(rel);
+    assert.deepEqual(importers, []);
+  });
+
+  await test("헤더·로그인 화면에 회원가입 버튼이 없다", () => {
+    for (const f of ["src/components/Header.tsx", "src/app/login/page.tsx"]) {
+      assert.ok(!/href=["'{`]*\/signup/.test(read(join(ROOT, f))), f);
+    }
   });
 
   await test("주식·코인 데이터 자동 갱신·스캔 워크플로가 없다 (데이터 커밋 push → 배포 → 캐시 초기화)", () => {

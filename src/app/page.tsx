@@ -199,9 +199,6 @@ export default async function HomePage() {
           <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white font-semibold">
             개인정보처리방침
           </Link>
-          <Link href="/suggest" className="hover:text-neutral-900 dark:hover:text-white">
-            건의하기
-          </Link>
         </div>
       </footer>
     </main>

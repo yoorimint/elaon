@@ -11,7 +11,6 @@ const DISALLOW_PATHS = [
   "/suggest",
   "/api/",
   "/login",
-  "/signup",
   "/forgot-password",
   "/reset-password",
 ];

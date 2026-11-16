@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { AdminNav } from "@/components/AdminNav";
-import {
-  banUser,
-  isAdmin,
-  listAllUsers,
-  timeAgo,
-  unbanUser,
-  type AdminUser,
-} from "@/lib/community";
+import { banUser, isAdmin, listAllUsers, unbanUser, type AdminUser } from "@/lib/admin";
+import { timeAgo } from "@/lib/time-ago";
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -122,7 +116,7 @@ export default function AdminUsersPage() {
       <div className="mb-2">
         <h1 className="text-2xl sm:text-3xl font-bold">회원 관리</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          제재 걸린 계정은 글/댓글/좋아요/신고 작성이 모두 차단됩니다. 해제하면 즉시 복구됩니다.
+          제재 걸린 계정은 건의 등록이 차단됩니다. 해제하면 즉시 복구됩니다. (회원가입은 2026-11 종료 — 기존 회원만 있음)
         </p>
       </div>
       <AdminNav />
@@ -167,8 +161,6 @@ export default function AdminUsersPage() {
             <tr>
               <th className="px-3 py-2 text-left">닉네임 / 이메일</th>
               <th className="px-3 py-2 text-left">가입</th>
-              <th className="px-3 py-2 text-right">글</th>
-              <th className="px-3 py-2 text-right">댓글</th>
               <th className="px-3 py-2 text-left">상태</th>
               <th className="px-3 py-2 text-right">액션</th>
             </tr>
@@ -195,8 +187,6 @@ export default function AdminUsersPage() {
                 <td className="px-3 py-2 text-xs text-neutral-500 whitespace-nowrap">
                   {timeAgo(u.created_at)}
                 </td>
-                <td className="px-3 py-2 text-right">{u.post_count}</td>
-                <td className="px-3 py-2 text-right">{u.comment_count}</td>
                 <td className="px-3 py-2">
                   {u.banned ? (
                     <div>
@@ -241,7 +231,7 @@ export default function AdminUsersPage() {
             ))}
             {filtered.length === 0 && !loading && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-sm text-neutral-500">
+                <td colSpan={4} className="px-3 py-8 text-center text-sm text-neutral-500">
                   해당하는 회원이 없습니다.
                 </td>
               </tr>
@@ -262,7 +252,7 @@ export default function AdminUsersPage() {
             <h3 className="text-base font-bold">계정 제재</h3>
             <p className="mt-1 text-xs text-neutral-500">
               <span className="font-semibold">{banTarget.username ?? banTarget.email}</span> 계정의
-              글·댓글·좋아요·신고 작성이 즉시 차단됩니다. 기존 게시물은 그대로 유지돼요.
+              건의 등록이 즉시 차단됩니다. 기존 데이터는 그대로 유지돼요.
             </p>
             <label className="mt-4 block text-sm">
               <span className="text-xs text-neutral-500">사유 (선택)</span>

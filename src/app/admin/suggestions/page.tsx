@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { AdminNav } from "@/components/AdminNav";
-import { isAdmin, timeAgo } from "@/lib/community";
+import { isAdmin } from "@/lib/admin";
+import { timeAgo } from "@/lib/time-ago";
 import {
   adminReplySuggestion,
   deleteSuggestion,

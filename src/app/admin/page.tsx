@@ -15,17 +15,17 @@ import {
 } from "recharts";
 import { useAuth } from "@/components/AuthProvider";
 import { AdminNav } from "@/components/AdminNav";
+import { isAdmin } from "@/lib/admin";
 import {
   getLandingStats,
   getReferrerStats,
   getSiteStats,
   getVisitsTrend,
-  isAdmin,
   type LandingRow,
   type ReferrerRow,
   type SiteStats,
   type VisitTrendRow,
-} from "@/lib/community";
+} from "@/lib/site-stats";
 
 function Card({
   label,
@@ -166,14 +166,9 @@ export default function AdminDashboardPage() {
             <Card
               label="신규 가입"
               value={stats.today_signups.toLocaleString()}
+              hint="회원가입 화면은 없앰 — 0 이 아니면 확인"
+              tone={stats.today_signups > 0 ? "warn" : undefined}
             />
-            <Card
-              label="신규 신고"
-              value={stats.today_reports.toLocaleString()}
-              tone={stats.today_reports > 0 ? "warn" : undefined}
-            />
-            <Card label="새 게시글" value={stats.today_posts.toLocaleString()} />
-            <Card label="새 댓글" value={stats.today_comments.toLocaleString()} />
             <Card
               label="최근 7일 유니크"
               value={stats.week_uniques.toLocaleString()}
@@ -189,12 +184,6 @@ export default function AdminDashboardPage() {
           </h2>
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
             <Card
-              label="블라인드 글"
-              value={stats.blinded_posts.toLocaleString()}
-              tone={stats.blinded_posts > 0 ? "warn" : undefined}
-              hint="신고 10회 누적된 글"
-            />
-            <Card
               label="제재 계정"
               value={stats.banned_users.toLocaleString()}
               tone={stats.banned_users > 0 ? "neg" : undefined}
@@ -205,14 +194,6 @@ export default function AdminDashboardPage() {
               tone={stats.open_suggestions > 0 ? "warn" : undefined}
               hint="유저가 보낸 미답변 건의"
             />
-            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col justify-center">
-              <Link
-                href="/admin/reports"
-                className="text-sm font-semibold text-brand hover:underline"
-              >
-                신고 관리로 →
-              </Link>
-            </div>
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col justify-center">
               <Link
                 href="/admin/users"

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { isAdmin } from "./community";
+import { isAdmin } from "./admin";
 
 export type AdminGuardState = "checking" | "authorized" | "denied";
 

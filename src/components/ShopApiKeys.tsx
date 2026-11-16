@@ -6,7 +6,7 @@
 // only: 화면에 보일 키 묶음 (2026-11-13~ 쿠팡만 — AI 자동글을 끄면서 Gemini·Claude·네이버 칸은 화면에서만 숨김. 저장된 값은 그대로)
 
 import { useCallback, useEffect, useState } from "react";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 import {
   API_KEY_GROUPS,
   KEY_CHECK_WORKFLOW_URL,

@@ -6,11 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { VisitorBadge } from "./VisitorBadge";
 
-// 메뉴 = 주소모음·쇼핑·커뮤니티 한 줄 (주식·코인 도구는 2026-11 제거). 로그인/내정보는 오른쪽 위.
+// 메뉴 = 주소모음·쇼핑 한 줄 (주식·코인 도구, 커뮤니티·회원가입은 2026-11 제거). 로그인/내정보는 오른쪽 위.
 const NAV = [
   { href: "/picks", label: "주소모음" },
   { href: "/shop", label: "쇼핑" },
-  { href: "/community", label: "커뮤니티" },
 ];
 
 export function Header() {
@@ -55,20 +54,12 @@ export function Header() {
               </button>
             </>
           ) : (
-            <>
-              <Link
-                href="/login"
-                className="text-sm rounded-full border border-neutral-300 dark:border-neutral-700 px-3.5 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-900 whitespace-nowrap"
-              >
-                로그인
-              </Link>
-              <Link
-                href="/signup"
-                className="text-sm rounded-full bg-brand text-white px-3.5 py-1.5 font-semibold hover:bg-brand-dark whitespace-nowrap"
-              >
-                회원가입
-              </Link>
-            </>
+            <Link
+              href="/login"
+              className="text-sm rounded-full border border-neutral-300 dark:border-neutral-700 px-3.5 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-900 whitespace-nowrap"
+            >
+              로그인
+            </Link>
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 // 개미팔자 (사주데이) 네이티브 광고 카드.
-// 홈 · 봇 커뮤니티 글에 동일 카피로 노출.
+// 홈 등에 동일 카피로 노출.
 // 클릭은 `https://sajuday.kr/lp/ant` 랜딩 페이지로 직행. 외부라 target=_blank +
 // rel=sponsored nofollow 로 SEO 오염 방지 + 광고 공시.
 

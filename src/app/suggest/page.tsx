@@ -11,7 +11,7 @@ import {
   statusLabel,
   type Suggestion,
 } from "@/lib/suggestions";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 
 export default function SuggestPage() {
   const router = useRouter();
@@ -86,10 +86,10 @@ export default function SuggestPage() {
     <main className="mx-auto max-w-3xl px-5 py-8 sm:py-12">
       <div className="mb-6">
         <Link
-          href="/community"
+          href="/me"
           className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
         >
-          ← 커뮤니티로
+          ← 내정보로
         </Link>
         <h1 className="mt-2 text-2xl sm:text-3xl font-bold">건의하기</h1>
         <p className="mt-2 text-sm text-neutral-500">
@@ -108,7 +108,7 @@ export default function SuggestPage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value.slice(0, 200))}
-            placeholder="예: 차트에 거래량 표시 추가해주세요"
+            placeholder="예: 주소모음에 ○○ 사이트도 넣어주세요"
             className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-transparent px-3 py-2 text-sm"
           />
         </label>

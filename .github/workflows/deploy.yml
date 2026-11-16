@@ -77,25 +77,7 @@ jobs:
       - name: SSH setup
         run: |
           install -d -m 700 ~/.ssh
-          python3 - <<'PY'
-          import base64, os, re, textwrap
-          # 공백·줄바꿈을 전부 지운 뒤 찾는다 (BEGIN/END 표시 줄 안에서 줄이 끊겨도 찾게)
-          pat = r"-----BEGINOPENSSHPRIVATEKEY-----(.*?)-----ENDOPENSSHPRIVATEKEY-----"
-          compact = re.sub(r"\s", "", os.environ["IWINV_SSH_KEY"])
-          m = re.search(pat, compact)
-          if not m:
-              try:
-                  m = re.search(pat, re.sub(r"\s", "", base64.b64decode(compact).decode()))
-              except Exception:
-                  m = None
-          if not m:
-              raise SystemExit("IWINV_SSH_KEY 형식이 아니에요: -----BEGIN OPENSSH PRIVATE KEY----- 부터 END 줄까지 전부 넣어 주세요")
-          body = "\n".join(textwrap.wrap(m.group(1), 70))
-          path = os.path.expanduser("~/.ssh/deploy_key")
-          with open(path, "w") as f:
-              f.write(f"-----BEGIN OPENSSH PRIVATE KEY-----\n{body}\n-----END OPENSSH PRIVATE KEY-----\n")
-          os.chmod(path, 0o600)
-          PY
+          python3 scripts/ci/write-ssh-key.py
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "::error::IWINV_SSH_KEY 키가 손상됐어요 — 서버에서 다시 복사해 넣어 주세요"; exit 1; }
           ssh-keyscan -T 15 "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
         env:

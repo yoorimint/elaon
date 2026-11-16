@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ShopPostProductsEditor } from "@/components/ShopPostProductsEditor";
-import { timeAgo } from "@/lib/community";
+import { timeAgo } from "@/lib/time-ago";
 import { POST_WORKFLOW_URL } from "@/lib/shop-config";
 import type { ShopPostQa, ShopPostRunInfo } from "@/lib/shop-post-types";
 import {

@@ -32,6 +32,14 @@ export const COUPANG_DISCLOSURE =
 // 하단 배너를 숨길 경로 (앞부분 일치)
 export const BOTTOM_BANNER_HIDDEN_PATHS = ["/admin"];
 
+// 쇼핑 글 화면(/shop/글주소)은 공용 배너 대신 그 글의 상품 바를 글 화면이 직접 띄운다 (ShopProductBottomBar)
+export function isShopPostPath(path: string): boolean {
+  return /^\/shop\/[^/]+$/.test(path) && !path.endsWith(".xml");
+}
+
+// 상품 바 버튼 문구
+export const SHOP_PRODUCT_BAR_CTA = "쿠팡에서 보기";
+
 // 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
 // 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.
 export const SHOW_SAJUDAY_PILL = false;

@@ -3,18 +3,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type Category = "free" | "strategy" | "question" | "bot";
 
-// 유저가 글쓰기 폼에서 선택 가능한 카테고리 (bot 제외)
+// 유저가 글쓰기 폼에서 선택 가능한 카테고리.
+// "전략공유"(strategy)·"봇 분석"(bot)은 주식·코인 백테스트 기능과 함께 2026-11 에 뺐다.
+// 예전 글은 DB 에 그대로 있고 라벨(CATEGORY_LABELS)로 계속 표시된다.
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: "free", label: "자유" },
-  { id: "strategy", label: "전략공유" },
   { id: "question", label: "질문" },
 ];
 
-// 커뮤니티 목록 페이지의 필터 버튼용 — bot 카테고리도 노출해서 유저가
-// 봇 글만 모아볼 수 있게 한다.
+// 커뮤니티 목록 필터 버튼 — 예전 "전략공유" 글도 모아볼 수 있게 남긴다. 봇 글은 목록에서 숨김(listPosts).
 export const FILTER_CATEGORIES: { id: Category; label: string }[] = [
   ...CATEGORIES,
-  { id: "bot", label: "봇 분석" },
+  { id: "strategy", label: "전략공유" },
 ];
 
 // 표시용 라벨 — bot 포함 전체
@@ -103,7 +103,9 @@ export async function listPosts(
   opts: { category?: Category; limit?: number; sort?: "new" | "hot" } = {},
 ): Promise<Post[]> {
   let q = supabase.from("posts").select("*").limit(opts.limit ?? 50);
+  // 봇 글 = 백테스트 자동 분석 (기능 제거로 첨부 결과도 사라짐) → 목록에서 숨긴다. 글 자체는 DB·주소에 남김
   if (opts.category) q = q.eq("category", opts.category);
+  else q = q.neq("category", "bot");
   if (opts.sort === "hot") {
     q = q.order("like_count", { ascending: false }).order("created_at", { ascending: false });
   } else {

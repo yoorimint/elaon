@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
-import { BacktestPreviewCard } from "@/components/BacktestPreviewCard";
 import { SajudayAd } from "@/components/SajudayAd";
 import {
   categoryLabel,
@@ -246,7 +245,11 @@ export default function PostDetailPage() {
           </div>
         ) : (
           <>
-            {post.backtest_slug && <BacktestPreviewCard slug={post.backtest_slug} />}
+            {post.backtest_slug && (
+              <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-3 text-xs text-neutral-500">
+                이 글에 첨부됐던 백테스트 결과는 백테스트 기능 종료로 더 이상 볼 수 없습니다.
+              </div>
+            )}
             <div className="mt-6 whitespace-pre-wrap text-[15px] leading-relaxed">
               {post.body}
             </div>
@@ -289,7 +292,7 @@ export default function PostDetailPage() {
           <>
             <div className="mt-6 rounded-xl bg-brand/5 border border-brand/20 p-3 text-xs text-neutral-600 dark:text-neutral-300">
               🤖 이 글은 자동 생성된 전략 분석입니다. 좋아요·신고는 비활성, 댓글만 가능합니다.
-              수치는 실제 백테스트 결과이며 투자 권유가 아닙니다.
+              수치는 당시 백테스트 결과이며 투자 권유가 아닙니다. (백테스트 기능은 종료됨)
             </div>
             <div className="mt-4">
               <SajudayAd variant="backtest" />

@@ -2,7 +2,7 @@
 // 서버(예약 실행 판단·대기 메모 예정 시각)와 관리자 화면(설정 칸·미리보기)이 같이 쓰는 순수 함수만 둔다.
 //
 // 동작 (src/lib/notion-sync.ts runNotionSync):
-//  - Supabase pg_cron 이 매시 정각 사이트 API 를 부른다 (supabase/shop-notion-cron.sql).
+//  - 서버 crontab 이 매시 2분 사이트 API 를 부른다 (scripts/server/notion-cron.sh — 2026-11-16 pg_cron 에서 옮김).
 //  - 지금 한국시간 "시"가 hours 에 있으면 발행 시각 → 대기열의 새 글을 perRun 편까지 공개.
 //    같은 시에 실행이 두 번 와도(늦게 온 cron·재시도) 그 시에 공개한 편수를 state.publishSlot 에 기록해 perRun 을 넘지 않는다.
 //  - 발행 시각이 아니면 새 글은 공개하지 않고, 이미 공개된 글의 수정·내림만 반영한다 (매시간 → 사장님이 고친 게 빨리 보이게).

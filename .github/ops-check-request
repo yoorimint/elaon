@@ -1,2 +1,2 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 .github/workflows/ops-check.yml 이 1회 실행된다 (읽기 전용 운영 점검)
-check: 4 — 커뮤니티 이용 현황
+check: 7 — 서버 안 예약 실행(crontab) 가능 여부

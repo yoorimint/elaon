@@ -166,8 +166,8 @@ export function syncDeps(sb: SupabaseClient, token: string, log?: (m: string) =>
   };
 }
 
-// ---------- 예약 실행 (Supabase pg_cron → POST /api/shop/notion-sync) ----------
-// supabase/shop-notion-cron.sql 이 DB 안에서 만든 랜덤 비밀값(shop_secrets.NOTION_CRON_SECRET)을 pg_cron 작업이 헤더로 보내고,
+// ---------- 예약 실행 (서버 crontab — scripts/server/notion-cron.sh → POST /api/shop/notion-sync) ----------
+// supabase/shop-notion-cron.sql 이 DB 안에서 만든 랜덤 비밀값(shop_secrets.NOTION_CRON_SECRET)을 예약 실행이 헤더로 보내고 (서버는 배포가 .env 에 같은 값을 적어 둠),
 // API 라우트는 service role 로 같은 값을 읽어 비교한다 (사장님이 비밀값을 복사할 필요 없음. 관리자 화면 허용 목록에는 없어 덮어쓸 수 없음)
 
 export const CRON_SECRET_NAME = "NOTION_CRON_SECRET";
@@ -191,7 +191,7 @@ export async function verifyCronSecret(sb: SupabaseClient, given: string | null)
 }
 
 // 실행 경로별 옵션 (Vercel 함수 60초 안에서: deadline 뒤에는 새 페이지를 시작하지 않는다 — 사진 많은 글도 한 편 10초 안팎)
-//  - cron: 예약 실행(매시 정각). 새 글은 발행 일정의 발행 시각에만 perRun 편, 공개 글 갱신·내림은 매번 시간 안에서 전부
+//  - cron: 예약 실행(매시). 새 글은 발행 일정의 발행 시각에만 perRun 편, 공개 글 갱신·내림은 매번 시간 안에서 전부
 //  - admin: 관리자 버튼. 언제나 전체 조회(놓친 수정·휴지통까지). 모드는 버튼마다 (남으면 화면에 "버튼 한 번 더" 안내)
 //      updates(기본) = "수정만 지금 반영": 공개 글 갱신·내림만, 새 글 0편 — 대기 글은 그대로 다음 발행 시각에
 //      all = "대기 글까지 전부 지금 올리기": 새 글 제한 없이 시간 안에서 전부

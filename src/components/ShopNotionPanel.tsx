@@ -3,7 +3,7 @@
 // 관리자 "📒 노션" 탭: 노션 "쇼핑 글" → 사이트 발행 상태와 버튼 두 개, 발행 일정 설정, 사장님용 사용 안내.
 //  - "수정만 지금 반영"(기본): 공개 글 갱신·내림만 — 대기 글은 그대로 다음 발행 시각에 (사장님 결정: 수정 하나 반영하려다 대기 글이 한꺼번에 올라가지 않게)
 //  - "대기 글까지 전부 지금 올리기"(보조, 확인 창): 대기 글까지 제한 없이 전부
-// 예약 실행(매시 정각, Supabase pg_cron → 사이트 API)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
+// 예약 실행(매시 2분, 서버 crontab → 사이트 API — scripts/server/notion-cron.sh)의 마지막 결과는 shop_config.notion_sync.lastRun 에서 읽는다.
 // 버튼은 같은 동기화 모듈을 서버에서 바로 돌린다 (src/app/api/shop/notion-sync).
 
 import { useState } from "react";
@@ -274,7 +274,7 @@ function NotionHelp() {
           &lsquo;{PROP.status}&rsquo;를 <b>{STATUS_LABEL.publish}</b>으로 → 위 <b>발행 일정</b>의 시각마다 정한 편수씩 대기열 순서로 공개 (기다리는 동안 &lsquo;{PROP.memo}&rsquo;에 &ldquo;발행 대기 — n번째, 예정 약 …&rdquo;), 공개되면 &lsquo;{PROP.siteUrl}&rsquo;에 글 주소가 적혀요. 기다리지 않고 바로 올리려면 위 <b>{SYNC_BUTTON.all}</b> (대기 글이 전부 같이 올라가요). 문제가 있으면 발행하지 않고 &lsquo;{PROP.memo}&rsquo;에 이유를 적어요.
         </li>
         <li>
-          공개된 글을 고치면 다음 정각 예약 실행 때 다시 가져와 갱신돼요 (바로 반영하려면 위 <b>{SYNC_BUTTON.updates}</b> — 대기 글은 안 올라가요). 내리려면 <b>{STATUS_LABEL.down}</b>(다음 정각 예약 실행 때 반영) 또는 페이지 삭제(휴지통 — 6시간마다 하는 전체 확인 때, 늦어도 7시간 안에 반영. 바로 하려면 위 <b>{SYNC_BUTTON.updates}</b>) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
+          공개된 글을 고치면 다음 매시 예약 실행 때 다시 가져와 갱신돼요 (바로 반영하려면 위 <b>{SYNC_BUTTON.updates}</b> — 대기 글은 안 올라가요). 내리려면 <b>{STATUS_LABEL.down}</b>(다음 매시 예약 실행 때 반영) 또는 페이지 삭제(휴지통 — 6시간마다 하는 전체 확인 때, 늦어도 7시간 안에 반영. 바로 하려면 위 <b>{SYNC_BUTTON.updates}</b>) → 사이트 글이 초안으로 내려가요 (지우지 않음). <b>{STATUS_LABEL.draft}</b>으로 돌리면 사이트 글은 그대로 둬요.
         </li>
       </ol>
     </section>

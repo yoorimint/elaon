@@ -193,6 +193,21 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     assert.ok(!/build-corp-codes/.test(read(join(ROOT, "package.json"))), "build 스크립트에 DART 데이터 생성 단계");
   });
 
+  // 2026-11-16: iwinv 이전 뒤 Supabase pg_cron 의 매시 요청이 사이트에 안 와서 13시 발행이 빠졌다 → 서버 crontab 으로 옮김
+  await test("배포가 서버 매시 노션 동기화(crontab)와 그 비밀값을 설치한다", () => {
+    const script = join(ROOT, "scripts", "server", "notion-cron.sh");
+    assert.ok(existsSync(script), "scripts/server/notion-cron.sh 없음");
+    assert.ok((statSync(script).mode & 0o111) !== 0, "notion-cron.sh 실행 권한 없음");
+    const sh = read(script);
+    assert.ok(/127\.0\.0\.1:3100\/api\/shop\/notion-sync/.test(sh), "서버 안 주소로 부르지 않음");
+    assert.ok(/curl[^\n]*-K -/.test(sh), "비밀값을 명령줄 인자로 넘김 (ps 로 보임)");
+    const deploy = read(join(ROOT, ".github", "workflows", "deploy.yml"));
+    assert.ok(deploy.includes("cp scripts/server/notion-cron.sh deploy/ops/"), "배포 묶음에 스크립트 안 넣음");
+    assert.ok(deploy.includes('echo "NOTION_CRON_SECRET=${CRON_SECRET}"'), ".env 에 NOTION_CRON_SECRET 안 적음");
+    assert.ok(/grep -v 'eloan-notion-cron'.*\| crontab -/.test(deploy), "crontab 을 한 줄로 유지하며 설치하지 않음");
+    assert.ok(/'2 \* \* \* \* \$DEPLOY_DIR\/ops\/notion-cron\.sh # eloan-notion-cron'/.test(deploy), "매시 2분 예약 줄 없음");
+  });
+
   console.log(`\n캐시 설정 테스트 ${passed}개 통과`);
 })().catch((e) => {
   console.error(e);

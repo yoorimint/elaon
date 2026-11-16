@@ -53,17 +53,25 @@ jobs:
           cp -r .next/standalone/. deploy/
           mkdir -p deploy/.next && cp -r .next/static deploy/.next/static
           if [ -d public ]; then cp -r public deploy/public; fi
+          mkdir -p deploy/ops && cp scripts/server/notion-cron.sh deploy/ops/ && chmod +x deploy/ops/notion-cron.sh
           test -f deploy/server.js
 
       # 실행 때 필요한 값 (.env 는 서버에만 두고 저장소에는 올리지 않음)
+      # NOTION_CRON_SECRET: 서버 안 매시 동기화(ops/notion-cron.sh)가 쓰는 값 — Supabase shop_secrets 에서 그대로 가져온다
+      #   (사이트 API 는 shop_secrets 값과 비교하므로 따로 관리할 값이 아님). 못 가져오면 배포는 하고 경고만 남긴다
       - name: Write runtime env
         run: |
           umask 077
+          CRON_SECRET=$(curl -fsS -m 20 "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/shop_secrets?name=eq.NOTION_CRON_SECRET&select=value" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r[0]["value"] if r else "")' || true)
+          if [ -n "$CRON_SECRET" ]; then echo "::add-mask::$CRON_SECRET"; else echo "::warning::NOTION_CRON_SECRET 을 못 가져와 서버 매시 동기화가 실패로 기록돼요"; fi
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}"
             echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}"
             echo "SITE_URL=https://www.eloan.kr"
+            echo "NOTION_CRON_SECRET=${CRON_SECRET}"
           } > deploy/.env
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -93,3 +101,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
             "sudo /usr/bin/systemctl restart eloan && sleep 5 && sudo /usr/bin/systemctl is-active eloan && curl -fsS -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3100/"
+
+      # 매시 노션 동기화 예약 (배포 계정 crontab, 매시 2분) — scripts/server/notion-cron.sh 주석 참고.
+      # 이 표시가 붙은 줄만 지우고 다시 넣으므로 몇 번 배포해도 한 줄만 남는다
+      - name: Install schedule
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+            "(crontab -l 2>/dev/null | grep -v 'eloan-notion-cron'; echo '2 * * * * $DEPLOY_DIR/ops/notion-cron.sh # eloan-notion-cron') | crontab - && crontab -l | grep eloan-notion-cron"

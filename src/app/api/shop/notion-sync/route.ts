@@ -1,5 +1,5 @@
 // POST /api/shop/notion-sync — 노션 → 사이트 동기화 (src/lib/notion-sync.ts) 를 부르는 두 경로
-//  1) 예약 실행: Supabase pg_cron 이 매시 정각 (supabase/shop-notion-cron.sql). 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
+//  1) 예약 실행: 서버 crontab 이 매시 2분 (scripts/server/notion-cron.sh, 배포가 설치). 옛 Supabase pg_cron(정각)이 와도 같은 규칙. 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
 //     → 이미 공개된 글의 갱신·내림은 매번 전부. 새 글은 관리자 화면 "발행 일정"의 발행 시각에만 정한 편수씩
 //       (발행 시각이 아니면 새 글은 건드리지 않음 — src/lib/notion-schedule.ts, 같은 시 중복 방지는 notion-sync.ts newAllowance)
 //  2) 관리자 버튼: 로그인한 관리자의 접속 토큰 (Authorization: Bearer …) → is_admin(). 본문 { mode }

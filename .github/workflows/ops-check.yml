@@ -74,3 +74,20 @@ jobs:
           print("발행 일정:", json.dumps(rows[0].get("notion_schedule"), ensure_ascii=False))
           print("이번 시 발행 기록:", json.dumps(st.get("publishSlot"), ensure_ascii=False))
           '
+
+      # 예약 실행 경로를 GitHub 에서 똑같이 불러 본다 (Supabase pg_cron 이 보내는 것과 같은 비밀값 헤더).
+      # 응답 200 이면 사이트·인증은 정상 → 예약이 안 돈 원인은 Supabase 쪽(옛 주소 기억·예약 작업 상태).
+      # 지금이 발행 시각이 아니면 새 글은 안 올리고 수정·내림만 반영한다 (예약 실행과 같은 규칙).
+      - name: 예약 실행 경로 직접 호출
+        if: contains(github.event.head_commit.message, '예약경로')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          SECRET=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_secrets?name=eq.NOTION_CRON_SECRET&select=value" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r[0]["value"] if r else "")')
+          if [ -z "$SECRET" ]; then echo "비밀값 없음 (SQL 미실행?)"; exit 0; fi
+          echo "::add-mask::$SECRET"
+          curl -s -m 70 -o /tmp/r.json -w "응답 %{http_code} (%{time_total}s)\n" -X POST "$SITE/api/shop/notion-sync" \
+            -H "content-type: application/json" -H "x-notion-cron-secret: $SECRET" -d '{}'
+          python3 -c 'import json; d=json.load(open("/tmp/r.json")); s=d.get("summary",d); print({k:v for k,v in s.items() if k!="items"} if isinstance(s,dict) else str(d)[:300])' || head -c 300 /tmp/r.json

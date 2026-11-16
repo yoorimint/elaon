@@ -18,7 +18,7 @@
 //  - 노션: 평소에는 지난 실행 뒤로 바뀐 페이지만 받는다(planScan). 휴지통·전체 맞춤은 주기적인 전체 조회에서
 //  - DB: 판단용 가벼운 목록(본문 없음)만 읽고, 실제로 갱신·내림할 글만 본문까지 읽는다(loadPost)
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   NOTION_CONVERT_VERSION,
   applyImages,
@@ -32,6 +32,7 @@ import {
   readPageProps,
   siteProps,
   unpublishedMemo,
+  type ImageTask,
   type LinkedPost,
   type NBlock,
   type NPage,
@@ -166,6 +167,26 @@ export function notionSlug(page: Pick<NPage, "id" | "created_time">): string {
 }
 
 export const pairKeyOf = (pageId: string) => `notion:${pageId}`;
+
+// 노션 페이지마다 정해진 글 id (uuid 모양). 사진 폴더(shop-images/<글 id>/)도 이 id 라서,
+// 처음 발행이 실패해 다음 실행에 다시 올려도 같은 폴더·같은 파일 이름에 덮어쓴다 (실패할 때마다 새 폴더에 사진이 쌓이지 않게)
+export function notionPostId(pageId: string): string {
+  const h = createHash("sha256").update(`notion-post:${pageId.replace(/-/g, "").toLowerCase()}`).digest("hex");
+  const variant = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+// 사진 원본 식별값. 노션 파일 주소는 가져올 때마다 뒤의 서명(쿼리 문자열)이 바뀌고 1시간 뒤 만료되므로 떼고 경로만 본다
+// (경로 = 노션이 저장한 그 파일 — 사진을 바꾸면 경로가 바뀐다). 외부 주소는 쿼리까지 그대로 (크기·버전 값일 수 있음)
+export function imageSourceKey(task: Pick<ImageTask, "kind" | "url">): string {
+  if (task.kind !== "file") return task.url;
+  try {
+    const u = new URL(task.url);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return task.url.split(/[?#]/)[0];
+  }
+}
 
 // ---------- 예약 실행: 발행 시각에만 새 글 ----------
 
@@ -427,21 +448,25 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linked
   const conv = convertNotionBlocks(tree, props.title);
   if (conv.problems.length) return { kind: "failed", reasons: conv.problems };
 
-  const postId = existing?.id ?? randomUUID();
+  const postId = existing?.id ?? notionPostId(page.id);
   const notes = [...conv.notes];
 
   // 사진: 노션 파일은 반드시 사이트 저장소로 복사(1시간 뒤 만료). 외부 주소 사진도 복사한다
   //  (원본이 지워지거나 막혀도 글이 깨지지 않게, 공개 글이 남의 서버를 매번 부르지 않게).
   //  외부 사진 복사가 실패하면(핫링크 차단 등) 원래 주소로 보여 주고 메모로 알린다 — 노션 파일 복사 실패만 발행을 막는다.
+  //  다시 올릴지는 원본 파일로 정한다 (캡션만 고쳐 블록 시각이 바뀌어도 같은 파일이면 재사용). 파일 이름도 원본으로 정해서
+  //  다시 올리게 돼도 같은 이름에 덮어쓴다 — 만료 서명이 든 주소로 이름을 만들면 올릴 때마다 저장소에 새 파일이 쌓인다
   const prevImages = existing?.content.notion.images ?? {};
-  const images: Record<string, { edited: string; src: string }> = {};
+  const images: NonNullable<ShopNotionRef["images"]> = {};
   const srcByBlock: Record<string, string> = {};
   const imageProblems: string[] = [];
   let externalKept = 0;
   for (const task of conv.images) {
+    const source = shortHash(imageSourceKey(task), 16);
     const prev = prevImages[task.notionBlockId];
-    if (prev && task.edited && prev.edited === task.edited) {
-      images[task.notionBlockId] = prev;
+    // 예전 기록(source 없음)은 예전처럼 블록 시각으로 비교
+    if (prev && (prev.source ? prev.source === source : !!task.edited && prev.edited === task.edited)) {
+      images[task.notionBlockId] = { ...prev, edited: task.edited, source };
       srcByBlock[task.blockId] = prev.src;
       continue;
     }
@@ -450,9 +475,9 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linked
       const ext = IMAGE_EXT[img.contentType];
       if (!ext) throw new Error(`사진 형식이 아니에요 (${img.contentType || "형식 모름"})`);
       if (img.bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("사진이 10MB 보다 커요");
-      const path = `${postId}/notion-${task.blockId}-${shortHash(`${task.edited}|${task.url}`)}.${ext}`;
+      const path = `${postId}/notion-${task.blockId}-${source.slice(0, 8)}.${ext}`;
       const src = await deps.store.uploadImage(path, img.bytes, img.contentType);
-      images[task.notionBlockId] = { edited: task.edited, src };
+      images[task.notionBlockId] = { edited: task.edited, src, source };
       srcByBlock[task.blockId] = src;
     } catch (e) {
       if (task.kind === "external" && /^https:\/\//i.test(task.url)) {
@@ -532,12 +557,22 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linked
   return { kind: existing ? "updated" : "published", slug: row.slug, notes };
 }
 
-// 본문이 같은지 (사진 기억·시각 같은 노션 연결 정보는 빼고)
-function sameBody(a: Pick<StoredPost, "title" | "description" | "content" | "products">, b: Pick<StoredPost, "title" | "description" | "content" | "products">): boolean {
+// 키 순서와 상관없는 JSON 문자열 (객체 키를 정렬, undefined 칸은 JSON 처럼 뺀다).
+// DB(Postgres jsonb)는 객체 키 순서를 지키지 않아서(짧은 키 먼저), 그냥 JSON.stringify 로 비교하면 같은 본문도 늘 "다름"이 된다
+export function stableJson(v: unknown): string {
+  return JSON.stringify(v, (_k, x: unknown) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : x,
+  );
+}
+
+// 본문이 같은지 (사진 기억·시각 같은 노션 연결 정보는 빼고). existing 은 DB 에서 읽은 값이라 키 순서가 다르다 → stableJson
+export function sameBody(a: Pick<StoredPost, "title" | "description" | "content" | "products">, b: Pick<StoredPost, "title" | "description" | "content" | "products">): boolean {
   const strip = (p: Pick<StoredPost, "title" | "description" | "content" | "products">) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { notion, ...rest } = p.content;
-    return JSON.stringify({ t: p.title, d: p.description, c: rest, p: p.products });
+    return stableJson({ t: p.title, d: p.description, c: rest, p: p.products });
   };
   return strip(a) === strip(b);
 }

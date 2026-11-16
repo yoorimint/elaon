@@ -26,10 +26,14 @@ import {
 import {
   CHANGED_SINCE_MARGIN_MS,
   FULL_SCAN_EVERY_MS,
+  imageSourceKey,
   newAllowance,
+  notionPostId,
   notionSlug,
   planScan,
   runNotionSync,
+  sameBody,
+  stableJson,
   type FetchedImage,
   type NotionPort,
   type PostRow,
@@ -134,8 +138,20 @@ const types = (bs: ShopManualBlock[]) => bs.map((b) => b.type);
 
 const minute = (ms: number) => new Date(Math.floor(ms / 60_000) * 60_000).toISOString();
 
+// 노션 파일 사진 주소는 가져올 때마다 서명(쿼리 문자열)이 새로 붙는다 (1시간 뒤 만료). 원본 파일 경로는 그대로
+let signSeq = 0;
+function resignFiles(blocks: NBlock[]) {
+  for (const b of blocks) {
+    const im = b.image as { type?: string; file?: { url: string } } | undefined;
+    if (b.type === "image" && im?.type === "file" && im.file) im.file.url = `${im.file.url.split("?")[0]}?X-Amz-Signature=sig${++signSeq}`;
+    if (b.children) resignFiles(b.children);
+  }
+  return blocks;
+}
+
 // honorFilter=false: "바뀐 글만" 조회에도 전부 돌려준다 (필터는 줄이기용일 뿐, 더 받아도 판단이 맞아야 함 — 예전 테스트 그대로 유지)
-function mockNotion(clock: () => number, o: { honorFilter?: boolean } = {}) {
+// signFiles: 본문을 가져올 때마다 노션 파일 사진 주소의 서명을 새로 붙인다 (실제 노션처럼)
+function mockNotion(clock: () => number, o: { honorFilter?: boolean; signFiles?: boolean } = {}) {
   const pages = new Map<string, { page: NPage; blocks: NBlock[] }>();
   const calls = { blockTree: 0, updatePage: 0, created: 0, queries: [] as (string | undefined)[] };
   const port: NotionPort = {
@@ -152,7 +168,8 @@ function mockNotion(clock: () => number, o: { honorFilter?: boolean } = {}) {
     },
     async blockTree(id) {
       calls.blockTree++;
-      return structuredClone(pages.get(id)!.blocks);
+      const tree = structuredClone(pages.get(id)!.blocks);
+      return o.signFiles ? resignFiles(tree) : tree;
     },
     async getPage(id) {
       const x = pages.get(id);
@@ -179,6 +196,19 @@ function mockNotion(clock: () => number, o: { honorFilter?: boolean } = {}) {
   return { port, pages, calls, edit };
 }
 
+// Supabase(Postgres jsonb)는 객체 키 순서를 지키지 않는다: 짧은 키 먼저, 같은 길이는 바이트 순. undefined 칸은 빠진다.
+// 메모리 저장소도 읽을 때 이 순서로 돌려줘서, 키 순서에 기대는 비교(예: JSON.stringify 로 본문 비교)를 테스트에서 잡는다.
+function jsonbOrder<T>(v: T): T {
+  const order = (x: unknown): unknown => {
+    if (Array.isArray(x)) return x.map(order);
+    if (!x || typeof x !== "object") return x;
+    const o = x as Record<string, unknown>;
+    const keys = Object.keys(o).sort((a, b) => Buffer.byteLength(a) - Buffer.byteLength(b) || Buffer.compare(Buffer.from(a), Buffer.from(b)));
+    return Object.fromEntries(keys.map((k) => [k, order(o[k])]));
+  };
+  return order(JSON.parse(JSON.stringify(v))) as T;
+}
+
 function memoryStore() {
   const posts: (PostRow & { pair_key: string; created_at: string })[] = [];
   const uploads: string[] = [];
@@ -191,14 +221,14 @@ function memoryStore() {
       const keys = pageIds && new Set(pageIds.map((id) => `notion:${id}`));
       const rows = posts
         .filter((p) => (keys ? keys.has(p.pair_key) : p.pair_key.startsWith("notion:")) && p.content.notion?.pageId)
-        .map((p) => ({ id: p.id, slug: p.slug, status: p.status, title: p.title, notion: structuredClone(p.content.notion!) }));
+        .map((p) => ({ id: p.id, slug: p.slug, status: p.status, title: p.title, notion: jsonbOrder(p.content.notion!) }));
       reads.listedRows += rows.length;
       return rows;
     },
     async loadPost(id) {
       reads.fullLoads++;
       const p = posts.find((x) => x.id === id);
-      return p ? (structuredClone(p) as unknown as StoredPost) : null;
+      return p ? (jsonbOrder(p) as unknown as StoredPost) : null;
     },
     async insertPost(row) {
       if (posts.some((p) => p.slug === row.slug)) return "duplicate";
@@ -210,7 +240,7 @@ function memoryStore() {
       Object.assign(p, structuredClone(patch));
     },
     async loadState() {
-      return state === null ? null : structuredClone(state);
+      return state === null ? null : jsonbOrder(state);
     },
     async saveState(s) {
       state = structuredClone(s);
@@ -626,6 +656,134 @@ async function main() {
     assert.equal(r.summary.unpublished, 1);
     assert.equal(s.posts[0].status, "draft");
     assert.equal(s.posts.length, 1);
+  });
+
+  // 운영에서 매시 공개 글 5개가 "갱신"으로 다시 저장되던 문제: 우리 메모 쓰기 직후라 다음 실행이 같은 분 재확인을 하는데,
+  // DB(jsonb)에서 읽은 본문은 키 순서가 달라 JSON.stringify 비교가 늘 "다름" → 갱신·메모 쓰기 → 다시 재확인… 이 매시 반복됐다
+  await test("동기화: 공개 글을 노션 변경 없이 매시 다시 돌려도(사진 주소 서명만 바뀜·DB 키 순서 다름) 갱신·사진 업로드·노션 쓰기 없음", async () => {
+    let clock = Date.parse("2026-11-16T09:02:08.000Z");
+    const n = mockNotion(() => clock, { signFiles: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10, newLimit: undefined };
+    const id = "a1a1a1a1-1111-2222-3333-444444444444";
+    n.pages.set(id, {
+      page: page(id, { status: "발행", category: "청소기", edited: "2026-11-16T08:50:00.000Z" }),
+      blocks: [
+        h(2, "써 보니"),
+        para(rt("가벼워서 ", { bold: true }), rt("매일 써요.")),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/file-1/a.jpg?X-Amz-Signature=old", "file", "거치대에 건 모습"),
+        img("https://img.example.com/b.png?w=600", "external"),
+        bullet("흡입력 좋음"),
+        para(rt("샘플 A100", { href: P })),
+      ],
+    });
+
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.published, 1);
+    const uploads = s.uploads.length;
+    assert.equal(uploads, 2);
+    const updatedAt = s.posts[0].updated_at;
+    const writes = n.calls.updatePage;
+
+    // 1시간 뒤: 우리 메모 쓰기와 같은 분이라 한 번 더 확인 → 내용이 같으니 "변경 없음" (갱신 아님)
+    clock += 60 * 60_000;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.updated, 0);
+    assert.equal(r.summary.unchanged, 1);
+    assert.deepEqual(r.changedSlugs, []);
+    assert.equal(n.calls.updatePage, writes); // 노션 메모 다시 안 씀 (쓰면 페이지 시각이 바뀌어 또 확인하게 됨)
+    assert.equal(s.uploads.length, uploads); // 사진 다시 안 올림
+    assert.equal(s.posts[0].updated_at, updatedAt); // 사이트맵 lastmod 그대로
+
+    // 2시간 뒤: 이제 본문도 안 가져온다
+    clock += 60 * 60_000;
+    const trees = n.calls.blockTree;
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.updated, 0);
+    assert.equal(r.summary.unchanged, 1);
+    assert.equal(n.calls.blockTree, trees);
+    assert.equal(s.posts[0].updated_at, updatedAt);
+  });
+
+  await test("본문 비교·사진 원본 식별·글 id: DB 키 순서·만료 서명과 상관없이 같고, 노션 페이지마다 고정", () => {
+    const a = { title: "t", description: "d", content: { kind: "manual" as const, blocks: [{ id: "b1", type: "paragraph" as const, text: "x" }], notion: { pageId: "p", url: "", lastEditedTime: "", syncedAt: "" } }, products: [{ name: "n", link: P }] };
+    assert.ok(sameBody(a, jsonbOrder(a)));
+    assert.notEqual(JSON.stringify(a), JSON.stringify(jsonbOrder(a))); // 그냥 stringify 하면 다르다 (예전 버그)
+    assert.ok(!sameBody(a, { ...a, title: "t2" }));
+    assert.equal(stableJson({ b: 1, a: { d: [{ y: 1, x: 2 }], c: undefined } }), '{"a":{"d":[{"x":2,"y":1}]},"b":1}');
+    const f = (q: string) => imageSourceKey({ kind: "file", url: `https://prod-files-secure.s3.us-west-2.amazonaws.com/s/f/a.jpg${q}` });
+    assert.equal(f("?X-Amz-Signature=1&X-Amz-Date=1"), f("?X-Amz-Signature=2&X-Amz-Date=2"));
+    assert.equal(f("?X-Amz-Signature=1"), "https://prod-files-secure.s3.us-west-2.amazonaws.com/s/f/a.jpg");
+    assert.notEqual(imageSourceKey({ kind: "external", url: "https://x.com/a.png?w=1" }), imageSourceKey({ kind: "external", url: "https://x.com/a.png?w=2" }));
+    const pid = "aaaaaaaa-1111-2222-3333-444444444444";
+    assert.match(notionPostId(pid), /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal(notionPostId(pid), notionPostId(pid.replace(/-/g, "")));
+    assert.notEqual(notionPostId(pid), notionPostId("bbbbbbbb-1111-2222-3333-444444444444"));
+  });
+
+  await test("사진: 캡션만 고치면(블록 시각·서명 바뀜, 원본 파일 같음) 글은 갱신하되 사진은 다시 올리지 않는다", async () => {
+    let clock = Date.parse("2026-11-16T09:02:08.000Z");
+    const n = mockNotion(() => clock, { signFiles: true });
+    const s = memoryStore();
+    const deps = { notion: n.port, store: s.store, fetchImage: okImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10, newLimit: undefined };
+    const id = "a2a2a2a2-1111-2222-3333-444444444444";
+    const photo = img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/file-2/c.jpg?X-Amz-Signature=old", "file", "처음 캡션");
+    n.pages.set(id, { page: page(id, { status: "발행", edited: "2026-11-16T08:50:00.000Z" }), blocks: [para(rt("본문")), photo, para(rt(P, { href: P }))] });
+    await runNotionSync(deps, opts);
+    assert.equal(s.uploads.length, 1);
+    const src = (s.posts[0].content.blocks.find((b) => b.type === "image") as { src?: string }).src;
+
+    clock += 60 * 60_000;
+    n.edit(id, (x) => {
+      const b = x.blocks[1];
+      (b.image as { caption: NRichText[] }).caption = [rt("고친 캡션")];
+      b.last_edited_time = minute(clock);
+    });
+    const r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.updated, 1);
+    assert.equal(s.uploads.length, 1);
+    const im = s.posts[0].content.blocks.find((b) => b.type === "image") as { src?: string; caption?: string };
+    assert.equal(im.src, src);
+    assert.equal(im.caption, "고친 캡션");
+  });
+
+  await test("사진: 파일 이름은 만료 서명이 아니라 원본 파일로 정한다 — 실패 뒤 다시 올려도 같은 이름(저장소에 안 쌓임)", async () => {
+    let clock = Date.parse("2026-11-16T09:02:08.000Z");
+    const n = mockNotion(() => clock, { signFiles: true });
+    const s = memoryStore();
+    let broken = true;
+    const fetchImage = async (url: string): Promise<FetchedImage> => {
+      if (broken && url.includes("file-4")) throw new Error("일시 오류");
+      return okImage();
+    };
+    const deps = { notion: n.port, store: s.store, fetchImage, siteUrl: "https://x", now: () => new Date(clock) };
+    const opts = { trigger: "cron" as const, parentPageId: "parent", maxPages: 10, newLimit: undefined };
+    const id = "a3a3a3a3-1111-2222-3333-444444444444";
+    n.pages.set(id, {
+      page: page(id, { status: "발행", edited: "2026-11-16T08:50:00.000Z" }),
+      blocks: [
+        para(rt("본문")),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/file-3/d.jpg?X-Amz-Signature=old"),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/file-4/e.jpg?X-Amz-Signature=old"),
+        para(rt(P, { href: P })),
+      ],
+    });
+    let r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.failed, 1);
+    assert.equal(s.uploads.length, 1);
+    const first = s.uploads[0];
+
+    // 다음 실행: 서명이 바뀐 주소로 다시 받아도 같은 파일 이름에 덮어쓴다
+    clock += 60 * 60_000;
+    broken = false;
+    n.edit(id, (x) => x.blocks.push(para(rt("고침"))));
+    r = await runNotionSync(deps, opts);
+    assert.equal(r.summary.published, 1);
+    assert.equal(s.uploads.length, 3);
+    assert.equal(s.uploads[1], first);
+    assert.equal(new Set(s.uploads).size, 2);
   });
 
   await test("동기화: 실패는 발행하지 않고 메모에 이유 — 같은 이유면 노션에 다시 쓰지 않고, 고치면 발행", async () => {

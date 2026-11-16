@@ -38,7 +38,7 @@ export function isShopPostPath(path: string): boolean {
 }
 
 // 상품 바 버튼 문구
-export const SHOP_PRODUCT_BAR_CTA = "쿠팡에서 보기";
+export const SHOP_PRODUCT_BAR_CTA = "오늘 가격 확인하기";
 
 // 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
 // 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.

@@ -1,2 +1,2 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 .github/workflows/ops-check.yml 이 1회 실행된다 (읽기 전용 운영 점검)
-check: 9 — 통신사 DNS 가 옛 주소를 기억하는 남은 시간
+check: 10 — 14시 서버 매시 동기화 첫 실행

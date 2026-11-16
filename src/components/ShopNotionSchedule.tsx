@@ -1,7 +1,7 @@
 "use client";
 
 // 관리자 📒 노션 탭 "발행 일정": 노션에서 '발행'으로 바꾼 새 글을 한국시간 몇 시에, 한 번에 몇 편씩 공개할지 (shop_config.notion_schedule).
-// 예약 실행(Supabase pg_cron 매시 정각)이 이 설정을 읽어 발행 시각에만 새 글을 공개한다 — 규칙은 src/lib/notion-schedule.ts 주석.
+// 예약 실행(서버 crontab 매시 2분 — scripts/server/notion-cron.sh)이 이 설정을 읽어 발행 시각에만 새 글을 공개한다 — 규칙은 src/lib/notion-schedule.ts 주석.
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -50,7 +50,7 @@ export function ShopNotionSchedule({
     try {
       const clean = await updateNotionSchedule(draft);
       onSaved(clean);
-      setMsg({ ok: true, text: "저장했어요 — 다음 정각 예약 실행부터 이 일정으로 공개하고, 대기 글 메모의 예정 시각도 새로 적어요." });
+      setMsg({ ok: true, text: "저장했어요 — 다음 매시 예약 실행부터 이 일정으로 공개하고, 대기 글 메모의 예정 시각도 새로 적어요." });
     } catch (e) {
       setMsg({ ok: false, text: `저장 실패: ${e instanceof Error ? e.message : String(e)}` });
     } finally {

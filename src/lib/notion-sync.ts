@@ -1,5 +1,5 @@
 // 노션 "쇼핑 글" → 사이트 쇼핑 글 동기화 (서버 전용).
-// 예약 실행(Supabase pg_cron 매시 정각 → src/app/api/shop/notion-sync), 관리자 버튼 두 개(같은 라우트 — "수정만 지금 반영"·"대기 글까지 전부 지금 올리기"),
+// 예약 실행(서버 crontab 매시 2분 → src/app/api/shop/notion-sync), 관리자 버튼 두 개(같은 라우트 — "수정만 지금 반영"·"대기 글까지 전부 지금 올리기"),
 // GitHub Actions 수동 실행(scripts/shop/notion-sync.ts)이 모두 이 runNotionSync 하나를 쓴다. 노션·DB·사진 저장은 deps 로 받아서 테스트에서 목업으로 바꿔 끼운다.
 //
 // 규칙 (사장님 결정: 노션 = 글 쓰는 곳, 상태를 "발행"으로 바꾸면 사이트에 공개)
@@ -170,7 +170,7 @@ export const pairKeyOf = (pageId: string) => `notion:${pageId}`;
 // ---------- 예약 실행: 발행 시각에만 새 글 ----------
 
 // 이번 실행에서 새로 공개할 수 있는 편수와 발행 칸.
-// 예약 실행은 매시 정각에 오지만, 같은 시에 두 번 와도(늦게 온 cron·재시도) 그 시에 이미 공개한 편수(state.publishSlot)를 빼서
+// 예약 실행은 매시 한 번 오지만, 같은 시에 두 번 와도(늦게 온 cron·재시도) 그 시에 이미 공개한 편수(state.publishSlot)를 빼서
 // 한 시에 perRun 편을 넘지 않는다. 앞 실행이 대기 글이 없어 0편이었으면 뒤 실행이 그 시의 몫을 쓸 수 있다.
 export function newAllowance(
   newLimit: SyncOptions["newLimit"],

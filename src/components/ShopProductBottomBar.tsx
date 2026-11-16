@@ -15,7 +15,7 @@ export function ShopProductBottomBar({ product }: { product: ShopBottomProduct |
       <a
         href={product.href}
         target="_blank"
-        rel="sponsored noopener"
+        rel="sponsored nofollow noopener"
         className="flex max-w-full items-center gap-3 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2"
         style={{ width: BAR_W, height: BAR_H }}
       >

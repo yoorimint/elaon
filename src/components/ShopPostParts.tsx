@@ -63,25 +63,29 @@ export function BuyButton({
 
 // 글 머리: 경로·종류·제목·작성일 + 공정위 고지 (예전 구성·칼럼 공통)
 // label: 직접 쓴 글은 "후기 분석"·"쇼핑 비교"가 아니므로 머리 문구를 따로 받는다
-//  - section: 경로(홈 / …)에 보일 목록 이름, kicker: 제목 위 작은 분류 (빈 값이면 안 보임)
+//  - section: 경로(홈 / …)에 보일 목록 이름, sectionHref: 그 목록 주소 (없으면 /shop), kicker: 제목 위 작은 분류 (빈 값이면 안 보임)
+// disclosure: 공정위 고지 문구를 보일지 (쇼핑 글은 언제나. 생활정보 글은 쿠팡 링크가 있을 때만 — ShopManualArticle)
 export function PostHeader({
   post,
   single,
   label,
+  disclosure = true,
 }: {
   post: ShopPost;
   single: boolean;
-  label?: { kicker?: string; byline: string; section?: string };
+  label?: { kicker?: string; byline: string; section?: string; sectionHref?: string };
+  disclosure?: boolean;
 }) {
   const kicker = label ? label.kicker?.trim() : single ? "REVIEW" : "COMPARISON";
   const byline = label?.byline ?? (single ? "eloan 후기 분석" : "eloan 쇼핑 비교");
   const section = label?.section ?? "쇼핑 비교";
+  const sectionHref = label?.sectionHref ?? "/shop";
   return (
     <>
       <nav className="text-[13px] text-neutral-400">
         <Link href="/" className="hover:text-neutral-600">홈</Link>
         <span className="mx-1.5">/</span>
-        <Link href="/shop" className="hover:text-neutral-600">{section}</Link>
+        <Link href={sectionHref} className="hover:text-neutral-600">{section}</Link>
       </nav>
 
       {kicker && <div className="mt-6 text-xs font-semibold tracking-[0.2em] text-brand">{kicker}</div>}
@@ -93,10 +97,12 @@ export function PostHeader({
       </div>
 
       {/* 공정위 지침: 글 상단에 경제적 이해관계 표시 */}
-      <p className="mt-5 flex gap-2 rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-[13px] leading-relaxed text-neutral-600 dark:text-neutral-400">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
-        {post.content.disclosure || DEFAULT_POST_DISCLOSURE}
-      </p>
+      {disclosure && (
+        <p className="mt-5 flex gap-2 rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-[13px] leading-relaxed text-neutral-600 dark:text-neutral-400">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-neutral-400" />
+          {post.content.disclosure || DEFAULT_POST_DISCLOSURE}
+        </p>
+      )}
     </>
   );
 }

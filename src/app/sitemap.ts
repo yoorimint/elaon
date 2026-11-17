@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase-server";
 import { PICK_CATEGORIES, listHubs } from "@/lib/picks";
 import { CHECKLISTS } from "@/lib/checklists";
 import { COMPARISONS } from "@/lib/comparisons";
+import { SECTION_META, sectionPostPath, type PostSection } from "@/lib/post-section";
+import { fetchPublishedSlugs } from "@/lib/shop-posts-public";
 
 const SITE = "https://www.eloan.kr";
 
@@ -45,28 +47,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
   ];
 
-  // 쇼핑 글도 색인에 노출 (주식·코인 도구, 커뮤니티는 2026-11 제거 → 410: src/lib/removed-routes.mjs)
+  // 쇼핑·생활정보 글도 색인에 노출 (주식·코인 도구, 커뮤니티는 2026-11 제거 → 410: src/lib/removed-routes.mjs).
+  // 섹션마다 따로 조회 — 한 테이블이라 섹션 조건(src/lib/post-section.ts)이 없으면 글이 다른 주소로 섞인다.
+  // 섹션 하나가 실패해도 나머지는 그대로 (sitemap 자체가 깨지지 않게)
   try {
     const sb = createServerClient();
-    const shopPosts = await sb
-      .from("shop_posts")
-      .select("slug, updated_at")
-      .eq("status", "published")
-      .order("published_at", { ascending: false })
-      .limit(1000);
-    const shopRoutes = (shopPosts.data ?? []).map((p: { slug: string; updated_at: string }) => ({
-      url: `${SITE}/shop/${p.slug}`,
-      lastModified: new Date(p.updated_at),
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    }));
-    return [
-      ...staticRoutes,
-      { url: `${SITE}/shop`, lastModified: now, changeFrequency: "daily" as const, priority: 0.8 },
-      ...shopRoutes,
-    ];
+    const sectionRoutes = async (section: PostSection): Promise<MetadataRoute.Sitemap> => {
+      const posts = await fetchPublishedSlugs(sb, section, 1000).catch(() => []);
+      return [
+        { url: `${SITE}${SECTION_META[section].path}`, lastModified: now, changeFrequency: "daily" as const, priority: 0.8 },
+        ...posts.map((p) => ({
+          url: `${SITE}${sectionPostPath(section, p.slug)}`,
+          lastModified: new Date(p.updated_at), // 실제 수정 시각
+          changeFrequency: "monthly" as const,
+          priority: 0.6,
+        })),
+      ];
+    };
+    return [...staticRoutes, ...(await sectionRoutes("shop")), ...(await sectionRoutes("info"))];
   } catch {
-    // DB 조회 실패 시에도 정적 경로만이라도 반환 (sitemap 자체가 깨지지 않게)
+    // DB 연결 자체가 안 되면 정적 경로만이라도 반환
     return staticRoutes;
   }
 }

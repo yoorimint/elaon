@@ -13,6 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isManualContent, ownPhoto, withPhoto, type PhotoSpot, type ShopPostContent, type ShopPostInputProduct } from "@/lib/shop-post-types";
 import { lintPost } from "./qa";
 import { requestShopRevalidate } from "@/lib/revalidate-signature";
+import { SECTION_META, sectionOf } from "@/lib/post-section";
 
 const REQUEST_FILE = ".github/shop-maintain-request";
 
@@ -51,7 +52,7 @@ async function listPosts(): Promise<void> {
     .order("created_at", { ascending: false });
   if (error) throw new Error(`목록 읽기 실패: ${error.message}`);
   const rows = (data ?? []) as Row[];
-  console.log(`📋 쇼핑 글 ${rows.length}개 (최신순)`);
+  console.log(`📋 글 ${rows.length}개 (최신순 · 생활정보 글은 [생활정보] 표시)`);
   for (const r of rows) {
     const qa = r.content?.qa;
     const verdict = qa?.passed === true ? "합격" : qa?.passed === false ? "미달" : qa ? "판정없음" : "검수없음";
@@ -65,7 +66,7 @@ async function listPosts(): Promise<void> {
     const files = await sb.storage.from("shop-images").list(r.id);
     const uploaded = files.error ? "?" : (files.data ?? []).length;
     console.log(
-      `- ${r.slug} | ${r.status} | ${r.created_at.slice(0, 16)} | ${verdict} 남은문제 ${left} | ${links} | 사진 저장 ${saved}·파일 ${uploaded} | ${r.title}`,
+      `- ${sectionOf(r.content) === "info" ? `[${SECTION_META.info.name}] ` : ""}${r.slug} | ${r.status} | ${r.created_at.slice(0, 16)} | ${verdict} 남은문제 ${left} | ${links} | 사진 저장 ${saved}·파일 ${uploaded} | ${r.title}`,
     );
     for (const x of (qa?.remaining ?? []).slice(0, 3)) console.log(`    · ${x.slice(0, 140)}`);
   }
@@ -73,17 +74,20 @@ async function listPosts(): Promise<void> {
 
 async function deletePosts(slugs: string[]): Promise<void> {
   const deleted: string[] = [];
+  const deletedInfo: string[] = []; // 생활정보 글 (/info 화면을 새로 만든다)
   for (const slug of slugs) {
-    const { data, error } = await sb.from("shop_posts").delete().eq("slug", slug).select("slug,title,status");
+    const { data, error } = await sb.from("shop_posts").delete().eq("slug", slug).select("slug,title,status,section:content->>section");
     if (error) console.error(`❌ ${slug}: 삭제 실패 — ${error.message}`);
     else if (!data?.length) console.warn(`⚠ ${slug}: 그런 글 없음`);
     else {
       console.log(`🗑 삭제: ${slug} (${data[0].status}) ${data[0].title}`);
-      deleted.push(slug);
+      (sectionOf({ section: data[0].section }) === "info" ? deletedInfo : deleted).push(slug);
     }
   }
   // 사이트 글 화면은 하루 캐시라, 지운 글이 바로 사라지게 갱신 요청
-  if (deleted.length) console.log(await requestShopRevalidate(process.env.SUPABASE_SERVICE_ROLE_KEY ?? "", deleted));
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (deleted.length) console.log(await requestShopRevalidate(key, deleted));
+  if (deletedInfo.length) console.log(await requestShopRevalidate(key, deletedInfo, { section: "info" }));
 }
 
 // 사진 파일 이름: "{상품 번호}-{자리}-{시각}.jpg" (예전 형식 "{상품 번호}-{시각}.jpg" 는 대표 사진)

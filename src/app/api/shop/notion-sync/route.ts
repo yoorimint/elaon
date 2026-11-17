@@ -1,4 +1,6 @@
-// POST /api/shop/notion-sync — 노션 → 사이트 동기화 (src/lib/notion-sync.ts) 를 부르는 두 경로
+// POST /api/shop/notion-sync — 노션 → 사이트 동기화 (src/lib/notion-sync.ts) 를 부르는 두 경로.
+// 한 번 부르면 섹션 둘을 차례로 돈다: 노션 "쇼핑 글" → /shop, 노션 "일반 글" → 생활정보 /info (src/lib/notion-section.ts).
+// 상태·일정·발행 편수는 섹션마다 따로. 응답은 쇼핑 결과를 예전처럼 맨 위에, 일반 글 결과는 info 에.
 //  1) 예약 실행: 서버 crontab 이 매시 2분 (scripts/server/notion-cron.sh, 배포가 설치). 옛 Supabase pg_cron(정각)이 와도 같은 규칙. 헤더 x-notion-cron-secret = shop_secrets.NOTION_CRON_SECRET
 //     → 이미 공개된 글의 갱신·내림은 매번 전부. 새 글은 관리자 화면 "발행 일정"의 발행 시각에만 정한 편수씩
 //       (발행 시각이 아니면 새 글은 건드리지 않음 — src/lib/notion-schedule.ts, 같은 시 중복 방지는 notion-sync.ts newAllowance)
@@ -10,9 +12,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { bearerToken, isAdminToken } from "@/lib/admin-token";
 import { pingIndexNow } from "@/lib/indexnow";
+import { combineSummaries } from "@/lib/notion-section";
+import type { NotionSyncSummary } from "@/lib/notion-shop";
 import { runNotionSync } from "@/lib/notion-sync";
 import { CRON_SECRET_HEADER, loadNotionToken, parentPageId, parseAdminSyncMode, routeSyncOptions, syncDeps, verifyCronSecret } from "@/lib/notion-sync-store";
-import { revalidateShop } from "@/lib/shop-revalidate";
+import { POST_SECTIONS, SECTION_META, sectionPostPath, type PostSection } from "@/lib/post-section";
+import { revalidateSection } from "@/lib/shop-revalidate";
 import { createServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -45,9 +50,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "노션 토큰이 없어요 — ⚙️ 설정 탭의 '노션' 칸에 먼저 넣어 주세요" }, { status: 400 });
   }
 
-  const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, notionToken), routeSyncOptions(kind, parentPageId(), startMs, mode));
-
-  if (changedSlugs.length) revalidateShop(changedSlugs);
-  if (newlyPublished.length) await pingIndexNow([...newlyPublished.map((s) => `/shop/${s}`), "/shop"]).catch(() => undefined);
-  return NextResponse.json(summary);
+  const summaries: Partial<Record<PostSection, NotionSyncSummary>> = {};
+  for (const section of POST_SECTIONS) {
+    const { summary, changedSlugs, newlyPublished } = await runNotionSync(
+      syncDeps(sb, notionToken, { section }),
+      routeSyncOptions(kind, parentPageId(), startMs, mode, section),
+    );
+    summaries[section] = summary;
+    if (changedSlugs.length) revalidateSection(section, changedSlugs);
+    if (newlyPublished.length) {
+      await pingIndexNow([...newlyPublished.map((s) => sectionPostPath(section, s)), SECTION_META[section].path]).catch(() => undefined);
+    }
+  }
+  return NextResponse.json(combineSummaries(summaries));
 }

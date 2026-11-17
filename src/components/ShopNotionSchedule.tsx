@@ -1,13 +1,16 @@
 "use client";
 
-// 관리자 📒 노션 탭 "발행 일정": 노션에서 '발행'으로 바꾼 새 글을 한국시간 몇 시에, 한 번에 몇 편씩 공개할지 (shop_config.notion_schedule).
+// 관리자 📒 노션 탭 "발행 일정": 노션에서 '발행'으로 바꾼 새 글을 한국시간 몇 시에, 한 번에 몇 편씩 공개할지.
+// 섹션마다 하나씩 (쇼핑 글: shop_config.notion_schedule 맨 위, 일반 글: notion_schedule.info — src/lib/notion-section.ts).
 // 예약 실행(서버 crontab 매시 2분 — scripts/server/notion-cron.sh)이 이 설정을 읽어 발행 시각에만 새 글을 공개한다 — 규칙은 src/lib/notion-schedule.ts 주석.
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { kstStamp } from "@/lib/notion-shop";
-import { NOTION_PER_RUN, nextPublishAt, normalizeSchedule, scheduleSummary, type NotionSchedule } from "@/lib/notion-schedule";
-import { updateNotionSchedule } from "@/lib/shop-config";
+import { NOTION_PER_RUN, hourLabel, nextPublishAt, normalizeSchedule, scheduleSummary, type NotionSchedule } from "@/lib/notion-schedule";
+import { NOTION_SECTIONS } from "@/lib/notion-section";
+import { SECTION_META, type PostSection } from "@/lib/post-section";
+import { updateNotionSchedule, type ShopConfig } from "@/lib/shop-config";
 
 // 한국시간 0~23시를 네 줄로 (휴대폰에서도 한 줄 6칸)
 const ROWS: { label: string; hours: number[] }[] = [
@@ -21,13 +24,16 @@ const PER_RUN_CHOICES = Array.from({ length: NOTION_PER_RUN.max - NOTION_PER_RUN
 const same = (a: NotionSchedule, b: NotionSchedule) => a.perRun === b.perRun && a.hours.join(",") === b.hours.join(",");
 
 export function ShopNotionSchedule({
+  section,
   schedule,
   onSaved,
 }: {
+  section: PostSection;
   schedule: NotionSchedule | null | undefined; // undefined = 저장 칸 없음 (supabase/shop-notion-cron.sql 미실행), null = 설정을 아직 못 읽음
-  onSaved: (s: NotionSchedule) => void;
+  onSaved: (column: NonNullable<ShopConfig["notion_schedule"]>) => void; // 저장한 칸 전체 (두 섹션 몫)
 }) {
-  const saved = schedule ?? normalizeSchedule(null);
+  const spec = NOTION_SECTIONS[section];
+  const saved = schedule ?? spec.defaultSchedule;
   const [draft, setDraft] = useState<NotionSchedule>(saved);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -48,8 +54,7 @@ export function ShopNotionSchedule({
     setBusy(true);
     setMsg(null);
     try {
-      const clean = await updateNotionSchedule(draft);
-      onSaved(clean);
+      onSaved(await updateNotionSchedule(section, draft));
       setMsg({ ok: true, text: "저장했어요 — 다음 매시 예약 실행부터 이 일정으로 공개하고, 대기 글 메모의 예정 시각도 새로 적어요." });
     } catch (e) {
       setMsg({ ok: false, text: `저장 실패: ${e instanceof Error ? e.message : String(e)}` });
@@ -63,10 +68,12 @@ export function ShopNotionSchedule({
 
   return (
     <section className="rounded-2xl border border-neutral-200 p-4 dark:border-neutral-800 sm:p-6">
-      <h2 className="font-bold">발행 일정</h2>
+      <h2 className="font-bold">
+        발행 일정 — {spec.dbTitle} <span className="text-sm font-semibold text-neutral-500">({SECTION_META[section].name})</span>
+      </h2>
       <p className="mt-1 text-xs leading-relaxed text-neutral-500">
-        노션에서 &lsquo;발행&rsquo;으로 바꾼 <b>새 글</b>을 몇 시에, 한 번에 몇 편씩 공개할지 정해요 (한국시간). 이미 공개된 글의 수정·내림은 시각과 상관없이{" "}
-        <b>매시간</b> 반영돼요.
+        노션 &lsquo;{spec.dbTitle}&rsquo;에서 &lsquo;발행&rsquo;으로 바꾼 <b>새 글</b>을 몇 시에, 한 번에 몇 편씩 공개할지 정해요 (한국시간, 이 데이터베이스만). 이미 공개된 글의
+        수정·내림은 시각과 상관없이 <b>매시간</b> 반영돼요. 기본: {spec.defaultSchedule.hours.map(hourLabel).join("·")} × {spec.defaultSchedule.perRun}편.
       </p>
 
       {schedule === undefined && (

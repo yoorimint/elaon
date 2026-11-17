@@ -4,6 +4,7 @@
 // 1) 주소를 아는 사람용 초안 조회 RPC(get_shop_post_by_slug, anon 키로 됨) — 예전 서버 미리보기와 같은 화면
 // 2) RPC 가 없거나(SQL 미실행) 못 찾으면 관리자 로그인 조회 — 조회 권한은 Supabase RLS(관리자만 초안 읽기)가 보장
 // 매번 새로 불러오므로 사진 등록 직후 새로고침해도 바로 보인다.
+// 섹션(쇼핑 /shop · 생활정보 /info)이 다른 글은 "찾을 수 없음" — 같은 테이블이라 slug 로는 섞여 나온다 (src/lib/post-section.ts)
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -12,28 +13,30 @@ import { supabase } from "@/lib/supabase";
 import { getPostBySlug } from "@/lib/shop-posts";
 import { fetchPostBySlugAnyStatus, fetchRelatedPosts } from "@/lib/shop-posts-public";
 import { postCategory } from "@/lib/shop-manual";
+import { SECTION_META, inSection, type PostSection } from "@/lib/post-section";
 import type { RelatedPost, ShopPost } from "@/lib/shop-post-types";
 
 type Loaded = { post: ShopPost; via: "link" | "admin"; related?: RelatedPost[] } | null;
 
-async function loadDraft(slug: string): Promise<Loaded> {
+async function loadDraft(slug: string, section: PostSection): Promise<Loaded> {
   const draft = await fetchPostBySlugAnyStatus(supabase, slug).catch(() => null);
   if (draft) {
-    const related = await fetchRelatedPosts(supabase, postCategory(draft), draft.slug).catch(() => []);
+    if (!inSection(draft.content, section)) return null;
+    const related = await fetchRelatedPosts(supabase, postCategory(draft), draft.slug, 4, section).catch(() => []);
     return { post: draft, via: "link", related };
   }
   const own = await getPostBySlug(slug).catch(() => null);
-  return own ? { post: own, via: "admin" } : null;
+  return own && inSection(own.content, section) ? { post: own, via: "admin" } : null;
 }
 
-export function ShopDraftPreview({ slug }: { slug: string }) {
+export function ShopDraftPreview({ slug, section = "shop" }: { slug: string; section?: PostSection }) {
   const [loaded, setLoaded] = useState<Loaded | undefined>(undefined);
 
   useEffect(() => {
-    loadDraft(slug)
+    loadDraft(slug, section)
       .then(setLoaded)
       .catch(() => setLoaded(null));
-  }, [slug]);
+  }, [slug, section]);
 
   if (loaded === undefined) {
     return <main className="mx-auto max-w-3xl px-5 py-12 text-center text-sm text-neutral-500">불러오는 중…</main>;
@@ -42,8 +45,8 @@ export function ShopDraftPreview({ slug }: { slug: string }) {
     return (
       <main className="mx-auto max-w-3xl px-5 py-12 text-center">
         <h1 className="text-xl font-bold">글을 찾을 수 없습니다</h1>
-        <Link href="/shop" className="mt-5 inline-block rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm">
-          쇼핑 비교 목록
+        <Link href={SECTION_META[section].path} className="mt-5 inline-block rounded-full border border-neutral-300 dark:border-neutral-700 px-5 py-2 text-sm">
+          {section === "shop" ? "쇼핑 비교 목록" : `${SECTION_META[section].name} 목록`}
         </Link>
       </main>
     );

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listPublishedPosts } from "@/lib/shop-posts-server";
 
-// 발행·내림·삭제 때마다 바로 갱신 요청(revalidateShop — 관리자 화면·노션 동기화·자동글·정리 스크립트).
+// 발행·내림·삭제 때마다 바로 갱신 요청(revalidateSection — 관리자 화면·노션 동기화·자동글·정리 스크립트).
 // 그게 실패해도 1시간 안에 보이게. (예전 1분은 방문마다 거의 매번 서버에서 다시 그려 CPU 를 썼다)
 export const revalidate = 3600;
 

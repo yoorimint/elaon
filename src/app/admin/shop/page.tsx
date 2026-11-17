@@ -17,7 +17,8 @@ import { ShopPasteDraft } from "@/components/ShopPasteDraft";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import { ShopNotionPanel } from "@/components/ShopNotionPanel";
 import { getSecretStatus, getShopConfig, updateDisclosureText, type ShopConfig } from "@/lib/shop-config";
-import { normalizeSchedule } from "@/lib/notion-schedule";
+import { sectionSchedule, sectionState } from "@/lib/notion-section";
+import { bySection } from "@/lib/post-section";
 import { DEFAULT_POST_DISCLOSURE } from "@/lib/shop-post-types";
 
 type Tab = "notion" | "paste" | "draft" | "published" | "settings";
@@ -83,7 +84,7 @@ export default function AdminShopPage() {
       <div className="mb-2">
         <h1 className="text-2xl sm:text-3xl font-bold">쇼핑 글 관리</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          노션 &lsquo;쇼핑 글&rsquo;에서 쓰고 상태를 &lsquo;발행&rsquo;으로 바꾸면 사이트에 올라가요. 다른 곳에서 쓴 글을 붙여넣어 만들 수도 있어요.
+          노션 &lsquo;쇼핑 글&rsquo;(→ 쇼핑)·&lsquo;일반 글&rsquo;(→ 생활정보)에서 쓰고 상태를 &lsquo;발행&rsquo;으로 바꾸면 사이트에 올라가요. 다른 곳에서 쓴 글을 붙여넣어 만들 수도 있어요.
         </p>
       </div>
       <AdminNav />
@@ -112,16 +113,17 @@ export default function AdminShopPage() {
 
       {tab === "notion" && (
         <ShopNotionPanel
+          // 섹션(쇼핑 글·일반 글)마다 상태·일정 — 한 칸 안에 나눠 저장 (src/lib/notion-section.ts)
           // 칸이 없으면(SQL 미실행) undefined, 설정을 못 읽었으면 null
-          state={config ? ("notion_sync" in config ? config.notion_sync ?? {} : undefined) : null}
+          states={config ? ("notion_sync" in config ? bySection((s) => sectionState(config.notion_sync, s)) : undefined) : null}
           // 발행 일정 칸이 없으면(shop-notion-cron.sql 미실행) undefined → 화면은 기본 일정을 보여 주고 저장은 막는다. 설정을 못 읽었으면 null
-          schedule={config ? ("notion_schedule" in config ? normalizeSchedule(config.notion_schedule) : undefined) : null}
+          schedules={config ? ("notion_schedule" in config ? bySection((s) => sectionSchedule(config.notion_schedule, s)) : undefined) : null}
           hasToken={hasNotionToken}
           onSynced={() => {
             void load();
             setReloadKey((k) => k + 1);
           }}
-          onScheduleSaved={(s) => setConfig((c) => (c ? { ...c, notion_schedule: s } : c))}
+          onScheduleSaved={(column) => setConfig((c) => (c ? { ...c, notion_schedule: column } : c))}
           onOpenSettings={() => go("settings")}
         />
       )}

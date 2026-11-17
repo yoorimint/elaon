@@ -3,6 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 // 타입만 가져온다(런타임 import 아님) — shop-config.ts 는 브라우저용 클라이언트를 만든다
 import type { ShopConfig } from "@/lib/shop-config";
+import { sectionOf } from "@/lib/post-section";
 import type {
   ShopPostContent,
   ShopPostInputProduct,
@@ -118,7 +119,7 @@ export async function insertPost(post: NewShopPost): Promise<string> {
   return (data as { slug: string }).slug;
 }
 
-// 자동 선정용 이력: 이미 쓴 조합 키, 직전 글의 상품 수, 최근 14일 카테고리
+// 자동 선정용 이력: 이미 쓴 조합 키, 직전 글의 상품 수, 최근 14일 카테고리 (직전 글·카테고리는 쇼핑 글만 — 생활정보 글은 빼고)
 export async function loadPostHistory(): Promise<{
   usedPairKeys: Set<string>;
   lastProductCount: number | null;
@@ -126,14 +127,15 @@ export async function loadPostHistory(): Promise<{
 }> {
   const { data, error } = await sb
     .from("shop_posts")
-    .select("pair_key, products, created_at, category:content->>category")
+    .select("pair_key, products, created_at, category:content->>category, section:content->>section")
     .order("created_at", { ascending: false })
     .limit(5000);
   if (error) throw new Error(`shop_posts 조회 실패: ${error.message}`);
-  const rows = (data ?? []) as { pair_key: string; products: unknown[]; created_at: string; category: string | null }[];
+  const all = (data ?? []) as { pair_key: string; products: unknown[]; created_at: string; category: string | null; section: string | null }[];
+  const rows = all.filter((r) => sectionOf({ section: r.section }) === "shop");
   const since = Date.now() - 14 * 24 * 3600 * 1000;
   return {
-    usedPairKeys: new Set(rows.map((r) => r.pair_key)),
+    usedPairKeys: new Set(all.map((r) => r.pair_key)),
     lastProductCount: rows[0] && Array.isArray(rows[0].products) ? rows[0].products.length : null,
     recentCategories: new Set(
       rows.filter((r) => r.category && new Date(r.created_at).getTime() >= since).map((r) => r.category as string),

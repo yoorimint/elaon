@@ -1,4 +1,5 @@
-// 노션 "쇼핑 글" → 사이트 동기화 (GitHub Actions "shop notion sync" 수동 실행 전용 — 예비 경로).
+// 노션 → 사이트 동기화 (GitHub Actions "shop notion sync" 수동 실행 전용 — 예비 경로).
+// 섹션 둘을 차례로: 노션 "쇼핑 글" → /shop, 노션 "일반 글" → 생활정보 /info (src/lib/notion-section.ts).
 // 평소 예약 실행은 서버 crontab 이 매시 2분 사이트 API 를 부른다 (scripts/server/notion-cron.sh).
 // 수동 실행이라 발행 시각과 상관없이, 발행 일정의 "한 번에 몇 편"(perRun)만큼 새 글을 공개한다. 전부 바로 올리려면 관리자 "대기 글까지 전부 지금 올리기".
 // 관리자 버튼(src/app/api/shop/notion-sync)과 같은 모듈(src/lib/notion-sync.ts)을 쓴다.
@@ -8,8 +9,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { pingIndexNow } from "@/lib/indexnow";
 import { summaryLine } from "@/lib/notion-shop";
+import { NOTION_SECTIONS } from "@/lib/notion-section";
 import { runNotionSync } from "@/lib/notion-sync";
 import { SITE_URL, loadNotionSchedule, loadNotionToken, parentPageId, syncDeps } from "@/lib/notion-sync-store";
+import { POST_SECTIONS, SECTION_META, sectionPostPath } from "@/lib/post-section";
 import { requestShopRevalidate } from "@/lib/revalidate-signature";
 
 const MAX_PAGES_PER_RUN = 20;
@@ -28,24 +31,35 @@ async function main() {
     return;
   }
 
-  const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, token, (m) => console.log(`  ${m}`)), {
-    trigger: "cron",
-    parentPageId: parentPageId(),
-    maxPages: MAX_PAGES_PER_RUN,
-    deadline: Date.now() + TIME_BUDGET_MS,
-    newLimit: (await loadNotionSchedule(sb)).perRun,
-  });
-  console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
-  console.log(`확인한 노션 글 ${summary.checked ?? 0}개 (${summary.scan === "full" ? "전체 조회" : "바뀐 글만"})`);
+  const deadline = Date.now() + TIME_BUDGET_MS;
+  let failed = false;
+  for (const section of POST_SECTIONS) {
+    console.log(`[${NOTION_SECTIONS[section].dbTitle} → ${SECTION_META[section].path}]`);
+    const { summary, changedSlugs, newlyPublished } = await runNotionSync(syncDeps(sb, token, { section, log: (m) => console.log(`  ${m}`) }), {
+      section,
+      trigger: "cron",
+      parentPageId: parentPageId(),
+      maxPages: MAX_PAGES_PER_RUN,
+      deadline,
+      newLimit: (await loadNotionSchedule(sb, section)).perRun,
+    });
+    console.log(`결과: ${summaryLine(summary)} · 변경 없음 ${summary.unchanged}`);
+    console.log(`확인한 노션 글 ${summary.checked ?? 0}개 (${summary.scan === "full" ? "전체 조회" : "바뀐 글만"})`);
 
-  if (changedSlugs.length) console.log(await requestShopRevalidate(key, changedSlugs, { siteUrl: SITE_URL }));
-  if (newlyPublished.length) await pingIndexNow([...newlyPublished.map((s) => `/shop/${s}`), "/shop"]).catch(() => undefined);
+    if (changedSlugs.length) {
+      console.log(await requestShopRevalidate(key, changedSlugs, { siteUrl: SITE_URL, ...(section === "info" ? { section } : {}) }));
+    }
+    if (newlyPublished.length) {
+      await pingIndexNow([...newlyPublished.map((s) => sectionPostPath(section, s)), SECTION_META[section].path]).catch(() => undefined);
+    }
+    if (summary.error) {
+      console.error(`중단: ${summary.error}`);
+      failed = true;
+    }
+  }
 
   // 노션 쪽 문제(토큰·권한)는 실패로 표시해 Actions 화면에서 보이게 한다
-  if (summary.error) {
-    console.error(`중단: ${summary.error}`);
-    process.exit(1);
-  }
+  if (failed) process.exit(1);
 }
 
 main().catch((e) => {

@@ -8,7 +8,7 @@ import { SajudayAd } from "@/components/SajudayAd";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 // 홈 = 주소모음 + 쇼핑 글. 주소모음은 내장 데이터(배포 때만 바뀜), 쇼핑 글은 발행·삭제 때
-// revalidateShop() 이 "/" 도 바로 새로 만든다 → 평소엔 1시간 캐시면 충분 (서버 계산 거의 없음)
+// revalidateSection() 이 "/" 도 바로 새로 만든다 → 평소엔 1시간 캐시면 충분 (서버 계산 거의 없음)
 export const revalidate = 3600;
 
 const SITE = "https://www.eloan.kr";

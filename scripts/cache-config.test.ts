@@ -103,8 +103,9 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     }
   });
 
-  await test("revalidateShop 은 홈(/)도 새로 만든다 (홈에 최신 쇼핑 글이 있음)", () => {
-    assert.match(read(join(ROOT, "src", "lib", "shop-revalidate.ts")), /revalidatePath\("\/"\)/);
+  await test("revalidateSection 은 홈(/)도 새로 만든다 (홈에 최신 쇼핑 글이 있음)", () => {
+    // 섹션별 화면 목록(SECTION_PAGES)의 쇼핑 몫 첫 칸이 홈
+    assert.match(read(join(ROOT, "src", "lib", "shop-revalidate.ts")), /shop: \["\/",/);
   });
 
   // ─── 제거한 주식·코인 도구 (2026-11) ───────────────────────────────
@@ -130,6 +131,18 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
       MOVED.map((m) => ({ source: m.source, destination: m.destination, statusCode: 301 })),
     );
     for (const m of MOVED) assert.ok(!GONE_PREFIXES.some((g) => m.source === g || m.source.startsWith(g + "/")), m.source);
+  });
+
+  // 생활정보(/info, 2026-11-17~): shop_posts 를 쇼핑과 같이 써서 slug 가 같은 공간 — 다른 섹션 글이 열리면 안 된다
+  await test("쇼핑·생활정보 글 화면은 자기 섹션 글만 연다 (다른 섹션 글이면 notFound), 메뉴·사이트맵·RSS 에 생활정보", () => {
+    for (const [file, section] of [["src/app/shop/[slug]/page.tsx", "shop"], ["src/app/info/[slug]/page.tsx", "info"]] as const) {
+      const src = read(join(ROOT, ...file.split("/")));
+      assert.match(src, new RegExp(`lookupPublishedPost\\([^,]+, "${section}"\\)`), file);
+      assert.match(src, /otherSection[^\n]*\)\s*notFound\(\)/, file);
+    }
+    assert.match(read(join(ROOT, "src", "components", "Header.tsx")), /href: "\/info", label: "생활정보"/);
+    assert.match(read(join(ROOT, "src", "app", "sitemap.ts")), /sectionRoutes\("info"\)/);
+    assert.match(read(join(ROOT, "src", "app", "rss.xml", "route.ts")), /postsOf\("info"\)/);
   });
 
   await test("헤더 메뉴·사이트맵·RSS·홈에 제거한 경로 링크가 없다", () => {

@@ -8,7 +8,7 @@
 // 쓰는 엔드포인트 (Notion-Version 2026-03-11)
 //  GET   /blocks/{id}/children          페이지·블록의 한 단계 children (start_cursor 로 이어 받기)
 //  GET   /databases/{id}                 data_sources[0].id 얻기
-//  POST  /databases                      "쇼핑 글" 데이터베이스 만들기 (initial_data_source.properties)
+//  POST  /databases                      "쇼핑 글"·"일반 글" 데이터베이스 만들기 (initial_data_source.properties)
 //  GET   /data_sources/{id}              속성 구성 확인
 //  PATCH /data_sources/{id}              빠진 속성 추가
 //  POST  /data_sources/{id}/query        페이지 목록 (휴지통 페이지는 기본으로 빠진다. last_edited_time 필터로 바뀐 것만)
@@ -183,13 +183,14 @@ export function createNotionClient(opts: NotionClientOptions) {
     if (Object.keys(missing).length) await request("PATCH", `/data_sources/${dataSourceId}`, { properties: missing });
   }
 
-  // "쇼핑 글" 데이터베이스 찾기 → 없으면 만들기.
+  // 섹션 데이터베이스("쇼핑 글"·"일반 글" — src/lib/notion-section.ts) 찾기 → 없으면 만들기. 칸 구성은 두 섹션이 같다
   //  1) 저장해 둔 id 가 살아 있으면 그것 (사장님이 이름을 바꿔도 이어서 쓴다)
-  //  2) 부모 페이지 바로 아래에서 이름이 "쇼핑 글"인 데이터베이스
+  //  2) 부모 페이지 바로 아래에서 이름이 spec.title 인 데이터베이스
   //  3) 둘 다 없으면 새로 만든다
   async function ensureDatabase(
     parentPageId: string,
     known?: { databaseId?: string; dataSourceId?: string },
+    spec: { title: string; icon: string } = { title: NOTION_DB_TITLE, icon: "🛒" },
   ): Promise<{ databaseId: string; dataSourceId: string; databaseUrl?: string; created: boolean }> {
     const fromDatabase = async (databaseId: string) => {
       const db = await request<Database>("GET", `/databases/${databaseId}`).catch((e) => {
@@ -209,7 +210,7 @@ export function createNotionClient(opts: NotionClientOptions) {
     }
     const kids = await listChildren(parentPageId);
     const match = kids.find(
-      (b) => b.type === "child_database" && !b.in_trash && ((b.child_database as { title?: string } | undefined)?.title ?? "").trim() === NOTION_DB_TITLE,
+      (b) => b.type === "child_database" && !b.in_trash && ((b.child_database as { title?: string } | undefined)?.title ?? "").trim() === spec.title,
     );
     if (match) {
       const found = await fromDatabase(match.id);
@@ -220,8 +221,8 @@ export function createNotionClient(opts: NotionClientOptions) {
     }
     const created = await request<Database>("POST", "/databases", {
       parent: { type: "page_id", page_id: parentPageId },
-      title: [{ type: "text", text: { content: NOTION_DB_TITLE } }],
-      icon: { type: "emoji", emoji: "🛒" },
+      title: [{ type: "text", text: { content: spec.title } }],
+      icon: { type: "emoji", emoji: spec.icon },
       is_inline: true,
       initial_data_source: { properties: databaseProperties() },
     });

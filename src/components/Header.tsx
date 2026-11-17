@@ -6,10 +6,12 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { VisitorBadge } from "./VisitorBadge";
 
-// 메뉴 = 주소모음·쇼핑 한 줄 (주식·코인 도구, 커뮤니티·회원가입은 2026-11 제거). 로그인/내정보는 오른쪽 위.
+// 메뉴 = 주소모음·쇼핑·생활정보 한 줄 (주식·코인 도구, 커뮤니티·회원가입은 2026-11 제거). 로그인/내정보는 오른쪽 위.
+// 생활정보(/info) = 노션 "일반 글" (2026-11-17~, src/lib/post-section.ts)
 const NAV = [
   { href: "/picks", label: "주소모음" },
   { href: "/shop", label: "쇼핑" },
+  { href: "/info", label: "생활정보" },
 ];
 
 export function Header() {

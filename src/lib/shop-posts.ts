@@ -3,7 +3,8 @@
 
 import { supabase } from "./supabase";
 import { sanitizeManualInput, type ManualPostInput } from "./shop-manual";
-import type { NotionSyncSummary } from "./notion-shop";
+import type { NotionSyncResponse } from "./notion-section";
+import { whereSection } from "./post-section";
 import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostRunInfo, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products"> & {
@@ -13,10 +14,14 @@ export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "
   notion_url?: string | null; // 노션에서 온 글이면 노션 페이지 주소 (content.notion.url)
 };
 
+// 관리자 쇼핑 글 목록: 쇼핑 글만 (생활정보 글은 노션 "일반 글"에서만 관리 — src/lib/post-section.ts)
 export async function listAllPosts(limit = 100): Promise<AdminPostRow[]> {
-  const { data, error } = await supabase
-    .from("shop_posts")
-    .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run,kind:content->>kind,notion_url:content->notion->>url")
+  const { data, error } = await whereSection(
+    supabase
+      .from("shop_posts")
+      .select("id,slug,title,status,created_at,published_at,products,qa:content->qa,run:content->run,kind:content->>kind,notion_url:content->notion->>url"),
+    "shop",
+  )
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -105,14 +110,15 @@ export async function refreshShopPages(slug: string): Promise<void> {
 }
 
 // 관리자 📒 노션 탭 버튼: 서버가 관리자 확인 후 동기화 모듈을 돌리고 결과 요약을 돌려준다 (src/app/api/shop/notion-sync)
+// 쇼핑 글·일반 글 두 섹션을 같이 돈다 (응답: 쇼핑 결과 + info 에 일반 글 결과)
 // mode: "updates" = 수정만 지금 반영(새 글 0편), "all" = 대기 글까지 전부 지금 올리기
-export async function syncFromNotion(mode: "updates" | "all"): Promise<NotionSyncSummary> {
+export async function syncFromNotion(mode: "updates" | "all"): Promise<NotionSyncResponse> {
   const res = await fetch("/api/shop/notion-sync", {
     method: "POST",
     headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
     body: JSON.stringify({ mode }),
   });
-  const body = (await res.json().catch(() => ({}))) as NotionSyncSummary & { error?: string };
+  const body = (await res.json().catch(() => ({}))) as NotionSyncResponse & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `서버 오류 ${res.status}`);
   return body;
 }

@@ -10,10 +10,14 @@
 //  - 머리: 경로는 "홈 / 쇼핑", 제목 위 분류는 카테고리(없으면 안 보임) — AI 글의 "쇼핑 비교 / REVIEW" 와 구분
 //  - 박스(노션 콜아웃)·인용: 안의 블록을 같은 규칙으로 그리되 여백을 촘촘하게. 콜아웃 색은 BOX_BG·BOX_TEXT (노션 색 이름 → 라이트·다크 색)
 //  - 구매 버튼 문구: 노션 링크 글자(label)가 있으면 그대로, 없으면 기본 "쿠팡에서 가격 보기". 사진 캡션은 사진 아래에
+//  - 생활정보 글(content.section = "info", /info — src/lib/post-section.ts): 머리 경로 "홈 / 생활정보", 관련 글 없음.
+//    쿠팡 파트너스 고지·가격 안내 문구는 쿠팡 링크가 있는 글에만 (쇼핑 글은 예전처럼 언제나)
 
 import { ImageIcon } from "lucide-react";
 import { BuyButton, Paragraphs, PostHeader, RelatedPosts } from "@/components/ShopPostParts";
 import { isPartnersLink } from "@/lib/coupang-link";
+import { SECTION_META, sectionOf, type PostSection } from "@/lib/post-section";
+import { hasCoupangLink } from "@/lib/shop-manual";
 import type { ManualShopPost, RelatedPost, ShopInlineSpan, ShopManualBlock } from "@/lib/shop-post-types";
 
 type ImageBlock = Extract<ShopManualBlock, { type: "image" }>;
@@ -78,6 +82,12 @@ export function boxTone(color?: string): string {
 
 const isNote = (text: string) => /^\s*※/.test(text);
 
+// 섹션별 글 머리·꼬리. coupangOnly = 고지·가격 안내를 쿠팡 링크가 있을 때만
+const LOOK: Record<PostSection, { byline: string; coupangOnly: boolean; related: boolean }> = {
+  shop: { byline: "eloan 쇼핑", coupangOnly: false, related: true },
+  info: { byline: "eloan 생활정보", coupangOnly: true, related: false },
+};
+
 type RenderOpts = {
   post: ManualShopPost;
   preview: boolean;
@@ -99,18 +109,28 @@ export function ShopManualArticle({
   imageSlot?: (block: ImageBlock) => React.ReactNode;
 }) {
   const { blocks } = post.content;
+  const section = sectionOf(post.content);
+  const look = LOOK[section];
+  const sponsored = !look.coupangOnly || hasCoupangLink(post);
 
   return (
     // break-keep: 한국어 단어 단위 줄바꿈
     <article className="mx-auto max-w-2xl break-keep px-5 pb-10 pt-8 sm:pt-12 text-[17px] leading-[1.8] text-neutral-700 dark:text-neutral-300">
-      <PostHeader post={post} single label={{ section: "쇼핑", kicker: post.content.category, byline: "eloan 쇼핑" }} />
+      <PostHeader
+        post={post}
+        single
+        label={{ section: SECTION_META[section].name, sectionHref: SECTION_META[section].path, kicker: post.content.category, byline: look.byline }}
+        disclosure={sponsored}
+      />
 
       <div className="mt-8">{renderBlocks(blocks, { post, preview, imageSlot, inBox: false, colored: false })}</div>
 
-      <p className="mt-12 text-[13px] leading-relaxed text-neutral-400">
-        가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.
-      </p>
-      <RelatedPosts related={related} />
+      {sponsored && (
+        <p className="mt-12 text-[13px] leading-relaxed text-neutral-400">
+          가격·재고·사양은 바뀔 수 있으니 판매 페이지에서 최종 확인하세요.
+        </p>
+      )}
+      {look.related && <RelatedPosts related={related} />}
     </article>
   );
 }

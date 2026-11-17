@@ -94,7 +94,7 @@ import {
 import { POST_SECTIONS, inSection, sectionOf, sectionPostPath, whereSection, type PostSection } from "@/lib/post-section";
 import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts, fetchShopGuideForInfo } from "@/lib/shop-posts-public";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
-import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_LABEL } from "@/lib/ads-config";
+import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, hidesSiteBottomBar } from "@/lib/ads-config";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -2260,7 +2260,10 @@ async function main() {
     // 생활정보 글 화면이 서버에서 골라 띄우고, 쇼핑 글이 바뀌면 생활정보 글 화면도 새로 만든다 (내린 쇼핑 글로 가는 바가 남지 않게)
     const src = (...p: string[]) => readFileSync(join(process.cwd(), "src", ...p), "utf8");
     const page = src("app", "info", "[slug]", "page.tsx");
-    assert.match(page, /findShopGuideForInfo\(postCategory\(post\), post\.slug\)/);
+    assert.match(page, /INFO_GUIDE_BAR_ENABLED \? await findShopGuideForInfo\(postCategory\(post\), post\.slug\) : null/);
+    // 2026-11-17 사장님 결정: 일단 끔 → 생활정보 글은 하단 바가 하나도 없다 (관련 글 바 꺼짐 + 공용 쿠팡 배너 숨김)
+    assert.equal(INFO_GUIDE_BAR_ENABLED, false);
+    assert.ok(hidesSiteBottomBar("/info/some-post"));
     assert.match(page, /<InfoShopGuideBar guide=\{guide\} \/>/);
     assert.match(src("lib", "shop-revalidate.ts"), /shop: \["\/info\/\[slug\]"\]/);
   });

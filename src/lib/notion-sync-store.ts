@@ -23,6 +23,7 @@ import { inSection, type PostSection } from "./post-section";
 import { DEFAULT_POST_DISCLOSURE, isManualContent } from "./shop-post-types";
 
 const BUCKET = "shop-images";
+export const IMAGE_CACHE_SECONDS = "31536000"; // 1년 (Supabase storage 의 cacheControl 은 초 단위 문자열)
 
 // 가벼운 목록에 읽는 칸 (별칭:content->notion->>키 — PostgREST JSON 경로 select)
 const LINKED_COLUMNS = [
@@ -147,8 +148,11 @@ export function supabaseSyncStore(sb: SupabaseClient, section: PostSection = "sh
       const { data } = await sb.from("shop_config").select("disclosure_text").eq("id", 1).maybeSingle();
       return ((data as { disclosure_text?: string } | null)?.disclosure_text ?? "").trim() || DEFAULT_POST_DISCLOSURE;
     },
+    // 브라우저·CDN 캐시 1년: 파일 이름이 원본 해시 + 변환 버전으로 정해져서(notion-sync.ts notionImagePath)
+    // 같은 이름에는 언제나 같은 내용이 들어간다 → 오래 캐시해도 옛 사진이 보일 일이 없다 (사진을 바꾸면 이름이 바뀜).
+    // 전송량(egress)을 줄이려고 (Supabase 무료 한도 월 약 10GB)
     async uploadImage(path, bytes, contentType) {
-      const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true });
+      const up = await sb.storage.from(BUCKET).upload(path, bytes, { contentType, upsert: true, cacheControl: IMAGE_CACHE_SECONDS });
       if (up.error) throw new Error(`사진 업로드 실패: ${up.error.message}`);
       return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
     },

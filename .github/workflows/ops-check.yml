@@ -5,6 +5,7 @@ name: ops check
 #  1) 바깥에서: 주요 페이지 응답 코드, 실제 HTTPS 인증서 만료일 (GitHub 서버에서 보므로 중계 없이 진짜 인증서)
 #  2) 서버 안(배포 계정 eloan, 읽기 전용 명령만): 서비스 상태·메모리·디스크·재부팅 필요 여부
 #  3) Supabase: 노션 예약 실행(서버 crontab → /api/shop/notion-sync) 마지막 기록 — 쇼핑 글·일반 글(생활정보) 섹션 각각
+#     + 무료 한도 사용량(사진 저장 용량·글 수·DB 추정 — scripts/ops/usage.ts)
 # 저장소가 공개라 로그도 공개 — 비밀값·방문자 IP 는 찍지 않는다.
 on:
   push:
@@ -98,6 +99,19 @@ jobs:
           show("쇼핑 글", {k: v for k, v in st.items() if k != "info"}, {k: v for k, v in sch.items() if k != "info"}, "1·9·17시 1편")
           show("일반 글", st.get("info") or {}, sch.get("info"), "19시 1편")
           '
+
+      # Supabase 무료 한도 사용량: 사진 저장(1GB 대비 %)·글 수·DB 추정 (scripts/ops/usage.ts — 매일 감시 usage-watch.yml 과 같은 계산).
+      # 여기서는 보기만 한다 (70% 이상이어도 이 점검은 실패시키지 않음)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Supabase 사용량
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx --tsconfig tsconfig.json scripts/ops/usage.ts || echo "사용량 조회 실패 (점검은 계속)"
 
       # 예약 실행 경로를 GitHub 에서 똑같이 불러 본다 (Supabase pg_cron 이 보내는 것과 같은 비밀값 헤더).
       # 응답 200 이면 사이트·인증은 정상 → 예약이 안 돈 원인은 Supabase 쪽(옛 주소 기억·예약 작업 상태).

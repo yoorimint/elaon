@@ -50,10 +50,13 @@ import {
   parseAdminSyncMode,
   routeSyncOptions,
   sameSecret,
+  IMAGE_CACHE_SECONDS,
   supabaseSyncStore,
   verifyCronSecret,
 } from "@/lib/notion-sync-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import sharp from "sharp";
+import { COMPRESS_VERSION } from "@/lib/image-compress";
 import {
   DEFAULT_INFO_SCHEDULE,
   DEFAULT_NOTION_SCHEDULE,
@@ -241,10 +244,11 @@ function jsonbOrder<T>(v: T): T {
 type MemoryDb = {
   posts: (PostRow & { pair_key: string; created_at: string })[];
   uploads: string[];
+  files: Map<string, { contentType: string; bytes: Uint8Array }>; // 저장소에 마지막으로 올린 내용 (이름별)
   syncColumn: Record<string, unknown> | null; // null = 칸 없음 (SQL 미실행)
   scheduleColumn: unknown;
 };
-const newMemoryDb = (): MemoryDb => ({ posts: [], uploads: [], syncColumn: {}, scheduleColumn: { ...DEFAULT_NOTION_SCHEDULE } });
+const newMemoryDb = (): MemoryDb => ({ posts: [], uploads: [], files: new Map(), syncColumn: {}, scheduleColumn: { ...DEFAULT_NOTION_SCHEDULE } });
 
 // 섹션 하나에 묶인 저장소 (실제 supabaseSyncStore 와 같은 규칙: pair_key 앞부분·content.section 으로 목록, 칸 안 섹션 몫만 읽고 씀)
 function memoryStore(section: PostSection = "shop", db: MemoryDb = newMemoryDb()) {
@@ -287,8 +291,9 @@ function memoryStore(section: PostSection = "shop", db: MemoryDb = newMemoryDb()
     async disclosure() {
       return "고지 문구";
     },
-    async uploadImage(path) {
+    async uploadImage(path, bytes, contentType) {
       uploads.push(path);
+      db.files.set(path, { contentType, bytes });
       return `https://cdn.example/shop-images/${path}`;
     },
   };
@@ -869,6 +874,76 @@ async function main() {
     assert.equal(s.uploads.length, 3);
     assert.equal(s.uploads[1], first);
     assert.equal(new Set(s.uploads).size, 2);
+  });
+
+  await test("사진 압축: 큰 사진은 1200px WebP 로 바꿔 '-w1.webp' 이름으로, GIF·깨진 사진은 원본 형식·예전 이름으로 올린다 (발행은 그대로)", async () => {
+    const clock = Date.parse("2026-11-17T09:02:00.000Z");
+    const n = mockNotion(() => clock);
+    const s = memoryStore();
+    // 무늬 있는 큰 PNG (2400×1600)
+    const w = 2400, h = 1600;
+    const raw = Buffer.alloc(w * h * 3);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) raw.set([(x * 7 + y * 3) & 0xff, (x * y) & 0xff, ((x ^ y) * 5) & 0xff], (y * w + x) * 3);
+    const bigPng = new Uint8Array(await sharp(raw, { raw: { width: w, height: h, channels: 3 } }).png().toBuffer());
+    const gif = new Uint8Array(await sharp({ create: { width: 50, height: 50, channels: 3, background: "#f00" } }).gif().toBuffer());
+    const files: Record<string, FetchedImage> = {
+      big: { bytes: bigPng, contentType: "image/png" },
+      anim: { bytes: gif, contentType: "image/gif" },
+      broken: { bytes: new Uint8Array([1, 2, 3]), contentType: "image/jpeg" },
+    };
+    const fetchImage = async (url: string): Promise<FetchedImage> => files[/\/(big|anim|broken)\./.exec(url)![1]];
+    const logs: string[] = [];
+    const deps = { notion: n.port, store: s.store, fetchImage, siteUrl: "https://x", now: () => new Date(clock), log: (m: string) => logs.push(m) };
+    const id = "a4a4a4a4-1111-2222-3333-444444444444";
+    n.pages.set(id, {
+      page: page(id, { status: "발행", edited: "2026-11-17T08:50:00.000Z" }),
+      blocks: [
+        para(rt("본문")),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/f1/big.png?X-Amz-Signature=a"),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/f2/anim.gif?X-Amz-Signature=a"),
+        img("https://prod-files-secure.s3.us-west-2.amazonaws.com/space/f3/broken.jpg?X-Amz-Signature=a"),
+      ],
+    });
+    const r = await runNotionSync(deps, { trigger: "cron", parentPageId: "parent", maxPages: 10, newLimit: undefined });
+    assert.equal(r.summary.published, 1); // 변환 실패(깨진 사진)도 발행을 막지 않는다
+    assert.equal(s.uploads.length, 3);
+    const [big, anim, broken] = s.uploads;
+    assert.match(big, new RegExp(`/notion-[0-9a-z]+-[0-9a-f]{8}-${COMPRESS_VERSION}\\.webp$`));
+    const up = s.db.files.get(big)!;
+    assert.equal(up.contentType, "image/webp");
+    assert.ok(up.bytes.byteLength < bigPng.byteLength);
+    assert.equal((await sharp(Buffer.from(up.bytes)).metadata()).width, 1200);
+    assert.match(anim, /\/notion-[0-9a-z]+-[0-9a-f]{8}\.gif$/); // 버전 표시 없음 = 원본
+    assert.equal(s.db.files.get(anim)!.contentType, "image/gif");
+    assert.equal(s.db.files.get(anim)!.bytes, gif);
+    assert.match(broken, /\/notion-[0-9a-z]+-[0-9a-f]{8}\.jpg$/);
+    assert.equal(s.db.files.get(broken)!.contentType, "image/jpeg");
+    assert.ok(logs.some((m) => m.startsWith("사진 변환 실패")));
+    // 글 본문의 사진 주소도 실제 올린 파일
+    const srcs = s.posts[0].content.blocks.flatMap((b) => (b.type === "image" && b.src ? [b.src] : []));
+    assert.deepEqual(srcs, s.uploads.map((p) => `https://cdn.example/shop-images/${p}`));
+  });
+
+  await test("저장소 업로드: 실제 형식(content-type)·캐시 1년(cacheControl 31536000)·덮어쓰기로 올린다", async () => {
+    const calls: { bucket: string; path: string; opts: Record<string, unknown> }[] = [];
+    const sb = {
+      storage: {
+        from: (bucket: string) => ({
+          upload: async (path: string, _bytes: Uint8Array, opts: Record<string, unknown>) => {
+            calls.push({ bucket, path, opts });
+            return { data: { path }, error: null };
+          },
+          getPublicUrl: (path: string) => ({ data: { publicUrl: `https://cdn.example/${bucket}/${path}` } }),
+        }),
+      },
+    } as unknown as SupabaseClient;
+    const url = await supabaseSyncStore(sb, "info").uploadImage("post/notion-b-12345678-w1.webp", new Uint8Array([1]), "image/webp");
+    assert.equal(url, "https://cdn.example/shop-images/post/notion-b-12345678-w1.webp");
+    assert.equal(IMAGE_CACHE_SECONDS, "31536000");
+    assert.deepEqual(calls, [
+      { bucket: "shop-images", path: "post/notion-b-12345678-w1.webp", opts: { contentType: "image/webp", upsert: true, cacheControl: "31536000" } },
+    ]);
   });
 
   await test("동기화: 실패는 발행하지 않고 메모에 이유 — 같은 이유면 노션에 다시 쓰지 않고, 고치면 발행", async () => {

@@ -15,19 +15,21 @@ export type NotionSchedule = {
 
 // supabase/shop-notion-cron.sql·shop.sql 의 notion_schedule 기본값과 같아야 한다 (예전 cron "0 0,8,16 * * *" 과 같은 시각)
 export const DEFAULT_NOTION_SCHEDULE: NotionSchedule = { hours: [1, 9, 17], perRun: 1 };
+// 노션 "일반 글"(생활정보) 기본 일정: 하루 1편, 오후 7시 (사장님 결정 2026-11-17). 저장은 shop_config.notion_schedule.info (src/lib/notion-section.ts)
+export const DEFAULT_INFO_SCHEDULE: NotionSchedule = { hours: [19], perRun: 1 };
 export const NOTION_PER_RUN = { min: 1, max: 5 } as const;
 
 const KST_OFFSET_MS = 9 * 3600 * 1000;
 const HOUR_MS = 3600 * 1000;
 
-// 저장된 값(모양을 믿지 않음) → 쓸 수 있는 설정. 이상한 값은 기본값으로, 범위 밖 시는 버린다
-export function normalizeSchedule(raw: unknown): NotionSchedule {
+// 저장된 값(모양을 믿지 않음) → 쓸 수 있는 설정. 이상한 값은 기본값(fallback — 섹션마다 다름)으로, 범위 밖 시는 버린다
+export function normalizeSchedule(raw: unknown, fallback: NotionSchedule = DEFAULT_NOTION_SCHEDULE): NotionSchedule {
   const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
-  if (!o) return { ...DEFAULT_NOTION_SCHEDULE, hours: [...DEFAULT_NOTION_SCHEDULE.hours] };
+  if (!o) return { ...fallback, hours: [...fallback.hours] };
   const hours = Array.isArray(o.hours)
     ? Array.from(new Set(o.hours.filter((h): h is number => Number.isInteger(h) && h >= 0 && h <= 23))).sort((a, b) => a - b)
-    : [...DEFAULT_NOTION_SCHEDULE.hours];
-  const n = typeof o.perRun === "number" && Number.isFinite(o.perRun) ? Math.round(o.perRun) : DEFAULT_NOTION_SCHEDULE.perRun;
+    : [...fallback.hours];
+  const n = typeof o.perRun === "number" && Number.isFinite(o.perRun) ? Math.round(o.perRun) : fallback.perRun;
   const perRun = Math.min(NOTION_PER_RUN.max, Math.max(NOTION_PER_RUN.min, n));
   return { hours, perRun };
 }

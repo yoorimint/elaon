@@ -1,4 +1,6 @@
-// 노션 "쇼핑 글" → 사이트 쇼핑 글 동기화 (서버 전용).
+// 노션 → 사이트 글 동기화 (서버 전용). 섹션마다 따로 돈다 (src/lib/notion-section.ts):
+//  쇼핑 글(노션 "쇼핑 글" → /shop), 일반 글(노션 "일반 글" → 생활정보 /info). 규칙·검사는 두 섹션이 똑같고,
+//  다른 점은 데이터베이스 이름, 사이트 주소(/shop·/info), 글의 content.section, pair_key 앞부분, 상태·일정 저장 위치뿐이다.
 // 예약 실행(서버 crontab 매시 2분 → src/app/api/shop/notion-sync), 관리자 버튼 두 개(같은 라우트 — "수정만 지금 반영"·"대기 글까지 전부 지금 올리기"),
 // GitHub Actions 수동 실행(scripts/shop/notion-sync.ts)이 모두 이 runNotionSync 하나를 쓴다. 노션·DB·사진 저장은 deps 로 받아서 테스트에서 목업으로 바꿔 끼운다.
 //
@@ -8,7 +10,8 @@
 //    관리자 버튼: "수정만 지금 반영"(mode updates — 새 글 0편, 대기 글은 그대로 대기) / "대기 글까지 전부 지금 올리기"(mode all — 제한 없음)
 //  - 상태=발행: 본문을 가져와 변환·검사 → 통과하면 shop_posts 에 생성/갱신하고 공개. 같은 노션 페이지는 언제나 같은 글(같은 주소)
 //    노션이 안 바뀌었으면(last_edited_time 같음) 건너뜀 → 사진을 다시 올리지 않는다
-//    검사 실패(제목 없음·쿠팡 링크 없음·일반 쿠팡 주소·사진 복사 실패)는 발행하지 않고 노션 "사이트 메모"에 이유를 적는다
+//    검사 실패(제목 없음·본문 없음·사진 복사 실패 등 — src/lib/notion-shop.ts convertNotionBlocks)는 발행하지 않고 노션 "사이트 메모"에 이유를 적는다
+//    (쿠팡 링크는 두 섹션 모두 필수가 아니다 — 쇼핑 글도 2026-11-14 사장님 결정으로 링크 없이 발행. 일반 쿠팡 주소는 메모 알림만)
 //    이미 공개된 글을 고쳤는데 실패하면 사이트에는 이전 글이 그대로 남는다
 //  - 상태=내림, 또는 노션에서 페이지를 휴지통으로 → 사이트 글을 초안으로 내림 (삭제하지 않음)
 //  - 상태=작성중 → 아무것도 안 함 (src/lib/notion-shop.ts decidePage 주석)
@@ -41,7 +44,9 @@ import {
   type PageProps,
   type SyncItem,
 } from "./notion-shop";
-import { DEFAULT_NOTION_SCHEDULE, isPublishHour, publishSlotKey, publishTimesAfter, type NotionSchedule } from "./notion-schedule";
+import { isPublishHour, publishSlotKey, publishTimesAfter, type NotionSchedule } from "./notion-schedule";
+import { NOTION_SECTIONS } from "./notion-section";
+import { sectionField, sectionPostPath, type PostSection } from "./post-section";
 import { autoDescription } from "./shop-manual";
 import type { ShopManualContent, ShopNotionRef, ShopPostInputProduct, ShopPostStatus } from "./shop-post-types";
 
@@ -49,9 +54,11 @@ import type { ShopManualContent, ShopNotionRef, ShopPostInputProduct, ShopPostSt
 
 // 노션 클라이언트에서 쓰는 것만 (src/lib/notion-api.ts 의 createNotionClient 가 이 모양)
 export type NotionPort = {
+  // db: 찾을(없으면 만들) 데이터베이스 이름·아이콘 (섹션마다 — 없으면 "쇼핑 글")
   ensureDatabase(
     parentPageId: string,
     known?: { databaseId?: string; dataSourceId?: string },
+    db?: { title: string; icon: string },
   ): Promise<{ databaseId: string; dataSourceId: string; databaseUrl?: string; created: boolean }>;
   queryAll(dataSourceId: string, opts?: { editedSince?: string }): Promise<NPage[]>; // editedSince: 그 뒤에 고친 페이지만
   blockTree(pageId: string): Promise<NBlock[]>;
@@ -86,15 +93,16 @@ export type PostRow = {
   updated_at: string;
 };
 
+// 저장소는 섹션 하나에 묶여 있다 (src/lib/notion-sync-store.ts supabaseSyncStore(sb, section)) — 목록·상태·일정이 그 섹션 것만
 export type SyncStore = {
-  // 노션에서 온 글(pair_key = notion:<pageId>)의 가벼운 목록. pageIds 를 주면 그 페이지 것만
+  // 노션에서 온 이 섹션 글(pair_key = <섹션 앞부분><pageId>)의 가벼운 목록. pageIds 를 주면 그 페이지 것만
   listLinked(pageIds?: string[]): Promise<LinkedRow[]>;
   loadPost(id: string): Promise<StoredPost | null>; // 본문까지 — 실제로 갱신·내림할 글만 부른다
   insertPost(row: PostRow & { pair_key: string; created_at: string }): Promise<"ok" | "duplicate">; // duplicate = slug 겹침
   updatePost(id: string, patch: Partial<PostRow>): Promise<void>;
-  loadState(): Promise<NotionSyncState | null>; // null = 저장 칸 없음 (supabase/shop-notion.sql 미실행)
-  saveState(state: NotionSyncState): Promise<void>;
-  loadSchedule(): Promise<NotionSchedule>; // 발행 일정 (칸이 없으면 기본값)
+  loadState(): Promise<NotionSyncState | null>; // 이 섹션 상태. null = 저장 칸 없음 (supabase/shop-notion.sql 미실행)
+  saveState(state: NotionSyncState): Promise<void>; // 이 섹션 몫만 바꾼다 (다른 섹션 상태는 그대로)
+  loadSchedule(): Promise<NotionSchedule>; // 이 섹션 발행 일정 (칸이 없으면 섹션 기본값)
   disclosure(): Promise<string>;
   uploadImage(path: string, bytes: Uint8Array, contentType: string): Promise<string>; // → 공개 주소
 };
@@ -111,6 +119,7 @@ export type SyncDeps = {
 };
 
 export type SyncOptions = {
+  section?: PostSection; // 없으면 쇼핑 (예전 호출 그대로)
   trigger: "cron" | "admin";
   parentPageId: string;
   maxPages: number; // 한 번에 본문을 가져와 변환할 페이지 수 상한 (남으면 다음 번에)
@@ -158,7 +167,8 @@ export async function fetchImageDefault(url: string): Promise<FetchedImage> {
 
 const shortHash = (s: string, n = 8) => createHash("sha256").update(s).digest("hex").slice(0, n);
 
-// 노션 페이지마다 정해진 주소: 노션 페이지를 만든 날(KST) + 페이지 id 해시 6자리 (예: 20261114-3fa9c1)
+// 노션 페이지마다 정해진 주소: 노션 페이지를 만든 날(KST) + 페이지 id 해시 6자리 (예: 20261114-3fa9c1). 섹션과 상관없이 같은 규칙
+// (주소 앞부분 /shop·/info 가 섹션을 나눈다. 테이블 하나라 slug 는 두 섹션을 통틀어 하나뿐)
 // 같은 페이지를 두 실행(예약 실행·관리자 버튼)이 동시에 새로 만들어도 slug unique 제약에 걸려 글이 둘 생기지 않는다
 export function notionSlug(page: Pick<NPage, "id" | "created_time">): string {
   const kst = new Date(Date.parse(page.created_time) + 9 * 3600 * 1000);
@@ -166,12 +176,15 @@ export function notionSlug(page: Pick<NPage, "id" | "created_time">): string {
   return `${day}-${shortHash(page.id.replace(/-/g, ""), 6)}`;
 }
 
-export const pairKeyOf = (pageId: string) => `notion:${pageId}`;
+// 사이트 글 ↔ 노션 페이지 연결 키. 쇼핑은 예전 그대로 notion:<pageId>, 일반 글은 notion-info:<pageId>
+export const pairKeyOf = (pageId: string, section: PostSection = "shop") => `${NOTION_SECTIONS[section].pairPrefix}${pageId}`;
 
 // 노션 페이지마다 정해진 글 id (uuid 모양). 사진 폴더(shop-images/<글 id>/)도 이 id 라서,
 // 처음 발행이 실패해 다음 실행에 다시 올려도 같은 폴더·같은 파일 이름에 덮어쓴다 (실패할 때마다 새 폴더에 사진이 쌓이지 않게)
-export function notionPostId(pageId: string): string {
-  const h = createHash("sha256").update(`notion-post:${pageId.replace(/-/g, "").toLowerCase()}`).digest("hex");
+// 쇼핑은 예전 그대로, 다른 섹션은 섹션 이름을 섞는다 (같은 페이지를 다른 데이터베이스로 옮겨도 글 id 가 겹치지 않게)
+export function notionPostId(pageId: string, section: PostSection = "shop"): string {
+  const key = pageId.replace(/-/g, "").toLowerCase();
+  const h = createHash("sha256").update(section === "shop" ? `notion-post:${key}` : `notion-post:${section}:${key}`).digest("hex");
   const variant = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variant}${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
@@ -242,6 +255,8 @@ export function planScan(state: NotionSyncState | null, dataSourceId: string, tr
 export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<SyncResult> {
   const now = deps.now ?? (() => new Date());
   const log = deps.log ?? (() => undefined);
+  const section = opts.section ?? "shop";
+  const spec = NOTION_SECTIONS[section];
   const startedAt = now().toISOString();
   const summary: NotionSyncSummary = {
     at: startedAt,
@@ -260,18 +275,18 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
   const loaded = await deps.store.loadState().catch(() => null);
   const state: NotionSyncState = { ...(loaded ?? {}) };
   const failed = { ...(state.failed ?? {}) };
-  const schedule = await deps.store.loadSchedule().catch(() => DEFAULT_NOTION_SCHEDULE);
+  const schedule = await deps.store.loadSchedule().catch(() => spec.defaultSchedule);
   const updatesOnly = opts.mode === "updates";
   const allow = updatesOnly ? { limit: 0 } : newAllowance(opts.newLimit, schedule, loaded, new Date(startedAt));
   if (opts.mode) summary.mode = opts.mode;
   if (opts.newLimit === "schedule" && !updatesOnly) summary.publishTime = allow.slot !== undefined;
 
   try {
-    const db = await deps.notion.ensureDatabase(opts.parentPageId, state);
+    const db = await deps.notion.ensureDatabase(opts.parentPageId, state, { title: spec.dbTitle, icon: spec.dbIcon });
     state.databaseId = db.databaseId;
     state.dataSourceId = db.dataSourceId;
     if (db.databaseUrl) state.databaseUrl = db.databaseUrl;
-    if (db.created) log("노션에 '쇼핑 글' 데이터베이스를 새로 만들었어요");
+    if (db.created) log(`노션에 '${spec.dbTitle}' 데이터베이스를 새로 만들었어요`);
 
     const plan = planScan(loaded, db.dataSourceId, opts.trigger, new Date(startedAt));
     const pages = await deps.notion.queryAll(db.dataSourceId, plan.full ? undefined : { editedSince: plan.since });
@@ -351,7 +366,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
         continue;
       }
       started++;
-      const r = await publishPage(deps, page, props, existing, now).catch(
+      const r = await publishPage(deps, section, page, props, existing, now).catch(
         (e): PublishOutcome => ({ kind: "failed", reasons: [`처리 중 오류: ${errText(e)}`] }),
       );
       delete queue[page.id]; // 실패해도 뺀다 (고치면 다시 줄 선다 — 실패 이유는 사이트 메모에)
@@ -378,7 +393,7 @@ export async function runNotionSync(deps: SyncDeps, opts: SyncOptions): Promise<
         newlyPublished.push(r.slug);
       } else summary.updated++;
       summary.items.push({ title: props.title, action: r.kind, slug: r.slug, notionUrl: page.url, ...(r.notes.length ? { reasons: r.notes } : {}) });
-      log(`${r.kind === "published" ? "발행" : "갱신"}: ${props.title} → /shop/${r.slug}`);
+      log(`${r.kind === "published" ? "발행" : "갱신"}: ${props.title} → ${sectionPostPath(section, r.slug)}`);
     }
 
     if (plan.full) {
@@ -441,14 +456,21 @@ type PublishOutcome =
   | { kind: "same"; slug: string }
   | { kind: "failed"; reasons: string[] };
 
-async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linkedRow: LinkedRow | undefined, now: () => Date): Promise<PublishOutcome> {
+async function publishPage(
+  deps: SyncDeps,
+  section: PostSection,
+  page: NPage,
+  props: PageProps,
+  linkedRow: LinkedRow | undefined,
+  now: () => Date,
+): Promise<PublishOutcome> {
   // 본문까지 읽는 것은 실제로 갱신할 글만 (사진 기억·같은 내용 비교·처음 발행일·고지 문구에 필요)
   const existing = linkedRow ? ((await deps.store.loadPost(linkedRow.id)) ?? undefined) : undefined;
   const tree = await deps.notion.blockTree(page.id);
   const conv = convertNotionBlocks(tree, props.title);
   if (conv.problems.length) return { kind: "failed", reasons: conv.problems };
 
-  const postId = existing?.id ?? notionPostId(page.id);
+  const postId = existing?.id ?? notionPostId(page.id, section);
   const notes = [...conv.notes];
 
   // 사진: 노션 파일은 반드시 사이트 저장소로 복사(1시간 뒤 만료). 외부 주소 사진도 복사한다
@@ -504,6 +526,7 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linked
   };
   const content: ShopManualContent & { notion: ShopNotionRef } = {
     kind: "manual",
+    ...sectionField(section), // 생활정보 글만 section: "info" (쇼핑 글은 칸 없음 — 예전 그대로)
     blocks,
     ...(props.category ? { category: props.category } : {}),
     ...(disclosure ? { disclosure } : {}),
@@ -533,19 +556,19 @@ async function publishPage(deps: SyncDeps, page: NPage, props: PageProps, linked
   if (existing) {
     await deps.store.updatePost(existing.id, row);
   } else {
-    let res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id), created_at: at });
+    let res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id, section), created_at: at });
     if (res === "duplicate") {
       // 다른 실행이 방금 같은 페이지를 만들었으면 그쪽에 맡긴다. 아니면(드문 주소 겹침) 주소 끝을 바꿔 다시
       const again = (await deps.store.listLinked([page.id])).find((p) => p.notion.pageId === page.id);
       if (again) return { kind: "same", slug: again.slug };
       row.slug = `${row.slug.slice(0, 9)}${randomBytes(3).toString("hex")}`;
-      res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id), created_at: at });
+      res = await deps.store.insertPost({ ...row, pair_key: pairKeyOf(page.id, section), created_at: at });
       if (res === "duplicate") throw new Error("글 주소가 겹쳐 저장하지 못했어요");
     }
   }
 
   // 노션에 사이트 주소·메모 쓰기 → 바뀐 last_edited_time 을 저장 (다음 번에 "바뀜"으로 보지 않게)
-  const siteUrl = `${deps.siteUrl.replace(/\/$/, "")}/shop/${row.slug}`;
+  const siteUrl = `${deps.siteUrl.replace(/\/$/, "")}${sectionPostPath(section, row.slug)}`;
   try {
     const patched = await deps.notion.updatePage(page.id, siteProps(siteUrl, publishedMemo(at, notes)));
     await deps.store.updatePost(postId, {

@@ -2,8 +2,10 @@
 // 관리자 페이지(/admin/shop)와 자동글 스크립트가 같은 타입을 공유한다.
 
 import { supabase } from "./supabase";
-import type { NotionSyncState } from "./notion-shop";
-import { normalizeSchedule, type NotionSchedule } from "./notion-schedule";
+import type { NotionSyncColumn } from "./notion-section";
+import { withSectionSchedule } from "./notion-section";
+import type { NotionSchedule } from "./notion-schedule";
+import type { PostSection } from "./post-section";
 
 export type PublishMode = "review" | "auto";
 
@@ -41,9 +43,11 @@ export type ShopConfig = {
   key_check: Partial<Record<ApiKeyGroupId, KeyCheckResult>>;
   key_check_at: string | null;
   // 노션 동기화 상태 (supabase/shop-notion.sql 실행 전에는 없음)
-  notion_sync?: NotionSyncState | null;
-  // 노션 발행 일정 (supabase/shop-notion-cron.sql 실행 전에는 없음). 저장된 값은 normalizeSchedule 로 읽는다
-  notion_schedule?: NotionSchedule | null;
+  // 쇼핑 상태는 맨 위, 일반 글(생활정보) 상태는 .info — src/lib/notion-section.ts
+  notion_sync?: NotionSyncColumn | null;
+  // 노션 발행 일정 (supabase/shop-notion-cron.sql 실행 전에는 없음). 저장된 값은 sectionSchedule(src/lib/notion-section.ts)로 읽는다
+  // 쇼핑 일정은 맨 위 {hours, perRun}, 일반 글 일정은 .info — 읽기는 sectionSchedule
+  notion_schedule?: (NotionSchedule & { info?: NotionSchedule }) | null;
   updated_at: string;
 };
 
@@ -243,11 +247,17 @@ export async function updateDisclosureText(text: string): Promise<void> {
 
 // 노션 발행 일정만 저장 (📒 노션 탭 — 다른 설정은 건드리지 않음). 예약 실행 상태(notion_sync)와 칸을 나눠
 // 매시간 도는 예약 실행이 상태를 덮어써도 사장님 설정이 지워지지 않게 한다. 쓰기 권한은 shop_config 정책(관리자만)
-export async function updateNotionSchedule(schedule: NotionSchedule): Promise<NotionSchedule> {
-  const clean = normalizeSchedule(schedule);
+// 섹션(쇼핑·일반 글) 몫만 바꾸고 다른 섹션 일정은 그대로 둔다 → 저장 직전에 칸을 다시 읽는다. 돌려주는 값 = 저장한 칸 전체
+export async function updateNotionSchedule(section: PostSection, schedule: NotionSchedule): Promise<NonNullable<ShopConfig["notion_schedule"]>> {
+  const cur = await supabase.from("shop_config").select("notion_schedule").eq("id", 1).maybeSingle();
+  if (cur.error) {
+    if (/notion_schedule/.test(cur.error.message)) throw new Error("저장 칸이 없어요 — Supabase 에서 supabase/shop-notion-cron.sql 을 먼저 실행해 주세요");
+    throw new Error(cur.error.message);
+  }
+  const column = withSectionSchedule((cur.data as { notion_schedule?: unknown } | null)?.notion_schedule, section, schedule);
   const { data, error } = await supabase
     .from("shop_config")
-    .update({ notion_schedule: clean, updated_at: new Date().toISOString() })
+    .update({ notion_schedule: column, updated_at: new Date().toISOString() })
     .eq("id", 1)
     .select("id");
   if (error) {
@@ -255,7 +265,7 @@ export async function updateNotionSchedule(schedule: NotionSchedule): Promise<No
     throw new Error(error.message);
   }
   if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
-  return clean;
+  return column as NonNullable<ShopConfig["notion_schedule"]>;
 }
 
 export function toEditable(c: ShopConfig): ShopConfigEditable {

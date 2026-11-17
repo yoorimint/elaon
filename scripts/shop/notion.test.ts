@@ -30,6 +30,7 @@ import {
   newAllowance,
   notionPostId,
   notionSlug,
+  pairKeyOf,
   planScan,
   runNotionSync,
   sameBody,
@@ -43,6 +44,7 @@ import {
 import {
   CRON_SECRET_HEADER,
   CRON_SECRET_NAME,
+  ROUTE_SECTION_BUDGET_MS,
   ROUTE_TIME_BUDGET_MS,
   loadNotionSchedule,
   parseAdminSyncMode,
@@ -53,6 +55,7 @@ import {
 } from "@/lib/notion-sync-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  DEFAULT_INFO_SCHEDULE,
   DEFAULT_NOTION_SCHEDULE,
   hourLabel,
   kstDateHourLabel,
@@ -69,7 +72,18 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ShopManualArticle } from "@/components/ShopManualArticle";
 import { autoDescription, publishProblems, sanitizeManualInput } from "@/lib/shop-manual";
-import { flattenBlocks, type ShopManualBlock } from "@/lib/shop-post-types";
+import { flattenBlocks, type ManualShopPost, type ShopManualBlock } from "@/lib/shop-post-types";
+import {
+  NOTION_SECTIONS,
+  combineSummaries,
+  sectionSchedule,
+  sectionState,
+  summaryOf,
+  withSectionSchedule,
+  withSectionState,
+} from "@/lib/notion-section";
+import { POST_SECTIONS, inSection, sectionOf, sectionPostPath, whereSection, type PostSection } from "@/lib/post-section";
+import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts } from "@/lib/shop-posts-public";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -132,6 +146,13 @@ function page(id: string, o: { title?: string; status?: string; desc?: string; c
   };
 }
 
+// 노션 "일반 글" 데이터베이스 페이지 (목업 data source ds-info)
+function infoPage(id: string, o: Parameters<typeof page>[1] = {}): NPage {
+  const p = page(id, o);
+  p.parent = { type: "data_source_id", data_source_id: "ds-info", database_id: "db-ds-info" };
+  return p;
+}
+
 const types = (bs: ShopManualBlock[]) => bs.map((b) => b.type);
 
 // ---------- 목업 노션 (메모리) ----------
@@ -151,18 +172,25 @@ function resignFiles(blocks: NBlock[]) {
 
 // honorFilter=false: "바뀐 글만" 조회에도 전부 돌려준다 (필터는 줄이기용일 뿐, 더 받아도 판단이 맞아야 함 — 예전 테스트 그대로 유지)
 // signFiles: 본문을 가져올 때마다 노션 파일 사진 주소의 서명을 새로 붙인다 (실제 노션처럼)
+// 데이터베이스 이름 → 목업 data source ("쇼핑 글" = ds-1 — 예전 테스트 그대로, "일반 글" = ds-info). 페이지는 parent.data_source_id 로 나뉜다
+const MOCK_DS: Record<string, string> = { "쇼핑 글": "ds-1", "일반 글": "ds-info" };
+
 function mockNotion(clock: () => number, o: { honorFilter?: boolean; signFiles?: boolean } = {}) {
   const pages = new Map<string, { page: NPage; blocks: NBlock[] }>();
-  const calls = { blockTree: 0, updatePage: 0, created: 0, queries: [] as (string | undefined)[] };
+  const calls = { blockTree: 0, updatePage: 0, created: 0, queries: [] as (string | undefined)[], databases: [] as string[] };
   const port: NotionPort = {
-    async ensureDatabase() {
-      return { databaseId: "db-1", dataSourceId: "ds-1", databaseUrl: "https://www.notion.so/db1", created: false };
+    async ensureDatabase(_parent, _known, db) {
+      const title = db?.title ?? "쇼핑 글";
+      calls.databases.push(title);
+      const ds = MOCK_DS[title] ?? "ds-other";
+      return { databaseId: ds === "ds-1" ? "db-1" : `db-${ds}`, dataSourceId: ds, databaseUrl: `https://www.notion.so/${ds}`, created: false };
     },
-    async queryAll(_ds, q) {
+    async queryAll(ds, q) {
       calls.queries.push(q?.editedSince);
       const since = o.honorFilter && q?.editedSince ? Date.parse(q.editedSince) : -Infinity;
       return Array.from(pages.values())
         .map((x) => x.page)
+        .filter((p) => (p.parent?.data_source_id ?? "ds-1") === ds)
         .filter((p) => !p.in_trash && Date.parse(p.last_edited_time) >= since)
         .map((p) => structuredClone(p));
     },
@@ -209,25 +237,33 @@ function jsonbOrder<T>(v: T): T {
   return order(JSON.parse(JSON.stringify(v))) as T;
 }
 
-function memoryStore() {
-  const posts: (PostRow & { pair_key: string; created_at: string })[] = [];
-  const uploads: string[] = [];
-  let state: Record<string, unknown> | null = {};
-  let schedule: NotionSchedule = DEFAULT_NOTION_SCHEDULE;
+// 메모리 "DB": 글 테이블 하나 + shop_config 의 notion_sync·notion_schedule 칸 (섹션끼리 같이 쓴다 — 실제와 같게)
+type MemoryDb = {
+  posts: (PostRow & { pair_key: string; created_at: string })[];
+  uploads: string[];
+  syncColumn: Record<string, unknown> | null; // null = 칸 없음 (SQL 미실행)
+  scheduleColumn: unknown;
+};
+const newMemoryDb = (): MemoryDb => ({ posts: [], uploads: [], syncColumn: {}, scheduleColumn: { ...DEFAULT_NOTION_SCHEDULE } });
+
+// 섹션 하나에 묶인 저장소 (실제 supabaseSyncStore 와 같은 규칙: pair_key 앞부분·content.section 으로 목록, 칸 안 섹션 몫만 읽고 씀)
+function memoryStore(section: PostSection = "shop", db: MemoryDb = newMemoryDb()) {
+  const { posts, uploads } = db;
+  const prefix = NOTION_SECTIONS[section].pairPrefix;
   const reads = { listCalls: 0, listedRows: 0, fullLoads: 0 }; // DB 에서 읽은 양 (가벼운 목록 줄 수·본문까지 읽은 글 수)
   const store: SyncStore = {
     async listLinked(pageIds) {
       reads.listCalls++;
-      const keys = pageIds && new Set(pageIds.map((id) => `notion:${id}`));
+      const keys = pageIds && new Set(pageIds.map((id) => pairKeyOf(id, section)));
       const rows = posts
-        .filter((p) => (keys ? keys.has(p.pair_key) : p.pair_key.startsWith("notion:")) && p.content.notion?.pageId)
+        .filter((p) => (keys ? keys.has(p.pair_key) : p.pair_key.startsWith(prefix)) && p.content.notion?.pageId && inSection(p.content, section))
         .map((p) => ({ id: p.id, slug: p.slug, status: p.status, title: p.title, notion: jsonbOrder(p.content.notion!) }));
       reads.listedRows += rows.length;
       return rows;
     },
     async loadPost(id) {
       reads.fullLoads++;
-      const p = posts.find((x) => x.id === id);
+      const p = posts.find((x) => x.id === id && inSection(x.content, section));
       return p ? (jsonbOrder(p) as unknown as StoredPost) : null;
     },
     async insertPost(row) {
@@ -240,13 +276,13 @@ function memoryStore() {
       Object.assign(p, structuredClone(patch));
     },
     async loadState() {
-      return state === null ? null : jsonbOrder(state);
+      return db.syncColumn === null ? null : jsonbOrder(sectionState(db.syncColumn, section));
     },
     async saveState(s) {
-      state = structuredClone(s);
+      db.syncColumn = structuredClone(withSectionState(db.syncColumn, section, s)) as Record<string, unknown>;
     },
     async loadSchedule() {
-      return structuredClone(schedule);
+      return sectionSchedule(structuredClone(db.scheduleColumn), section);
     },
     async disclosure() {
       return "고지 문구";
@@ -258,13 +294,14 @@ function memoryStore() {
   };
   return {
     store,
+    db,
     posts,
     uploads,
     reads,
-    getState: () => state,
-    setState: (v: Record<string, unknown>) => (state = v),
-    dropState: () => (state = null),
-    setSchedule: (v: NotionSchedule) => (schedule = normalizeSchedule(v)),
+    getState: () => db.syncColumn, // 칸 전체 (쇼핑 몫은 맨 위)
+    setState: (v: Record<string, unknown>) => (db.syncColumn = v),
+    dropState: () => (db.syncColumn = null),
+    setSchedule: (v: NotionSchedule) => (db.scheduleColumn = withSectionSchedule(db.scheduleColumn, section, v)),
   };
 }
 
@@ -288,19 +325,51 @@ function pickColumn(row: FakeRow, spec: string): [string, unknown] {
   return [alias ?? name, v ?? null];
 }
 
+// 조건 칸 값: "칸" 또는 JSON 경로 "content->>section" (pickColumn 과 같은 규칙)
+const colValue = (r: FakeRow, col: string) => pickColumn(r, col)[1];
+
+// PostgREST or 조건 "a.is.null,b.neq.x,c.eq.y" (쓰는 연산자만)
+function orPredicate(filters: string): (r: FakeRow) => boolean {
+  const parts = filters.split(",").map((f) => {
+    const m = /^(.+)\.(is|eq|neq)\.(.*)$/.exec(f.trim());
+    if (!m) throw new Error(`목업이 모르는 or 조건: ${f}`);
+    return { col: m[1], op: m[2], val: m[3] };
+  });
+  return (r) =>
+    parts.some(({ col, op, val }) => {
+      const v = colValue(r, col);
+      if (op === "is") return val === "null" ? v === null : String(v) === val;
+      // SQL 처럼: null 과의 비교(= · <>)는 참이 아니다
+      if (v === null) return false;
+      return op === "eq" ? String(v) === val : String(v) !== val;
+    });
+}
+
 function fakeSupabase(rows: FakeRow[], maxRows: number) {
   const selects: string[] = [];
   const returned: unknown[] = [];
+  const updates: { table: string; patch: FakeRow }[] = [];
   const client = {
-    from() {
+    from(table: string) {
       let cols = "*";
       const preds: ((r: FakeRow) => boolean)[] = [];
-      let order: string | undefined;
+      let order: { col: string; asc: boolean } | undefined;
       let range: [number, number] | undefined;
+      let limit: number | undefined;
+      let patch: FakeRow | undefined;
       const run = () => {
         let out = rows.filter((r) => preds.every((p) => p(r)));
-        if (order) out = out.slice().sort((x, y) => String(x[order!]).localeCompare(String(y[order!])));
+        if (patch) {
+          for (const r of out) Object.assign(r, structuredClone(patch));
+          updates.push({ table, patch: structuredClone(patch) });
+          return [];
+        }
+        if (order) {
+          const { col, asc } = order;
+          out = out.slice().sort((x, y) => String(x[col]).localeCompare(String(y[col])) * (asc ? 1 : -1));
+        }
         if (range) out = out.slice(range[0], range[1] + 1);
+        if (limit !== undefined) out = out.slice(0, limit);
         out = out.slice(0, maxRows); // 서버 한 번 응답 줄 수 상한
         const data = out.map((r) => (cols === "*" ? r : Object.fromEntries(cols.split(",").map((c) => pickColumn(r, c.trim())))));
         returned.push(...data);
@@ -321,11 +390,27 @@ function fakeSupabase(rows: FakeRow[], maxRows: number) {
           return b;
         },
         eq(col: string, val: unknown) {
-          preds.push((r) => r[col] === val);
+          preds.push((r) => (col.includes("->") ? colValue(r, col) === val : r[col] === val));
           return b;
         },
-        order(col: string) {
-          order = col;
+        neq(col: string, val: unknown) {
+          preds.push((r) => colValue(r, col) !== null && colValue(r, col) !== val);
+          return b;
+        },
+        or(filters: string) {
+          preds.push(orPredicate(filters));
+          return b;
+        },
+        order(col: string, o?: { ascending?: boolean }) {
+          order = { col, asc: o?.ascending !== false };
+          return b;
+        },
+        limit(n: number) {
+          limit = n;
+          return b;
+        },
+        update(p: FakeRow) {
+          patch = p;
           return b;
         },
         range(from: number, to: number) {
@@ -346,7 +431,7 @@ function fakeSupabase(rows: FakeRow[], maxRows: number) {
       return b;
     },
   };
-  return { client: client as unknown as SupabaseClient, selects, returned };
+  return { client: client as unknown as SupabaseClient, selects, returned, updates };
 }
 
 const okImage = async (): Promise<FetchedImage> => ({ bytes: new Uint8Array([1, 2, 3]), contentType: "image/jpeg" });
@@ -1854,6 +1939,292 @@ async function main() {
     assert.equal(kstDateHourLabel("2026-11-14T16:00:00.000Z"), "11월 15일 새벽 1시");
     assert.equal(kstDateHourLabel("x"), "");
     assert.match(queuedMemo(1, null, 1), /"대기 글까지 전부 지금 올리기"/);
+  });
+
+  // ---------- 섹션: 쇼핑 글(/shop)과 일반 글(생활정보 /info) — 2026-11-17 ----------
+
+  await test("섹션: 일반 글은 노션 '일반 글'에서 쿠팡 링크 없이도 발행 → /info 주소·content.section·pair_key notion-info:·글 id 따로 / 검사는 쇼핑과 같음(제목 없음은 둘 다 막고, 링크 없어도 둘 다 발행)", async () => {
+    const clock = Date.parse("2026-11-14T01:00:10.000Z");
+    const n = mockNotion(() => clock);
+    const shop = memoryStore("shop");
+    const info = memoryStore("info", shop.db); // 같은 테이블·같은 설정 칸
+    const base = { notion: n.port, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) };
+    const iid = "cccccccc-1111-2222-3333-444444444444";
+    const bad = "dddddddd-1111-2222-3333-444444444444";
+    const sid = "eeeeeeee-1111-2222-3333-444444444444";
+    n.pages.set(iid, { page: infoPage(iid, { title: "겨울철 난방비 줄이는 법", status: "발행", category: "생활" }), blocks: [para(rt("보일러 온도를 1도만 낮춰도 줄어요.")), img("https://s3.notion/i.png")] });
+    n.pages.set(bad, { page: infoPage(bad, { title: "", status: "발행" }), blocks: [para(rt("본문"))] });
+    n.pages.set(sid, { page: page(sid, { title: "쇼핑 글 링크 없음", status: "발행" }), blocks: [para(rt("본문만 있어요."))] });
+
+    const ri = await runNotionSync({ ...base, store: info.store }, { section: "info", trigger: "admin", parentPageId: "parent", maxPages: 10 });
+    assert.deepEqual(n.calls.databases, ["일반 글"]); // 같은 부모 페이지 아래 "일반 글" 데이터베이스
+    assert.equal(ri.summary.published, 1);
+    assert.equal(ri.summary.failed, 1);
+    assert.ok(ri.summary.items.find((x) => x.action === "failed")!.reasons!.includes("글 제목이 비었어요"));
+    assert.match(readPageProps(n.pages.get(bad)!.page).memo, /^발행 안 됨 — 글 제목이 비었어요/);
+    const post = shop.posts.find((p) => p.pair_key === `notion-info:${iid}`)!;
+    assert.ok(post, "일반 글은 pair_key notion-info:<페이지>");
+    assert.equal(post.status, "published");
+    assert.equal(post.content.section, "info");
+    assert.equal(sectionOf(post.content), "info");
+    assert.deepEqual(post.products, []); // 쿠팡 링크 없음 = 상품 없음, 그래도 발행
+    assert.equal(post.id, notionPostId(iid, "info"));
+    assert.notEqual(post.id, notionPostId(iid)); // 쇼핑 글 id 와 겹치지 않음 (페이지를 다른 데이터베이스로 옮겨도)
+    assert.ok(shop.uploads[0].startsWith(`${post.id}/notion-n`)); // 사진 복사는 쇼핑과 같게
+    assert.equal(n.pages.get(iid)!.page.properties[PROP.siteUrl].url, `https://www.eloan.kr/info/${post.slug}`);
+    assert.deepEqual(ri.changedSlugs, [post.slug]);
+    assert.deepEqual(ri.newlyPublished, [post.slug]);
+
+    // 쇼핑 글 동작은 그대로: 같은 저장소 테이블, "쇼핑 글" 데이터베이스, /shop 주소, section 칸 없음
+    const rs = await runNotionSync({ ...base, store: shop.store }, { trigger: "admin", parentPageId: "parent", maxPages: 10 });
+    assert.deepEqual(n.calls.databases, ["일반 글", "쇼핑 글"]);
+    assert.equal(rs.summary.published, 1);
+    assert.equal(rs.summary.unpublished, 0); // 쇼핑 전체 조회가 생활정보 글을 "목록에 없는 공개 글"로 내리지 않음
+    const sp = shop.posts.find((p) => p.pair_key === `notion:${sid}`)!;
+    assert.equal("section" in sp.content, false);
+    assert.equal(sectionOf(sp.content), "shop");
+    assert.equal(sp.id, notionPostId(sid));
+    assert.equal(n.pages.get(sid)!.page.properties[PROP.siteUrl].url, `https://www.eloan.kr/shop/${sp.slug}`);
+    assert.equal(shop.posts.find((p) => p.id === post.id)!.status, "published");
+
+    // 다시 돌려도 서로 건드리지 않는다 (일반 글 전체 조회도 쇼핑 글을 내리지 않음)
+    const again = await runNotionSync({ ...base, store: info.store }, { section: "info", trigger: "admin", parentPageId: "parent", maxPages: 10 });
+    assert.equal(again.summary.unpublished, 0);
+    assert.equal(sp.status, "published");
+  });
+
+  await test("섹션: 상태·일정이 따로 — 일반 글 발행이 쇼핑 발행 편수·대기열에 영향 없고, 칸에 이미 있던 쇼핑 상태는 그대로 읽힌다 (일반 글 기본 일정 19시 1편)", async () => {
+    let clock = Date.parse("2026-11-14T10:02:00.000Z"); // 한국시간 19:02
+    const n = mockNotion(() => clock);
+    const shop = memoryStore("shop");
+    const info = memoryStore("info", shop.db);
+    // 이 기능 전 예전 모양 그대로의 쇼핑 상태 (맨 위 키)
+    const legacy = {
+      databaseId: "db-1",
+      dataSourceId: "ds-1",
+      databaseUrl: "https://www.notion.so/ds-1",
+      publishSlot: { slot: "2026-11-14T09", published: 1 },
+      queue: {},
+      failed: {},
+      lastRun: { at: "2026-11-14T00:02:00.000Z", trigger: "cron", published: 1, updated: 0, unpublished: 0, failed: 0, unchanged: 3, remaining: 0, items: [] },
+    };
+    shop.setState(structuredClone(legacy));
+    assert.deepEqual(await shop.store.loadState(), legacy);
+    assert.deepEqual(await info.store.loadState(), {}); // 일반 글은 아직 상태 없음 (처음엔 전체 조회)
+    shop.setSchedule({ hours: [10], perRun: 1 });
+    assert.deepEqual(await info.store.loadSchedule(), DEFAULT_INFO_SCHEDULE); // 일반 글 일정은 안 바뀜
+    assert.deepEqual(DEFAULT_INFO_SCHEDULE, { hours: [19], perRun: 1 });
+
+    const ids = { s1: "a1000000-1111-2222-3333-444444444444", s2: "a2000000-1111-2222-3333-444444444444", i1: "b1000000-1111-2222-3333-444444444444", i2: "b2000000-1111-2222-3333-444444444444" };
+    n.pages.set(ids.s1, { page: page(ids.s1, { title: "쇼핑 1", status: "발행" }), blocks: [para(rt("본문")), para(rt(P, { href: P }))] });
+    n.pages.set(ids.s2, { page: page(ids.s2, { title: "쇼핑 2", status: "발행" }), blocks: [para(rt("본문")), para(rt(P2, { href: P2 }))] });
+    n.pages.set(ids.i1, { page: infoPage(ids.i1, { title: "생활 1", status: "발행" }), blocks: [para(rt("본문"))] });
+    n.pages.set(ids.i2, { page: infoPage(ids.i2, { title: "생활 2", status: "발행" }), blocks: [para(rt("본문"))] });
+    const deps = (st: ReturnType<typeof memoryStore>) => ({ notion: n.port, store: st.store, fetchImage: okImage, siteUrl: "https://www.eloan.kr", now: () => new Date(clock) });
+    const cron = (section: PostSection) => ({ section, trigger: "cron" as const, parentPageId: "parent", maxPages: 10, newLimit: "schedule" as const });
+    const col = () => shop.getState() as Record<string, unknown> & { info?: Record<string, unknown> };
+
+    // 한국시간 19시: 쇼핑은 발행 시각 아님(10시만) → 0편·대기 2, 일반 글은 발행 시각 → 1편·대기 1
+    let rs = await runNotionSync(deps(shop), cron("shop"));
+    let ri = await runNotionSync(deps(info), cron("info"));
+    assert.equal(rs.summary.publishTime, false);
+    assert.equal(rs.summary.published, 0);
+    assert.equal(rs.summary.queued, 2);
+    assert.equal(ri.summary.publishTime, true);
+    assert.equal(ri.summary.published, 1);
+    assert.equal(ri.summary.queued, 1);
+    assert.deepEqual(col().publishSlot, legacy.publishSlot); // 쇼핑 발행 칸은 그대로
+    assert.deepEqual(col().info!.publishSlot, { slot: "2026-11-14T19", published: 1 });
+    assert.deepEqual(Object.keys(col().queue as object).sort(), [ids.s1, ids.s2]);
+    assert.deepEqual(Object.keys(col().info!.queue as object), [ids.i2]);
+    assert.equal(col().databaseId, "db-1"); // 예전 쇼핑 키 그대로
+    assert.equal(col().info!.dataSourceId, "ds-info");
+    assert.equal((col().lastRun as { trigger: string; queued?: number }).queued, 2);
+    assert.equal((col().info!.lastRun as { published: number }).published, 1);
+    assert.equal(shop.posts.filter((p) => p.status === "published").length, 1);
+
+    // 같은 시에 일반 글 실행이 또 와도(늦게 온 cron) 일반 글 몫 1편을 넘지 않고, 쇼핑은 여전히 0편
+    clock += 20 * 60_000;
+    ri = await runNotionSync(deps(info), cron("info"));
+    assert.equal(ri.summary.published, 0);
+    rs = await runNotionSync(deps(shop), cron("shop"));
+    assert.equal(rs.summary.published, 0);
+
+    // 다음 날 한국시간 10시: 쇼핑 1편, 일반 글은 발행 시각 아님 → 0편 (일반 글 발행 칸은 어제 것 그대로)
+    clock = Date.parse("2026-11-15T01:02:00.000Z");
+    rs = await runNotionSync(deps(shop), cron("shop"));
+    ri = await runNotionSync(deps(info), cron("info"));
+    assert.equal(rs.summary.published, 1);
+    assert.equal(rs.summary.queued, 1);
+    assert.equal(ri.summary.published, 0);
+    assert.equal(ri.summary.queued, 1);
+    assert.deepEqual(col().publishSlot, { slot: "2026-11-15T10", published: 1 });
+    assert.deepEqual(col().info!.publishSlot, { slot: "2026-11-14T19", published: 1 });
+
+    // 일정 저장도 자기 몫만 (관리자 화면 updateNotionSchedule 이 쓰는 withSectionSchedule)
+    info.setSchedule({ hours: [20, 8], perRun: 2 });
+    assert.deepEqual(await shop.store.loadSchedule(), { hours: [10], perRun: 1 });
+    assert.deepEqual(await info.store.loadSchedule(), { hours: [8, 20], perRun: 2 });
+    shop.setSchedule({ hours: [], perRun: 1 });
+    assert.deepEqual(await info.store.loadSchedule(), { hours: [8, 20], perRun: 2 });
+    assert.deepEqual(sectionSchedule(shop.db.scheduleColumn, "shop"), { hours: [], perRun: 1 });
+  });
+
+  await test("섹션 조회 조건: 쇼핑 목록·사이트맵·관련 글에 생활정보 글이 없고 그 반대도 — 판별 함수와 Supabase 조건이 같은 뜻, 동기화 목록도 섹션끼리 안 섞임", async () => {
+    const at = (d: number) => `2026-11-1${d}T00:00:00.000Z`;
+    const row = (slug: string, o: { section?: string; status?: string; category?: string; pair?: string; day: number }) => ({
+      id: `id-${slug}`,
+      slug,
+      title: `글 ${slug}`,
+      description: "",
+      status: o.status ?? "published",
+      published_at: at(o.day),
+      updated_at: at(o.day),
+      products: [],
+      pair_key: o.pair ?? `notion:page-${slug}`,
+      content: {
+        kind: "manual",
+        ...(o.section ? { section: o.section } : {}),
+        ...(o.category ? { category: o.category } : {}),
+        blocks: [],
+        notion: { pageId: `page-${slug}`, url: "u", lastEditedTime: at(o.day), syncedAt: at(o.day), convertVersion: NOTION_CONVERT_VERSION },
+      },
+    });
+    const rows = [
+      row("shop-old", { day: 1, category: "가전" }), // 예전 쇼핑 글 (section 칸 없음)
+      row("shop-new", { day: 3, category: "가전" }),
+      row("shop-draft", { day: 4, status: "draft" }),
+      row("info-a", { day: 2, section: "info", category: "가전", pair: "notion-info:page-info-a" }),
+      row("info-b", { day: 5, section: "info", pair: "notion-info:page-info-b" }),
+      row("info-draft", { day: 6, section: "info", status: "draft", pair: "notion-info:page-info-draft" }),
+      row("info-oldkey", { day: 7, section: "info" }), // 혹시 pair_key 가 notion: 이어도 content.section 으로 걸러짐
+    ];
+    const sb = fakeSupabase(rows, 1000).client;
+
+    assert.deepEqual((await fetchPublishedPosts(sb, "shop")).map((p) => p.slug), ["shop-new", "shop-old"]); // 최신순
+    assert.deepEqual((await fetchPublishedPosts(sb, "info")).map((p) => p.slug), ["info-oldkey", "info-b", "info-a"]);
+    assert.deepEqual((await fetchPublishedSlugs(sb, "shop")).map((p) => [p.slug, p.updated_at]), [["shop-new", at(3)], ["shop-old", at(1)]]);
+    assert.deepEqual((await fetchPublishedSlugs(sb, "info")).map((p) => p.slug), ["info-oldkey", "info-b", "info-a"]);
+    // 관련 글: 같은 카테고리(가전)라도 다른 섹션 글은 안 나옴
+    assert.deepEqual((await fetchRelatedPosts(sb, "가전", "shop-new")).map((p) => p.slug), ["shop-old"]);
+    assert.deepEqual((await fetchRelatedPosts(sb, "가전", "info-b", 4, "info")).map((p) => p.slug), ["info-a", "info-oldkey"]);
+    // 글 한 건은 섹션 상관없이 읽고, 화면이 inSection 으로 다른 섹션이면 404
+    const one = await fetchPublishedBySlug(sb, "info-a");
+    assert.equal(one?.slug, "info-a");
+    assert.equal(inSection(one!.content, "shop"), false);
+    assert.equal(inSection(one!.content, "info"), true);
+    assert.equal(await fetchPublishedBySlug(sb, "info-draft"), null);
+
+    // 판별 함수(sectionOf) ↔ Supabase 조건(whereSection) 이 줄마다 같은 답
+    for (const section of POST_SECTIONS) {
+      const got = (await (whereSection(fakeSupabase(rows, 1000).client.from("shop_posts").select("slug"), section) as unknown as Promise<{ data: { slug: string }[] }>)).data.map((r) => r.slug);
+      assert.deepEqual(got, rows.filter((r) => inSection(r.content, section)).map((r) => r.slug), section);
+    }
+    assert.equal(sectionOf(undefined), "shop");
+    assert.equal(sectionOf({ section: "shop" }), "shop");
+    assert.equal(sectionOf({ section: "INFO" }), "shop"); // 정확히 "info" 만
+    assert.equal(sectionPostPath("info", "x"), "/info/x");
+    assert.equal(sectionPostPath("shop", "x"), "/shop/x");
+
+    // 동기화 저장소 목록도 섹션끼리 안 섞임 (pair_key 앞부분 + content.section)
+    const shopStore = supabaseSyncStore(fakeSupabase(rows, 1000).client, "shop");
+    const infoStore = supabaseSyncStore(fakeSupabase(rows, 1000).client, "info");
+    assert.deepEqual((await shopStore.listLinked()).map((r) => r.slug).sort(), ["shop-draft", "shop-new", "shop-old"]);
+    assert.deepEqual((await infoStore.listLinked()).map((r) => r.slug).sort(), ["info-a", "info-b", "info-draft"]);
+    assert.deepEqual(await shopStore.listLinked(["page-info-a", "page-info-oldkey"]), []);
+    assert.deepEqual((await infoStore.listLinked(["page-info-a", "page-shop-old"])).map((r) => r.slug), ["info-a"]);
+    assert.equal(await shopStore.loadPost("id-info-a"), null);
+    assert.equal(await infoStore.loadPost("id-shop-old"), null);
+    assert.equal((await infoStore.loadPost("id-info-a"))?.slug, "info-a");
+    assert.equal(pairKeyOf("p1"), "notion:p1");
+    assert.equal(pairKeyOf("p1", "info"), "notion-info:p1");
+  });
+
+  await test("저장소: 섹션 상태·일정은 같은 칸 안에서 나눠 저장 — 쇼핑은 맨 위 그대로, 일반 글은 .info, 한쪽을 저장해도 다른 쪽 몫은 그대로", async () => {
+    const legacy = { databaseId: "db-1", dataSourceId: "ds-1", queue: { p: { at: "a", edited: "e" } }, publishSlot: { slot: "2026-11-14T09", published: 1 } };
+    const rows: FakeRow[] = [{ id: 1, notion_sync: structuredClone(legacy), notion_schedule: { hours: [1, 9, 17], perRun: 1 } }];
+    const fake = fakeSupabase(rows, 1000);
+    const shopStore = supabaseSyncStore(fake.client, "shop");
+    const infoStore = supabaseSyncStore(fake.client, "info");
+    assert.deepEqual(await shopStore.loadState(), legacy);
+    assert.deepEqual(await infoStore.loadState(), {});
+
+    await infoStore.saveState({ databaseId: "db-info", queue: { q: { at: "b", edited: "f" } } });
+    assert.deepEqual(rows[0].notion_sync, { ...legacy, info: { databaseId: "db-info", queue: { q: { at: "b", edited: "f" } } } });
+    assert.deepEqual(await shopStore.loadState(), legacy); // info 키는 쇼핑 상태에 안 섞임
+
+    await shopStore.saveState({ ...legacy, publishSlot: { slot: "2026-11-14T10", published: 1 } });
+    const after = rows[0].notion_sync as Record<string, unknown>;
+    assert.deepEqual(after.info, { databaseId: "db-info", queue: { q: { at: "b", edited: "f" } } }); // 쇼핑 저장이 일반 글 상태를 안 지움
+    assert.deepEqual(after.publishSlot, { slot: "2026-11-14T10", published: 1 });
+    // 쇼핑 상태에 info 키가 섞여 와도 칸의 일반 글 몫을 덮지 않음
+    await shopStore.saveState({ ...legacy, info: { databaseId: "stale" } } as never);
+    assert.deepEqual((rows[0].notion_sync as Record<string, unknown>).info, { databaseId: "db-info", queue: { q: { at: "b", edited: "f" } } });
+
+    // 일정: 쇼핑은 맨 위, 일반 글은 .info (없으면 19시 1편)
+    assert.deepEqual(await loadNotionSchedule(fake.client), { hours: [1, 9, 17], perRun: 1 });
+    assert.deepEqual(await loadNotionSchedule(fake.client, "info"), DEFAULT_INFO_SCHEDULE);
+    assert.deepEqual(await infoStore.loadSchedule(), DEFAULT_INFO_SCHEDULE);
+    rows[0].notion_schedule = withSectionSchedule(rows[0].notion_schedule, "info", { hours: [21], perRun: 2 });
+    assert.deepEqual(rows[0].notion_schedule, { hours: [1, 9, 17], perRun: 1, info: { hours: [21], perRun: 2 } });
+    assert.deepEqual(await loadNotionSchedule(fake.client), { hours: [1, 9, 17], perRun: 1 });
+    assert.deepEqual(await loadNotionSchedule(fake.client, "info"), { hours: [21], perRun: 2 });
+    rows[0].notion_schedule = withSectionSchedule(rows[0].notion_schedule, "shop", { hours: [3], perRun: 1 });
+    assert.deepEqual(rows[0].notion_schedule, { hours: [3], perRun: 1, info: { hours: [21], perRun: 2 } });
+    // 칸이 없으면(SQL 미실행) 섹션 기본값, 상태는 null
+    assert.deepEqual(await loadNotionSchedule(fakeSupabase([], 1000).client, "info"), DEFAULT_INFO_SCHEDULE);
+    assert.equal(await supabaseSyncStore(fakeSupabase([], 1000).client, "info").loadState(), null);
+    // 순수 함수도 같은 규칙
+    assert.deepEqual(sectionState({ ...legacy, info: { a: 1 } }, "shop"), legacy);
+    assert.deepEqual(sectionState(null, "info"), {});
+    assert.deepEqual(withSectionState(null, "info", { databaseId: "x" }), { info: { databaseId: "x" } });
+    assert.equal(NOTION_SECTIONS.info.dbTitle, "일반 글");
+    assert.equal(NOTION_SECTIONS.shop.dbTitle, "쇼핑 글");
+  });
+
+  await test("섹션 라우트·화면: 일반 글 시간 상한 45초(쇼핑은 예전 35초), 응답은 쇼핑 결과 맨 위 + info / 생활정보 글 화면은 '홈 / 생활정보', 쿠팡 링크 있을 때만 고지", () => {
+    const c = routeSyncOptions("cron", "p", 1000, undefined, "info");
+    assert.equal(c.section, "info");
+    assert.equal(c.newLimit, "schedule");
+    assert.equal(c.deadline, 1000 + ROUTE_SECTION_BUDGET_MS.info);
+    assert.equal(ROUTE_SECTION_BUDGET_MS.info, 45_000);
+    assert.equal(routeSyncOptions("cron", "p", 1000).section, "shop");
+    assert.equal(routeSyncOptions("cron", "p", 1000).deadline, 1000 + ROUTE_TIME_BUDGET_MS);
+    assert.equal(routeSyncOptions("admin", "p", 1000, "all", "info").mode, "all");
+
+    const sum = (published: number) => ({ at: "t", trigger: "cron" as const, published, updated: 0, unpublished: 0, failed: 0, unchanged: 0, remaining: 0, items: [] });
+    const res = combineSummaries({ shop: sum(1), info: sum(2) });
+    assert.equal(res.published, 1); // 예전 화면·운영 점검이 읽는 자리 = 쇼핑
+    assert.equal(res.info?.published, 2);
+    assert.deepEqual(summaryOf(res, "shop"), sum(1));
+    assert.deepEqual(summaryOf(res, "info"), sum(2));
+    assert.equal(summaryOf(sum(1), "info"), undefined); // 예전 서버 응답
+
+    // 저장 전 정리(관리자 편집기)가 생활정보 표시를 지우지 않음
+    const clean = sanitizeManualInput({ title: "t", description: "", products: [], content: { kind: "manual", section: "info", blocks: [] } });
+    assert.equal(clean?.content.section, "info");
+    assert.equal("section" in sanitizeManualInput({ title: "t", description: "", products: [], content: { kind: "manual", blocks: [] } })!.content, false);
+
+    (globalThis as { React?: typeof React }).React = React;
+    const mk = (content: ManualShopPost["content"], products: ManualShopPost["products"]): ManualShopPost => ({
+      id: "x", slug: "s", title: "난방비 줄이는 법", description: "", products, sources: [],
+      stats: { naverReviews: 0, youtubeVideos: 0, youtubeComments: 0, webSources: 0 },
+      status: "published", created_at: "2026-11-14T00:00:00Z", published_at: "2026-11-14T00:00:00Z", updated_at: "2026-11-14T00:00:00Z",
+      content,
+    });
+    const render = (p: ManualShopPost) => renderToStaticMarkup(React.createElement(ShopManualArticle, { post: p }));
+    const body: ShopManualBlock[] = [{ id: "b1", type: "paragraph", text: "보일러 온도를 낮춰요." }];
+    const plainInfo = render(mk({ kind: "manual", section: "info", blocks: body, disclosure: "쿠팡 고지 문구" }, []));
+    assert.ok(plainInfo.includes('href="/info"') && plainInfo.includes("생활정보"));
+    assert.ok(!plainInfo.includes('href="/shop"'));
+    assert.ok(!plainInfo.includes("쿠팡 고지 문구")); // 쿠팡 링크 없음 → 고지 없음
+    assert.ok(!plainInfo.includes("판매 페이지에서 최종 확인"));
+    const linked = convertNotionBlocks([para(rt("자세한 건 "), rt("여기", { href: P }), rt("에서 보세요."))], "난방비 줄이는 법");
+    const linkInfo = render(mk({ kind: "manual", section: "info", blocks: linked.blocks, disclosure: "쿠팡 고지 문구" }, linked.products));
+    assert.ok(linkInfo.includes("쿠팡 고지 문구")); // 쿠팡 링크 있음 → 고지
+    assert.ok(linkInfo.includes(`href="${P}"`) && linkInfo.includes('rel="sponsored nofollow noopener"'));
+    const shopHtml = render(mk({ kind: "manual", blocks: body, disclosure: "쿠팡 고지 문구" }, []));
+    assert.ok(shopHtml.includes("쿠팡 고지 문구") && shopHtml.includes('href="/shop"')); // 쇼핑 글은 예전처럼 언제나
   });
 
   console.log(`\n${passed}개 통과`);

@@ -205,6 +205,8 @@ export function mapBlocksDeep(blocks: ShopManualBlock[], fn: (b: ShopManualBlock
 
 export type ShopManualContent = {
   kind: "manual";
+  // 섹션: "info" = 생활정보(/info, 노션 "일반 글"). 없으면 쇼핑 — 판별은 src/lib/post-section.ts sectionOf 로만
+  section?: "info";
   blocks: ShopManualBlock[];
   category?: string; // 관련 글 묶음용 (AI 글의 content.category 와 같은 자리라 관련 글 조회가 그대로 동작)
   disclosure?: string; // 공정위 고지 문구 (작성 시점 설정값)

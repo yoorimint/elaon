@@ -231,6 +231,9 @@ export function postImages(post: Pick<ShopPost, "content" | "products">): string
 // 이름: 노션 글의 상품 이름은 콜아웃 문장이 들어가는 일이 많아서(실제: "400 Pro 2를 보고 있다면 …" 긴 문장)
 //   상품 하나짜리 글은 글 제목, 여러 상품 글은 상품 이름이 짧을 때만(BAR_NAME_MAX 자) 상품 이름, 아니면 글 제목.
 export type ShopBottomProduct = { name: string; href: string; image?: string };
+
+// 쿠팡 링크가 있는 글인지 (생활정보 글은 이때만 파트너스 고지 문구를 보인다 — 노션 변환은 쿠팡 링크를 모두 상품으로 등록)
+export const hasCoupangLink = (post: Pick<ShopPost, "products">): boolean => post.products.some((x) => isCoupangLink(x.link ?? ""));
 const BAR_NAME_MAX = 30;
 
 export function bottomBarProduct(post: Pick<ShopPost, "title" | "content" | "products">): ShopBottomProduct | null {
@@ -277,6 +280,8 @@ export function sanitizeManualInput(raw: unknown): ManualPostInput | null {
     description: str(r.description, 300).trim(),
     content: {
       kind: "manual",
+      // 생활정보 글이면 섹션 표시를 그대로 둔다 (지우면 쇼핑 글로 바뀜)
+      ...(content.section === "info" ? { section: "info" as const } : {}),
       blocks,
       ...(str(content.category, 50).trim() ? { category: str(content.category, 50).trim() } : {}),
       ...(str(content.disclosure, 500).trim() ? { disclosure: str(content.disclosure, 500).trim() } : {}),

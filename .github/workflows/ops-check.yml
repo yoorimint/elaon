@@ -4,7 +4,7 @@ name: ops check
 # 사장님께 서버 명령을 시키지 않고 운영자(Claude)가 직접 확인하려고 만든 것 (2026-11-16 iwinv 이전 후).
 #  1) 바깥에서: 주요 페이지 응답 코드, 실제 HTTPS 인증서 만료일 (GitHub 서버에서 보므로 중계 없이 진짜 인증서)
 #  2) 서버 안(배포 계정 eloan, 읽기 전용 명령만): 서비스 상태·메모리·디스크·재부팅 필요 여부
-#  3) Supabase: 노션 예약 실행(pg_cron → /api/shop/notion-sync) 마지막 기록
+#  3) Supabase: 노션 예약 실행(서버 crontab → /api/shop/notion-sync) 마지막 기록 — 쇼핑 글·일반 글(생활정보) 섹션 각각
 # 저장소가 공개라 로그도 공개 — 비밀값·방문자 IP 는 찍지 않는다.
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
 
       - name: 바깥에서 페이지·인증서
         run: |
-          for p in / /picks /picks/study/megastudy /shop /community /login /admin/shop /sitemap.xml /rss.xml /backtest /stock/005930; do
+          for p in / /picks /picks/study/megastudy /shop /info /community /login /admin/shop /sitemap.xml /rss.xml /backtest /stock/005930; do
             curl -s -o /dev/null -m 30 -w "$p %{http_code} %{time_total}s\n" "$SITE$p" || echo "$p 실패"
           done
           echo "--- eloan.kr → $(curl -sI -m 20 https://eloan.kr/ | grep -i '^location' | tr -d '\r')"
@@ -86,11 +86,17 @@ jobs:
           if not isinstance(rows, list) or not rows:
               print("읽기 실패:", str(rows)[:200]); sys.exit(0)
           st = rows[0].get("notion_sync") or {}
-          last = st.get("lastRun") or {}
-          keep = {k: v for k, v in last.items() if k not in ("items",)}
-          print("마지막 실행:", json.dumps(keep, ensure_ascii=False))
-          print("발행 일정:", json.dumps(rows[0].get("notion_schedule"), ensure_ascii=False))
-          print("이번 시 발행 기록:", json.dumps(st.get("publishSlot"), ensure_ascii=False))
+          sch = rows[0].get("notion_schedule") or {}
+          # 섹션: 쇼핑 글은 칸 맨 위(예전 그대로), 일반 글(생활정보)은 하위 키 info (src/lib/notion-section.ts)
+          def show(name, part, schedule, default):
+              last = part.get("lastRun") or {}
+              keep = {k: v for k, v in last.items() if k not in ("items",)}
+              print(f"[{name}] 마지막 실행:", json.dumps(keep, ensure_ascii=False) if keep else "아직 없음")
+              print(f"[{name}] 발행 일정:", json.dumps(schedule, ensure_ascii=False) if schedule else f"저장 안 됨 → 기본값 {default}")
+              print(f"[{name}] 이번 시 발행 기록:", json.dumps(part.get("publishSlot"), ensure_ascii=False))
+              print(f"[{name}] 대기열:", len(part.get("queue") or {}), "편 · 데이터베이스:", part.get("databaseId") or "아직 없음")
+          show("쇼핑 글", {k: v for k, v in st.items() if k != "info"}, {k: v for k, v in sch.items() if k != "info"}, "1·9·17시 1편")
+          show("일반 글", st.get("info") or {}, sch.get("info"), "19시 1편")
           '
 
       # 예약 실행 경로를 GitHub 에서 똑같이 불러 본다 (Supabase pg_cron 이 보내는 것과 같은 비밀값 헤더).
@@ -108,7 +114,7 @@ jobs:
           echo "::add-mask::$SECRET"
           curl -s -m 70 -o /tmp/r.json -w "응답 %{http_code} (%{time_total}s)\n" -X POST "$SITE/api/shop/notion-sync" \
             -H "content-type: application/json" -H "x-notion-cron-secret: $SECRET" -d '{}'
-          python3 -c 'import json; d=json.load(open("/tmp/r.json")); s=d.get("summary",d); print({k:v for k,v in s.items() if k!="items"} if isinstance(s,dict) else str(d)[:300])' || head -c 300 /tmp/r.json
+          python3 -c 'import json; d=json.load(open("/tmp/r.json")); s=d.get("summary",d); i=s.get("info") if isinstance(s,dict) else None; print({k:v for k,v in s.items() if k not in ("items","info")} if isinstance(s,dict) else str(d)[:300]); print("일반 글:", {k:v for k,v in i.items() if k!="items"} if isinstance(i,dict) else "없음")' || head -c 300 /tmp/r.json
 
       # 커뮤니티 실제 이용 현황 (글·댓글 수, 봇 제외) — 개인정보 없이 숫자만
       - name: 커뮤니티 이용 현황

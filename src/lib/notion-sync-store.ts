@@ -1,11 +1,14 @@
 // 노션 동기화의 Supabase 쪽 (service role 클라이언트 — 서버·GitHub Actions 전용).
 // 관리자 API 라우트와 scripts/shop/notion-sync.ts 가 같이 쓴다.
+// 저장소는 섹션(쇼핑·일반 글) 하나에 묶는다 — 글 목록은 그 섹션 pair_key 앞부분·content.section 으로,
+// 상태·일정은 shop_config 칸 안 그 섹션 몫만 읽고 쓴다 (src/lib/notion-section.ts).
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createNotionClient } from "./notion-api";
-import { normalizeSchedule, type NotionSchedule } from "./notion-schedule";
-import { NOTION_PARENT_PAGE_ID, type NotionSyncState } from "./notion-shop";
+import { type NotionSchedule } from "./notion-schedule";
+import { NOTION_SECTIONS, sectionSchedule, sectionState, withSectionState } from "./notion-section";
+import { NOTION_PARENT_PAGE_ID } from "./notion-shop";
 import {
   fetchImageDefault,
   pairKeyOf,
@@ -16,6 +19,7 @@ import {
   type SyncOptions,
   type SyncStore,
 } from "./notion-sync";
+import { inSection, type PostSection } from "./post-section";
 import { DEFAULT_POST_DISCLOSURE, isManualContent } from "./shop-post-types";
 
 const BUCKET = "shop-images";
@@ -27,6 +31,7 @@ const LINKED_COLUMNS = [
   "status",
   "title",
   "kind:content->>kind",
+  "section:content->>section",
   "pageId:content->notion->>pageId",
   "lastEditedTime:content->notion->>lastEditedTime",
   "syncedAt:content->notion->>syncedAt",
@@ -43,15 +48,16 @@ type LinkedSelectRow = {
   status: LinkedRow["status"];
   title: string;
   kind: string | null;
+  section: string | null;
   pageId: string | null;
   lastEditedTime: string | null;
   syncedAt: string | null;
   convertVersion: unknown;
 };
 
-// 수동 글(kind=manual)이면서 노션 페이지 id 가 있는 것만 (예전 listLinkedPosts 의 isManualContent 거르기와 같은 뜻)
-function toLinkedRow(r: LinkedSelectRow): LinkedRow[] {
-  if (r.kind !== "manual" || !r.pageId) return [];
+// 수동 글(kind=manual)이면서 노션 페이지 id 가 있고 이 섹션인 것만 (예전 listLinkedPosts 의 isManualContent 거르기와 같은 뜻)
+function toLinkedRow(r: LinkedSelectRow, section: PostSection): LinkedRow[] {
+  if (r.kind !== "manual" || !r.pageId || !inSection({ section: r.section }, section)) return [];
   return [
     {
       id: r.id,
@@ -68,7 +74,14 @@ function toLinkedRow(r: LinkedSelectRow): LinkedRow[] {
   ];
 }
 
-export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
+export function supabaseSyncStore(sb: SupabaseClient, section: PostSection = "shop"): SyncStore {
+  const prefix = NOTION_SECTIONS[section].pairPrefix;
+  // shop_config.notion_sync 칸 전체 (없으면 null — SQL 미실행)
+  const readSyncColumn = async (): Promise<Record<string, unknown> | null> => {
+    const { data, error } = await sb.from("shop_config").select("notion_sync").eq("id", 1).maybeSingle();
+    if (error || !data) return null;
+    return ((data as { notion_sync?: Record<string, unknown> | null }).notion_sync ?? {}) as Record<string, unknown>;
+  };
   return {
     // 판단용 가벼운 목록: 본문(content 전체)·상품은 읽지 않고 content.notion 안의 필요한 값만 JSON 경로로 꺼낸다
     // (글 1,000편이면 본문까지는 실행마다 수십 MB, 이 목록은 수백 KB)
@@ -77,7 +90,7 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
       if (pageIds) {
         // 받은 페이지의 글만 pair_key 로 (인덱스 shop_posts_pair_idx). 주소가 너무 길어지지 않게 나눠서
         for (let i = 0; i < pageIds.length; i += PAIR_KEY_CHUNK) {
-          const keys = pageIds.slice(i, i + PAIR_KEY_CHUNK).map(pairKeyOf);
+          const keys = pageIds.slice(i, i + PAIR_KEY_CHUNK).map((id) => pairKeyOf(id, section));
           const { data, error } = await sb.from("shop_posts").select(LINKED_COLUMNS).in("pair_key", keys);
           if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
           rows.push(...((data ?? []) as unknown as LinkedSelectRow[]));
@@ -88,7 +101,7 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
           const { data, error } = await sb
             .from("shop_posts")
             .select(LINKED_COLUMNS)
-            .like("pair_key", "notion:%")
+            .like("pair_key", `${prefix}%`)
             .order("id")
             .range(from, from + LINKED_PAGE - 1);
           if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
@@ -98,13 +111,13 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
           from += got.length;
         }
       }
-      return rows.flatMap(toLinkedRow);
+      return rows.flatMap((r) => toLinkedRow(r, section));
     },
     async loadPost(id) {
       const { data, error } = await sb.from("shop_posts").select(FULL_COLUMNS).eq("id", id).maybeSingle();
       if (error) throw new Error(`shop_posts 읽기 실패: ${error.message}`);
       const p = data as StoredPost | null;
-      return p && isManualContent(p.content) && p.content.notion?.pageId ? p : null;
+      return p && isManualContent(p.content) && p.content.notion?.pageId && inSection(p.content, section) ? p : null;
     },
     async insertPost(row) {
       const { error } = await sb.from("shop_posts").insert({ ...row, sources: [], stats: {} });
@@ -118,15 +131,18 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
     },
     // shop_config.notion_sync 칸이 없으면(SQL 미실행) null → 동기화는 되지만 실패 기억·마지막 결과는 저장 안 됨
     async loadState() {
-      const { data, error } = await sb.from("shop_config").select("notion_sync").eq("id", 1).maybeSingle();
-      if (error || !data) return null;
-      return ((data as { notion_sync?: NotionSyncState | null }).notion_sync ?? {}) as NotionSyncState;
+      const column = await readSyncColumn();
+      return column === null ? null : sectionState(column, section);
     },
+    // 저장 직전에 칸을 다시 읽어 이 섹션 몫만 바꾼다 (같은 실행에서 앞서 저장한 다른 섹션 상태를 덮지 않게).
+    // 다시 읽기가 실패하면 쓰지 않는다 (다른 섹션 몫을 모른 채 쓰면 그 상태가 지워진다 — runNotionSync 가 "상태 저장 실패"로 남김)
     async saveState(state) {
-      const { error } = await sb.from("shop_config").update({ notion_sync: state }).eq("id", 1);
+      const column = await readSyncColumn();
+      if (column === null) throw new Error("저장 전 상태 다시 읽기 실패 — 이번 실행 상태는 저장하지 않았어요");
+      const { error } = await sb.from("shop_config").update({ notion_sync: withSectionState(column, section, state) }).eq("id", 1);
       if (error) throw new Error(error.message);
     },
-    loadSchedule: () => loadNotionSchedule(sb),
+    loadSchedule: () => loadNotionSchedule(sb, section),
     async disclosure() {
       const { data } = await sb.from("shop_config").select("disclosure_text").eq("id", 1).maybeSingle();
       return ((data as { disclosure_text?: string } | null)?.disclosure_text ?? "").trim() || DEFAULT_POST_DISCLOSURE;
@@ -139,11 +155,11 @@ export function supabaseSyncStore(sb: SupabaseClient): SyncStore {
   };
 }
 
-// 발행 일정 (관리자 📒 노션 탭 "발행 일정", shop_config.notion_schedule).
-// 칸이 없으면(supabase/shop-notion-cron.sql 미실행) 기본값 — 예전과 같은 하루 3번(새벽 1시·오전 9시·오후 5시) × 1편
-export async function loadNotionSchedule(sb: SupabaseClient): Promise<NotionSchedule> {
+// 발행 일정 (관리자 📒 노션 탭 "발행 일정", shop_config.notion_schedule — 쇼핑은 맨 위, 일반 글은 .info).
+// 칸이 없으면(supabase/shop-notion-cron.sql 미실행) 섹션 기본값 — 쇼핑: 예전과 같은 하루 3번(새벽 1시·오전 9시·오후 5시) × 1편, 일반 글: 오후 7시 1편
+export async function loadNotionSchedule(sb: SupabaseClient, section: PostSection = "shop"): Promise<NotionSchedule> {
   const { data, error } = await sb.from("shop_config").select("notion_schedule").eq("id", 1).maybeSingle();
-  return normalizeSchedule(error || !data ? null : (data as { notion_schedule?: unknown }).notion_schedule);
+  return sectionSchedule(error || !data ? null : (data as { notion_schedule?: unknown }).notion_schedule, section);
 }
 
 // 노션 토큰: 관리자 화면에서 저장한 값(shop_secrets.NOTION_TOKEN). 없으면 환경변수 NOTION_TOKEN (예비)
@@ -155,11 +171,12 @@ export async function loadNotionToken(sb: SupabaseClient): Promise<string> {
 export const SITE_URL = (process.env.SITE_URL ?? "https://www.eloan.kr").replace(/\/$/, "");
 export const parentPageId = () => (process.env.NOTION_PARENT_PAGE_ID ?? NOTION_PARENT_PAGE_ID).trim();
 
-// 두 실행 경로가 쓰는 의존성 묶음. NOTION_API_BASE 는 목업 시험용 (기본 공식 주소)
-export function syncDeps(sb: SupabaseClient, token: string, log?: (m: string) => void): SyncDeps {
+// 두 실행 경로가 쓰는 의존성 묶음 (섹션 하나). NOTION_API_BASE 는 목업 시험용 (기본 공식 주소)
+export function syncDeps(sb: SupabaseClient, token: string, o: { section?: PostSection; log?: (m: string) => void } = {}): SyncDeps {
+  const { section = "shop", log } = o;
   return {
     notion: createNotionClient({ token, baseUrl: process.env.NOTION_API_BASE || undefined }),
-    store: supabaseSyncStore(sb),
+    store: supabaseSyncStore(sb, section),
     fetchImage: fetchImageDefault,
     siteUrl: SITE_URL,
     log,
@@ -196,13 +213,23 @@ export async function verifyCronSecret(sb: SupabaseClient, given: string | null)
 //      updates(기본) = "수정만 지금 반영": 공개 글 갱신·내림만, 새 글 0편 — 대기 글은 그대로 다음 발행 시각에
 //      all = "대기 글까지 전부 지금 올리기": 새 글 제한 없이 시간 안에서 전부
 //    cron 은 모드를 받지 않는다 (발행 일정대로)
+// 섹션은 한 요청 안에서 쇼핑 → 일반 글 순서로 돈다. 쇼핑은 예전과 같은 35초, 일반 글은 요청 시작부터 45초까지
+// (쇼핑이 일찍 끝나면 남은 시간을 쓴다. 관리자 버튼은 nginx 를 거쳐서 전체가 60초 안에 끝나야 한다 — 한 편이 10초 안팎)
 export const ROUTE_TIME_BUDGET_MS = 35_000;
-export function routeSyncOptions(kind: "cron" | "admin", parentPageId: string, startMs: number, mode: SyncMode = "updates"): SyncOptions {
+export const ROUTE_SECTION_BUDGET_MS: Record<PostSection, number> = { shop: ROUTE_TIME_BUDGET_MS, info: 45_000 };
+export function routeSyncOptions(
+  kind: "cron" | "admin",
+  parentPageId: string,
+  startMs: number,
+  mode: SyncMode = "updates",
+  section: PostSection = "shop",
+): SyncOptions {
   return {
+    section,
     trigger: kind,
     parentPageId,
     maxPages: 50,
-    deadline: startMs + ROUTE_TIME_BUDGET_MS,
+    deadline: startMs + ROUTE_SECTION_BUDGET_MS[section],
     ...(kind === "cron" ? { newLimit: "schedule" as const } : { mode }),
   };
 }

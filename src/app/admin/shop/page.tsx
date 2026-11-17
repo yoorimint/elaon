@@ -4,7 +4,7 @@
 // 다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들고, 사진은 사이트에 올리고,
 // 구매 링크는 쿠팡 파트너스 링크를 붙여넣어 건다.
 // 탭: 📒 노션(노션 "쇼핑 글" → 사이트 발행, 2026-11-14~ 기본) / ✍️ 붙여넣어 초안 만들기(예비) / 📝 초안 / ✅ 발행된 글 /
-//     ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·고지 문구)
+//     📰 생활정보 글(공개된 /info 글과 조회수 — 보기 전용, 고치기는 노션) / ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·고지 문구)
 // 맨 위 "사용량" 카드: 무료 한도(Supabase 사진·DB, iwinv 서버 트래픽) — src/components/AdminUsageCard.tsx
 // 매시간 AI 자동 글은 꺼 둠 (.github/workflows/shop-post.yml). 자동 글 설정 화면(실행·상품 선정·정보 수집·직접 입력 상품·
 // 실행 기록·Gemini/Claude/네이버 키)은 화면에서만 뺐다 — 코드(scripts/shop, ShopRunsAdmin 등)와 저장된 값은 그대로.
@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminNav } from "@/components/AdminNav";
 import { AdminUsageCard } from "@/components/AdminUsageCard";
+import { InfoAdminPosts } from "@/components/InfoAdminPosts";
 import { ShopAdminPosts } from "@/components/ShopAdminPosts";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { ShopPasteDraft } from "@/components/ShopPasteDraft";
@@ -23,12 +24,13 @@ import { sectionSchedule, sectionState } from "@/lib/notion-section";
 import { bySection } from "@/lib/post-section";
 import { DEFAULT_POST_DISCLOSURE } from "@/lib/shop-post-types";
 
-type Tab = "notion" | "paste" | "draft" | "published" | "settings";
+type Tab = "notion" | "paste" | "draft" | "published" | "info" | "settings";
 const TABS: { id: Tab; label: string }[] = [
   { id: "notion", label: "📒 노션" },
   { id: "paste", label: "✍️ 붙여넣어 초안 만들기" },
   { id: "draft", label: "📝 초안" },
   { id: "published", label: "✅ 발행된 글" },
+  { id: "info", label: "📰 생활정보 글" },
   { id: "settings", label: "⚙️ 설정" },
 ];
 
@@ -157,6 +159,8 @@ export default function AdminShopPage() {
           }}
         />
       )}
+
+      {tab === "info" && <InfoAdminPosts />}
 
       {tab === "settings" && <SettingsTab config={config} onSaved={load} />}
     </main>

@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import { sanitizeManualInput, type ManualPostInput } from "./shop-manual";
 import type { NotionSyncResponse } from "./notion-section";
 import { whereSection } from "./post-section";
+import { fetchPublishedForAdmin, type SectionAdminRow } from "./shop-posts-public";
 import type { ShopPost, ShopPostInputProduct, ShopPostQa, ShopPostRunInfo, ShopPostStatus } from "./shop-post-types";
 
 export type AdminPostRow = Pick<ShopPost, "id" | "slug" | "title" | "status" | "created_at" | "published_at" | "products"> & {
@@ -160,4 +161,9 @@ export async function updatePostProducts(id: string, patches: ProductPatch[]): P
     .select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("저장 안 됨 — 관리자 로그인 상태를 확인하세요");
+}
+
+// 관리자 "📰 생활정보 글" 탭: 공개된 생활정보 글만 (조회수 보기용 — 글 고치기는 노션에서)
+export function listPublishedInfoPosts(limit = 200): Promise<SectionAdminRow[]> {
+  return fetchPublishedForAdmin(supabase, "info", limit);
 }

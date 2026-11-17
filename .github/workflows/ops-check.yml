@@ -6,6 +6,7 @@ name: ops check
 #  2) 서버 안(배포 계정 eloan, 읽기 전용 명령만): 서비스 상태·메모리·디스크·재부팅 필요 여부
 #  3) Supabase: 노션 예약 실행(서버 crontab → /api/shop/notion-sync) 마지막 기록 — 쇼핑 글·일반 글(생활정보) 섹션 각각
 #     + 무료 한도 사용량(사진 저장 용량·글 수·DB 추정 — scripts/ops/usage.ts)
+#     + 글 조회수 표(shop_post_views)가 있는지와 최근 7일(한국시간) 합계 — 쇼핑·생활정보 섹션별
 # 저장소가 공개라 로그도 공개 — 비밀값·방문자 IP 는 찍지 않는다.
 on:
   push:
@@ -101,6 +102,54 @@ jobs:
           show("쇼핑 글", {k: v for k, v in st.items() if k != "info"}, {k: v for k, v in sch.items() if k != "info"}, "1·9·17시 1편")
           show("일반 글", st.get("info") or {}, sch.get("info"), "19시 1편")
           '
+
+      # 글 조회수(supabase/shop-views.sql): 표가 실제로 있는지 + 최근 7일(한국시간, 오늘 포함) 합계를 섹션별로. 읽기만 한다.
+      # 조회수 표에는 글 id 만 있어 shop_posts 의 id·content->>section 을 따로 읽어 합친다 (섹션 규칙은 src/lib/post-section.ts 와 같게: "info" 만 생활정보)
+      - name: 글 조회수 (섹션별 최근 7일)
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 - <<'PY'
+          import collections, datetime, json, os, sys, urllib.error, urllib.request
+          base = os.environ["SUPABASE_URL"].rstrip("/") + "/rest/v1/"
+          key = os.environ["SERVICE_KEY"]
+          def get(path):
+              req = urllib.request.Request(base + path, headers={"apikey": key, "Authorization": "Bearer " + key})
+              try:
+                  with urllib.request.urlopen(req, timeout=20) as r:
+                      return r.status, json.load(r)
+              except urllib.error.HTTPError as e:
+                  try:
+                      return e.code, json.load(e)
+                  except Exception:
+                      return e.code, {}
+              except Exception as e:
+                  return 0, {"message": str(e)}
+          today = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=9)).date()
+          since = today - datetime.timedelta(days=6)
+          st, views = get(f"shop_post_views?select=post_id,view_day,view_count&view_day=gte.{since}&limit=10000")
+          if st != 200 or not isinstance(views, list):
+              code = views.get("code") if isinstance(views, dict) else None
+              # 42P01 = 표 없음(Postgres), PGRST205 = PostgREST 가 표를 모름
+              if code in ("42P01", "PGRST205") or st == 404:
+                  print("조회수 표 없음 — supabase/shop-views.sql 미실행"); sys.exit(0)
+              print("조회수 읽기 실패:", st, str(views)[:200]); sys.exit(0)
+          print(f"조회수 표 있음 — {since} ~ {today} 기록 {len(views)}줄" + (" (응답 줄 수 상한일 수 있음 — 일부만)" if len(views) >= 1000 else ""))
+          st, posts = get("shop_posts?select=id,section:content->>section&limit=10000")
+          if st != 200 or not isinstance(posts, list):
+              print("글 섹션 읽기 실패:", st, str(posts)[:200]); sys.exit(0)
+          section = {p["id"]: ("생활정보" if p.get("section") == "info" else "쇼핑") for p in posts}
+          week, day, read = collections.Counter(), collections.Counter(), collections.defaultdict(set)
+          for v in views:
+              s = section.get(v["post_id"], "알 수 없는 글")
+              week[s] += int(v.get("view_count") or 0)
+              if v.get("view_day") == str(today):
+                  day[s] += int(v.get("view_count") or 0)
+              read[s].add(v["post_id"])
+          for s in ["쇼핑", "생활정보"] + [k for k in week if k not in ("쇼핑", "생활정보")]:
+              print(f"[{s}] 최근 7일 {week[s]:,} · 오늘 {day[s]:,} · 조회된 글 {len(read[s])}편")
+          PY
 
       # Supabase 무료 한도 사용량: 사진 저장(1GB 대비 %)·글 수·DB 추정 (scripts/ops/usage.ts — 매일 감시 usage-watch.yml 과 같은 계산).
       # 여기서는 보기만 한다 (70% 이상이어도 이 점검은 실패시키지 않음)

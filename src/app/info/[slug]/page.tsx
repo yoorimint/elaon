@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JsonLd, articleLd, breadcrumbLd } from "@/components/JsonLd";
 import { ShopManualArticle } from "@/components/ShopManualArticle";
+import { ShopViewTracker } from "@/components/ShopViewTracker";
 import { ShopDraftPreview } from "@/app/shop/[slug]/ShopDraftPreview";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
 import { INFO_GUIDE_BAR_ENABLED } from "@/lib/ads-config";
@@ -84,6 +85,8 @@ export default async function InfoPostPage({ params }: { params: { slug: string 
         })}
       />
       <ShopManualArticle post={post} />
+      {/* 조회수: 공개 글에서만 (초안 미리보기는 안 셈) — 쇼핑 글과 같은 기록기·같은 RPC (slug 로 셈, src/lib/shop-views.ts) */}
+      <ShopViewTracker slug={post.slug} />
       <InfoShopGuideBar guide={guide} />
       {/* 관련 쇼핑 글 바를 끈 동안은 사주데이 이미지 바 (둘이 겹치지 않게) */}
       {!guide && <InfoSajudayBar />}

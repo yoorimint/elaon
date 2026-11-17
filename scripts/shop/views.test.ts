@@ -18,6 +18,7 @@ import {
   parseExclude,
   parseSeen,
   sortByViews,
+  statsFor,
   type PostViewStats,
 } from "@/lib/shop-views";
 
@@ -157,6 +158,57 @@ test("정렬: 최신순·전체 조회순·오늘 조회순, 조회수 없으면
   assert.deepEqual(sortByViews(posts, stats, "today").map((p) => p.id), ["mid", "old", "new"]);
   assert.deepEqual(sortByViews(posts, null, "total").map((p) => p.id), ["new", "mid", "old"]);
   assert.equal(posts[0].id, "old", "원본 배열은 그대로");
+});
+
+// ---------- 생활정보 글 조회수 (2026-11-17 사장님 결정: 생활정보 글도 쇼핑 글처럼 센다 — SQL 변경 없이) ----------
+
+const src = (...p: string[]) => readFileSync(join(process.cwd(), ...p), "utf8");
+
+test("생활정보: DB 함수가 섹션과 상관없이 slug·공개 여부로만 센다 (SQL 다시 실행할 필요 없음)", () => {
+  const sql = src("supabase", "shop-views.sql");
+  const body = sql.slice(sql.indexOf("function public.shop_post_view("), sql.indexOf("function public.admin_shop_post_view_stats("));
+  assert.ok(body.includes("where slug = p_slug and status = 'published'"), "slug·공개 글 조건");
+  assert.ok(!/section/.test(body), "shop_post_view 에 섹션 조건이 생기면 생활정보 글이 안 셀 수 있음");
+  const stats = sql.slice(sql.indexOf("function public.admin_shop_post_view_stats("));
+  assert.ok(!/section|shop_posts/.test(stats), "관리자 집계는 글 id 별 — 섹션 상관없음");
+});
+
+test("생활정보: 공개 글 화면에 조회수 기록기가 있고, 초안 미리보기에는 없다 (쇼핑과 같은 규칙)", () => {
+  for (const [path, previewMarker] of [
+    [["src", "app", "info", "[slug]", "page.tsx"], '<ShopDraftPreview slug={params.slug} section="info" />'],
+    [["src", "app", "shop", "[slug]", "page.tsx"], "<ShopDraftPreview slug={params.slug} />"],
+  ] as const) {
+    const page = src(...path);
+    const draftAt = page.indexOf(previewMarker);
+    const trackerAt = page.indexOf("<ShopViewTracker slug={post.slug} />");
+    assert.ok(draftAt > 0, `${path.join("/")}: 초안 미리보기 분기`);
+    // 초안·없는 글이면 미리보기를 먼저 return 하고, 기록기는 그 뒤(공개 글 화면)에만 있다
+    assert.ok(trackerAt > draftAt, `${path.join("/")}: 공개 글 화면에 기록기`);
+    assert.equal(page.split("<ShopViewTracker").length - 1, 1, `${path.join("/")}: 기록기는 한 곳만`);
+  }
+  // 초안 미리보기 화면(두 섹션 공용)에는 기록기가 없다
+  assert.ok(!src("src", "app", "shop", "[slug]", "ShopDraftPreview.tsx").includes("ShopViewTracker"));
+});
+
+test("관리자 목록: 글별 조회수 — 불러오는 중(undefined)·준비 중(null, SQL 실행 전)·기록 없는 글 0", () => {
+  const stats = new Map<string, PostViewStats>([["a", { today: 1, week: 2, total: 3 }]]);
+  assert.equal(statsFor(undefined, "a"), undefined);
+  assert.equal(statsFor(null, "a"), null);
+  assert.deepEqual(statsFor(stats, "a"), { today: 1, week: 2, total: 3 });
+  assert.deepEqual(statsFor(stats, "b"), { today: 0, week: 0, total: 0 });
+});
+
+test("관리자 화면: 📰 생활정보 글 탭이 같은 조회수 함수·조작 칸을 쓰고, 생활정보 섹션 조회를 부른다", () => {
+  const page = src("src", "app", "admin", "shop", "page.tsx");
+  assert.match(page, /\{ id: "info", label: "📰 생활정보 글" \}/);
+  assert.match(page, /\{tab === "info" && <InfoAdminPosts \/>\}/);
+  const info = src("src", "components", "InfoAdminPosts.tsx");
+  assert.match(info, /getShopViewStats\(\)/);
+  assert.match(info, /<ViewControls /);
+  assert.match(info, /listPublishedInfoPosts\(\)/);
+  assert.match(src("src", "lib", "shop-posts.ts"), /fetchPublishedForAdmin\(supabase, "info", limit\)/);
+  // 쇼핑 글 목록은 예전 그대로 쇼핑 섹션만
+  assert.match(src("src", "lib", "shop-posts.ts"), /notion_url:content->notion->>url"\),\n    "shop",/);
 });
 
 console.log(`\n조회수 테스트 ${passed}개 통과`);

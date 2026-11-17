@@ -1,2 +1,2 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 .github/workflows/ops-check.yml 이 1회 실행된다 (읽기 전용 운영 점검)
-check: 13 — 배포 뒤 동기화로 일반 글 DB 생성 확인
+check: 14 — 일반 글 데이터베이스 저장 확인

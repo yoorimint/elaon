@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import { JsonLd, articleLd, breadcrumbLd } from "@/components/JsonLd";
 import { ShopManualArticle } from "@/components/ShopManualArticle";
 import { ShopDraftPreview } from "@/app/shop/[slug]/ShopDraftPreview";
-import { lookupPublishedPost } from "@/lib/shop-posts-server";
-import { postDescription, postImages } from "@/lib/shop-manual";
+import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
+import { findShopGuideForInfo, lookupPublishedPost } from "@/lib/shop-posts-server";
+import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
 import { isManualPost } from "@/lib/shop-post-types";
 
 // 생활정보 글 화면 (노션 "일반 글" → /info/<slug>). 본문은 쇼핑 노션 글과 같은 ShopManualArticle (섹션은 content.section 으로 판별).
 // 캐시는 쇼핑 글 화면과 같다: 첫 방문 때 만들어 하루 캐시, 발행·수정·내림 때 노션 동기화가 바로 새로 만든다 (revalidateSection).
+// 하단 바: 공용 쿠팡 배너 대신 같은 카테고리 쇼핑 글 1편으로 가는 바 (InfoShopGuideBar — 없으면 바 없음).
+// 쇼핑 글이 바뀌면 revalidateSection("shop") 이 생활정보 글 화면도 새로 만들어 바를 다시 고른다.
 export const revalidate = 86400;
 export function generateStaticParams(): { slug: string }[] {
   return [];
@@ -56,6 +59,7 @@ export default async function InfoPostPage({ params }: { params: { slug: string 
   if (!post) return <ShopDraftPreview slug={params.slug} section="info" />;
 
   const url = `${SITE}/info/${post.slug}`;
+  const guide = await findShopGuideForInfo(postCategory(post), post.slug);
   return (
     <main>
       <JsonLd
@@ -77,6 +81,7 @@ export default async function InfoPostPage({ params }: { params: { slug: string 
         })}
       />
       <ShopManualArticle post={post} />
+      <InfoShopGuideBar guide={guide} />
     </main>
   );
 }

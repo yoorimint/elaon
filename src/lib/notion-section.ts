@@ -5,7 +5,8 @@
 //
 // 상태·일정 저장 (SQL 마이그레이션 없이 기존 jsonb 칸 안에서 나눈다)
 //  - shop_config.notion_sync: 쇼핑은 예전처럼 맨 위 키 그대로(lastRun·queue·publishSlot …), 일반 글은 하위 키 info 안에 같은 모양
-//  - shop_config.notion_schedule: 쇼핑은 맨 위 {hours, perRun} 그대로, 일반 글은 notion_schedule.info = {hours, perRun}
+//  - shop_config.notion_schedule: 쇼핑은 맨 위 {hours, perRun, days?} 그대로, 일반 글은 notion_schedule.info = {hours, perRun, days?}
+//    (days = 발행 요일, 매일이면 칸 없음 — src/lib/notion-schedule.ts)
 //  한 섹션을 저장할 때는 다른 섹션 몫을 그대로 두고 자기 몫만 바꾼다 (withSectionState·withSectionSchedule)
 
 import { NOTION_DB_TITLE, type NotionSyncState, type NotionSyncSummary } from "./notion-shop";
@@ -68,8 +69,11 @@ export function withSectionSchedule(column: unknown, section: PostSection, sched
   const clean = normalizeSchedule(schedule, NOTION_SECTIONS[section].defaultSchedule);
   const col = asObject(column);
   if (section !== "shop") return { ...col, [section]: clean };
-  // 쇼핑 몫이 아직 없던 칸(일반 글만 저장돼 있음)이면 쇼핑 기본값이 아니라 지금 고른 값이 들어간다
-  return { ...col, hours: clean.hours, perRun: clean.perRun };
+  // 쇼핑 몫이 아직 없던 칸(일반 글만 저장돼 있음)이면 쇼핑 기본값이 아니라 지금 고른 값이 들어간다.
+  // 매일로 바꾸면 예전 요일 칸을 지운다 (남아 있으면 다시 그 요일로 읽힘)
+  const rest = { ...col };
+  delete rest.days;
+  return { ...rest, hours: clean.hours, perRun: clean.perRun, ...(clean.days ? { days: clean.days } : {}) };
 }
 
 // ---------- 사이트 API 응답 (POST /api/shop/notion-sync) ----------

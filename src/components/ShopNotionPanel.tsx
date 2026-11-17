@@ -23,7 +23,7 @@ import {
   type SyncItem,
 } from "@/lib/notion-shop";
 import { NOTION_SECTIONS, summaryOf, type NotionSyncResponse } from "@/lib/notion-section";
-import { hourLabel, kstDateHourLabel, nextPublishAt, type NotionSchedule } from "@/lib/notion-schedule";
+import { daysLabel, hourLabel, kstDateHourLabel, nextPublishAt, type NotionSchedule } from "@/lib/notion-schedule";
 import { POST_SECTIONS, SECTION_META, sectionPostPath, type PostSection } from "@/lib/post-section";
 import { syncFromNotion } from "@/lib/shop-posts";
 import type { ShopConfig } from "@/lib/shop-config";
@@ -107,7 +107,7 @@ export function ShopNotionPanel({
             <p className="mt-1 text-xs leading-relaxed text-neutral-500">
               노션 &lsquo;{SHOP_DB}&rsquo;은 <b>쇼핑</b>(/shop)으로, &lsquo;{INFO_DB}&rsquo;은 <b>생활정보</b>(/info)로 올라가요. 상태를{" "}
               <b>{STATUS_LABEL.publish}</b>으로 바꾸면 아래 <b>발행 일정</b>(섹션마다 따로)의 시각마다 정한 편수씩 대기열 순서대로 공개돼요
-              {shopSch.hours.length ? ` (쇼핑: ${shopSch.hours.map(hourLabel).join("·")}마다 ${shopSch.perRun}편)` : " (쇼핑: 자동 발행 꺼짐)"}. 이미 공개된 글의
+              {shopSch.hours.length ? ` (쇼핑: ${daysLabel(shopSch)} ${shopSch.hours.map(hourLabel).join("·")}마다 ${shopSch.perRun}편)` : " (쇼핑: 자동 발행 꺼짐)"}. 이미 공개된 글의
               수정·내림은 매시간 저절로 반영돼요.
             </p>
           </div>

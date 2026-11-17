@@ -32,13 +32,30 @@ export const COUPANG_DISCLOSURE =
 // 하단 배너를 숨길 경로 (앞부분 일치)
 export const BOTTOM_BANNER_HIDDEN_PATHS = ["/admin"];
 
+// 글 화면(/섹션/글주소) 판정 — RSS 같은 .xml 주소는 글 화면이 아님
+const isPostPathIn = (base: string, path: string): boolean => path.startsWith(`${base}/`) && /^[^/]+$/.test(path.slice(base.length + 1)) && !path.endsWith(".xml");
+
 // 쇼핑 글 화면(/shop/글주소)은 공용 배너 대신 그 글의 상품 바를 글 화면이 직접 띄운다 (ShopProductBottomBar)
 export function isShopPostPath(path: string): boolean {
-  return /^\/shop\/[^/]+$/.test(path) && !path.endsWith(".xml");
+  return isPostPathIn("/shop", path);
+}
+
+// 생활정보 글 화면(/info/글주소)은 공용 쿠팡 배너를 띄우지 않고, 글 화면이 같은 카테고리 쇼핑 글로 가는 바를 띄운다
+// (InfoShopGuideBar — 같은 카테고리 쇼핑 글이 없으면 하단 바 없음. 2026-11-17 사장님 결정)
+export function isInfoPostPath(path: string): boolean {
+  return isPostPathIn("/info", path);
+}
+
+// 공용 하단 배너(CoupangBottomBanner)를 띄우지 않을 화면: 관리자 + 글 화면이 자기 바를 직접 띄우는 곳
+export function hidesSiteBottomBar(path: string): boolean {
+  return BOTTOM_BANNER_HIDDEN_PATHS.some((p) => path.startsWith(p)) || isShopPostPath(path) || isInfoPostPath(path);
 }
 
 // 상품 바 버튼 문구
 export const SHOP_PRODUCT_BAR_CTA = "오늘 가격 확인하기";
+
+// 생활정보 글 하단 "관련 쇼핑 글" 바 앞머리 (광고가 아닌 사이트 안 링크라 쿠팡 고지 문구 없음)
+export const INFO_GUIDE_BAR_LABEL = "📖 관련 구매 가이드";
 
 // 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
 // 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.

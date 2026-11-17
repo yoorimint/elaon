@@ -3,6 +3,8 @@
 // 실행: npm run test:shop. 고친 문제마다 여기에 테스트를 하나씩 추가한다.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createNotionClient, NotionError } from "@/lib/notion-api";
 import {
   NOTION_CONVERT_VERSION,
@@ -60,10 +62,14 @@ import { COMPRESS_VERSION } from "@/lib/image-compress";
 import {
   DEFAULT_INFO_SCHEDULE,
   DEFAULT_NOTION_SCHEDULE,
+  daysLabel,
   hourLabel,
+  isPublishHour,
   kstDateHourLabel,
   kstHour,
+  kstWeekday,
   nextPublishAt,
+  normalizeDays,
   normalizeSchedule,
   publishSlotKey,
   publishTimesAfter,
@@ -86,7 +92,9 @@ import {
   withSectionState,
 } from "@/lib/notion-section";
 import { POST_SECTIONS, inSection, sectionOf, sectionPostPath, whereSection, type PostSection } from "@/lib/post-section";
-import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts } from "@/lib/shop-posts-public";
+import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts, fetchShopGuideForInfo } from "@/lib/shop-posts-public";
+import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
+import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_LABEL } from "@/lib/ads-config";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -1732,6 +1740,77 @@ async function main() {
     assert.equal(publishTimesAfter(new Date("2026-11-15T01:00:00Z"), daily9, 400).length, 400); // 대기 글이 많아도 계산
   });
 
+  await test("발행 요일: 정규화(범위 밖·중복 버림, 빈 목록·칸 없음 = 매일), 지정 요일만 발행 시각, 다음 예정 시각은 지정 요일로 건너뜀 (한국시간 자정 기준)", () => {
+    // 정규화
+    assert.deepEqual(normalizeDays([5, 1, 1, 7, -1, 2.5, "3", 0]), [0, 1, 5]);
+    assert.deepEqual(normalizeDays(undefined), []);
+    assert.deepEqual(normalizeDays("월"), []);
+    assert.deepEqual(normalizeSchedule({ hours: [9], perRun: 1, days: [3, 1, 3, 9] }), { hours: [9], perRun: 1, days: [1, 3] });
+    // 빈 목록·이상한 값 = 매일 → 칸 자체를 만들지 않음 (예전 저장값과 같은 모양)
+    assert.deepEqual(normalizeSchedule({ hours: [9], perRun: 1, days: [] }), { hours: [9], perRun: 1 });
+    assert.deepEqual(normalizeSchedule({ hours: [9], perRun: 1, days: [8, "x"] }), { hours: [9], perRun: 1 });
+    // 기존 저장값(days 없음)은 매일로 읽힘 — 쇼핑·일반 글 모두, 기본값도 그대로
+    assert.deepEqual(sectionSchedule({ hours: [1, 9, 17], perRun: 1, info: { hours: [19], perRun: 1 } }, "shop"), { hours: [1, 9, 17], perRun: 1 });
+    assert.deepEqual(sectionSchedule({ hours: [1, 9, 17], perRun: 1, info: { hours: [19], perRun: 1 } }, "info"), { hours: [19], perRun: 1 });
+    assert.deepEqual(sectionSchedule(null, "shop"), DEFAULT_NOTION_SCHEDULE);
+    assert.equal(DEFAULT_NOTION_SCHEDULE.days, undefined);
+    assert.equal(DEFAULT_INFO_SCHEDULE.days, undefined);
+    assert.equal(daysLabel(DEFAULT_NOTION_SCHEDULE), "매일");
+    assert.equal(daysLabel({ days: [0, 1, 2, 3, 4, 5, 6] }), "매일");
+    assert.equal(daysLabel({ days: [0, 3, 1] }), "월·수·일"); // 월요일부터
+    assert.equal(scheduleSummary({ hours: [9], perRun: 2, days: [1, 5] }), "월·금요일만 · 하루 1번 × 2편 = 하루 최대 2편: 오전 9시");
+    assert.equal(scheduleSummary({ hours: [9], perRun: 2, days: [0, 1, 2, 3, 4, 5, 6] }), "하루 1번 × 2편 = 하루 최대 2편: 오전 9시");
+
+    // 한국시간 요일: 2026-11-16(월) 0시 = UTC 11-15(일) 15시
+    assert.equal(kstWeekday(new Date("2026-11-15T14:59:59Z")), 0); // 한국시간 일요일 23:59
+    assert.equal(kstWeekday(new Date("2026-11-15T15:00:00Z")), 1); // 한국시간 월요일 0시
+    const monWed9: NotionSchedule = { hours: [9], perRun: 1, days: [1, 3] };
+    assert.equal(isPublishHour(new Date("2026-11-16T00:03:00Z"), monWed9), true); // 월 9시
+    assert.equal(isPublishHour(new Date("2026-11-17T00:03:00Z"), monWed9), false); // 화 9시
+    assert.equal(isPublishHour(new Date("2026-11-18T00:03:00Z"), monWed9), true); // 수 9시
+    assert.equal(isPublishHour(new Date("2026-11-16T01:03:00Z"), monWed9), false); // 월 10시
+    // 자동 발행 실행도 같은 판정 (화요일 9시 예약 실행은 0편)
+    assert.equal(newAllowance("schedule", monWed9, {}, new Date("2026-11-17T00:03:00Z")).limit, 0);
+    assert.equal(newAllowance("schedule", monWed9, {}, new Date("2026-11-18T00:03:00Z")).limit, 1);
+
+    // 다음 예정: 월 10시 → 수 9시 → 다음 주 월 9시
+    assert.deepEqual(publishTimesAfter(new Date("2026-11-16T01:00:00Z"), monWed9, 3), [
+      "2026-11-18T00:00:00.000Z",
+      "2026-11-23T00:00:00.000Z",
+      "2026-11-25T00:00:00.000Z",
+    ]);
+    // 한국시간 자정 경계: 밤 12시(0시) 발행을 월요일만 → 일요일 23시(UTC 일 14시)에서 보면 바로 다음 시각(월 0시)
+    const mon0: NotionSchedule = { hours: [0], perRun: 1, days: [1] };
+    assert.equal(nextPublishAt(new Date("2026-11-15T14:00:00Z"), mon0, 0), "2026-11-15T15:00:00.000Z");
+    // 월 0시 실행 직후면 다음 주 월 0시 (UTC 로는 일요일인 날짜)
+    assert.equal(nextPublishAt(new Date("2026-11-15T15:00:00Z"), mon0, 0), "2026-11-22T15:00:00.000Z");
+    // 토요일 밤 11시만 → UTC 날짜는 같은 토요일 14시
+    assert.equal(nextPublishAt(new Date("2026-11-16T00:00:00Z"), { hours: [23], perRun: 1, days: [6] }, 0), "2026-11-21T14:00:00.000Z");
+    // 요일을 골라도 시각이 없으면 자동 발행 안 함
+    assert.equal(nextPublishAt(new Date(), { hours: [], perRun: 1, days: [1] }, 0), null);
+    // 대기 글이 많아도 계산 (주 1회)
+    assert.equal(publishTimesAfter(new Date("2026-11-16T01:00:00Z"), { hours: [9], perRun: 1, days: [2] }, 200).length, 200);
+    // 매일(칸 없음) = 예전 계산 그대로
+    assert.deepEqual(
+      publishTimesAfter(new Date("2026-11-15T01:00:00Z"), { hours: [9, 21], perRun: 1, days: [] }, 3),
+      publishTimesAfter(new Date("2026-11-15T01:00:00Z"), { hours: [9, 21], perRun: 1 }, 3),
+    );
+  });
+
+  await test("발행 요일 저장: 같은 jsonb 칸 안에 섹션별 days, 매일로 바꾸면 요일 칸을 지우고 다른 섹션 몫은 그대로", () => {
+    const col0 = { hours: [1, 9, 17], perRun: 1, info: { hours: [19], perRun: 1 } }; // 요일 추가 전 저장값
+    const c1 = withSectionSchedule(col0, "info", { hours: [19], perRun: 1, days: [6, 0] });
+    assert.deepEqual(c1, { hours: [1, 9, 17], perRun: 1, info: { hours: [19], perRun: 1, days: [0, 6] } });
+    assert.deepEqual(sectionSchedule(c1, "shop"), { hours: [1, 9, 17], perRun: 1 }); // 쇼핑은 매일 그대로
+    const c2 = withSectionSchedule(c1, "shop", { hours: [9], perRun: 2, days: [1, 2, 3, 4, 5] });
+    assert.deepEqual(c2, { hours: [9], perRun: 2, days: [1, 2, 3, 4, 5], info: { hours: [19], perRun: 1, days: [0, 6] } });
+    assert.deepEqual(sectionSchedule(c2, "info"), { hours: [19], perRun: 1, days: [0, 6] }); // 쇼핑 요일이 일반 글로 새지 않음
+    // 다시 매일로: 요일 칸이 빠진다
+    const c3 = withSectionSchedule(c2, "shop", { hours: [9], perRun: 2 });
+    assert.deepEqual(c3, { hours: [9], perRun: 2, info: { hours: [19], perRun: 1, days: [0, 6] } });
+    assert.deepEqual(withSectionSchedule(c3, "info", { hours: [19], perRun: 1, days: [] }).info, { hours: [19], perRun: 1 });
+  });
+
   await test("발행 칸 편수: 발행 시각이면 perRun − 같은 시에 이미 공개한 편수, 아니면 0, 숫자·제한 없음은 그대로", () => {
     const s2: NotionSchedule = { hours: [9], perRun: 2 };
     const at9 = new Date("2026-11-15T00:03:00Z"); // 한국시간 9시 3분
@@ -2143,6 +2222,47 @@ async function main() {
     shop.setSchedule({ hours: [], perRun: 1 });
     assert.deepEqual(await info.store.loadSchedule(), { hours: [8, 20], perRun: 2 });
     assert.deepEqual(sectionSchedule(shop.db.scheduleColumn, "shop"), { hours: [], perRun: 1 });
+  });
+
+  await test("생활정보 글 하단 바: 같은 카테고리 공개 쇼핑 글 중 최신 1편, 없거나 카테고리가 없으면 바 없음 (다른 쇼핑 글·생활정보 글로 대신하지 않음)", async () => {
+    const at = (d: number) => `2026-11-1${d}T00:00:00.000Z`;
+    const row = (slug: string, o: { section?: string; status?: string; category?: string; day: number }) => ({
+      slug,
+      title: `글 ${slug}`,
+      status: o.status ?? "published",
+      published_at: at(o.day),
+      products: [],
+      content: { kind: "manual", ...(o.section ? { section: o.section } : {}), ...(o.category !== undefined ? { category: o.category } : {}), blocks: [] },
+    });
+    const rows = [
+      row("shop-filter-old", { day: 1, category: "공기청정기" }),
+      row("shop-filter-new", { day: 3, category: "공기청정기" }),
+      row("shop-filter-draft", { day: 5, category: "공기청정기", status: "draft" }), // 초안은 안 나옴
+      row("shop-other", { day: 6, category: "가전" }), // 다른 카테고리 최신 글로 대신하지 않음
+      row("info-filter", { day: 4, section: "info", category: "공기청정기" }), // 같은 카테고리 생활정보 글은 안 나옴 (섹션 조건)
+      row("info-newest", { day: 7, section: "info", category: "공기청정기" }),
+    ];
+    const sb = fakeSupabase(rows, 1000).client;
+    assert.equal((await fetchShopGuideForInfo(sb, "공기청정기", "info-filter"))?.slug, "shop-filter-new");
+    assert.equal(await fetchShopGuideForInfo(sb, "청소기", "info-filter"), null); // 같은 카테고리 쇼핑 글 없음 → 바 없음
+    for (const c of [undefined, "", "  "]) assert.equal(await fetchShopGuideForInfo(sb, c, "info-filter"), null, String(c)); // 카테고리 없는 글
+    // 관련 글(함께 보면 좋은 글)은 예전처럼 최신 글로 채운다 (같은 조회 뼈대를 나눠 씀)
+    assert.deepEqual((await fetchRelatedPosts(sb, "공기청정기", "x", 3)).map((p) => p.slug), ["shop-filter-new", "shop-filter-old", "shop-other"]);
+
+    // 바 모양: 사이트 안 링크(rel·새 창 없음), 쿠팡 고지 문구 없음, 한 줄(h-12)
+    const html = renderToStaticMarkup(React.createElement(InfoShopGuideBar, { guide: { slug: "shop-filter-new", title: "필터 교체 주기와 비용" } }));
+    assert.match(html, /<a href="\/shop\/shop-filter-new" class="[^"]*h-12/);
+    assert.ok(html.includes(INFO_GUIDE_BAR_LABEL) && html.includes("필터 교체 주기와 비용"));
+    assert.ok(!/rel=|target=/.test(html), "광고 링크 표시 없음");
+    assert.ok(!html.includes(COUPANG_DISCLOSURE));
+    assert.equal(renderToStaticMarkup(React.createElement(InfoShopGuideBar, { guide: null })), "");
+
+    // 생활정보 글 화면이 서버에서 골라 띄우고, 쇼핑 글이 바뀌면 생활정보 글 화면도 새로 만든다 (내린 쇼핑 글로 가는 바가 남지 않게)
+    const src = (...p: string[]) => readFileSync(join(process.cwd(), "src", ...p), "utf8");
+    const page = src("app", "info", "[slug]", "page.tsx");
+    assert.match(page, /findShopGuideForInfo\(postCategory\(post\), post\.slug\)/);
+    assert.match(page, /<InfoShopGuideBar guide=\{guide\} \/>/);
+    assert.match(src("lib", "shop-revalidate.ts"), /shop: \["\/info\/\[slug\]"\]/);
   });
 
   await test("섹션 조회 조건: 쇼핑 목록·사이트맵·관련 글에 생활정보 글이 없고 그 반대도 — 판별 함수와 Supabase 조건이 같은 뜻, 동기화 목록도 섹션끼리 안 섞임", async () => {

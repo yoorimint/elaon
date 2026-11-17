@@ -46,7 +46,7 @@ export type ShopConfig = {
   // 쇼핑 상태는 맨 위, 일반 글(생활정보) 상태는 .info — src/lib/notion-section.ts
   notion_sync?: NotionSyncColumn | null;
   // 노션 발행 일정 (supabase/shop-notion-cron.sql 실행 전에는 없음). 저장된 값은 sectionSchedule(src/lib/notion-section.ts)로 읽는다
-  // 쇼핑 일정은 맨 위 {hours, perRun}, 일반 글 일정은 .info — 읽기는 sectionSchedule
+  // 쇼핑 일정은 맨 위 {hours, perRun, days?}, 일반 글 일정은 .info — 읽기는 sectionSchedule
   notion_schedule?: (NotionSchedule & { info?: NotionSchedule }) | null;
   updated_at: string;
 };

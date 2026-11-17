@@ -25,7 +25,7 @@ import {
 import { NOTION_SECTIONS, summaryOf, type NotionSyncResponse } from "@/lib/notion-section";
 import { daysLabel, hourLabel, kstDateHourLabel, nextPublishAt, type NotionSchedule } from "@/lib/notion-schedule";
 import { POST_SECTIONS, SECTION_META, sectionPostPath, type PostSection } from "@/lib/post-section";
-import { syncFromNotion } from "@/lib/shop-posts";
+import { publishOneFromNotion, syncFromNotion } from "@/lib/shop-posts";
 import type { ShopConfig } from "@/lib/shop-config";
 import { ShopNotionSchedule } from "@/components/ShopNotionSchedule";
 
@@ -68,7 +68,7 @@ export function ShopNotionPanel({
   onScheduleSaved: (column: NonNullable<ShopConfig["notion_schedule"]>) => void;
   onOpenSettings: () => void;
 }) {
-  const [busy, setBusy] = useState<SyncMode | null>(null); // 지금 돌고 있는 버튼
+  const [busy, setBusy] = useState<SyncMode | `one-${PostSection}` | null>(null); // 지금 돌고 있는 버튼
   const [result, setResult] = useState<NotionSyncResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +89,20 @@ export function ShopNotionPanel({
     setError(null);
     try {
       setResult(await syncFromNotion(mode));
+      onSynced();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  // 섹션 대기 글 1편만 지금 (발행 일정과 상관없이, 대기열 맨 앞 글)
+  async function runOne(section: PostSection) {
+    if (!confirm(`${SECTION_META[section].name} 대기 글 중 맨 앞 1편을 지금 바로 공개할까요?`)) return;
+    setBusy(`one-${section}`);
+    setError(null);
+    try {
+      setResult(await publishOneFromNotion(section));
       onSynced();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -128,6 +142,17 @@ export function ShopNotionPanel({
               {busy === "all" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
               {busy === "all" ? "올리는 중…" : SYNC_BUTTON.all}
             </button>
+            {POST_SECTIONS.map((sec) => (
+              <button
+                key={sec}
+                onClick={() => runOne(sec)}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                {busy === `one-${sec}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                {busy === `one-${sec}` ? "올리는 중…" : `${SECTION_META[sec].name} 1편만 지금 올리기`}
+              </button>
+            ))}
           </div>
           <ul className="mt-2 space-y-0.5 text-xs leading-relaxed text-neutral-500">
             <li>
@@ -135,6 +160,9 @@ export function ShopNotionPanel({
             </li>
             <li>
               <b>{SYNC_BUTTON.all}</b>: 두 데이터베이스 모두 대기 중인 새 글까지 발행 일정과 상관없이 <b>한꺼번에 전부</b> 공개해요 (누르면 한 번 더 물어봐요).
+            </li>
+            <li>
+              <b>1편만 지금 올리기</b>: 그 데이터베이스 대기 글 중 맨 앞 1편만 발행 일정과 상관없이 바로 공개해요 (누르면 한 번 더 물어봐요).
             </li>
           </ul>
         </div>
@@ -199,6 +227,7 @@ type SyncMode = "updates" | "all";
 
 function runLabel(s: NotionSyncSummary): string {
   if (s.trigger === "cron") return "예약 실행";
+  if (s.publishOne) return "버튼 실행 (1편만 지금 올리기)";
   return s.mode ? `버튼 실행 (${SYNC_BUTTON[s.mode]})` : "버튼 실행";
 }
 
@@ -240,9 +269,11 @@ function SummaryBox({
       {s.error && <p className="mt-2 text-sm font-medium text-red-600">중단: {s.error}</p>}
       {s.mode && (
         <p className="mt-1 text-xs font-medium text-neutral-600 dark:text-neutral-400">
-          {s.mode === "updates"
-            ? `모드: ${SYNC_BUTTON.updates} — 공개된 글의 수정·내림만 반영하고 새 글은 공개하지 않았어요.`
-            : `모드: ${SYNC_BUTTON.all} — 대기 중인 새 글까지 제한 없이 공개했어요.`}
+          {s.publishOne
+            ? "모드: 1편만 지금 올리기 — 대기 글 중 맨 앞 1편만 공개했어요."
+            : s.mode === "updates"
+              ? `모드: ${SYNC_BUTTON.updates} — 공개된 글의 수정·내림만 반영하고 새 글은 공개하지 않았어요.`
+              : `모드: ${SYNC_BUTTON.all} — 대기 중인 새 글까지 제한 없이 공개했어요.`}
         </p>
       )}
       {s.publishTime === false && <p className="mt-1 text-xs text-neutral-500">발행 시각이 아니라 새 글은 공개하지 않고, 공개된 글의 수정·내림만 반영했어요.</p>}

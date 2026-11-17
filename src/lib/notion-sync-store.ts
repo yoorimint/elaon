@@ -19,7 +19,7 @@ import {
   type SyncOptions,
   type SyncStore,
 } from "./notion-sync";
-import { inSection, type PostSection } from "./post-section";
+import { POST_SECTIONS, inSection, type PostSection } from "./post-section";
 import { DEFAULT_POST_DISCLOSURE, isManualContent } from "./shop-post-types";
 
 const BUCKET = "shop-images";
@@ -227,6 +227,7 @@ export function routeSyncOptions(
   startMs: number,
   mode: SyncMode = "updates",
   section: PostSection = "shop",
+  publishOne = false,
 ): SyncOptions {
   return {
     section,
@@ -234,8 +235,17 @@ export function routeSyncOptions(
     parentPageId,
     maxPages: 50,
     deadline: startMs + ROUTE_SECTION_BUDGET_MS[section],
-    ...(kind === "cron" ? { newLimit: "schedule" as const } : { mode }),
+    // "1편만 지금 올리기": 발행 일정과 상관없이 대기열 맨 앞 1편 (공개 글 갱신·내림은 평소처럼). 발행 칸(publishSlot)은 쓰지 않는다
+    ...(publishOne ? { mode: "all" as const, newLimit: 1 } : kind === "cron" ? { newLimit: "schedule" as const } : { mode }),
   };
+}
+
+// 요청 본문 { mode: "one", section } = 그 섹션 대기 글 1편만 지금 올리기 (관리자 버튼, 또는 비밀값을 가진 운영 점검의 수동 실행).
+// 다른 섹션은 이번 요청에서 돌지 않는다. 예약 실행(서버 crontab·pg_cron)은 본문이 {} 라 해당 없음 → 발행 일정대로
+export function parsePublishOne(body: unknown): PostSection | null {
+  const o = body && typeof body === "object" ? (body as { mode?: unknown; section?: unknown }) : null;
+  if (!o || o.mode !== "one") return null;
+  return (POST_SECTIONS as readonly unknown[]).includes(o.section) ? (o.section as PostSection) : null;
 }
 
 // 관리자 요청 본문 { mode } 읽기. "all" 이라고 분명히 보낸 경우만 전부 올리기, 나머지(없음·이상한 값)는 안전한 "updates"

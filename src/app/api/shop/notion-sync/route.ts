@@ -7,6 +7,7 @@
 //  2) 관리자 버튼: 로그인한 관리자의 접속 토큰 (Authorization: Bearer …) → is_admin(). 본문 { mode }
 //     - "updates"(기본·없음·이상한 값): "수정만 지금 반영" — 공개 글 갱신·내림만, 새 글 0편 (대기 글은 다음 발행 시각에)
 //     - "all": "대기 글까지 전부 지금 올리기" — 새 글 제한 없음
+//     - { mode: "one", section }: 그 섹션 대기 글 1편만 지금 (다른 섹션은 이번에 안 돔). 비밀값 경로(운영 점검 수동 실행)도 같은 본문을 받는다
 // Vercel 함수 시간 제한 때문에 시간 상한을 둔다 (남은 페이지는 다음 실행·버튼이 이어서).
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,7 +16,7 @@ import { pingIndexNow } from "@/lib/indexnow";
 import { combineSummaries } from "@/lib/notion-section";
 import type { NotionSyncSummary } from "@/lib/notion-shop";
 import { runNotionSync } from "@/lib/notion-sync";
-import { CRON_SECRET_HEADER, loadNotionToken, parentPageId, parseAdminSyncMode, routeSyncOptions, syncDeps, verifyCronSecret } from "@/lib/notion-sync-store";
+import { CRON_SECRET_HEADER, loadNotionToken, parentPageId, parseAdminSyncMode, parsePublishOne, routeSyncOptions, syncDeps, verifyCronSecret } from "@/lib/notion-sync-store";
 import { POST_SECTIONS, SECTION_META, sectionPostPath, type PostSection } from "@/lib/post-section";
 import { revalidateSection } from "@/lib/shop-revalidate";
 import { createServiceClient } from "@/lib/supabase-server";
@@ -44,19 +45,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "예약 실행 비밀값이 맞지 않아요" }, { status: 403 });
   }
   const kind = cronSecret !== null ? "cron" : "admin";
-  const mode = kind === "admin" ? parseAdminSyncMode(await req.json().catch(() => null)) : undefined;
+  const body: unknown = await req.json().catch(() => null);
+  const publishOne = parsePublishOne(body);
+  const mode = kind === "admin" ? parseAdminSyncMode(body) : undefined;
   const notionToken = await loadNotionToken(sb);
   if (!notionToken) {
     return NextResponse.json({ error: "노션 토큰이 없어요 — ⚙️ 설정 탭의 '노션' 칸에 먼저 넣어 주세요" }, { status: 400 });
   }
 
   const summaries: Partial<Record<PostSection, NotionSyncSummary>> = {};
-  for (const section of POST_SECTIONS) {
+  for (const section of publishOne ? [publishOne] : POST_SECTIONS) {
     const { summary, changedSlugs, newlyPublished } = await runNotionSync(
       syncDeps(sb, notionToken, { section }),
-      routeSyncOptions(kind, parentPageId(), startMs, mode, section),
+      routeSyncOptions(kind, parentPageId(), startMs, mode, section, publishOne !== null),
     );
-    summaries[section] = summary;
+    summaries[section] = publishOne ? { ...summary, publishOne: true } : summary;
     if (changedSlugs.length) revalidateSection(section, changedSlugs);
     if (newlyPublished.length) {
       await pingIndexNow([...newlyPublished.map((s) => sectionPostPath(section, s)), SECTION_META[section].path]).catch(() => undefined);

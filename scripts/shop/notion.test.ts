@@ -50,6 +50,7 @@ import {
   ROUTE_TIME_BUDGET_MS,
   loadNotionSchedule,
   parseAdminSyncMode,
+  parsePublishOne,
   routeSyncOptions,
   sameSecret,
   IMAGE_CACHE_SECONDS,
@@ -2265,6 +2266,19 @@ async function main() {
     // 2026-11-17 사장님 결정: 일단 끔 → 생활정보 글은 하단 바가 하나도 없다 (관련 글 바 꺼짐 + 공용 쿠팡 배너 숨김)
     assert.equal(INFO_GUIDE_BAR_ENABLED, false);
     assert.ok(hidesSiteBottomBar("/info/some-post"));
+    // 2026-11-17 사장님 요청: 섹션 대기 글 "1편만 지금 올리기" — 본문 {mode:"one", section} 일 때만, 그 섹션만, 새 글 1편 제한
+    assert.equal(parsePublishOne({ mode: "one", section: "info" }), "info");
+    assert.equal(parsePublishOne({ mode: "one", section: "shop" }), "shop");
+    for (const b of [null, {}, { mode: "all" }, { mode: "one" }, { mode: "one", section: "etc" }]) assert.equal(parsePublishOne(b), null, JSON.stringify(b));
+    for (const kind of ["cron", "admin"] as const) {
+      const o = routeSyncOptions(kind, "p", 0, undefined, "info", true);
+      assert.equal(o.newLimit, 1, kind);
+      assert.equal(o.mode, "all", kind);
+    }
+    assert.equal(routeSyncOptions("cron", "p", 0, undefined, "shop").newLimit, "schedule"); // 평소 예약 실행은 그대로 발행 일정
+    const route = src("app", "api", "shop", "notion-sync", "route.ts");
+    assert.match(route, /for \(const section of publishOne \? \[publishOne\] : POST_SECTIONS\)/);
+    assert.match(route, /routeSyncOptions\(kind, parentPageId\(\), startMs, mode, section, publishOne !== null\)/);
     // 2026-11-17 사장님 결정: 생활정보 글 하단은 사주데이 이미지 바 (첫 화면, eloan 유입 표시, nofollow, 크기 고정, 쿠팡 고지 없음)
     assert.match(page, /\{!guide && <InfoSajudayBar \/>\}/);
     const saju = renderToStaticMarkup(React.createElement(InfoSajudayBar));

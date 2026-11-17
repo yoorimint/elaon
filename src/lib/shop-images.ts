@@ -1,6 +1,8 @@
 // 쇼핑 글 상품 사진 업로드 (관리자 전용, 초안 미리보기에서 사진 자리를 눌러 등록)
 // 저장소: Supabase Storage "shop-images" 버킷 (공개 읽기, 관리자만 업로드 — supabase/shop.sql)
 // 휴대폰 사진은 크기가 커서 업로드 전에 긴 변 1000px JPEG 로 줄인다.
+// (브라우저에서 바로 올리는 경로라 서버의 sharp 압축(src/lib/image-compress.ts)은 쓰지 않는다 — 이미 여기서 줄이고,
+//  서버를 거치게 하면 작은 서버 메모리·전송량만 더 쓴다)
 
 import { supabase } from "./supabase";
 import { withPhoto, type PhotoSpot, type ShopPostInputProduct } from "./shop-post-types";
@@ -8,6 +10,9 @@ import { withPhoto, type PhotoSpot, type ShopPostInputProduct } from "./shop-pos
 const BUCKET = "shop-images";
 const MAX_SIDE = 1000;
 const JPEG_QUALITY = 0.85;
+// 브라우저·CDN 캐시 1년: 파일 이름에 올린 시각(Date.now())이 들어가 올릴 때마다 새 이름이고 덮어쓰지 않는다
+// (upsert 안 함) → 같은 이름 = 같은 내용이라 오래 캐시해도 안전. 전송량(Supabase 무료 월 약 10GB)을 줄이려고
+const CACHE_SECONDS = "31536000";
 
 // 이미지 파일 → 긴 변 MAX_SIDE 이하 JPEG (투명 배경은 흰색으로)
 async function resizeToJpeg(file: File): Promise<Blob> {
@@ -43,7 +48,7 @@ export async function uploadBlockImage(postId: string, blockId: string, file: Fi
   if (!/^[a-z0-9]{1,40}$/.test(blockId)) throw new Error("사진 자리 id 가 올바르지 않아요");
   const blob = await resizeToJpeg(file);
   const path = `${postId}/blk-${blockId}-${Date.now()}.jpg`;
-  const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+  const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg", cacheControl: CACHE_SECONDS });
   if (up.error) throw new Error(`업로드 실패: ${up.error.message}`);
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
@@ -52,7 +57,7 @@ export async function uploadBlockImage(postId: string, blockId: string, file: Fi
 export async function uploadProductImage(postId: string, index: number, spot: PhotoSpot, file: File): Promise<string> {
   const blob = await resizeToJpeg(file);
   const path = `${postId}/${index}-${spot}-${Date.now()}.jpg`;
-  const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg" });
+  const up = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg", cacheControl: CACHE_SECONDS });
   if (up.error) throw new Error(`업로드 실패: ${up.error.message}`);
   const image = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 

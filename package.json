@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/webreviews.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/paste.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/notion.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/views.test.ts && npx tsx --tsconfig tsconfig.json scripts/cache-config.test.ts"
+    "test:shop": "npx tsx --tsconfig tsconfig.json scripts/shop/qa.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/webreviews.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/paste.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/notion.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/views.test.ts && npx tsx --tsconfig tsconfig.json scripts/cache-config.test.ts && npx tsx --tsconfig tsconfig.json scripts/shop/image.test.ts && npx tsx --tsconfig tsconfig.json scripts/ops/usage.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -19,6 +19,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "^2.13.3",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {

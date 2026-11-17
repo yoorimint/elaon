@@ -44,6 +44,7 @@ import {
   type PageProps,
   type SyncItem,
 } from "./notion-shop";
+import { COMPRESS_VERSION, compressImage, type CompressResult } from "./image-compress";
 import { isPublishHour, publishSlotKey, publishTimesAfter, type NotionSchedule } from "./notion-schedule";
 import { NOTION_SECTIONS } from "./notion-section";
 import { sectionField, sectionPostPath, type PostSection } from "./post-section";
@@ -147,6 +148,14 @@ export type SyncResult = {
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const IMAGE_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif", "image/avif": "avif" };
+
+// 저장소 파일 이름: <글 id>/notion-<블록>-<원본 해시 8자리>[-<변환 버전>].<실제 형식 확장자>
+// 원본 해시 + 변환 버전으로 정해지므로 같은 이름 = 같은 내용 (브라우저 캐시 1년이 안전 — notion-sync-store.ts uploadImage).
+// 원본 그대로 올린 사진은 버전 표시 없이 예전 이름 그대로 (예전에 올린 파일과 같은 내용)
+export function notionImagePath(postId: string, blockId: string, source: string, file: Pick<CompressResult, "converted" | "contentType">): string {
+  const version = file.converted ? `-${COMPRESS_VERSION}` : "";
+  return `${postId}/notion-${blockId}-${source.slice(0, 8)}${version}.${IMAGE_EXT[file.contentType]}`;
+}
 
 // 기본 사진 받기 (노션 파일 주소는 1시간 안에 받아야 한다 — 가져온 직후 바로 받는다)
 export async function fetchImageDefault(url: string): Promise<FetchedImage> {
@@ -478,6 +487,7 @@ async function publishPage(
   //  외부 사진 복사가 실패하면(핫링크 차단 등) 원래 주소로 보여 주고 메모로 알린다 — 노션 파일 복사 실패만 발행을 막는다.
   //  다시 올릴지는 원본 파일로 정한다 (캡션만 고쳐 블록 시각이 바뀌어도 같은 파일이면 재사용). 파일 이름도 원본으로 정해서
   //  다시 올리게 돼도 같은 이름에 덮어쓴다 — 만료 서명이 든 주소로 이름을 만들면 올릴 때마다 저장소에 새 파일이 쌓인다
+  const log = deps.log ?? (() => undefined);
   const prevImages = existing?.content.notion.images ?? {};
   const images: NonNullable<ShopNotionRef["images"]> = {};
   const srcByBlock: Record<string, string> = {};
@@ -497,8 +507,11 @@ async function publishPage(
       const ext = IMAGE_EXT[img.contentType];
       if (!ext) throw new Error(`사진 형식이 아니에요 (${img.contentType || "형식 모름"})`);
       if (img.bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("사진이 10MB 보다 커요");
-      const path = `${postId}/notion-${task.blockId}-${source.slice(0, 8)}.${ext}`;
-      const src = await deps.store.uploadImage(path, img.bytes, img.contentType);
+      // 올리기 전에 줄여 WebP 로 (src/lib/image-compress.ts). 변환이 안 되면 원본 그대로 — 발행은 막지 않는다
+      const file = await compressImage(img);
+      if (file.error) log(`사진 변환 실패 — 원본 그대로 올림 (${file.error})`);
+      const path = notionImagePath(postId, task.blockId, source, file);
+      const src = await deps.store.uploadImage(path, file.bytes, file.contentType);
       images[task.notionBlockId] = { edited: task.edited, src, source };
       srcByBlock[task.blockId] = src;
     } catch (e) {

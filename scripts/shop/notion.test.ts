@@ -3,7 +3,7 @@
 // 실행: npm run test:shop. 고친 문제마다 여기에 테스트를 하나씩 추가한다.
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createNotionClient, NotionError } from "@/lib/notion-api";
 import {
@@ -94,7 +94,8 @@ import {
 import { POST_SECTIONS, inSection, sectionOf, sectionPostPath, whereSection, type PostSection } from "@/lib/post-section";
 import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts, fetchShopGuideForInfo } from "@/lib/shop-posts-public";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
-import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, hidesSiteBottomBar } from "@/lib/ads-config";
+import { InfoSajudayBar } from "@/components/InfoSajudayBar";
+import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, INFO_SAJUDAY_BAR, hidesSiteBottomBar } from "@/lib/ads-config";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -2264,6 +2265,14 @@ async function main() {
     // 2026-11-17 사장님 결정: 일단 끔 → 생활정보 글은 하단 바가 하나도 없다 (관련 글 바 꺼짐 + 공용 쿠팡 배너 숨김)
     assert.equal(INFO_GUIDE_BAR_ENABLED, false);
     assert.ok(hidesSiteBottomBar("/info/some-post"));
+    // 2026-11-17 사장님 결정: 생활정보 글 하단은 사주데이 이미지 바 (첫 화면, eloan 유입 표시, nofollow, 크기 고정, 쿠팡 고지 없음)
+    assert.match(page, /\{!guide && <InfoSajudayBar \/>\}/);
+    const saju = renderToStaticMarkup(React.createElement(InfoSajudayBar));
+    assert.ok(INFO_SAJUDAY_BAR.enabled && saju.includes('href="https://sajuday.kr/?utm_source=eloan&amp;utm_medium=info_bottom"'), saju);
+    assert.match(saju, /rel="nofollow noopener"/);
+    assert.match(saju, /<img src="\/img\/sajuday-640\.webp"[^>]*width="320" height="107"/);
+    assert.ok(!saju.includes(COUPANG_DISCLOSURE));
+    assert.ok(existsSync(join(process.cwd(), "public", "img", "sajuday-640.webp")), "사주데이 이미지 파일");
     assert.match(page, /<InfoShopGuideBar guide=\{guide\} \/>/);
     assert.match(src("lib", "shop-revalidate.ts"), /shop: \["\/info\/\[slug\]"\]/);
   });

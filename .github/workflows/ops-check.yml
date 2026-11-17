@@ -73,6 +73,8 @@ jobs:
             # 서버 안 매시 노션 동기화 (배포가 설치 — scripts/server/notion-cron.sh). 기록은 시각·응답코드·걸린 시간뿐
             echo "--- 예약: cron=$(systemctl is-active cron 2>/dev/null) / crontab: $(crontab -l 2>&1 | grep -v "^#" | tr "\n" " ")"
             echo "--- 매시 동기화 최근 기록 (UTC):"; tail -n 6 /srv/eloan/notion-cron.log 2>/dev/null || echo "아직 기록 없음"
+            # 같은 매시 스크립트가 남기는 송신 누적 바이트 (관리자 화면 사용량 카드의 오늘·어제 계산용, 최근 9일)
+            echo "--- 트래픽 기록 (UTC 시각, 누적 송신 바이트): $(wc -l 2>/dev/null < /srv/eloan/traffic.log || echo 0)줄"; tail -n 3 /srv/eloan/traffic.log 2>/dev/null || echo "아직 기록 없음"
           '
 
       - name: 노션 예약 실행 마지막 기록 (Supabase)

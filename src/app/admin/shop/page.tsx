@@ -5,12 +5,14 @@
 // 구매 링크는 쿠팡 파트너스 링크를 붙여넣어 건다.
 // 탭: 📒 노션(노션 "쇼핑 글" → 사이트 발행, 2026-11-14~ 기본) / ✍️ 붙여넣어 초안 만들기(예비) / 📝 초안 / ✅ 발행된 글 /
 //     ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·고지 문구)
+// 맨 위 "사용량" 카드: 무료 한도(Supabase 사진·DB, iwinv 서버 트래픽) — src/components/AdminUsageCard.tsx
 // 매시간 AI 자동 글은 꺼 둠 (.github/workflows/shop-post.yml). 자동 글 설정 화면(실행·상품 선정·정보 수집·직접 입력 상품·
 // 실행 기록·Gemini/Claude/네이버 키)은 화면에서만 뺐다 — 코드(scripts/shop, ShopRunsAdmin 등)와 저장된 값은 그대로.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminNav } from "@/components/AdminNav";
+import { AdminUsageCard } from "@/components/AdminUsageCard";
 import { ShopAdminPosts } from "@/components/ShopAdminPosts";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
 import { ShopPasteDraft } from "@/components/ShopPasteDraft";
@@ -88,6 +90,8 @@ export default function AdminShopPage() {
         </p>
       </div>
       <AdminNav />
+      {/* 무료 한도 사용량 (사진 저장소·DB·글 수·서버 트래픽) — 관리자 전용 API 에서 읽음 */}
+      <AdminUsageCard />
 
       <div className="-mx-1 mb-5 flex gap-1.5 overflow-x-auto px-1 pb-1">
         {TABS.map((t) => (

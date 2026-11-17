@@ -1,10 +1,14 @@
-// Supabase 무료 한도 사용량 계산 (순수 함수 — 외부 호출 없음. 실제 조회는 scripts/ops/usage.ts, 테스트는 scripts/ops/usage.test.ts)
+// Supabase 무료 한도 사용량 계산 (순수 함수 — 외부 호출 없음. 서버·스크립트·브라우저 공용)
+//  - 실제 조회: src/lib/supabase-usage.ts (관리자 사용량 카드 API 와 scripts/ops/usage.ts 가 같이 씀)
+//  - 테스트: scripts/ops/usage.test.ts
 // 한도(2026-11 무료 요금제): 사진 저장 1GB, DB 500MB, 전송량 월 약 10GB(전송량은 API 로 못 봐서 대시보드에서만)
 // 한도의 70% 를 넘으면 경고 → 매일 도는 감시(.github/workflows/usage-watch.yml)가 실패해 저장소 주인에게 메일이 간다.
+// 관리자 화면 카드는 70% 이상 "주의", 90% 이상 "위험"으로 보여 준다 (usageLevel).
 
 // 1GB·500MB 를 10진수(1e9·500e6)로 잡는다 — 2진수(GiB)보다 작아서 경고가 조금 더 일찍 온다 (안전한 쪽)
 export const FREE_LIMITS = { storageBytes: 1_000_000_000, dbBytes: 500_000_000 } as const;
 export const ALERT_RATIO = 0.7;
+export const DANGER_RATIO = 0.9;
 
 // ---------- 사진 저장소: 폴더를 끝까지 돌며 파일 크기 합산 ----------
 
@@ -61,13 +65,23 @@ export function estimateDb(samples: SectionSample[]): { sections: SectionEstimat
   };
 }
 
-// 글 한 줄의 대략 크기 (DB 에서 받은 JSON 의 UTF-8 바이트 수)
-export const rowBytes = (row: unknown): number => Buffer.byteLength(JSON.stringify(row ?? null), "utf8");
+// 글 한 줄의 대략 크기 (DB 에서 받은 JSON 의 UTF-8 바이트 수). Buffer 대신 TextEncoder — 브라우저에서도 같은 값
+export const rowBytes = (row: unknown): number => new TextEncoder().encode(JSON.stringify(row ?? null)).length;
 
 // ---------- 한도 대비 ----------
 
 export const percentOf = (used: number, limit: number): number => (limit > 0 ? Math.round((used / limit) * 1000) / 10 : 0);
 export const overAlert = (used: number, limit: number, ratio = ALERT_RATIO): boolean => used >= limit * ratio;
+
+// 화면 표시 단계: 70% 이상 주의(노랑), 90% 이상 위험(빨강). 한도를 모르면(0 이하) 보통
+export type UsageLevel = "ok" | "warn" | "danger";
+
+export function usageLevel(used: number, limit: number): UsageLevel {
+  if (!(limit > 0)) return "ok";
+  if (used >= limit * DANGER_RATIO) return "danger";
+  if (used >= limit * ALERT_RATIO) return "warn";
+  return "ok";
+}
 
 export type UsageVerdict = { storagePct: number; dbPct: number; alerts: string[] };
 

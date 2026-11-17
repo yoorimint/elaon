@@ -2,7 +2,7 @@ name: usage watch
 
 # Supabase 무료 한도 감시 (읽기만 함, 매일 1회): 사진 저장(1GB)·DB(500MB, 글 수 × 평균 크기 추정).
 # 한도의 70% 이상이면 이 실행이 실패 → GitHub 가 저장소 주인에게 실패 메일을 보낸다 (따로 알림 설정 없이).
-# 계산: scripts/ops/usage.ts (순수 계산은 scripts/ops/usage-calc.ts, 테스트 scripts/ops/usage.test.ts)
+# 계산: scripts/ops/usage.ts (조회 src/lib/supabase-usage.ts·순수 계산 src/lib/usage-calc.ts — 관리자 화면 사용량 카드와 같은 코드, 테스트 scripts/ops/usage.test.ts)
 # 전송량(egress, 월 약 10GB)은 API 로 못 봐서 Supabase 대시보드에서만 확인 가능.
 # 저장소가 공개라 로그도 공개 — 숫자만 찍는다 (주소·키·글 내용 없음).
 on:

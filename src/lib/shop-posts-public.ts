@@ -41,6 +41,25 @@ export async function fetchPostBySlugAnyStatus(sb: SupabaseClient, slug: string)
   return rows[0] ?? null;
 }
 
+// 섹션의 공개 글 (최신순, excludeSlug 는 뺌) — 관련 글 조회의 뼈대
+function relatedQuery(sb: SupabaseClient, section: PostSection, excludeSlug: string, limit: number) {
+  return whereSection(sb.from("shop_posts").select("slug,title,products").eq("status", "published").neq("slug", excludeSlug), section)
+    .order("published_at", { ascending: false })
+    .limit(limit);
+}
+
+// 같은 카테고리(노션 "카테고리" = content.category)의 공개 글만 (최신순). 카테고리가 없으면 빈 목록 — 다른 글로 채우지 않는다
+export async function fetchSameCategoryPosts(
+  sb: SupabaseClient,
+  category: string | undefined,
+  excludeSlug: string,
+  limit: number,
+  section: PostSection,
+): Promise<RelatedPost[]> {
+  if (!category) return [];
+  return ((await relatedQuery(sb, section, excludeSlug, limit).eq("content->>category", category)).data ?? []) as RelatedPost[];
+}
+
 // "함께 보면 좋은 글": 우리가 이미 공개한 같은 섹션 글만. 같은 카테고리 우선, 모자라면 최신 글로 채움
 export async function fetchRelatedPosts(
   sb: SupabaseClient,
@@ -49,19 +68,20 @@ export async function fetchRelatedPosts(
   limit = 4,
   section: PostSection = "shop",
 ): Promise<RelatedPost[]> {
-  const base = () =>
-    whereSection(sb.from("shop_posts").select("slug,title,products").eq("status", "published").neq("slug", excludeSlug), section)
-      .order("published_at", { ascending: false })
-      .limit(limit);
-
-  const same = category ? ((await base().eq("content->>category", category)).data ?? []) : [];
-  const out = same as RelatedPost[];
+  const out = await fetchSameCategoryPosts(sb, category, excludeSlug, limit, section);
   if (out.length < limit) {
-    const recent = ((await base()).data ?? []) as RelatedPost[];
+    const recent = ((await relatedQuery(sb, section, excludeSlug, limit)).data ?? []) as RelatedPost[];
     for (const p of recent) {
       if (out.length >= limit) break;
       if (!out.some((x) => x.slug === p.slug)) out.push(p);
     }
   }
   return out;
+}
+
+// 생활정보 글 하단 "관련 구매 가이드" 바 (src/components/InfoShopGuideBar.tsx): 같은 카테고리의 공개 쇼핑 글 중 최신 1편.
+// 같은 카테고리 쇼핑 글이 없거나 카테고리가 비어 있으면 null (바 없음 — 아무 쇼핑 글로 대신하지 않는다)
+export async function fetchShopGuideForInfo(sb: SupabaseClient, category: string | undefined, infoSlug: string): Promise<RelatedPost | null> {
+  const [guide] = await fetchSameCategoryPosts(sb, category?.trim() ? category : undefined, infoSlug, 1, "shop");
+  return guide ?? null;
 }

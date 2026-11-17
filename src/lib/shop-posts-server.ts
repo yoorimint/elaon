@@ -4,7 +4,7 @@
 import { createServerClient } from "./supabase-server";
 import { inSection, type PostSection } from "./post-section";
 import type { RelatedPost, ShopPost } from "./shop-post-types";
-import { fetchPublishedBySlug, fetchPublishedPosts, fetchRelatedPosts, type ShopPostListItem } from "./shop-posts-public";
+import { fetchPublishedBySlug, fetchPublishedPosts, fetchRelatedPosts, fetchShopGuideForInfo, type ShopPostListItem } from "./shop-posts-public";
 
 export type { ShopPostListItem };
 
@@ -35,4 +35,9 @@ export async function listRelatedPosts(
   section: PostSection = "shop",
 ): Promise<RelatedPost[]> {
   return fetchRelatedPosts(createServerClient(), category, excludeSlug, limit, section);
+}
+
+// 생활정보 글 하단 "관련 구매 가이드" 바 — 고르는 규칙은 fetchShopGuideForInfo (src/lib/shop-posts-public.ts)
+export async function findShopGuideForInfo(category: string | undefined, infoSlug: string): Promise<RelatedPost | null> {
+  return fetchShopGuideForInfo(createServerClient(), category, infoSlug);
 }

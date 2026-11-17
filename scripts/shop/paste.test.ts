@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isManualContent, isManualPost, type ShopManualBlock, type ShopPost } from "@/lib/shop-post-types";
-import { isShopPostPath } from "@/lib/ads-config";
+import { BOTTOM_BANNER_HIDDEN_PATHS, hidesSiteBottomBar, isInfoPostPath, isShopPostPath } from "@/lib/ads-config";
 import { AUTO_PLACEMENT, inferTableColumns, nameHintOf, parsePastedDraft, reparseInto, tableFromText } from "@/lib/shop-paste";
 import {
   addTableColumn,
@@ -589,6 +589,17 @@ function main() {
       const src = readFileSync(join(process.cwd(), "src", "components", f), "utf8");
       assert.ok(src.includes('rel="sponsored nofollow noopener"'), f);
     }
+  });
+
+  test("공용 쿠팡 배너 숨김: 관리자·쇼핑 글·생활정보 글 화면만 (생활정보 글은 관련 쇼핑 글 바를 따로 띄움), 목록·RSS·다른 화면은 그대로", () => {
+    assert.ok(isInfoPostPath("/info/20261117-tips"));
+    for (const p of ["/info", "/info/", "/info/rss.xml", "/info/a/b", "/infox/a", "/shop/a"]) assert.ok(!isInfoPostPath(p), p);
+    for (const p of ["/admin", "/admin/shop", "/shop/20261114-b23402", "/info/20261117-tips"]) assert.ok(hidesSiteBottomBar(p), p);
+    for (const p of ["/", "/shop", "/info", "/shop/rss.xml", "/rss.xml", "/picks", "/info/a/b"]) assert.ok(!hidesSiteBottomBar(p), p);
+    assert.deepEqual(BOTTOM_BANNER_HIDDEN_PATHS, ["/admin"]);
+    // 공용 배너는 판정 함수 하나로 숨긴다 (경로 조건을 컴포넌트에 따로 두지 않음)
+    const banner = readFileSync(join(process.cwd(), "src", "components", "CoupangBottomBanner.tsx"), "utf8");
+    assert.match(banner, /if \(hidesSiteBottomBar\(pathname\)\) return null;/);
   });
 
   console.log(`\n${passed}개 통과`);

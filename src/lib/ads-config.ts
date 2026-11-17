@@ -57,6 +57,10 @@ export const SHOP_PRODUCT_BAR_CTA = "오늘 가격 확인하기";
 // 생활정보 글 하단 "관련 쇼핑 글" 바 앞머리 (광고가 아닌 사이트 안 링크라 쿠팡 고지 문구 없음)
 export const INFO_GUIDE_BAR_LABEL = "📖 관련 구매 가이드";
 
+// 생활정보 글 하단 "관련 쇼핑 글" 바를 띄울지. 2026-11-17 사장님 결정으로 일단 끔 → 생활정보 글은 하단 바 없음
+// (공용 쿠팡 배너도 생활정보 글에서는 숨김 그대로 — hidesSiteBottomBar). 다시 켜려면 true 로.
+export const INFO_GUIDE_BAR_ENABLED = false;
+
 // 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
 // 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.
 export const SHOW_SAJUDAY_PILL = false;

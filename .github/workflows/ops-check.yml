@@ -130,3 +130,15 @@ jobs:
           echo "댓글 전체: $(cnt 'comments?id=not.is.null')  / 최근 30일: $(cnt "comments?created_at=gte.$since30")"
           echo "--- 최근 90일 사람 글 카테고리별"
           curl -s -m 20 "$SUPABASE_URL/rest/v1/posts?category=neq.bot&created_at=gte.$since90&select=category,created_at" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys,collections; r=json.load(sys.stdin); print(dict(collections.Counter(x["category"] for x in r))); print("가장 최근:", max((x["created_at"] for x in r), default="없음"))'
+
+      # 쇼핑/생활정보 섹션 조회 조건이 실제 Supabase(PostgREST)에서 맞게 도는지 (src/lib/post-section.ts 와 같은 조건)
+      - name: 섹션 조회 조건 확인
+        if: contains(github.event.head_commit.message, '섹션조건')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          q() { curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_posts?select=slug&status=eq.published&$1" -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(len(r) if isinstance(r,list) else r, [x["slug"] for x in r] if isinstance(r,list) else "")'; }
+          echo "전체 공개: $(q '')"
+          echo "쇼핑 조건: $(q 'or=(content->>section.is.null,content->>section.neq.info)')"
+          echo "생활정보 조건: $(q 'content->>section=eq.info')"

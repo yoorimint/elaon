@@ -85,3 +85,20 @@ export async function fetchShopGuideForInfo(sb: SupabaseClient, category: string
   const [guide] = await fetchSameCategoryPosts(sb, category?.trim() ? category : undefined, infoSlug, 1, "shop");
   return guide ?? null;
 }
+
+// 관리자 섹션 글 목록(조회수 표시용): 그 섹션의 공개 글만 (최신순). 공개 글이라 anon 키로도 읽힌다.
+// 지금은 관리자 "📰 생활정보 글" 탭이 쓴다 (src/components/InfoAdminPosts.tsx). 쇼핑 글 관리 목록(초안 포함·편집용)은 따로 — src/lib/shop-posts.ts listAllPosts
+export type SectionAdminRow = Pick<ShopPost, "id" | "slug" | "title" | "created_at" | "published_at"> & {
+  notion_url: string | null; // 노션에서 온 글이면 노션 페이지 주소 (content.notion.url)
+};
+
+export async function fetchPublishedForAdmin(sb: SupabaseClient, section: PostSection, limit = 200): Promise<SectionAdminRow[]> {
+  const { data, error } = await whereSection(
+    sb.from("shop_posts").select("id,slug,title,created_at,published_at,notion_url:content->notion->>url").eq("status", "published"),
+    section,
+  )
+    .order("published_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as SectionAdminRow[];
+}

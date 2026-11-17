@@ -24,7 +24,7 @@ import {
   setPostStatus,
   type AdminPostRow,
 } from "@/lib/shop-posts";
-import { NO_VIEWS, formatViews, sortByViews, type PostViewStats, type ViewSort } from "@/lib/shop-views";
+import { formatViews, sortByViews, statsFor, type PostViewStats, type ViewSort } from "@/lib/shop-views";
 import { getShopViewStats } from "@/lib/shop-views-client";
 
 const SORTS: { id: ViewSort; label: string }[] = [
@@ -83,28 +83,7 @@ export function ShopAdminPosts({
           새로고침
         </button>
       </div>
-      {showViews && (
-        <>
-          <ShopViewExcludeToggle />
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {SORTS.map((o) => (
-              <button
-                key={o.id}
-                disabled={o.id !== "latest" && !views}
-                onClick={() => setSort(o.id)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50 ${
-                  sort === o.id
-                    ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
-                    : "border border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
-            {views === null && <span className="text-xs text-neutral-500">조회수 준비 중 (DB 설정 전)</span>}
-          </div>
-        </>
-      )}
+      {showViews && <ViewControls views={views} sort={sort} onSort={setSort} />}
       {error && <p className="mt-3 text-sm text-red-600">글 목록 불러오기 실패: {error}</p>}
       {posts && shown.length === 0 && !error ? (
         <div className="mt-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-center text-sm text-neutral-500">
@@ -116,7 +95,7 @@ export function ShopAdminPosts({
             <PostRow
               key={p.id}
               post={p}
-              views={showViews ? (views === undefined ? undefined : views ? views.get(p.id) ?? NO_VIEWS : null) : false}
+              views={showViews ? statsFor(views, p.id) : false}
               onOpen={() => onOpen(p.id)}
               onChanged={reload}
             />
@@ -124,6 +103,52 @@ export function ShopAdminPosts({
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * 조회수 목록 위 조작 칸: "이 기기 조회수 제외" + 정렬 버튼 + (SQL 실행 전이면) "조회수 준비 중".
+ * 쇼핑 "발행된 글" 탭과 "📰 생활정보 글" 탭(src/components/InfoAdminPosts.tsx)이 같이 쓴다.
+ */
+export function ViewControls({
+  views,
+  sort,
+  onSort,
+}: {
+  views: Map<string, PostViewStats> | null | undefined;
+  sort: ViewSort;
+  onSort: (s: ViewSort) => void;
+}) {
+  return (
+    <>
+      <ShopViewExcludeToggle />
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {SORTS.map((o) => (
+          <button
+            key={o.id}
+            disabled={o.id !== "latest" && !views}
+            onClick={() => onSort(o.id)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold disabled:opacity-50 ${
+              sort === o.id
+                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                : "border border-neutral-300 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+        {views === null && <span className="text-xs text-neutral-500">조회수 준비 중 (DB 설정 전)</span>}
+      </div>
+    </>
+  );
+}
+
+/** 글 한 줄의 조회수 문구: undefined = 불러오는 중, null = 준비 중(SQL 실행 전·실패) */
+export function ViewsLine({ views }: { views: PostViewStats | null | undefined }) {
+  return (
+    <div className="mt-1 text-xs tabular-nums text-neutral-500">
+      {views === undefined ? "조회수 불러오는 중…" : views === null ? "조회수 준비 중" : formatViews(views)}
+    </div>
   );
 }
 
@@ -179,11 +204,7 @@ function PostRow({
         <span className="min-w-0 truncate">{p.products.map((x) => x.name).filter(Boolean).join(" · ")}</span>
       </div>
       <div className="mt-1 text-sm font-semibold">{p.title}</div>
-      {views !== false && (
-        <div className="mt-1 text-xs tabular-nums text-neutral-500">
-          {views === undefined ? "조회수 불러오는 중…" : views === null ? "조회수 준비 중" : formatViews(views)}
-        </div>
-      )}
+      {views !== false && <ViewsLine views={views} />}
       <div className="mt-2 flex flex-wrap gap-2">
         {notion && (
           <a

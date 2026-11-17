@@ -93,7 +93,14 @@ import {
   withSectionState,
 } from "@/lib/notion-section";
 import { POST_SECTIONS, inSection, sectionOf, sectionPostPath, whereSection, type PostSection } from "@/lib/post-section";
-import { fetchPublishedBySlug, fetchPublishedPosts, fetchPublishedSlugs, fetchRelatedPosts, fetchShopGuideForInfo } from "@/lib/shop-posts-public";
+import {
+  fetchPublishedBySlug,
+  fetchPublishedForAdmin,
+  fetchPublishedPosts,
+  fetchPublishedSlugs,
+  fetchRelatedPosts,
+  fetchShopGuideForInfo,
+} from "@/lib/shop-posts-public";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
 import { InfoSajudayBar } from "@/components/InfoSajudayBar";
 import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, INFO_SAJUDAY_BAR, hidesSiteBottomBar } from "@/lib/ads-config";
@@ -2358,6 +2365,14 @@ async function main() {
     assert.equal(await infoStore.loadPost("id-shop-old"), null);
     assert.equal((await infoStore.loadPost("id-info-a"))?.slug, "info-a");
     assert.equal(pairKeyOf("p1"), "notion:p1");
+
+    // 관리자 "📰 생활정보 글" 탭(조회수 보기): 공개된 생활정보 글만, 최신순 — 쇼핑 글·초안은 안 나옴
+    const adminInfo = await fetchPublishedForAdmin(sb, "info");
+    assert.deepEqual(adminInfo.map((p) => p.slug), ["info-oldkey", "info-b", "info-a"]);
+    assert.deepEqual(Object.keys(adminInfo[0]).sort(), ["created_at", "id", "notion_url", "published_at", "slug", "title"]);
+    assert.equal(adminInfo[0].id, "id-info-oldkey"); // 조회수 집계(글 id 별)와 맞춰 볼 id
+    assert.equal(adminInfo[0].notion_url, "u");
+    assert.deepEqual((await fetchPublishedForAdmin(sb, "shop")).map((p) => p.slug), ["shop-new", "shop-old"]);
     assert.equal(pairKeyOf("p1", "info"), "notion-info:p1");
   });
 

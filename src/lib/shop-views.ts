@@ -1,7 +1,8 @@
-// 쇼핑 글 조회수 집계 규칙 (순수 함수 — 브라우저·서버·테스트 공용, 외부 호출 없음)
+// 글 조회수 집계 규칙 (쇼핑·생활정보 공용 순수 함수 — 브라우저·서버·테스트에서 씀, 외부 호출 없음)
 //
 // 규칙
-//  - 공개 글 화면(/shop/[slug])이 실제로 열린 뒤 브라우저에서 한 번만 센다 (초안 미리보기는 안 셈).
+//  - 공개 글 화면(쇼핑 /shop/[slug]·생활정보 /info/[slug] — 같은 기록기 ShopViewTracker)이 실제로 열린 뒤
+//    브라우저에서 한 번만 센다 (초안 미리보기는 안 셈). 기록·집계는 글 slug·id 기준이라 섹션과 상관없다.
 //  - 같은 브라우저가 같은 글을 같은 날(한국시간) 여러 번 열면 1회.
 //  - 검색 로봇·미리보기 수집기(user-agent)는 안 센다. 같은 규칙을 DB 함수(supabase/shop-views.sql)도 한 번 더 확인한다.
 //  - 사장님 본인은 안 센다: 관리자로 로그인된 상태이거나, 이 브라우저에 "조회수 제외" 표시가 켜져 있으면.
@@ -119,4 +120,13 @@ export function sortByViews<T extends { id: string; published_at: string | null;
   if (sort === "latest" || !stats) return [...posts].sort(latest);
   const key = (p: T) => (stats.get(p.id) ?? NO_VIEWS)[sort];
   return [...posts].sort((a, b) => key(b) - key(a) || latest(a, b));
+}
+
+/** 글 한 편의 조회수: 목록이 아직 안 왔으면 undefined(불러오는 중), 준비 안 됐으면 null, 기록이 없는 글은 0 */
+export function statsFor(
+  stats: Map<string, PostViewStats> | null | undefined,
+  postId: string,
+): PostViewStats | null | undefined {
+  if (stats === undefined) return undefined;
+  return stats ? stats.get(postId) ?? NO_VIEWS : null;
 }

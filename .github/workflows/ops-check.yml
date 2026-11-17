@@ -158,3 +158,20 @@ jobs:
           echo "전체 공개: $(q '')"
           echo "쇼핑 조건: $(q 'or=(content->>section.is.null,content->>section.neq.info)')"
           echo "생활정보 조건: $(q 'content->>section=eq.info')"
+
+      # 섹션 대기 글 1편만 지금 올리기 (사장님 요청 때 운영자가 수동으로) — 커밋 메시지에 '한편발행:info' 또는 '한편발행:shop'
+      - name: 대기 글 1편만 지금 올리기
+        if: contains(github.event.head_commit.message, '한편발행:')
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          SECTION=$(printf '%s' "$MSG" | grep -o '한편발행:[a-z]*' | head -1 | cut -d: -f2)
+          case "$SECTION" in shop|info) ;; *) echo "섹션 이름이 이상해요: $SECTION"; exit 1 ;; esac
+          SECRET=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/shop_secrets?name=eq.NOTION_CRON_SECRET&select=value" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(r[0]["value"] if r else "")')
+          echo "::add-mask::$SECRET"
+          curl -s -m 70 -o /tmp/one.json -w "응답 %{http_code} (%{time_total}s)\n" -X POST "$SITE/api/shop/notion-sync" \
+            -H "content-type: application/json" -H "x-notion-cron-secret: $SECRET" -d "{\"mode\":\"one\",\"section\":\"$SECTION\"}"
+          python3 -c 'import json,sys; d=json.load(open("/tmp/one.json")); s=(d.get("info") if sys.argv[1]=="info" else d) or {}; print({k:v for k,v in s.items() if k!="items"}); [print("-", i.get("action"), i.get("title"), i.get("slug")) for i in (s.get("items") or [])]' "$SECTION"

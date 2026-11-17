@@ -669,6 +669,7 @@ export type NotionSyncSummary = {
   queued?: number; // 발행 대기 중인 새 글 수 (예약 실행은 발행 시각에만 정한 편수씩 공개)
   publishTime?: boolean; // 예약 실행만: 이번이 발행 시각이었는지 (false = 수정·내림만 반영)
   mode?: "updates" | "all"; // 관리자 버튼만: 수정만 지금 반영 / 대기 글까지 전부 지금 올리기 (src/lib/notion-sync.ts SyncOptions.mode)
+  publishOne?: boolean; // "1편만 지금 올리기" 실행 (새 글 1편 제한 — 결과 문구용. src/app/api/shop/notion-sync/route.ts)
   nextPublishAt?: string | null; // 발행 대기 글이 있을 때: 다음 발행 시각 (null = 자동 발행 꺼짐)
   scan?: "full" | "changed"; // 노션 조회 방식: 전체 조회 / 지난번 뒤로 바뀐 글만 (src/lib/notion-sync.ts planScan)
   checked?: number; // 노션에서 받아 확인한 페이지 수

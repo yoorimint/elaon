@@ -123,6 +123,18 @@ export async function syncFromNotion(mode: "updates" | "all"): Promise<NotionSyn
   return body;
 }
 
+// 관리자 📒 노션 탭 "1편만 지금 올리기": 그 섹션 대기열 맨 앞 1편만 발행 일정과 상관없이 공개 (다른 섹션은 안 돔)
+export async function publishOneFromNotion(section: "shop" | "info"): Promise<NotionSyncResponse> {
+  const res = await fetch("/api/shop/notion-sync", {
+    method: "POST",
+    headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json" },
+    body: JSON.stringify({ mode: "one", section }),
+  });
+  const body = (await res.json().catch(() => ({}))) as NotionSyncResponse & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `서버 오류 ${res.status}`);
+  return body;
+}
+
 // 발행 직후 검색엔진(네이버 등)에 새 글 알림. 실패해도 발행에는 영향 없음.
 export async function notifySearchEngines(slug: string): Promise<void> {
   await fetch("/api/indexnow", {

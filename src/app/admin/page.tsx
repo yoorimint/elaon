@@ -17,15 +17,14 @@ import { useAuth } from "@/components/AuthProvider";
 import { AdminNav } from "@/components/AdminNav";
 import { isAdmin } from "@/lib/admin";
 import {
-  getLandingStats,
   getReferrerStats,
   getSiteStats,
   getVisitsTrend,
-  type LandingRow,
   type ReferrerRow,
   type SiteStats,
   type VisitTrendRow,
 } from "@/lib/site-stats";
+import { getPostViewStats, sectionLabel, type PostViewRow } from "@/lib/post-view-stats";
 
 function Card({
   label,
@@ -63,7 +62,8 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<SiteStats | null>(null);
   const [trend, setTrend] = useState<VisitTrendRow[]>([]);
   const [referrers, setReferrers] = useState<ReferrerRow[]>([]);
-  const [landings, setLandings] = useState<LandingRow[]>([]);
+  const [postViews, setPostViews] = useState<PostViewRow[]>([]);
+  const [postViewsError, setPostViewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -71,16 +71,16 @@ export default function AdminDashboardPage() {
     setRefreshing(true);
     setError(null);
     try {
-      const [s, t, r, l] = await Promise.all([
-        getSiteStats(),
-        getVisitsTrend(),
-        getReferrerStats(),
-        getLandingStats(),
-      ]);
+      const [s, t, r] = await Promise.all([getSiteStats(), getVisitsTrend(), getReferrerStats()]);
       setStats(s);
       setTrend(t);
       setReferrers(r);
-      setLandings(l);
+      // 글별 조회수는 따로 — 못 읽어도 나머지 지표는 보이게
+      setPostViewsError(null);
+      setPostViews(await getPostViewStats().catch((e) => {
+        setPostViewsError(e instanceof Error ? e.message : String(e));
+        return [];
+      }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "불러오기 실패");
     } finally {
@@ -229,6 +229,8 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
+          <PostViewsTable rows={postViews} error={postViewsError} />
+
           <div className="grid gap-6 mt-8 sm:grid-cols-2">
             <RankTable
               title="유입 사이트 TOP (최근 30일)"
@@ -241,17 +243,6 @@ export default function AdminDashboardPage() {
                 uniques: r.uniques,
               }))}
             />
-            <RankTable
-              title="외부 유입 랜딩 페이지 TOP (최근 30일)"
-              emptyHint="외부에서 들어온 경로가 쌓이면 표시됩니다."
-              headLabel="페이지"
-              rows={landings.map((r) => ({
-                key: r.path,
-                label: r.path,
-                visits: r.visits,
-                uniques: r.uniques,
-              }))}
-            />
           </div>
           <p className="mt-3 text-[11px] text-neutral-500">
             검색 키워드는 구글·네이버가 referrer 에 실어주지 않아 여기선 보이지 않습니다.
@@ -260,6 +251,54 @@ export default function AdminDashboardPage() {
         </>
       )}
     </main>
+  );
+}
+
+// 글별 조회수 (쇼핑·생활정보 글, 30일 동안 조회된 글만 — src/lib/post-view-stats.ts)
+function PostViewsTable({ rows, error }: { rows: PostViewRow[]; error: string | null }) {
+  const n = (v: number) => v.toLocaleString();
+  return (
+    <div className="mt-8 rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900 text-sm font-semibold">
+        글별 조회수 (쇼핑·생활정보 · 조회된 글만)
+      </div>
+      {error ? (
+        <div className="px-4 py-8 text-center text-xs text-red-600">{error}</div>
+      ) : rows.length === 0 ? (
+        <div className="px-4 py-8 text-center text-xs text-neutral-500">최근 30일 동안 조회된 글이 없어요.</div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="text-xs text-neutral-500">
+            <tr className="border-b border-neutral-200 dark:border-neutral-800">
+              <th className="px-3 py-2 text-left font-normal">글</th>
+              <th className="px-3 py-2 text-right font-normal w-16">오늘</th>
+              <th className="px-3 py-2 text-right font-normal w-16">7일</th>
+              <th className="px-3 py-2 text-right font-normal w-16">30일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.path} className="border-b border-neutral-100 dark:border-neutral-800 last:border-0">
+                <td className="px-3 py-2">
+                  <span className="mr-1.5 rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:text-neutral-300">
+                    {sectionLabel(r.section)}
+                  </span>
+                  <a href={r.path} target="_blank" rel="noopener" className="hover:underline">
+                    {r.title}
+                  </a>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums">{n(r.today)}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{n(r.week)}</td>
+                <td className="px-3 py-2 text-right tabular-nums font-semibold">{n(r.month)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="px-4 py-2 text-[11px] text-neutral-500 border-t border-neutral-100 dark:border-neutral-800">
+        관리자 본인·검색 로봇은 세지 않고, 같은 기기·같은 날은 1번만 셉니다. 주소모음 등 다른 페이지는 조회수를 따로 저장하지 않아 여기 없어요.
+      </p>
+    </div>
   );
 }
 

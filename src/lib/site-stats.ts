@@ -77,27 +77,6 @@ export async function getReferrerStats(): Promise<ReferrerRow[]> {
   }));
 }
 
-export type LandingRow = {
-  path: string;
-  visits: number;
-  uniques: number;
-};
-
-export async function getLandingStats(): Promise<LandingRow[]> {
-  const { data, error } = await supabase.rpc("admin_landing_stats");
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{
-    landing_path: string | null;
-    visits: number | string;
-    uniques: number | string;
-  }>;
-  return rows.map((r) => ({
-    path: r.landing_path ?? "(알 수 없음)",
-    visits: Number(r.visits),
-    uniques: Number(r.uniques),
-  }));
-}
-
 // ===== 공개 방문자 카운터 =====
 // anon 권한으로 호출 가능. 오늘 유니크 + 누적 유니크만 반환한다.
 

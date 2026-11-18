@@ -8,6 +8,10 @@ import { fetchPublishedSlugs } from "@/lib/shop-posts-public";
 
 const SITE = "https://www.eloan.kr";
 
+// 1시간마다 다시 만든다 (RSS 와 같은 주기). 2026-11-18: 이 값이 없어서 빌드 때 한 번 만든 사이트맵이 배포 전까지 그대로였다
+// — 발행 때 부르는 revalidatePath("/sitemap.xml") 만으로는 새 글이 들어가지 않았음(실제 확인: 쇼핑 목록 9편, 사이트맵 7편).
+export const revalidate = 3600;
+
 // Next.js App Router 가 /sitemap.xml 엔드포인트를 자동 생성.
 // 네이버 서치어드바이저 / 구글 Search Console 에서 이 URL 을 제출하면 된다.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

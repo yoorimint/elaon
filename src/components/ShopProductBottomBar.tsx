@@ -23,7 +23,7 @@ export function ShopProductBottomBar({ product }: { product: ShopBottomProduct |
           // eslint-disable-next-line @next/next/no-img-element -- 이미지 최적화를 끈 사이트 (next.config images.unoptimized)
           <img
             src={product.image}
-            alt=""
+            alt={`${product.name} 사진`}
             width={80}
             height={80}
             loading="lazy"

@@ -223,6 +223,38 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     assert.ok(/'2 \* \* \* \* \$DEPLOY_DIR\/ops\/notion-cron\.sh # eloan-notion-cron'/.test(deploy), "매시 2분 예약 줄 없음");
   });
 
+  // 2026-11-18 Bing 사이트 검사: 내부 링크 5개가 404 (주소모음에 없는 항목을 가리킴) — 비교·체크리스트의 주소모음 연결은 모두 실제 항목이어야
+  await test("비교·체크리스트가 가리키는 주소모음 항목이 모두 실제로 있다 (깨진 내부 링크 없음)", async () => {
+    const { getHub } = await import("@/lib/picks");
+    const { COMPARISONS } = await import("@/lib/comparisons");
+    const { CHECKLISTS } = await import("@/lib/checklists");
+    const refs: { from: string; category: string; hub: string }[] = [];
+    const walk = (from: string, v: unknown): void => {
+      if (Array.isArray(v)) return v.forEach((x) => walk(from, x));
+      if (!v || typeof v !== "object") return;
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+        if ((k === "pickRef" || k === "relatedPick") && x && typeof x === "object") {
+          const r = x as { category: string; hub: string };
+          refs.push({ from, category: r.category, hub: r.hub });
+        } else if (k === "relatedPicks" && Array.isArray(x)) {
+          for (const r of x as { category: string; hub: string }[]) refs.push({ from, category: r.category, hub: r.hub });
+        } else walk(from, x);
+      }
+    };
+    for (const c of COMPARISONS) walk(`vs/${c.slug}`, c);
+    for (const c of CHECKLISTS) walk(`checklist/${c.slug}`, c);
+    assert.ok(refs.length > 10, "연결을 하나도 못 찾음 — 데이터 모양이 바뀌었나");
+    const broken = refs.filter((r) => !getHub(r.category, r.hub)).map((r) => `${r.from} → /picks/${r.category}/${r.hub}`);
+    assert.deepEqual(broken, []);
+  });
+
+  // 같은 검사: 쇼핑 글 하단 상품 바 사진에 대체 텍스트가 비어 있었음 (쇼핑 글 9편 전부)
+  await test("쇼핑 글 하단 상품 바 사진에 대체 텍스트(alt)가 있다", () => {
+    const src = read(join(ROOT, "src", "components", "ShopProductBottomBar.tsx"));
+    assert.ok(!/alt=""/.test(src), "빈 alt");
+    assert.match(src, /alt=\{`\$\{product\.name\} 사진`\}/);
+  });
+
   console.log(`\n캐시 설정 테스트 ${passed}개 통과`);
 })().catch((e) => {
   console.error(e);

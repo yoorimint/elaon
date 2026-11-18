@@ -509,7 +509,7 @@ const CURSOR_VS_COPILOT: Comparison = {
   ],
   a: {
     name: "Cursor", blurb: "AI 네이티브 IDE. 코드베이스 전체 이해·리팩토링 강점.",
-    iconUrl: fav("cursor.com"), emoji: "🖱️", pickRef: { category: "dev", hub: "cursor" },
+    iconUrl: fav("cursor.com"), emoji: "🖱️", pickRef: { category: "ai", hub: "cursor" },
     recommendedFor: ["전체 코드베이스 리팩토링 자주 하는 개발자", "Claude/GPT-4 백엔드 활용", "VSCode 환경 익숙한 사람"],
     pros: ["코드베이스 전체 컨텍스트 이해", "Composer 로 다중 파일 동시 수정", "Claude/GPT-4/Gemini 백엔드 선택"],
     cons: ["월 $20~40 비교적 비싼 편", "별도 IDE 설치 필요"],
@@ -559,7 +559,7 @@ const CURSOR_VS_COPILOT: Comparison = {
     { q: "Cursor 의 백엔드 모델은 어떻게 선택?", a: "설정에서 GPT-4·Claude 3.5 Sonnet·Gemini 등 선택. 작업 종류에 따라 바꿔 사용 가능 (예: 리팩토링은 Claude, 빠른 자동완성은 GPT-4)." },
   ],
   relatedPicks: [
-    { category: "dev", hub: "cursor", label: "Cursor 자세히" },
+    { category: "ai", hub: "cursor", label: "Cursor 자세히" },
     { category: "ai", hub: "claude", label: "Claude (Cursor 백엔드)" },
   ],
   relatedChecklists: [{ slug: "ai-side-income-start", label: "AI 도구로 첫 부수입 시작" }],
@@ -870,7 +870,7 @@ const NORANUMBRELLA_VS_IRP: Comparison = {
   ],
   a: {
     name: "노란우산공제", blurb: "소상공인 전용 소득공제 + 폐업 보장.",
-    iconUrl: fav("kbiz.or.kr"), emoji: "☂️", pickRef: { category: "money", hub: "noranumbrella" },
+    iconUrl: fav("kbiz.or.kr"), emoji: "☂️",
     recommendedFor: ["사업소득자 (개인사업자·프리랜서)", "비상금·폐업 자금 확보 필요", "단기 인출 가능성 있음"],
     pros: ["소득공제 연 200~500만원 (사업소득별)", "폐업·퇴직 시 일시금 수령", "압류·체납 보호"],
     cons: ["근로소득자는 가입 불가", "운용 수익률 낮음 (단리 약 4%)"],
@@ -1507,7 +1507,7 @@ const KMONG_VS_SOOMGO: Comparison = {
   ],
   a: {
     name: "크몽", blurb: "디지털·전문 작업 (디자인·IT·번역·마케팅) 1순위.",
-    iconUrl: fav("kmong.com"), emoji: "💼", pickRef: { category: "jobs", hub: "kmong" },
+    iconUrl: fav("kmong.com"), emoji: "💼",
     recommendedFor: ["디자인·IT·번역 전문가", "원격 근무 가능 작업", "장기 프로젝트 수주"],
     pros: ["디지털 작업 카테고리 700+", "포트폴리오·평점 시스템 발달", "원격 작업·결제 표준화"],
     cons: ["판매 수수료 약 20%", "오프라인·생활 서비스 약함"],
@@ -1555,7 +1555,7 @@ const KMONG_VS_SOOMGO: Comparison = {
     { q: "초보자에게는 어느 게 진입 쉬운가요?", a: "디지털 작업 가능자는 크몽이 진입 쉬움 (서비스 등록 후 자동 노출). 생활 서비스는 숨고 (지역 기반 매칭)." },
     { q: "수수료 회피 위해 직거래로 빼는 게 좋나요?", a: "절대 금지. 플랫폼 보호 없어지고 미수금 리스크 100% 본인 부담. 본인 평점이 안정된 후 신뢰 누적된 클라이언트만 부분 직거래 권장." },
   ],
-  relatedPicks: [{ category: "jobs", hub: "kmong", label: "크몽 자세히" }],
+  relatedPicks: [], // 크몽은 주소모음에 없음 (2026-11-18 깨진 링크 정리)
   relatedChecklists: [
     { slug: "freelance-first-contract", label: "외주·프리랜서 첫 계약 체크리스트" },
     { slug: "ai-side-income-start", label: "AI 도구로 첫 부수입 시작" },

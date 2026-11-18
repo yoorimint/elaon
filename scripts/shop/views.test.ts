@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { aggregatePostViews, daysBefore } from "@/lib/post-view-calc";
 import {
   BOT_UA_PATTERN,
   autoExcludeForAdmin,
@@ -209,6 +210,36 @@ test("관리자 화면: 📰 생활정보 글 탭이 같은 조회수 함수·�
   assert.match(src("src", "lib", "shop-posts.ts"), /fetchPublishedForAdmin\(supabase, "info", limit\)/);
   // 쇼핑 글 목록은 예전 그대로 쇼핑 섹션만
   assert.match(src("src", "lib", "shop-posts.ts"), /notion_url:content->notion->>url"\),\n    "shop",/);
+});
+
+// 2026-11-18 사장님 결정: 관리자 대시보드 "외부 유입 랜딩 페이지" 대신 글별 조회수 (오늘·7일·30일, 조회된 글만)
+test("글별 조회수: 오늘·7일·30일 합계, 30일 0 인 글·지운 글은 빼고, 섹션별 주소, 많이 본 순", () => {
+  const today = "2026-11-18";
+  assert.equal(daysBefore(today, 6), "2026-11-12");
+  assert.equal(daysBefore("2026-03-01", 1), "2026-02-28");
+  const posts = [
+    { id: "a", slug: "s-a", title: "쇼핑 A", section: null },
+    { id: "b", slug: "i-b", title: "생활 B", section: "info" },
+    { id: "c", slug: "s-c", title: "옛날만 C", section: null },
+  ];
+  const views = [
+    { post_id: "a", view_day: today, view_count: 3 },
+    { post_id: "a", view_day: "2026-11-12", view_count: 2 }, // 7일 안 (경계)
+    { post_id: "a", view_day: "2026-11-11", view_count: 5 }, // 7일 밖·30일 안
+    { post_id: "b", view_day: "2026-10-20", view_count: 4 }, // 30일 안 (경계: 10-20)
+    { post_id: "c", view_day: "2026-10-19", view_count: 9 }, // 30일 밖 → 글째로 빠짐
+    { post_id: "gone", view_day: today, view_count: 7 }, // 지운 글
+    { post_id: "b", view_day: today, view_count: 0 },
+  ];
+  const rows = aggregatePostViews(views, posts, today);
+  assert.deepEqual(rows.map((r) => [r.path, r.today, r.week, r.month]), [
+    ["/shop/s-a", 3, 5, 10],
+    ["/info/i-b", 0, 0, 4],
+  ]);
+  // 대시보드에 랜딩 표가 남아 있지 않고 글별 조회수 표가 들어 있다
+  const page = readFileSync(join(process.cwd(), "src", "app", "admin", "page.tsx"), "utf8");
+  assert.ok(!page.includes("랜딩 페이지"), "외부 유입 랜딩 페이지 표 제거");
+  assert.match(page, /<PostViewsTable rows=\{postViews\} error=\{postViewsError\} \/>/);
 });
 
 console.log(`\n조회수 테스트 ${passed}개 통과`);

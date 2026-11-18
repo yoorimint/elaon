@@ -142,6 +142,8 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     }
     assert.match(read(join(ROOT, "src", "components", "Header.tsx")), /href: "\/info", label: "생활정보"/);
     assert.match(read(join(ROOT, "src", "app", "sitemap.ts")), /sectionRoutes\("info"\)/);
+    // 2026-11-18: 사이트맵이 빌드 때 한 번만 만들어져 새 글이 빠지던 문제 — 시간 기준 갱신(1시간)을 꼭 둔다
+    assert.match(read(join(ROOT, "src", "app", "sitemap.ts")), /^export const revalidate = 3600;$/m);
     assert.match(read(join(ROOT, "src", "app", "rss.xml", "route.ts")), /postsOf\("info"\)/);
   });
 

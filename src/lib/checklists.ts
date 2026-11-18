@@ -236,7 +236,6 @@ const RESIGNATION_30D: Checklist = {
           title: "삼쩜삼으로 과거 미환급 세금 조회",
           description:
             "최대 5년치 미환급 원천세를 자동 조회·환급 신청할 수 있습니다. 평균 환급액 5~15만원. 무료 조회 후 신청 시 수수료가 발생합니다.",
-          relatedPick: { category: "money", hub: "3o3", label: "삼쩜삼" },
         },
       ],
     },
@@ -512,7 +511,6 @@ const AI_SIDE_INCOME_START: Checklist = {
           title: "플랫폼 원천세 3.3% 자동 공제 확인",
           description:
             "크몽·숨고는 입금 시 3.3% 를 자동 공제합니다. 본인이 별도로 신고할 필요는 없으나 매년 5월 종소세 신고 시 합산 처리가 필요합니다.",
-          relatedPick: { category: "money", hub: "3o3", label: "삼쩜삼 환급 조회" },
         },
         {
           id: "tax-expense",
@@ -790,7 +788,6 @@ const FREELANCE_FIRST_CONTRACT: Checklist = {
           title: "삼쩜삼·자동 환급 도구로 미환급세금 확인",
           description:
             "최대 5년치 원천세 환급 자동 조회 가능. 평균 환급액 5~15만원. 무료 조회 후 신청 시 수수료가 발생합니다.",
-          relatedPick: { category: "money", hub: "3o3", label: "삼쩜삼" },
         },
       ],
     },
@@ -1825,7 +1822,6 @@ const BUSINESS_REG_30D: Checklist = {
           title: "노란우산공제 가입 검토 (절세·비상금)",
           description:
             "소상공인 전용 소득공제 제도. 사업소득 4천만원 이하 연 500만원 한도. 절세 + 폐업·퇴직 시 일시금 수령. 초기에 가입할수록 누적 효과 큽니다.",
-          relatedPick: { category: "money", hub: "noranumbrella", label: "노란우산공제" },
         },
       ],
     },
@@ -2229,7 +2225,6 @@ const DENTAL_IMPLANT_REFUND: Checklist = {
           title: "보험사 청구 — 진료비 영수증·세부내역·진단서 제출",
           description:
             "보험사 앱 또는 홈페이지에서 청구. 진단서·진료비 영수증·세부내역서·소견서 사진 첨부. 보통 1~2주 내 본인 통장으로 입금.",
-          relatedPick: { category: "money", hub: "geonganghan-bohum", label: "건강한 보험" },
         },
         {
           id: "in-deadline",

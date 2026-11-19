@@ -4,7 +4,7 @@
 // - 공용 쿠팡 배너는 이 화면에서 숨긴다 (src/lib/ads-config.ts isInfoPostPath).
 // 광고 차단 필터에 안 걸리게 클래스·ID 에 ad·banner 같은 단어를 쓰지 않는다 (CoupangBottomBanner 와 같은 규칙).
 
-import { BottomBarFrame } from "@/components/CoupangBottomBanner";
+import { BottomBarFrame } from "@/components/BottomBarFrame";
 import { INFO_GUIDE_BAR_LABEL } from "@/lib/ads-config";
 import { sectionPostPath } from "@/lib/post-section";
 import type { RelatedPost } from "@/lib/shop-post-types";

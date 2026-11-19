@@ -102,8 +102,8 @@ import {
   fetchShopGuideForInfo,
 } from "@/lib/shop-posts-public";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
-import { InfoSajudayBar } from "@/components/InfoSajudayBar";
-import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, INFO_SAJUDAY_BAR, hidesSiteBottomBar } from "@/lib/ads-config";
+import { SajudayBar } from "@/components/SajudayBar";
+import { COUPANG_DISCLOSURE, INFO_GUIDE_BAR_ENABLED, INFO_GUIDE_BAR_LABEL, SAJUDAY_BAR, hidesSiteBottomBar, showsSajudayBar } from "@/lib/ads-config";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -2287,9 +2287,14 @@ async function main() {
     assert.match(route, /for \(const section of publishOne \? \[publishOne\] : POST_SECTIONS\)/);
     assert.match(route, /routeSyncOptions\(kind, parentPageId\(\), startMs, mode, section, publishOne !== null\)/);
     // 2026-11-17 사장님 결정: 생활정보 글 하단은 사주데이 이미지 바 (첫 화면, eloan 유입 표시, nofollow, 크기 고정, 쿠팡 고지 없음)
-    assert.match(page, /\{!guide && <InfoSajudayBar \/>\}/);
-    const saju = renderToStaticMarkup(React.createElement(InfoSajudayBar));
-    assert.ok(INFO_SAJUDAY_BAR.enabled && saju.includes('href="https://sajuday.kr/?utm_source=eloan&amp;utm_medium=info_bottom"'), saju);
+    assert.match(page, /\{!guide && <SajudayBar medium="info_bottom" \/>\}/);
+    const saju = renderToStaticMarkup(React.createElement(SajudayBar, { medium: "info_bottom" }));
+    assert.ok(SAJUDAY_BAR.enabled && saju.includes('href="https://sajuday.kr/?utm_source=eloan&amp;utm_medium=info_bottom"'), saju);
+    // 2026-11-19 사장님 결정: 주소모음 전체 하단도 쿠팡 대신 사주데이 바 (자리 표시 picks_bottom). 홈·쇼핑 목록은 쿠팡 그대로
+    for (const p of ["/picks", "/picks/ai", "/picks/study/megastudy", "/picks/vs/cursor-vs-copilot"]) assert.ok(showsSajudayBar(p), p);
+    for (const p of ["/", "/shop", "/info", "/picksx", "/shop/20261114-b23402"]) assert.ok(!showsSajudayBar(p), p);
+    assert.ok(renderToStaticMarkup(React.createElement(SajudayBar, { medium: "picks_bottom" })).includes("utm_medium=picks_bottom"));
+    assert.match(src("components", "CoupangBottomBanner.tsx"), /if \(showsSajudayBar\(pathname\)\) return <SajudayBar medium="picks_bottom" \/>;/);
     assert.match(saju, /rel="nofollow noopener"/);
     assert.match(saju, /<img src="\/img\/sajuday-640\.webp"[^>]*width="320" height="107"/);
     assert.ok(!saju.includes(COUPANG_DISCLOSURE));

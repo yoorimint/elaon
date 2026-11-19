@@ -61,17 +61,26 @@ export const INFO_GUIDE_BAR_LABEL = "📖 관련 구매 가이드";
 // (공용 쿠팡 배너도 생활정보 글에서는 숨김 그대로 — hidesSiteBottomBar). 다시 켜려면 true 로.
 export const INFO_GUIDE_BAR_ENABLED = false;
 
-// 생활정보 글 하단 고정 "사주데이" 이미지 바 (2026-11-17 사장님 결정 — 사장님의 다른 사이트로 보내는 자체 홍보).
+// 하단 고정 "사주데이" 이미지 바 (사장님의 다른 사이트로 보내는 자체 홍보 — SajudayBar).
+//  - 생활정보 글(2026-11-17), 주소모음 전체(/picks…, 2026-11-19) 사장님 결정
 // 이미지: public/img/sajuday-640.webp (사장님이 준 2172×724 원본을 640px WebP 로 줄임, 화면에는 가로 320px).
-// 주소 끝 utm_* 은 사주데이 쪽 방문 통계에서 eloan 에서 넘어온 사람을 구분하려는 것. 끄려면 enabled 를 false 로.
-export const INFO_SAJUDAY_BAR = {
+// 주소 끝 utm_* 은 사주데이 쪽 방문 통계에서 eloan 의 어느 자리에서 넘어왔는지 구분하려는 것. 끄려면 enabled 를 false 로.
+export const SAJUDAY_BAR = {
   enabled: true,
-  href: "https://sajuday.kr/?utm_source=eloan&utm_medium=info_bottom",
   src: "/img/sajuday-640.webp",
   width: 320,
   height: 107, // 640×213 이미지를 가로 320 으로 보인 높이
   alt: "사주데이 — 내 사주가 알려주는 지금, 가장 좋은 선택은? 사주풀이 바로가기",
 } as const;
+
+export type SajudayBarMedium = "info_bottom" | "picks_bottom";
+export const sajudayHref = (medium: SajudayBarMedium): string => `https://sajuday.kr/?utm_source=eloan&utm_medium=${medium}`;
+
+// 공용 쿠팡 배너 대신 사주데이 바를 띄울 화면 (앞부분 일치): 주소모음 전체
+export const SAJUDAY_BAR_PATH_PREFIXES = ["/picks"];
+export function showsSajudayBar(path: string): boolean {
+  return SAJUDAY_BAR_PATH_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+}
 
 // 주소모음 우측 하단 "내 재물운은?" 알약(사주데이 링크) 노출 여부.
 // 코드는 남겨두고 숨김. 다시 보이게 하려면 true 로.

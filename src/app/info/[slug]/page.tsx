@@ -6,7 +6,7 @@ import { ShopViewTracker } from "@/components/ShopViewTracker";
 import { ShopDraftPreview } from "@/app/shop/[slug]/ShopDraftPreview";
 import { InfoShopGuideBar } from "@/components/InfoShopGuideBar";
 import { INFO_GUIDE_BAR_ENABLED } from "@/lib/ads-config";
-import { InfoSajudayBar } from "@/components/InfoSajudayBar";
+import { SajudayBar } from "@/components/SajudayBar";
 import { findShopGuideForInfo, lookupPublishedPost } from "@/lib/shop-posts-server";
 import { postCategory, postDescription, postImages } from "@/lib/shop-manual";
 import { isManualPost } from "@/lib/shop-post-types";
@@ -89,7 +89,7 @@ export default async function InfoPostPage({ params }: { params: { slug: string 
       <ShopViewTracker slug={post.slug} />
       <InfoShopGuideBar guide={guide} />
       {/* 관련 쇼핑 글 바를 끈 동안은 사주데이 이미지 바 (둘이 겹치지 않게) */}
-      {!guide && <InfoSajudayBar />}
+      {!guide && <SajudayBar medium="info_bottom" />}
     </main>
   );
 }

@@ -1,2 +1,2 @@
 # 이 파일을 바꿔 작업 브랜치(ccr-*)에 push 하면 .github/workflows/ops-check.yml 이 1회 실행된다 (읽기 전용 운영 점검)
-check: 18 — 조회수 표 존재·섹션별 조회수 확인
+check: 19 — 무차별 대입 방어 상태 확인

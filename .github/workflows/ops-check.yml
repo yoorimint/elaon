@@ -71,6 +71,11 @@ jobs:
             # 바깥으로 나간 트래픽(iwinv 는 아웃바운드만 과금) — 부팅 후 누적 ÷ 가동일 = 하루 평균 (서버 전체, 다른 사이트 포함)
             awk -v up="$(cut -d. -f1 /proc/uptime)" '\''$1 ~ /^(ens|eth)[0-9]+:/ {rx=$2; tx=$10; printf "--- 트래픽(%s): 나감 %.1fGB, 들어옴 %.1fGB, 하루 평균 나감 %.2fGB\n", $1, tx/1e9, rx/1e9, tx/1e9/(up/86400)}'\'' /proc/net/dev
             echo "--- 인증서 자동갱신 타이머: $(systemctl is-active certbot.timer 2>/dev/null) / $(systemctl is-enabled certbot.timer 2>/dev/null)"
+            # 무차별 대입 방어 상태 (읽기만 — 설정 파일은 누구나 읽을 수 있는 것만, 접속 기록·IP 는 안 찍음)
+            echo "--- 보안: SSH 설정 (주석 아닌 줄)"; cat /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null | grep -iE "^\s*(PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|MaxAuthTries|Port|KbdInteractiveAuthentication)\b" || echo "(명시 설정 없음 → 기본값)"
+            echo "--- 보안: fail2ban=$(systemctl is-active fail2ban 2>/dev/null) / ufw=$(systemctl is-active ufw 2>/dev/null) / 자동 보안업데이트=$(systemctl is-active unattended-upgrades 2>/dev/null)"
+            echo "--- 보안: 바깥에 열린 포트"; ss -tln 2>/dev/null | awk "NR>1 {print \$4}" | grep -vE "^(127\.|\[::1\]|::1)" | sort -u | tr "\n" " "; echo
+            echo "--- 보안: 밀린 업데이트 $(apt list --upgradable 2>/dev/null | grep -c security) 개(보안) / 재부팅 필요: $( [ -f /var/run/reboot-required ] && echo 예 || echo 아니오 )"
             # 서버 안 매시 노션 동기화 (배포가 설치 — scripts/server/notion-cron.sh). 기록은 시각·응답코드·걸린 시간뿐
             echo "--- 예약: cron=$(systemctl is-active cron 2>/dev/null) / crontab: $(crontab -l 2>&1 | grep -v "^#" | tr "\n" " ")"
             echo "--- 매시 동기화 최근 기록 (UTC):"; tail -n 6 /srv/eloan/notion-cron.log 2>/dev/null || echo "아직 기록 없음"

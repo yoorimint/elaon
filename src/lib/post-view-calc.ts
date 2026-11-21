@@ -32,4 +32,9 @@ export function aggregatePostViews(views: ViewRecord[], posts: PostRecord[], tod
   return [...rows.values()].sort((a, b) => b.month - a.month || b.week - a.week || b.today - a.today || a.title.localeCompare(b.title));
 }
 
+// 대시보드에 보일 줄: 오늘 조회된 글만, 오늘 많은 순 (2026-11-21 사장님 결정). 7일·30일 칸은 참고로 함께 보인다
+export function todayRows(rows: PostViewRow[]): PostViewRow[] {
+  return rows.filter((r) => r.today > 0).sort((a, b) => b.today - a.today || b.week - a.week || b.month - a.month || a.title.localeCompare(b.title));
+}
+
 export const sectionLabel = (s: PostSection): string => SECTION_META[s].name;

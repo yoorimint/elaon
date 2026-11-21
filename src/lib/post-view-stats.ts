@@ -6,7 +6,7 @@ import { supabase } from "./supabase";
 import { kstDay } from "./shop-views";
 import { aggregatePostViews, daysBefore, type PostViewRow } from "./post-view-calc";
 
-export { sectionLabel, type PostViewRow } from "./post-view-calc";
+export { sectionLabel, todayRows, type PostViewRow } from "./post-view-calc";
 
 // 관리자 로그인 상태에서만 동작 (조회수 표는 관리자만 읽기). 표가 아직 없으면 오류를 던진다 — 화면이 안내
 export async function getPostViewStats(now: Date = new Date()): Promise<PostViewRow[]> {

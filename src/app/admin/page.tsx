@@ -24,7 +24,7 @@ import {
   type SiteStats,
   type VisitTrendRow,
 } from "@/lib/site-stats";
-import { getPostViewStats, sectionLabel, type PostViewRow } from "@/lib/post-view-stats";
+import { getPostViewStats, sectionLabel, todayRows, type PostViewRow } from "@/lib/post-view-stats";
 
 function Card({
   label,
@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
             )}
           </div>
 
-          <PostViewsTable rows={postViews} error={postViewsError} />
+          <PostViewsTable rows={todayRows(postViews)} error={postViewsError} />
 
           <div className="grid gap-6 mt-8 sm:grid-cols-2">
             <RankTable
@@ -254,18 +254,18 @@ export default function AdminDashboardPage() {
   );
 }
 
-// 글별 조회수 (쇼핑·생활정보 글, 30일 동안 조회된 글만 — src/lib/post-view-stats.ts)
+// 글별 조회수 (쇼핑·생활정보 글, 오늘 조회된 글만 — src/lib/post-view-calc.ts todayRows)
 function PostViewsTable({ rows, error }: { rows: PostViewRow[]; error: string | null }) {
   const n = (v: number) => v.toLocaleString();
   return (
     <div className="mt-8 rounded-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden">
       <div className="px-4 py-3 bg-neutral-50 dark:bg-neutral-900 text-sm font-semibold">
-        글별 조회수 (쇼핑·생활정보 · 조회된 글만)
+        글별 조회수 (쇼핑·생활정보 · 오늘 조회된 글만)
       </div>
       {error ? (
         <div className="px-4 py-8 text-center text-xs text-red-600">{error}</div>
       ) : rows.length === 0 ? (
-        <div className="px-4 py-8 text-center text-xs text-neutral-500">최근 30일 동안 조회된 글이 없어요.</div>
+        <div className="px-4 py-8 text-center text-xs text-neutral-500">오늘 조회된 글이 아직 없어요.</div>
       ) : (
         <table className="w-full text-sm">
           <thead className="text-xs text-neutral-500">

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { aggregatePostViews, daysBefore } from "@/lib/post-view-calc";
+import { aggregatePostViews, daysBefore, todayRows } from "@/lib/post-view-calc";
 import {
   BOT_UA_PATTERN,
   autoExcludeForAdmin,
@@ -236,10 +236,13 @@ test("글별 조회수: 오늘·7일·30일 합계, 30일 0 인 글·지운 글�
     ["/shop/s-a", 3, 5, 10],
     ["/info/i-b", 0, 0, 4],
   ]);
+  // 2026-11-21 사장님 결정: 대시보드에는 오늘 조회된 글만, 오늘 많은 순
+  assert.deepEqual(todayRows(rows).map((r) => r.path), ["/shop/s-a"]);
+  assert.deepEqual(todayRows([{ ...rows[0], today: 1 }, { ...rows[1], today: 5 }]).map((r) => r.path), ["/info/i-b", "/shop/s-a"]);
   // 대시보드에 랜딩 표가 남아 있지 않고 글별 조회수 표가 들어 있다
   const page = readFileSync(join(process.cwd(), "src", "app", "admin", "page.tsx"), "utf8");
   assert.ok(!page.includes("랜딩 페이지"), "외부 유입 랜딩 페이지 표 제거");
-  assert.match(page, /<PostViewsTable rows=\{postViews\} error=\{postViewsError\} \/>/);
+  assert.match(page, /<PostViewsTable rows=\{todayRows\(postViews\)\} error=\{postViewsError\} \/>/);
 });
 
 console.log(`\n조회수 테스트 ${passed}개 통과`);

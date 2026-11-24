@@ -23,8 +23,10 @@ import { DEFAULT_POST_DISCLOSURE } from "./shop-post-types";
 import { createServiceClient } from "./supabase-server";
 import { generateToolToken, loadToolToken, saveToolToken, sameToolToken } from "./tool-token";
 
-// 도구 API·MCP 호출 제한(제한기 하나를 같이 쓴다): 접속 주소(IP)마다 분당 10회, 전체 분당 30회 (토큰 맞히기 시도도 센다)
-export const TOOL_CALLS_PER_MINUTE_PER_IP = 10;
+// 도구 API·MCP 호출 제한(제한기 하나를 같이 쓴다): 접속 주소(IP)마다 분당 30회(토큰 맞히기 시도도 센다), 전체 분당 30회(토큰 통과 뒤)
+// 챗GPT 요청은 OpenAI 서버 몇 곳의 IP 에서 모여 온다 — 연결 한 번에 initialize·알림·tools/list 3번을 쓰므로 10 은 빠듯해 30 으로 (2026-11-24 검수).
+// 토큰은 256비트라 IP별 제한이 느슨해도 맞히기는 불가능하고, 쿠팡 호출 자체는 coupang-limits.ts 의 시간당 한도가 따로 막는다
+export const TOOL_CALLS_PER_MINUTE_PER_IP = 30;
 export const TOOL_CALLS_PER_MINUTE_TOTAL = 30;
 
 export type ToolApiDeps = {

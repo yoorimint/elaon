@@ -82,13 +82,13 @@ async function rejectsCode(p: Promise<unknown>, code: string, msg?: RegExp) {
 
 const TOKEN = `eloan_tool_${"x".repeat(43)}`; // 가짜 도구 토큰
 
-function toolDeps(o: { token?: string | null; client?: ReturnType<typeof createCoupangClient>; perIp?: number } = {}): ToolApiDeps {
+function toolDeps(o: { token?: string | null; client?: ReturnType<typeof createCoupangClient>; perIp?: number; total?: number } = {}): ToolApiDeps {
   const fake = fakeFetch(() => ({ body: searchSample(["무선 청소기 A", "무선 청소기 B"]) }));
   return {
     loadToken: async () => (o.token === undefined ? TOKEN : o.token),
     client: () => o.client ?? createCoupangClient({ loadKeys: async () => KEYS, fetch: fake.fn }),
     perIp: createWindowLimiter({ limit: o.perIp ?? 100, windowMs: 60_000 }),
-    total: createWindowLimiter({ limit: 1000, windowMs: 60_000 }),
+    total: createWindowLimiter({ limit: o.total ?? 1000, windowMs: 60_000 }),
   };
 }
 
@@ -303,6 +303,16 @@ async function main() {
     assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, "Bearer wrong", "198.51.100.1"), deps)).status, 403);
     assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, `Bearer ${TOKEN}`, "198.51.100.1"), deps)).status, 429);
     assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, `Bearer ${TOKEN}`, "198.51.100.2"), deps)).status, 200);
+  });
+
+  // 2026-11-24 검수: 토큰 없는 요청이 전체 한도를 깎으면 사장님 챗GPT 까지 막힌다 → 전체 한도는 토큰 통과 뒤에만 센다
+  await test("도구 API: 토큰 없는·틀린 요청은 전체 한도를 쓰지 않는다 (전체 한도는 통과한 요청만)", async () => {
+    const deps = toolDeps({ total: 1 });
+    for (const ip of ["192.0.2.1", "192.0.2.2", "192.0.2.3"]) {
+      assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, "Bearer wrong", ip), deps)).status, 403, ip);
+    }
+    assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, `Bearer ${TOKEN}`, "192.0.2.9"), deps)).status, 200);
+    assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, `Bearer ${TOKEN}`, "192.0.2.10"), deps)).status, 429);
   });
 
   await test("도구 API 딥링크: 주소마다 status (ok·already·invalid), 고지 문구, 너무 많으면 400", async () => {

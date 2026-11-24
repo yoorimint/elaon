@@ -57,15 +57,15 @@ export function clientIp(req: Request): string {
   return (xff || req.headers.get("x-real-ip")?.trim() || "unknown").slice(0, 64);
 }
 
-// 통과하면 null, 아니면 돌려줄 응답
+const tooMany = (retryAfterSec: number) =>
+  json({ error: `요청이 너무 잦아요 — ${retryAfterSec}초 뒤에 다시 해 주세요`, code: "too_many_requests" }, 429, { "retry-after": String(retryAfterSec) });
+
+// 통과하면 null, 아니면 돌려줄 응답.
+// IP별 제한은 토큰 검사 전에(틀린 토큰 반복 시도도 센다), 전체 제한은 토큰을 통과한 요청만 센다
+// — 토큰 없는 요청을 쏟아부어 전체 한도를 바닥내 사장님 챗GPT 까지 막는 일이 없게 (2026-11-24 검수)
 async function authorizeTool(req: Request, deps: ToolApiDeps): Promise<Response | null> {
-  for (const [limiter, key] of [
-    [deps.total, ""],
-    [deps.perIp, clientIp(req)],
-  ] as const) {
-    const r = limiter.take(key);
-    if (!r.ok) return json({ error: `요청이 너무 잦아요 — ${r.retryAfterSec}초 뒤에 다시 해 주세요`, code: "too_many_requests" }, 429, { "retry-after": String(r.retryAfterSec) });
-  }
+  const ip = deps.perIp.take(clientIp(req));
+  if (!ip.ok) return tooMany(ip.retryAfterSec);
   const expected = await deps.loadToken().catch(() => null);
   if (!expected) {
     return json({ error: "도구 토큰이 아직 없어요 — 사이트 관리자 화면(⚙️ 설정 → 챗GPT 연결)에서 '도구 토큰 새로 만들기'를 먼저 해 주세요", code: "not_configured" }, 503);
@@ -74,6 +74,8 @@ async function authorizeTool(req: Request, deps: ToolApiDeps): Promise<Response 
   if (!given || !sameToolToken(given, expected)) {
     return json({ error: "도구 토큰이 없거나 맞지 않아요 — 챗GPT Actions 인증에 관리자 화면에서 만든 토큰을 넣어 주세요", code: "forbidden" }, 403);
   }
+  const total = deps.total.take("");
+  if (!total.ok) return tooMany(total.retryAfterSec);
   return null;
 }
 

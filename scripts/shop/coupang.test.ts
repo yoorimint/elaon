@@ -2,9 +2,12 @@
 //  - 서명 문자열 (src/lib/coupang-api-core.ts) · 응답 읽기 · 입력 정리
 //  - 호출·캐시·한도 (src/lib/coupang-api.ts) · 키 없음 오류
 //  - 도구 API 토큰 검사·호출 제한·응답 (src/lib/coupang-tools.ts) · 관리자 도구 토큰 만들기 · OpenAPI 문서
+//  - MCP 서버 (src/lib/mcp-server.ts · src/lib/mcp-coupang.ts, 라우트 /api/mcp · /api/mcp/<토큰>)
 // 키·토큰은 전부 가짜 값이다.
 
 import assert from "node:assert/strict";
+import { DELETE as mcpDelete, GET as mcpGet } from "@/app/api/mcp/route";
+import { GET as mcpTokenGet } from "@/app/api/mcp/[token]/route";
 import { GET as openApiGet } from "@/app/api/tools/coupang/openapi.json/route";
 import { createCoupangClient, SEARCH_CACHE_MS, type CoupangKeys } from "@/lib/coupang-api";
 import {
@@ -23,6 +26,9 @@ import {
 } from "@/lib/coupang-api-core";
 import { TOOL_PATHS } from "@/lib/coupang-openapi";
 import { handleToolDeeplink, handleToolSearch, handleToolTokenCreate, kstLabel, type ToolApiDeps } from "@/lib/coupang-tools";
+import { mcpUrlWithToken } from "@/lib/mcp-endpoint";
+import { MCP_TOOL_NAMES, handleCoupangMcp } from "@/lib/mcp-coupang";
+import { LEGACY_VERSIONS, decodeHeaderValue, negotiateLegacyVersion } from "@/lib/mcp-server";
 import { createWindowLimiter } from "@/lib/rate-limit";
 import { generateToolToken, sameToolToken } from "@/lib/tool-token";
 
@@ -98,6 +104,27 @@ const post = (path: string, body: unknown, auth?: string, ip = "203.0.113.7") =>
     headers: { "content-type": "application/json", "x-forwarded-for": ip, ...(auth ? { authorization: auth } : {}) },
     body: JSON.stringify(body),
   });
+
+type McpToolJson = { name: string; description: string; inputSchema: Record<string, unknown>; annotations: Record<string, boolean> };
+
+// MCP 요청 — 기본은 주소 방식(/api/mcp/<토큰>). auth: "header" 는 /api/mcp + Bearer, "none" 은 토큰 없이 /api/mcp
+function mcpCall(
+  body: unknown,
+  o: { deps?: ToolApiDeps; auth?: "path" | "header" | "none"; token?: string; ip?: string; extraHeaders?: Record<string, string> } = {},
+): Promise<Response> {
+  const auth = o.auth ?? "path";
+  const token = o.token ?? TOKEN;
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    accept: "application/json, text/event-stream",
+    "x-forwarded-for": o.ip ?? "203.0.113.50",
+    ...(auth === "header" ? { authorization: `Bearer ${token}` } : {}),
+    ...o.extraHeaders,
+  };
+  const path = auth === "path" ? `/api/mcp/${token}` : "/api/mcp";
+  const req = new Request(`https://www.eloan.kr${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  return handleCoupangMcp(req, o.deps ?? toolDeps(), auth === "path" ? token : undefined);
+}
 
 async function main() {
   console.log("쿠팡 API 서명·응답");
@@ -375,12 +402,215 @@ async function main() {
     assert.ok(!JSON.stringify(doc).includes("eloan_tool_")); // 문서에 토큰 없음
   });
 
+  console.log("MCP 서버");
+
+  await test("MCP initialize: 아는 버전은 그대로, 모르는 버전은 최신 legacy 버전, capabilities.tools·serverInfo", async () => {
+    for (const v of ["2025-06-18", "2025-03-26", "2024-11-05", "2025-11-25"]) {
+      const r = await mcpCall({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: v, capabilities: {}, clientInfo: { name: "t", version: "1" } } });
+      assert.equal(r.status, 200);
+      assert.match(r.headers.get("content-type") ?? "", /application\/json/);
+      assert.equal(r.headers.get("mcp-session-id"), null); // 상태 없음 — 세션 id 를 만들지 않는다
+      const b = (await r.json()) as { id: number; result: { protocolVersion: string; capabilities: unknown; serverInfo: { name: string; version: string } } };
+      assert.equal(b.id, 1);
+      assert.equal(b.result.protocolVersion, v);
+      assert.deepEqual(b.result.capabilities, { tools: {} });
+      assert.equal(b.result.serverInfo.name, "eloan-coupang");
+      assert.ok(b.result.serverInfo.version);
+    }
+    const odd = (await (await mcpCall({ jsonrpc: "2.0", id: 2, method: "initialize", params: { protocolVersion: "1999-01-01" } })).json()) as { result: { protocolVersion: string } };
+    assert.equal(odd.result.protocolVersion, LEGACY_VERSIONS[0]);
+    assert.equal(negotiateLegacyVersion(undefined), "2025-11-25");
+  });
+
+  await test("MCP tools/list: 도구 2개, 읽기 전용 annotations, JSON Schema 입력, 한국어 설명에 파트너스 링크 안내", async () => {
+    const b = (await (await mcpCall({ jsonrpc: "2.0", id: "l", method: "tools/list" })).json()) as { result: { tools: McpToolJson[] } };
+    const tools = b.result.tools;
+    assert.deepEqual(tools.map((t) => t.name), [MCP_TOOL_NAMES.search, MCP_TOOL_NAMES.deeplink]);
+    for (const t of tools) {
+      assert.deepEqual({ r: t.annotations.readOnlyHint, o: t.annotations.openWorldHint, d: t.annotations.destructiveHint }, { r: true, o: true, d: false });
+      assert.equal(t.inputSchema.type, "object");
+      assert.match(t.description, /[가-힣]/);
+    }
+    assert.ok(tools[0].description.includes(`수수료가 잡히는 링크는`) && tools[0].description.includes(MCP_TOOL_NAMES.deeplink)); // 검색 결과로 링크 만들기 안내
+    assert.deepEqual(tools[0].inputSchema.required, ["keyword"]);
+    assert.equal((tools[0].inputSchema.properties as { limit: { maximum: number } }).limit.maximum, 10);
+    assert.equal((tools[1].inputSchema.properties as { urls: { maxItems: number } }).urls.maxItems, 5);
+  });
+
+  await test("MCP tools/call 검색: 사람이 읽을 요약(가격·로켓·상품 번호·주소·기준 시각) + structuredContent (가짜 쿠팡)", async () => {
+    const r = await mcpCall({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: MCP_TOOL_NAMES.search, arguments: { keyword: "무선 청소기", limit: 2 } } });
+    assert.equal(r.status, 200);
+    const text = await r.text();
+    const b = JSON.parse(text) as { result: { content: { type: string; text: string }[]; structuredContent: { products: { productId: string }[]; notice: string }; isError?: boolean } };
+    assert.equal(b.result.isError, undefined);
+    assert.equal(b.result.content[0].type, "text");
+    const t = b.result.content[0].text;
+    for (const want of ["무선 청소기 A", "129,000원", "로켓배송", "상품 번호 1000", "https://www.coupang.com/vp/products/1000", "https://static.coupangcdn.com/image/0.jpg", "기준", "바뀔 수 있어요", MCP_TOOL_NAMES.deeplink]) {
+      assert.ok(t.includes(want), want);
+    }
+    assert.deepEqual(b.result.structuredContent.products.map((p) => p.productId), ["1000", "1001"]);
+    assert.ok(b.result.structuredContent.notice.includes(MCP_TOOL_NAMES.deeplink));
+    for (const secret of [KEYS.accessKey, KEYS.secretKey, TOKEN]) assert.ok(!text.includes(secret));
+  });
+
+  await test("MCP tools/call 링크: 파트너스 링크 + 고지 문구, 쿠팡 밖 주소는 줄마다 안내", async () => {
+    const f = fakeFetch((c) => {
+      const body = JSON.parse(String(c.init.body)) as { coupangUrls: string[] };
+      return { body: { rCode: "0", data: body.coupangUrls.map((x, i) => ({ originalUrl: x, shortenUrl: `https://link.coupang.com/a/m${i}` })) } };
+    });
+    const deps = toolDeps({ client: createCoupangClient({ loadKeys: async () => KEYS, fetch: f.fn }) });
+    const args = { urls: ["https://www.coupang.com/vp/products/1", "https://naver.com"], productIds: ["2"] };
+    const b = (await (await mcpCall({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: MCP_TOOL_NAMES.deeplink, arguments: args } }, { deps })).json()) as {
+      result: { content: { text: string }[]; structuredContent: { links: { status: string }[]; disclosure: string } };
+    };
+    const t = b.result.content[0].text;
+    assert.ok(t.includes("https://link.coupang.com/a/m0") && t.includes("https://link.coupang.com/a/m1"));
+    assert.match(t, /만들지 못함/);
+    assert.match(t, /쿠팡 파트너스 활동/);
+    assert.deepEqual(b.result.structuredContent.links.map((l) => l.status), ["ok", "invalid", "ok"]);
+  });
+
+  await test("MCP tools/call: 쿠팡 오류(키 없음·한도·입력)는 JSON-RPC 오류가 아니라 isError 결과, 모르는 도구는 -32602", async () => {
+    const noKeys = toolDeps({ client: createCoupangClient({ loadKeys: async () => null, fetch: fakeFetch(() => ({ body: {} })).fn }) });
+    const call = (name: string, args: unknown, deps = toolDeps()) => mcpCall({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name, arguments: args } }, { deps });
+    const a = await call(MCP_TOOL_NAMES.search, { keyword: "청소기" }, noKeys);
+    assert.equal(a.status, 200);
+    const ab = (await a.json()) as { result: { isError: boolean; content: { text: string }[]; structuredContent: { code: string } } };
+    assert.equal(ab.result.isError, true);
+    assert.match(ab.result.content[0].text, /관리자 설정에서 쿠팡 키/);
+    assert.equal(ab.result.structuredContent.code, "no_keys");
+    const limited = toolDeps({ client: createCoupangClient({ loadKeys: async () => KEYS, fetch: fakeFetch(() => ({ status: 429, body: "" })).fn }) });
+    const lb = (await (await call(MCP_TOOL_NAMES.search, { keyword: "청소기" }, limited)).json()) as { result: { isError: boolean; content: { text: string }[] } };
+    assert.deepEqual([lb.result.isError, /한도/.test(lb.result.content[0].text)], [true, true]);
+    const authFail = toolDeps({ client: createCoupangClient({ loadKeys: async () => KEYS, fetch: fakeFetch(() => ({ status: 401, body: "{}" })).fn }) });
+    assert.equal(((await (await call(MCP_TOOL_NAMES.deeplink, { productIds: ["1"] }, authFail)).json()) as { result: { isError: boolean } }).result.isError, true);
+    const empty = (await (await call(MCP_TOOL_NAMES.search, {})).json()) as { result: { isError: boolean; content: { text: string }[] } };
+    assert.deepEqual([empty.result.isError, empty.result.content[0].text], [true, "검색어를 넣어 주세요"]);
+    const unknown = (await (await call("delete_everything", {})).json()) as { error: { code: number } };
+    assert.equal(unknown.error.code, -32602);
+  });
+
+  await test("MCP 토큰: 주소 방식(/api/mcp/<토큰>)·헤더 방식 둘 다 통과, 틀림·없음 401, 미설정 503 — 응답에 토큰 없음", async () => {
+    const init = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } };
+    assert.equal((await mcpCall(init, { auth: "path" })).status, 200);
+    assert.equal((await mcpCall(init, { auth: "header" })).status, 200);
+    for (const bad of [{ auth: "path" as const, token: `${TOKEN}x` }, { auth: "header" as const, token: "wrong" }, { auth: "none" as const }]) {
+      const r = await mcpCall(init, bad);
+      assert.equal(r.status, 401, bad.auth);
+      const text = await r.text();
+      const b = JSON.parse(text) as { jsonrpc: string; error: { code: number; message: string } };
+      assert.equal(b.jsonrpc, "2.0");
+      assert.equal(b.error.code, -31001);
+      assert.match(b.error.message, /토큰/);
+      assert.ok(!text.includes(TOKEN));
+    }
+    // 주소 방식이면 헤더 토큰은 보지 않는다 (주소의 토큰이 틀리면 헤더가 맞아도 거절)
+    assert.equal((await mcpCall(init, { auth: "path", token: "wrong", extraHeaders: { authorization: `Bearer ${TOKEN}` } })).status, 401);
+    const nc = await mcpCall(init, { deps: toolDeps({ token: null }) });
+    assert.equal(nc.status, 503);
+    assert.match(((await nc.json()) as { error: { message: string } }).error.message, /도구 토큰 새로 만들기/);
+    assert.equal(mcpUrlWithToken("eloan_tool_abc-_"), "https://www.eloan.kr/api/mcp/eloan_tool_abc-_");
+  });
+
+  await test("MCP 호출 제한: 도구 API 와 같은 제한기 — IP별은 토큰 검사 전, 전체는 토큰 통과 뒤에만", async () => {
+    const deps = toolDeps({ perIp: 2, total: 1 });
+    const ping = { jsonrpc: "2.0", id: 1, method: "ping" };
+    assert.equal((await mcpCall(ping, { deps, auth: "path", token: "wrong", ip: "198.51.100.9" })).status, 401);
+    assert.equal((await mcpCall(ping, { deps, auth: "path", token: "wrong", ip: "198.51.100.9" })).status, 401);
+    const blocked = await mcpCall(ping, { deps, ip: "198.51.100.9" });
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.headers.get("retry-after")) > 0);
+    assert.equal((await mcpCall(ping, { deps, ip: "198.51.100.10" })).status, 200); // 틀린 토큰은 전체 한도를 쓰지 않았다
+    assert.equal((await mcpCall(ping, { deps, ip: "198.51.100.11" })).status, 429); // 전체 1회를 썼다
+    // 도구 API 와 MCP 가 같은 제한기를 쓴다
+    const shared = toolDeps({ total: 1 });
+    assert.equal((await handleToolSearch(post(TOOL_PATHS.search, { keyword: "a" }, `Bearer ${TOKEN}`), shared)).status, 200);
+    assert.equal((await mcpCall(ping, { deps: shared })).status, 429);
+  });
+
+  await test("MCP: 모르는 메서드 -32601, 알림은 202 빈 응답, GET·DELETE 405 (Allow: POST), 깨진 JSON -32700", async () => {
+    const m = (await (await mcpCall({ jsonrpc: "2.0", id: 7, method: "resources/list" })).json()) as { id: number; error: { code: number } };
+    assert.deepEqual([m.id, m.error.code], [7, -32601]);
+    for (const note of [{ jsonrpc: "2.0", method: "notifications/initialized" }, { jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: 1 } }]) {
+      const r = await mcpCall(note);
+      assert.equal(r.status, 202);
+      assert.equal(await r.text(), "");
+    }
+    for (const r of [mcpGet(), mcpDelete(), mcpTokenGet()]) {
+      assert.equal(r.status, 405);
+      assert.equal(r.headers.get("allow"), "POST");
+    }
+    const broken = await handleCoupangMcp(new Request("https://www.eloan.kr/api/mcp", { method: "POST", headers: { authorization: `Bearer ${TOKEN}` }, body: "{oops" }), toolDeps());
+    assert.equal(broken.status, 400);
+    assert.equal(((await broken.json()) as { error: { code: number } }).error.code, -32700);
+    const ping = (await (await mcpCall({ jsonrpc: "2.0", id: "p", method: "ping" })).json()) as { result: unknown };
+    assert.deepEqual(ping.result, {});
+  });
+
+  await test("MCP 배치 요청: 요청마다 답(순서대로), 알림은 답 없음, 알림만이면 202", async () => {
+    const batch = [
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26" } },
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+      { jsonrpc: "2.0", id: 3, method: "nope" },
+    ];
+    const r = await mcpCall(batch);
+    assert.equal(r.status, 200);
+    const b = (await r.json()) as { id: number; result?: { protocolVersion?: string; tools?: unknown[] }; error?: { code: number } }[];
+    assert.deepEqual(b.map((x) => x.id), [1, 2, 3]);
+    assert.equal(b[0].result?.protocolVersion, "2025-03-26");
+    assert.equal(b[1].result?.tools?.length, 2);
+    assert.equal(b[2].error?.code, -32601);
+    assert.equal((await mcpCall([{ jsonrpc: "2.0", method: "notifications/initialized" }])).status, 202);
+    assert.equal((await mcpCall([])).status, 400);
+  });
+
+  await test("MCP 최신 방식(2026-07-28, 요청마다 _meta): server/discover·tools/list·tools/call, 헤더 검사, 모르는 버전 -32022", async () => {
+    const meta = { "io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {} };
+    const modern = (method: string, params: Record<string, unknown> = {}, headers: Record<string, string> = {}) =>
+      mcpCall({ jsonrpc: "2.0", id: 9, method, params: { ...params, _meta: meta } }, { extraHeaders: { "mcp-protocol-version": "2026-07-28", "mcp-method": method, ...headers } });
+    const d = (await (await modern("server/discover")).json()) as { result: { resultType: string; supportedVersions: string[]; capabilities: unknown; _meta: Record<string, { name: string }> } };
+    assert.equal(d.result.resultType, "complete");
+    assert.ok(d.result.supportedVersions.includes("2026-07-28") && d.result.supportedVersions.includes("2025-06-18"));
+    assert.deepEqual(d.result.capabilities, { tools: {} });
+    assert.equal(d.result._meta["io.modelcontextprotocol/serverInfo"].name, "eloan-coupang");
+    const l = (await (await modern("tools/list")).json()) as { result: { resultType: string; tools: unknown[] } };
+    assert.deepEqual([l.result.resultType, l.result.tools.length], ["complete", 2]);
+    const c = await modern("tools/call", { name: MCP_TOOL_NAMES.search, arguments: { keyword: "청소기" } }, { "mcp-name": MCP_TOOL_NAMES.search });
+    assert.equal(((await c.json()) as { result: { resultType: string } }).result.resultType, "complete");
+    // Mcp-Name 은 base64 표기로 와도 된다
+    assert.equal(decodeHeaderValue(`=?base64?${Buffer.from("한글", "utf8").toString("base64")}?=`), "한글");
+    const enc = await modern("tools/call", { name: MCP_TOOL_NAMES.search, arguments: { keyword: "청소기" } }, { "mcp-name": `=?base64?${Buffer.from(MCP_TOOL_NAMES.search).toString("base64")}?=` });
+    assert.equal(enc.status, 200);
+    const mismatch = await modern("tools/call", { name: MCP_TOOL_NAMES.search, arguments: { keyword: "a" } }, { "mcp-name": MCP_TOOL_NAMES.deeplink });
+    assert.deepEqual([mismatch.status, ((await mismatch.json()) as { error: { code: number } }).error.code], [400, -32020]);
+    const noHeader = await mcpCall({ jsonrpc: "2.0", id: 9, method: "tools/list", params: { _meta: meta } });
+    assert.deepEqual([noHeader.status, ((await noHeader.json()) as { error: { code: number } }).error.code], [400, -32020]);
+    const unknownMethod = await modern("resources/list");
+    assert.deepEqual([unknownMethod.status, ((await unknownMethod.json()) as { error: { code: number } }).error.code], [404, -32601]);
+    const future = await mcpCall(
+      { jsonrpc: "2.0", id: 9, method: "tools/list", params: { _meta: { ...meta, "io.modelcontextprotocol/protocolVersion": "2099-01-01" } } },
+      { extraHeaders: { "mcp-protocol-version": "2099-01-01", "mcp-method": "tools/list" } },
+    );
+    const fb = (await future.json()) as { error: { code: number; data: { supported: string[] } } };
+    assert.deepEqual([future.status, fb.error.code, fb.error.data.supported.includes("2026-07-28")], [400, -32022, true]);
+    // legacy 방식(initialize 뒤 헤더만 2025-06-18)은 헤더 검사 없이 그대로
+    assert.equal((await mcpCall({ jsonrpc: "2.0", id: 1, method: "tools/list" }, { extraHeaders: { "mcp-protocol-version": "2025-06-18" } })).status, 200);
+  });
+
+  await test("MCP Origin: 없으면 통과, chatgpt.com 통과, 다른 사이트는 403", async () => {
+    const ping = { jsonrpc: "2.0", id: 1, method: "ping" };
+    assert.equal((await mcpCall(ping, { extraHeaders: { origin: "https://chatgpt.com" } })).status, 200);
+    assert.equal((await mcpCall(ping, { extraHeaders: { origin: "https://evil.example.com" } })).status, 403);
+    assert.equal((await mcpCall(ping, { extraHeaders: { origin: "https://chatgpt.com.evil.example" } })).status, 403);
+  });
+
   await test("한국 시간 표시", () => {
     assert.equal(kstLabel("2026-11-24T01:02:03.000Z"), "11월 24일 10:02");
     assert.equal(kstLabel("이상한 값"), "");
   });
 
-  console.log(`\n쿠팡·도구 API 테스트 ${passed}개 통과`);
+  console.log(`\n쿠팡·도구 API·MCP 테스트 ${passed}개 통과`);
 }
 
 main().catch((e) => {

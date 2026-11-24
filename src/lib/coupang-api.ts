@@ -1,5 +1,5 @@
 // 쿠팡 파트너스 Open API 호출 (서버 전용 — 키는 shop_secrets 에서 service role 로만 읽는다. 브라우저에서 import 하지 않는다).
-// 사장님 결정(2026-11-24): 쿠팡 키는 챗GPT 도구 API(src/app/api/tools/coupang/*)에만 쓴다. 사이트 글·노션 동기화는 쓰지 않는다.
+// 사장님 결정(2026-11-24): 쿠팡 키는 챗GPT 도구(MCP 서버 src/app/api/mcp/*, 도구 API src/app/api/tools/coupang/*)에만 쓴다. 사이트 글·노션 동기화는 쓰지 않는다.
 // 서명·응답 읽기는 src/lib/coupang-api-core.ts (순수 — 테스트).
 //
 // 호출 한도: 공식 수치는 확인 못 함 (공식 문서는 로그인 필요). 공개 자료 두 곳이

@@ -1,5 +1,5 @@
-// 챗GPT 도구 토큰 (서버 전용). 챗GPT 맞춤 GPT 의 Actions 가 우리 도구 API(/api/tools/coupang/*)를 부를 때
-// "Authorization: Bearer <도구 토큰>" 으로 보내는 값. 쿠팡 키와는 다른 별도 비밀값이라, 챗GPT 쪽에 새어도 쿠팡 키는 안전하고
+// 챗GPT 도구 토큰 (서버 전용). 챗GPT 의 사용자 지정 MCP 서버 주소(/api/mcp/<도구 토큰>)에 들어가거나,
+// 도구 API(/api/tools/coupang/*)·/api/mcp 를 부를 때 "Authorization: Bearer <도구 토큰>" 으로 보내는 값. 쿠팡 키와는 다른 별도 비밀값이라, 챗GPT 쪽에 새어도 쿠팡 키는 안전하고
 // 관리자 화면에서 새로 만들면 예전 토큰은 바로 못 쓰게 된다.
 // 저장: shop_secrets.CHATGPT_TOOL_TOKEN — 서버가 service role 로 직접 쓴다 (관리자 RPC 허용 목록 shop_secret_names() 는 거치지 않음
 // → SQL 변경 없음. 관리자 화면의 키 상태 목록(admin_shop_secret_status)에는 끝 4자리·만든 시각이 보인다).

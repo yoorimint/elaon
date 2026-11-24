@@ -120,7 +120,7 @@ export type ApiKeyGroup = {
 export const API_KEY_GROUPS: ApiKeyGroup[] = [
   {
     id: "coupang",
-    label: "쿠팡 파트너스 API",
+    label: "쿠팡 파트너스 API (챗GPT 상품 찾기·링크 만들기 도구용)",
     required: true,
     where: "쿠팡 파트너스 → 추가기능 → 파트너스 API",
     fields: [

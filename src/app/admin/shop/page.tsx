@@ -4,7 +4,7 @@
 // 다른 곳에서 쓴 글을 붙여넣으면 사진 자리·구매 버튼 자리를 자동으로 만들고, 사진은 사이트에 올리고,
 // 구매 링크는 쿠팡 파트너스 링크를 붙여넣어 건다.
 // 탭: 📒 노션(노션 "쇼핑 글" → 사이트 발행, 2026-11-14~ 기본) / ✍️ 붙여넣어 초안 만들기(예비) / 📝 초안 / ✅ 발행된 글 /
-//     📰 생활정보 글(공개된 /info 글과 조회수 — 보기 전용, 고치기는 노션) / ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·고지 문구)
+//     📰 생활정보 글(공개된 /info 글과 조회수 — 보기 전용, 고치기는 노션) / ⚙️ 설정(쿠팡 파트너스 API 키·노션 토큰·챗GPT 연결·고지 문구)
 // 맨 위 "사용량" 카드: 무료 한도(Supabase 사진·DB, iwinv 서버 트래픽) — src/components/AdminUsageCard.tsx
 // 매시간 AI 자동 글은 꺼 둠 (.github/workflows/shop-post.yml). 자동 글 설정 화면(실행·상품 선정·정보 수집·직접 입력 상품·
 // 실행 기록·Gemini/Claude/네이버 키)은 화면에서만 뺐다 — 코드(scripts/shop, ShopRunsAdmin 등)와 저장된 값은 그대로.
@@ -16,6 +16,7 @@ import { AdminUsageCard } from "@/components/AdminUsageCard";
 import { InfoAdminPosts } from "@/components/InfoAdminPosts";
 import { ShopAdminPosts } from "@/components/ShopAdminPosts";
 import { ShopApiKeys } from "@/components/ShopApiKeys";
+import { ShopChatGptTool } from "@/components/ShopChatGptTool";
 import { ShopPasteDraft } from "@/components/ShopPasteDraft";
 import { useAdminGuard } from "@/lib/use-admin-guard";
 import { ShopNotionPanel } from "@/components/ShopNotionPanel";
@@ -169,6 +170,7 @@ export default function AdminShopPage() {
 
 function SettingsTab({ config, onSaved }: { config: ShopConfig | null; onSaved: () => Promise<void> }) {
   const [text, setText] = useState(config?.disclosure_text ?? "");
+  const [keysSaved, setKeysSaved] = useState(0); // 쿠팡 키를 저장하면 챗GPT 연결 칸의 "쿠팡 키 있음" 표시도 새로
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -193,7 +195,18 @@ function SettingsTab({ config, onSaved }: { config: ShopConfig | null; onSaved: 
   return (
     <div className="space-y-6">
       {/* 쿠팡·노션만 보여 줌 (다른 키는 화면에서만 숨김 — 저장된 값은 지우지 않음) */}
-      <ShopApiKeys check={config?.key_check ?? {}} checkedAt={config?.key_check_at ?? null} only={["coupang", "notion"]} onSaved={onSaved} />
+      <ShopApiKeys
+        check={config?.key_check ?? {}}
+        checkedAt={config?.key_check_at ?? null}
+        only={["coupang", "notion"]}
+        onSaved={() => {
+          setKeysSaved((k) => k + 1);
+          void onSaved();
+        }}
+      />
+
+      {/* 쿠팡 키는 챗GPT 도구 API 에만 쓴다 (사장님 결정 2026-11-24) — 도구 토큰·연결 안내 */}
+      <ShopChatGptTool reloadKey={keysSaved} />
 
       <section className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-6">
         <h2 className="font-bold">쿠팡 파트너스 고지 문구</h2>

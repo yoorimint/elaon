@@ -1,5 +1,8 @@
 // 사이트 광고 설정. 배너 교체·문구 수정은 이 파일만 고치면 된다.
 
+// Google 애드센스 게시자 번호 (layout.tsx 의 광고 스크립트·확인 메타, public/ads.txt — 셋이 같아야 한다, 테스트가 확인)
+export const ADSENSE_CLIENT = "ca-pub-7521397660882740";
+
 // 쿠팡 파트너스 다이나믹 배너 (파트너스 → 링크 생성 → 다이나믹 배너 에서 발급한 값)
 export const COUPANG_BOTTOM_BANNER = {
   id: 976950,

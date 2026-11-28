@@ -256,10 +256,15 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
   });
 
   // 2026-11-28: ads.txt 가 없어 404 였다 (애드센스 "ads.txt 없음" 경고·수익 감소). 레이아웃의 애드센스 게시자 번호와 같아야 한다
-  await test("ads.txt 가 있고 애드센스 게시자 번호가 레이아웃과 같다", () => {
+  await test("ads.txt·애드센스 스크립트·확인 메타가 같은 게시자 번호로 처음 HTML 에 들어간다", () => {
     const ads = read(join(ROOT, "public", "ads.txt"));
-    const pub = read(join(ROOT, "src", "app", "layout.tsx")).match(/client=ca-(pub-\d+)/)?.[1];
-    assert.ok(pub, "레이아웃에 애드센스 번호 없음");
+    const pub = read(join(ROOT, "src", "lib", "ads-config.ts")).match(/ADSENSE_CLIENT = "ca-(pub-\d+)"/)?.[1];
+    assert.ok(pub, "ads-config 에 애드센스 번호 없음");
+    // 애드센스 확인 로봇은 처음 HTML 만 본다 — 스크립트는 next/script 가 아니라 head 의 <script>, 확인 메타도 있어야
+    const layout = read(join(ROOT, "src", "app", "layout.tsx"));
+    assert.ok(!/from "next\/script"/.test(layout), "애드센스를 next/script 로 넣으면 처음 HTML 에 안 나온다");
+    assert.match(layout, /<script\s+async\s+src=\{`https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\/adsbygoogle\.js\?client=\$\{ADSENSE_CLIENT\}`\}/);
+    assert.match(layout, /"google-adsense-account": ADSENSE_CLIENT/);
     assert.match(ads, new RegExp(`^google\\.com, ${pub}, DIRECT, f08c47fec0942fa0$`, "m"));
   });
 

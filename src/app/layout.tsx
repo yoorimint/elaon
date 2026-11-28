@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import { ADSENSE_CLIENT } from "@/lib/ads-config";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
@@ -63,6 +63,8 @@ export const metadata: Metadata = {
       "naver-site-verification": "4cb9fef10cd84e338345bdd5799db0881e0bbe83",
     },
   },
+  // 애드센스 사이트 확인용 메타 (애드센스 "사이트를 확인할 수 없습니다" 대응 — 확인 로봇은 처음 받은 HTML 만 본다)
+  other: { "google-adsense-account": ADSENSE_CLIENT },
 };
 
 // 구조화 데이터 (JSON-LD) — 검색엔진이 사이트 성격을 더 잘 이해하도록
@@ -100,12 +102,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 `,
           }}
         />
-        {/* Google AdSense — 전체 페이지 공통 광고 스크립트 */}
-        <Script
-          id="google-adsense"
+        {/* Google AdSense — 전체 페이지 공통 광고 스크립트.
+            next/script(afterInteractive)는 브라우저가 나중에 끼워 넣어서 처음 HTML 에 <script> 태그가 없다 →
+            애드센스 사이트 확인 로봇이 코드를 못 찾았다 (2026-11-28). 그래서 애드센스가 안내하는 모양 그대로 head 에 둔다 */}
+        <script
           async
-          strategy="afterInteractive"
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7521397660882740"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
           crossOrigin="anonymous"
         />
       </head>

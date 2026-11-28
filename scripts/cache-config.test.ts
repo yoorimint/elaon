@@ -255,6 +255,14 @@ const routeFiles = files.filter((p) => isPublic(p) && /[\\/](page|opengraph-imag
     assert.match(src, /alt=\{`\$\{product\.name\} 사진`\}/);
   });
 
+  // 2026-11-28: ads.txt 가 없어 404 였다 (애드센스 "ads.txt 없음" 경고·수익 감소). 레이아웃의 애드센스 게시자 번호와 같아야 한다
+  await test("ads.txt 가 있고 애드센스 게시자 번호가 레이아웃과 같다", () => {
+    const ads = read(join(ROOT, "public", "ads.txt"));
+    const pub = read(join(ROOT, "src", "app", "layout.tsx")).match(/client=ca-(pub-\d+)/)?.[1];
+    assert.ok(pub, "레이아웃에 애드센스 번호 없음");
+    assert.match(ads, new RegExp(`^google\\.com, ${pub}, DIRECT, f08c47fec0942fa0$`, "m"));
+  });
+
   console.log(`\n캐시 설정 테스트 ${passed}개 통과`);
 })().catch((e) => {
   console.error(e);
